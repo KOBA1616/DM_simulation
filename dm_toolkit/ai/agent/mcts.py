@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import dm_ai_module
 from dm_toolkit import commands
-from typing import Any, Optional, List, Dict, Tuple
+from typing import Any, Optional, List, Dict, Tuple, Callable
 
 
 class MCTSNode:
@@ -26,13 +26,15 @@ class MCTSNode:
 
 
 class MCTS:
-    def __init__(self, network: Any, card_db: Dict[str, Any], simulations: int = 100, c_puct: float = 1.0, dirichlet_alpha: float = 0.3, dirichlet_epsilon: float = 0.25) -> None:
+    def __init__(self, network: Any, card_db: Dict[str, Any], simulations: int = 100, c_puct: float = 1.0, dirichlet_alpha: float = 0.3, dirichlet_epsilon: float = 0.25, state_converter: Optional[Callable[[Any, int, Dict], Any]] = None, action_encoder: Optional[Callable[[Any, Any, int], int]] = None) -> None:
         self.network: Any = network
         self.card_db: Dict[str, Any] = card_db
         self.simulations: int = simulations
         self.c_puct: float = c_puct
         self.dirichlet_alpha: float = dirichlet_alpha
         self.dirichlet_epsilon: float = dirichlet_epsilon
+        self.state_converter = state_converter
+        self.action_encoder = action_encoder
 
     def _fast_forward(self, state: Any) -> None:
         dm_ai_module.PhaseManager.fast_forward(state, self.card_db)
@@ -153,10 +155,24 @@ class MCTS:
 
         # Evaluate with Network
         # Use Masked Tensor (mask_opponent_hand=True) during inference
-        tensor = dm_ai_module.TensorConverter.convert_to_tensor(
-            node.state, node.state.active_player_id, self.card_db, True
-        )
-        tensor_t = torch.tensor(tensor, dtype=torch.float32).unsqueeze(0)
+        if self.state_converter:
+            tensor = self.state_converter(
+                node.state, node.state.active_player_id, self.card_db
+            )
+            # Check if tensor is already a tensor or numpy array of ints (tokens)
+            if isinstance(tensor, (list, np.ndarray)) and (
+                (isinstance(tensor, list) and len(tensor) > 0 and isinstance(tensor[0], (int, np.integer))) or
+                (isinstance(tensor, np.ndarray) and np.issubdtype(tensor.dtype, np.integer))
+            ):
+                tensor_t = torch.tensor(tensor, dtype=torch.long).unsqueeze(0)
+            else:
+                 # Fallback/Default float tensor
+                tensor_t = torch.tensor(tensor, dtype=torch.float32).unsqueeze(0)
+        else:
+            tensor = dm_ai_module.TensorConverter.convert_to_tensor(
+                node.state, node.state.active_player_id, self.card_db, True
+            )
+            tensor_t = torch.tensor(tensor, dtype=torch.float32).unsqueeze(0)
 
         with torch.no_grad():
             policy_logits, value = self.network(tensor_t)
@@ -177,37 +193,45 @@ class MCTS:
 
             # Map action to index when possible
             action_idx = -1
-            # Prefer command-first encoder when possible
-            try:
-                # If item is a plain dict (command-like)
-                if isinstance(item, dict):
-                    action_idx = dm_ai_module.CommandEncoder.command_to_index(item)
-                else:
-                    # If wrapper exposes normalized dict via `to_dict`
-                    to_dict = getattr(item, 'to_dict', None)
-                    if callable(to_dict):
-                        try:
-                            action_idx = dm_ai_module.CommandEncoder.command_to_index(item.to_dict())
-                        except Exception:
-                            action_idx = -1
-                    else:
-                        action_idx = -1
-            except Exception:
-                action_idx = -1
 
-            # Fallback to legacy ActionEncoder (supports legacy Action objects or underlying `_action`)
-            if action_idx == -1:
+            if self.action_encoder:
                 try:
-                    if is_action:
-                        action_idx = dm_ai_module.ActionEncoder.action_to_index(item)
+                    action_idx = self.action_encoder(item, node.state, node.state.active_player_id)
+                except Exception:
+                    action_idx = -1
+
+            if action_idx == -1:
+                # Prefer command-first encoder when possible
+                try:
+                    # If item is a plain dict (command-like)
+                    if isinstance(item, dict):
+                        action_idx = dm_ai_module.CommandEncoder.command_to_index(item)
                     else:
-                        underlying = getattr(item, '_action', None)
-                        if underlying is not None:
-                            action_idx = dm_ai_module.ActionEncoder.action_to_index(underlying)
+                        # If wrapper exposes normalized dict via `to_dict`
+                        to_dict = getattr(item, 'to_dict', None)
+                        if callable(to_dict):
+                            try:
+                                action_idx = dm_ai_module.CommandEncoder.command_to_index(item.to_dict())
+                            except Exception:
+                                action_idx = -1
                         else:
                             action_idx = -1
                 except Exception:
                     action_idx = -1
+
+                # Fallback to legacy ActionEncoder (supports legacy Action objects or underlying `_action`)
+                if action_idx == -1:
+                    try:
+                        if is_action:
+                            action_idx = dm_ai_module.ActionEncoder.action_to_index(item)
+                        else:
+                            underlying = getattr(item, '_action', None)
+                            if underlying is not None:
+                                action_idx = dm_ai_module.ActionEncoder.action_to_index(underlying)
+                            else:
+                                action_idx = -1
+                    except Exception:
+                        action_idx = -1
 
             # Clone state
             next_state = node.state.clone()
