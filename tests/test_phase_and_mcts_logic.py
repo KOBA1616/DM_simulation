@@ -91,8 +91,7 @@ class TestPhaseAndMCTS(unittest.TestCase):
 
     def test_mcts_transformer_integration(self):
         """
-        Verify MCTS can run a search step using DuelTransformer.
-        This checks input tensor types (Int vs Float).
+        Verify MCTS raises RuntimeError (Deprecated).
         """
         print("\n[MCTS Test] Initializing MCTS + Transformer...")
         game = GameInstance()
@@ -110,24 +109,15 @@ class TestPhaseAndMCTS(unittest.TestCase):
         def state_converter(state, player_id, card_db):
             return tokenizer.encode_state(state, player_id)
 
-        # Setup MCTS
-        mcts = MCTS(
-            network=model,
-            card_db=None,
-            simulations=2, # Small number for test
-            state_converter=state_converter
-        )
-
-        # Run Search
-        print("[MCTS Test] Running search...")
-        try:
-            root = mcts.search(game.state)
-            print("SUCCESS: MCTS search completed.")
-            print(f"Best Action: {root.children[0].action if root.children else 'None'}")
-        except RuntimeError as e:
-            print(f"FAILURE: Runtime Error during MCTS: {e}")
-        except Exception as e:
-            print(f"FAILURE: Error during MCTS: {e}")
+        print("[MCTS Test] Expecting RuntimeError on instantiation...")
+        with self.assertRaises(RuntimeError) as cm:
+             MCTS(
+                network=model,
+                card_db=None,
+                simulations=2, # Small number for test
+                state_converter=state_converter
+            )
+        print("SUCCESS: Caught expected RuntimeError (Deprecated).")
 
 if __name__ == '__main__':
     # Run the tests manually
