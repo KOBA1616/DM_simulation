@@ -33,16 +33,22 @@ def run():
     # 3. Instantiate MCTS (WITHOUT state_converter)
     # This should trigger the default TensorConverter which outputs floats
     print("Initializing MCTS (Default Configuration)...")
-    mcts = MCTS(network=model, card_db=card_db, simulations=2)
+    try:
+        mcts = MCTS(network=model, card_db=card_db, simulations=2)
+        # Should not reach here
+        print("CRITICAL: MCTS initialized successfully! Deprecation failed.")
+    except RuntimeError as e:
+        print("\nSUCCESS: Caught expected deprecation RuntimeError!")
+        print(f"Exception Message: {e}")
+        return
 
-    # 4. Create State
+    # 4. Create State (Unreachable if MCTS deprecated correctly)
     state = GameState()
-    # Initialize some dummy deck to avoid empty deck issues if engine checks
     deck = [1] * 40
     state.set_deck(0, deck)
     state.set_deck(1, deck)
 
-    # 5. Run Search
+    # 5. Run Search (Unreachable)
     print("Attempting mcts.search(state)...")
     try:
         root = mcts.search(state)
