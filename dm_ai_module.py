@@ -36,17 +36,66 @@ class CommandType(IntEnum):
     PASS = 5
 
 
+class CommandDef:
+    def __init__(self):
+        self.type = 0
+        self.instance_id = -1
+        self.target_instance = -1
+        self.owner_id = -1
+        self.amount = 0
+        self.str_param = ""
+        self.optional = False
+        self.from_zone = ""
+        self.to_zone = ""
+        self.mutation_kind = ""
+        self.input_value_key = ""
+        self.output_value_key = ""
+        self.target_filter = None
+        self.target_group = ""
+
+
+class FilterDef:
+    def __init__(self):
+        self.zones = []
+        self.types = []
+        self.owner = 0
+        self.count = 0
+
+
+class JsonLoader:
+    @staticmethod
+    def load_cards(filepath: str) -> Any:
+        return {}
+
+
 class CommandSystem:
     @staticmethod
     def execute_command(state: Any, cmd: Any, source_id: int = -1, player_id: int = 0, ctx: Any = None) -> None:
-        # Minimal wrapper: attempt to call `execute` on cmd or treat as Action
         try:
+            # Check for PASS first to avoid infinite recursion with wrappers
+            t = getattr(cmd, 'type', None)
+            if t is None and isinstance(cmd, dict):
+                t = cmd.get('type')
+
+            # Unwrap wrapper if needed
+            if t is None and hasattr(cmd, '_action'):
+                act = getattr(cmd, '_action')
+                if isinstance(act, dict):
+                    t = act.get('type')
+                else:
+                    t = getattr(act, 'type', None)
+
+            if t == ActionType.PASS or t == CommandType.PASS or str(t) == 'PASS' or str(t) == 'ActionType.PASS':
+                PhaseManager.next_phase(state)
+                return
+
             if hasattr(cmd, 'execute') and callable(getattr(cmd, 'execute')):
                 try:
                     cmd.execute(state)
                     return
                 except TypeError:
                     cmd.execute(state, ctx)
+
             # Fallback: if cmd is dict-like, try to map basic commands
             if isinstance(cmd, dict):
                 t = cmd.get('type')
@@ -99,6 +148,7 @@ class Player:
         self.mana_zone: List[CardStub] = []
         self.battle_zone: List[CardStub] = []
         self.graveyard: List[CardStub] = []
+        self.shield_zone: List[CardStub] = []
         self.deck: List[int] = []
         self.life: int = 20
 
@@ -111,6 +161,25 @@ class GameState:
         self.pending_effects: List[Any] = []
         self.turn_number = 1
         self.game_over = False
+        self.winner = -1
+
+    def clone(self):
+        import copy
+        new_state = GameState()
+        new_state.current_phase = self.current_phase
+        new_state.active_player_id = self.active_player_id
+        new_state.turn_number = self.turn_number
+        new_state.players = copy.deepcopy(self.players)
+        new_state.pending_effects = list(self.pending_effects)
+        new_state.game_over = self.game_over
+        return new_state
+
+    def set_deck(self, player_id: int, deck_ids: List[int]) -> None:
+        if 0 <= player_id < len(self.players):
+            self.players[player_id].deck = [CardStub(cid) for cid in deck_ids]
+
+    def setup_test_duel(self, *args, **kwargs) -> None:
+        pass
 
     def add_card_to_hand(self, player: int, card_id: int, instance_id: Optional[int] = None, count: int = 1):
         """
@@ -211,21 +280,50 @@ class ActionGenerator:
         try:
             pid = getattr(state, 'active_player_id', 0)
             p = state.players[pid]
+            opp_id = 1 - pid
+
             a = Action()
             a.type = ActionType.PASS
             out.append(a)
-            for c in list(p.hand):
-                ma = Action()
-                ma.type = ActionType.MANA_CHARGE
-                ma.card_id = c.card_id
-                ma.source_instance_id = c.instance_id
-                out.append(ma)
-            for c in list(p.hand):
-                pa = Action()
-                pa.type = ActionType.PLAY_CARD
-                pa.card_id = c.card_id
-                pa.source_instance_id = c.instance_id
-                out.append(pa)
+
+            # MANA/PLAY only in MANA/MAIN phases
+            if state.current_phase == Phase.MANA:
+                for c in list(p.hand):
+                    ma = Action()
+                    ma.type = ActionType.MANA_CHARGE
+                    ma.card_id = c.card_id
+                    ma.source_instance_id = c.instance_id
+                    out.append(ma)
+
+            if state.current_phase == Phase.MAIN:
+                for c in list(p.hand):
+                    pa = Action()
+                    pa.type = ActionType.PLAY_CARD
+                    pa.card_id = c.card_id
+                    pa.source_instance_id = c.instance_id
+                    out.append(pa)
+
+            # ATTACK in ATTACK phase
+            if state.current_phase == Phase.ATTACK:
+                for c in list(p.battle_zone):
+                    if not c.is_tapped and not c.sick:
+                        # Attack Player
+                        aa = Action()
+                        aa.type = ActionType.ATTACK_PLAYER
+                        aa.source_instance_id = c.instance_id
+                        aa.target_player = opp_id
+                        out.append(aa)
+
+                        # Attack Creature (simplified: attack any opponent creature)
+                        opp = state.players[opp_id]
+                        for oc in opp.battle_zone:
+                            if oc.is_tapped: # Usually can only attack tapped creatures
+                                ac = Action()
+                                ac.type = ActionType.ATTACK_CREATURE
+                                ac.source_instance_id = c.instance_id
+                                ac.target_instance_id = oc.instance_id
+                                out.append(ac)
+
         except Exception:
             return []
         return out
@@ -246,6 +344,23 @@ class PhaseManager:
             elif state.current_phase == Phase.ATTACK:
                 state.current_phase = Phase.END
             else:
+                # End of turn -> Start of next turn
+                # Switch player
+                state.active_player_id = 1 - state.active_player_id
+                state.turn_number += 1
+
+                # Untap step
+                p = state.players[state.active_player_id]
+                for c in p.battle_zone:
+                    c.is_tapped = False
+                    c.sick = False
+                for c in p.mana_zone:
+                    c.is_tapped = False
+
+                # Draw step
+                # (Simple stub: add a dummy card to hand)
+                state.add_card_to_hand(state.active_player_id, 1000 + state.turn_number)
+
                 state.current_phase = Phase.MANA
         except Exception:
             pass
@@ -532,6 +647,12 @@ if 'MutateCommand' not in globals():
                 @staticmethod
                 def resolve(state: Any, effect: Any, player_id: int) -> None:
                     pass
+
+        if 'TensorConverter' not in globals():
+            class TensorConverter:
+                @staticmethod
+                def convert_to_tensor(state: Any, player_id: int, card_db: Any = None, mask_opponent_hand: bool = True) -> List[float]:
+                    return [0.0] * 600
 
         if 'TokenConverter' not in globals():
             class TokenConverter:
