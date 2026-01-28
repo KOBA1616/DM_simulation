@@ -19,7 +19,7 @@ class AIPlayer:
         self.tokenizer = StateTokenizer()
         # Default Config (matches train_simple.py)
         self.config = config or {
-            'vocab_size': 1000,
+            'vocab_size': 10000,
             'action_dim': 600,
             'd_model': 256,
             'nhead': 8,

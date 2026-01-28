@@ -1,8 +1,12 @@
 import unittest
-import torch
-import numpy as np
 import os
 import sys
+try:
+    import torch
+    import numpy as np
+except ImportError:
+    torch = None
+    np = None
 from pathlib import Path
 
 # Ensure project root is in path
@@ -10,11 +14,17 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 from dm_ai_module import GameInstance, ActionType, CardStub
-from dm_toolkit.ai.agent.transformer_model import DuelTransformer
-from training.ai_player import AIPlayer
+if torch:
+    from dm_toolkit.ai.agent.transformer_model import DuelTransformer
+    from training.ai_player import AIPlayer
+else:
+    DuelTransformer = None
+    AIPlayer = None
 
 class TestInferenceIntegration(unittest.TestCase):
     def setUp(self):
+        if torch is None:
+            self.skipTest("Torch not installed")
         self.game = GameInstance()
         self.game.start_game()
 
@@ -25,7 +35,7 @@ class TestInferenceIntegration(unittest.TestCase):
         os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
 
         self.model = DuelTransformer(
-            vocab_size=1000,
+            vocab_size=10000,
             action_dim=600,
             d_model=32,
             nhead=2,
@@ -41,7 +51,7 @@ class TestInferenceIntegration(unittest.TestCase):
 
         # Config matching the small model
         self.config = {
-            'vocab_size': 1000,
+            'vocab_size': 10000,
             'action_dim': 600,
             'd_model': 32,
             'nhead': 2,

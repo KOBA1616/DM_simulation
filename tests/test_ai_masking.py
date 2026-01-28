@@ -1,9 +1,14 @@
 import unittest
-import torch
-import numpy as np
 import os
 import sys
 from pathlib import Path
+
+try:
+    import torch
+    import numpy as np
+except ImportError:
+    torch = None
+    np = None
 
 # Ensure project root is in path
 project_root = Path(__file__).resolve().parent.parent
@@ -11,11 +16,17 @@ sys.path.insert(0, str(project_root))
 
 from dm_ai_module import GameInstance, ActionType, CardStub, GameCommand
 from dm_toolkit.ai.agent.tokenization import ActionEncoder, StateTokenizer
-from training.ai_player import AIPlayer
-from dm_toolkit.ai.agent.transformer_model import DuelTransformer
+if torch:
+    from training.ai_player import AIPlayer
+    from dm_toolkit.ai.agent.transformer_model import DuelTransformer
+else:
+    AIPlayer = None
+    DuelTransformer = None
 
 class TestAIMasking(unittest.TestCase):
     def setUp(self):
+        if torch is None:
+            self.skipTest("Torch not installed")
         self.game = GameInstance()
         self.encoder = ActionEncoder()
 
@@ -23,11 +34,11 @@ class TestAIMasking(unittest.TestCase):
         self.model_path = os.path.join(project_root, "models", "test_masking_model.pth")
         os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
         self.model = DuelTransformer(
-            vocab_size=1000, action_dim=600, d_model=32, nhead=2, num_layers=2, dim_feedforward=64, max_len=200
+            vocab_size=10000, action_dim=600, d_model=32, nhead=2, num_layers=2, dim_feedforward=64, max_len=200
         )
         torch.save({'model_state_dict': self.model.state_dict(), 'epoch': 1}, self.model_path)
 
-        self.ai = AIPlayer(self.model_path, device='cpu', config={'vocab_size':1000, 'action_dim':600, 'd_model':32, 'nhead':2, 'num_layers':2, 'dim_feedforward':64, 'max_len':200})
+        self.ai = AIPlayer(self.model_path, device='cpu', config={'vocab_size':10000, 'action_dim':600, 'd_model':32, 'nhead':2, 'num_layers':2, 'dim_feedforward':64, 'max_len':200})
 
     def tearDown(self):
         if os.path.exists(self.model_path):
