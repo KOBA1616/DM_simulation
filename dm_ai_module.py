@@ -307,8 +307,8 @@ class PhaseManager:
         return
 
     @staticmethod
-    def check_game_over(state: GameState, result_out: Any = None) -> bool:
-        return False
+    def check_game_over(state: GameState, result_out: Any = None) -> tuple[bool, int]:
+        return False, GameResult.NONE
 
 
 class GameResult(IntEnum):
@@ -335,6 +335,13 @@ class EffectResolver:
                     state.pending_effects.pop()
         except Exception:
             pass
+
+
+class TensorConverter:
+    @staticmethod
+    def convert_to_tensor(state: Any, player_id: int, card_db: Any, mask_opponent: bool = True) -> List[float]:
+        # Simulate C++ returning float vector
+        return [0.0] * 856
 
 
 __all__ = [
@@ -584,6 +591,13 @@ if 'MutateCommand' not in globals():
                 @staticmethod
                 def resolve(state: Any, effect: Any, player_id: int) -> None:
                     pass
+
+        if 'TensorConverter' not in globals():
+            class TensorConverter:
+                @staticmethod
+                def convert_to_tensor(state: Any, player_id: int, card_db: Any, mask_opponent: bool = True) -> List[float]:
+                    # Simulate C++ returning float vector
+                    return [0.0] * 856
 
         if 'TokenConverter' not in globals():
             class TokenConverter:
