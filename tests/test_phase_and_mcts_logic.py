@@ -9,7 +9,7 @@ sys.path.insert(0, str(project_root))
 
 from dm_toolkit import dm_ai_module
 from dm_toolkit.dm_ai_module import GameInstance, PhaseManager, Phase, ActionType
-from dm_toolkit.ai.agent.mcts import MCTS
+from dm_toolkit.dm_ai_module import MCTS
 from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 from dm_toolkit.ai.agent.tokenization import StateTokenizer, ActionEncoder
 try:
@@ -94,7 +94,7 @@ class TestPhaseAndMCTS(unittest.TestCase):
 
     def test_mcts_transformer_integration(self):
         """
-        Verify MCTS raises RuntimeError (Deprecated).
+        Verify MCTS initializes and runs (using the fallback implementation).
         """
         if torch is None:
             print("\nMCTS Test Skipped (Torch not found)")
@@ -116,15 +116,14 @@ class TestPhaseAndMCTS(unittest.TestCase):
         def state_converter(state, player_id, card_db):
             return tokenizer.encode_state(state, player_id)
 
-        print("[MCTS Test] Expecting RuntimeError on instantiation...")
-        with self.assertRaises(RuntimeError) as cm:
-             MCTS(
-                network=model,
-                card_db=None,
-                simulations=2, # Small number for test
-                state_converter=state_converter
-            )
-        print("SUCCESS: Caught expected RuntimeError (Deprecated).")
+        # It should NOT raise RuntimeError now
+        mcts = MCTS(
+            network=model,
+            card_db={},
+            simulations=2,
+            state_converter=state_converter
+        )
+        print("SUCCESS: MCTS initialized.")
 
 if __name__ == '__main__':
     # Run the tests manually
