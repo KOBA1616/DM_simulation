@@ -8,6 +8,8 @@ simple and only aim to satisfy common test and script usage paths.
 
 from __future__ import annotations
 
+import json
+import os
 from enum import IntEnum
 from typing import Any, List, Optional
 
@@ -139,6 +141,22 @@ class GameState:
             c = CardStub(card_id)
             self.players[player].mana_zone.append(c)
 
+    def set_deck(self, player: int, deck_ids: List[int]):
+        try:
+            self.players[player].deck = list(deck_ids)
+        except Exception:
+            pass
+
+    def get_zone(self, player_id: int, zone_type: int) -> List[Any]:
+        try:
+            p = self.players[player_id]
+            zones = [p.deck, p.hand, p.mana_zone, p.battle_zone, p.graveyard, p.shield_zone]
+            if 0 <= zone_type < len(zones):
+                return zones[zone_type]
+            return []
+        except Exception:
+            return []
+
     def add_test_card_to_battle(self, player: int, card_id: int, instance_id: int, tapped: bool = False, sick: bool = False):
         c = CardStub(card_id, instance_id)
         c.is_tapped = tapped
@@ -158,6 +176,9 @@ class GameInstance:
     def start_game(self):
         self.state.current_phase = Phase.MANA
         self.state.active_player_id = 0
+
+    def initialize_card_stats(self, deck_size: int):
+        pass
 
     def execute_action(self, action: Action):
         if action.type == ActionType.PLAY_CARD or action.type == ActionType.DECLARE_PLAY:
@@ -237,6 +258,14 @@ class IntentGenerator(ActionGenerator):
 
 class PhaseManager:
     @staticmethod
+    def start_game(state: GameState, card_db: Any = None) -> None:
+        try:
+            state.current_phase = Phase.MANA
+            state.active_player_id = 0
+        except Exception:
+            pass
+
+    @staticmethod
     def next_phase(state: GameState, card_db: Any = None) -> None:
         try:
             if state.current_phase == Phase.MANA:
@@ -255,8 +284,8 @@ class PhaseManager:
         return
 
     @staticmethod
-    def check_game_over(state: GameState) -> tuple[bool, int]:
-        return (False, -1)
+    def check_game_over(state: GameState, result_out: Any = None) -> bool:
+        return False
 
 
 class GameResult(IntEnum):
@@ -893,3 +922,37 @@ if 'ScenarioConfig' not in globals():
              self.enemy_can_use_trigger = False
 
 
+if 'JsonLoader' not in globals():
+    class JsonLoader:
+        @staticmethod
+        def load_cards(filepath: str) -> dict[int, Any]:
+            final = filepath
+            if not os.path.exists(final):
+                alt = os.path.join(os.path.dirname(__file__), filepath)
+                if os.path.exists(alt):
+                    final = alt
+            try:
+                with open(final, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                if isinstance(data, list):
+                    out: dict[int, Any] = {}
+                    for item in data:
+                        try:
+                            out[int(item.get('id'))] = item
+                        except Exception:
+                            continue
+                    return out
+                if isinstance(data, dict):
+                    out: dict[int, Any] = {}
+                    for k, v in data.items():
+                        try:
+                            out[int(k)] = v
+                        except Exception:
+                            try:
+                                out[int(v.get('id'))] = v
+                            except Exception:
+                                continue
+                    return out
+            except Exception:
+                return {}
+            return {}
