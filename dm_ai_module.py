@@ -107,7 +107,7 @@ class Player:
 
 
 class GameState:
-    def __init__(self):
+    def __init__(self, seed: int = 0):
         self.players: List[Player] = [Player(0), Player(1)]
         self.current_phase = Phase.MANA
         self.active_player_id = 0
@@ -268,6 +268,10 @@ class PhaseManager:
             state.active_player_id = 0
         except Exception:
             pass
+
+    @staticmethod
+    def setup_scenario(state: GameState, config: Any, card_db: Any = None) -> None:
+        pass
 
     @staticmethod
     def next_phase(state: GameState, card_db: Any = None) -> None:
