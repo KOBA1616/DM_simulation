@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from enum import IntEnum
 from typing import Any, List, Optional
+import copy
 
 # Indicate native extension is not loaded
 IS_NATIVE = False
@@ -149,6 +150,9 @@ class GameState:
     def get_pending_effects_info(self):
         return list(self.pending_effects)
 
+    def clone(self):
+        return copy.deepcopy(self)
+
 
 class GameInstance:
     def __init__(self, seed: int = 0, card_db: Any = None):
@@ -246,7 +250,26 @@ class PhaseManager:
             elif state.current_phase == Phase.ATTACK:
                 state.current_phase = Phase.END
             else:
+                # END -> Next Turn (MANA)
+                state.active_player_id = 1 - state.active_player_id
                 state.current_phase = Phase.MANA
+
+                # Untap Step
+                p = state.players[state.active_player_id]
+                for c in p.mana_zone:
+                    c.is_tapped = False
+                for c in p.battle_zone:
+                    c.is_tapped = False
+                    c.sick = False # Remove summoning sickness
+
+                # Draw Step
+                # Use a placeholder card ID for draw (use 1 to be safe within vocab limits)
+                state.add_card_to_hand(state.active_player_id, 1)
+
+                # Increment Turn Counter (assuming increment on P0 start or every turn?)
+                # Usually standard practice:
+                if state.active_player_id == 0:
+                    state.turn_number += 1
         except Exception:
             pass
 
