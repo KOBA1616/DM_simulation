@@ -1214,12 +1214,15 @@ class EngineCompat:
             logger.warning("dm_ai_module.register_batch_inference_numpy not found.")
 
     @staticmethod
-    def TensorConverter_convert_to_tensor(state: GameState, player_id: int, card_db: CardDB) -> Union[List[float], Any]:
+    def TensorConverter_convert_to_tensor(state: GameState, player_id: int, card_db: CardDB, mask_opponent_hand: bool = False) -> Union[List[float], Any]:
         EngineCompat._check_module()
         assert dm_ai_module is not None
         real_db = EngineCompat._resolve_db(card_db)
         if hasattr(dm_ai_module, 'TensorConverter') and hasattr(dm_ai_module.TensorConverter, 'convert_to_tensor'):
-            return dm_ai_module.TensorConverter.convert_to_tensor(state, player_id, real_db)
+            try:
+                return dm_ai_module.TensorConverter.convert_to_tensor(state, player_id, real_db, mask_opponent_hand)
+            except TypeError:
+                return dm_ai_module.TensorConverter.convert_to_tensor(state, player_id, real_db)
         # Return standard zero vector if native not available to prevent crashes in network modules
         return [0.0] * 856
 

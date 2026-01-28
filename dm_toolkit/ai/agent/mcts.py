@@ -2,7 +2,9 @@ import math
 import torch
 import numpy as np
 import dm_ai_module
+import copy
 from dm_toolkit import commands
+from dm_toolkit.engine.compat import EngineCompat
 from typing import Any, Optional, List, Dict, Tuple
 
 
@@ -38,7 +40,8 @@ class MCTS:
         dm_ai_module.PhaseManager.fast_forward(state, self.card_db)
 
     def search(self, root_state: Any, add_noise: bool = False) -> MCTSNode:
-        root_state_clone = root_state.clone()
+        # Use deepcopy instead of clone() for compatibility with Python fallback GameState
+        root_state_clone = copy.deepcopy(root_state)
         self._fast_forward(root_state_clone)
         root = MCTSNode(root_state_clone)
 
@@ -152,9 +155,9 @@ class MCTS:
             return 0.0
 
         # Evaluate with Network
-        # Use Masked Tensor (mask_opponent_hand=True) during inference
-        tensor = dm_ai_module.TensorConverter.convert_to_tensor(
-            node.state, node.state.active_player_id, self.card_db, True
+        # Use EngineCompat for robustness and mask_opponent_hand for accuracy
+        tensor = EngineCompat.TensorConverter_convert_to_tensor(
+            node.state, node.state.active_player_id, self.card_db, mask_opponent_hand=True
         )
         tensor_t = torch.tensor(tensor, dtype=torch.float32).unsqueeze(0)
 
@@ -210,12 +213,11 @@ class MCTS:
                     action_idx = -1
 
             # Clone state
-            next_state = node.state.clone()
+            next_state = copy.deepcopy(node.state)
 
             # Apply action/command
             try:
                 from dm_toolkit.unified_execution import ensure_executable_command
-                from dm_toolkit.engine.compat import EngineCompat
                 if is_action:
                     cmd = ensure_executable_command(item)
                     EngineCompat.ExecuteCommand(next_state, cmd, self.card_db)
