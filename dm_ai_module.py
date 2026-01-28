@@ -13,6 +13,13 @@ import os
 from enum import IntEnum
 from typing import Any, List, Optional
 import copy
+import math
+
+try:
+    import torch
+    import numpy as np
+except ImportError:
+    pass
 
 # Indicate native extension is not loaded
 IS_NATIVE = False
@@ -102,6 +109,7 @@ class Player:
         self.mana_zone: List[CardStub] = []
         self.battle_zone: List[CardStub] = []
         self.graveyard: List[CardStub] = []
+        self.shield_zone: List[CardStub] = []
         self.deck: List[int] = []
         self.life: int = 20
 
@@ -114,6 +122,7 @@ class GameState:
         self.pending_effects: List[Any] = []
         self.turn_number = 1
         self.game_over = False
+        self.winner = -1
 
     def add_card_to_hand(self, player: int, card_id: int, instance_id: Optional[int] = None, count: int = 1):
         """
@@ -236,21 +245,40 @@ class ActionGenerator:
         try:
             pid = getattr(state, 'active_player_id', 0)
             p = state.players[pid]
+
+            # PASS is always legal
             a = Action()
             a.type = ActionType.PASS
             out.append(a)
-            for c in list(p.hand):
-                ma = Action()
-                ma.type = ActionType.MANA_CHARGE
-                ma.card_id = c.card_id
-                ma.source_instance_id = c.instance_id
-                out.append(ma)
-            for c in list(p.hand):
-                pa = Action()
-                pa.type = ActionType.PLAY_CARD
-                pa.card_id = c.card_id
-                pa.source_instance_id = c.instance_id
-                out.append(pa)
+
+            phase = getattr(state, 'current_phase', Phase.MANA)
+
+            if phase == Phase.MANA:
+                for c in list(p.hand):
+                    ma = Action()
+                    ma.type = ActionType.MANA_CHARGE
+                    ma.card_id = c.card_id
+                    ma.source_instance_id = c.instance_id
+                    out.append(ma)
+
+            elif phase == Phase.MAIN:
+                for c in list(p.hand):
+                    pa = Action()
+                    pa.type = ActionType.PLAY_CARD
+                    pa.card_id = c.card_id
+                    pa.source_instance_id = c.instance_id
+                    out.append(pa)
+
+            elif phase == Phase.ATTACK:
+                 # Minimal attack logic for fallback
+                for c in list(p.battle_zone):
+                     if not c.is_tapped and not c.sick:
+                        att = Action()
+                        att.type = ActionType.ATTACK_PLAYER
+                        att.source_instance_id = c.instance_id
+                        att.target_player = 1 - pid
+                        out.append(att)
+
         except Exception:
             return []
         return out
@@ -993,3 +1021,165 @@ if 'JsonLoader' not in globals():
             except Exception:
                 return {}
             return {}
+
+if 'MCTS' not in globals():
+    class MCTSNode:
+        def __init__(self, state: Any, parent: Optional['MCTSNode'] = None, action: Any = None) -> None:
+            self.state = state
+            self.parent = parent
+            self.action = action
+            self.children: List['MCTSNode'] = []
+            self.visit_count = 0
+            self.value_sum = 0.0
+            self.prior = 0.0
+
+        def is_expanded(self) -> bool:
+            return len(self.children) > 0
+
+        def value(self) -> float:
+            if self.visit_count == 0:
+                return 0.0
+            return self.value_sum / self.visit_count
+
+    class MCTS:
+        def __init__(self, network: Any, card_db: Any, simulations: int = 100, c_puct: float = 1.0,
+                     dirichlet_alpha: float = 0.3, dirichlet_epsilon: float = 0.25,
+                     state_converter: Any = None, action_encoder: Any = None) -> None:
+            self.network = network
+            self.card_db = card_db
+            self.simulations = simulations
+            self.c_puct = c_puct
+            self.dirichlet_alpha = dirichlet_alpha
+            self.dirichlet_epsilon = dirichlet_epsilon
+            self.state_converter = state_converter
+            self.action_encoder = action_encoder
+
+        def _fast_forward(self, state: Any) -> None:
+            PhaseManager.fast_forward(state, self.card_db)
+
+        def search(self, root_state: Any, add_noise: bool = False) -> MCTSNode:
+            root_state_clone = root_state.clone()
+            self._fast_forward(root_state_clone)
+            root = MCTSNode(root_state_clone)
+
+            self._expand(root)
+
+            if add_noise and 'np' in globals():
+                self._add_exploration_noise(root)
+
+            for _ in range(self.simulations):
+                node = root
+                while node.is_expanded():
+                    next_node = self._select_child(node)
+                    if next_node is None:
+                        break
+                    node = next_node
+
+                if not node.is_expanded():
+                    value = self._expand(node)
+                else:
+                    value = node.value()
+
+                self._backpropagate(node, value)
+
+            return root
+
+        def _add_exploration_noise(self, node: MCTSNode) -> None:
+            if not node.children:
+                return
+            noise = np.random.dirichlet([self.dirichlet_alpha] * len(node.children))
+            for i, child in enumerate(node.children):
+                child.prior = child.prior * (1 - self.dirichlet_epsilon) + noise[i] * self.dirichlet_epsilon
+
+        def _select_child(self, node: MCTSNode) -> Optional[MCTSNode]:
+            best_score = -float('inf')
+            best_child = None
+            for child in node.children:
+                u_score = self.c_puct * child.prior * math.sqrt(node.visit_count) / (1 + child.visit_count)
+                q_score = child.value()
+                score = q_score + u_score
+                if best_score < score:
+                    best_score = score
+                    best_child = child
+            if best_child is None and node.children:
+                best_child = node.children[0]
+            return best_child
+
+        def _expand(self, node: MCTSNode) -> float:
+            is_over, result = PhaseManager.check_game_over(node.state)
+            if is_over:
+                current_player = getattr(node.state, 'active_player_id', 0)
+                if result == GameResult.DRAW: return 0.0
+                if result == GameResult.P1_WIN: return 1.0 if current_player == 0 else -1.0
+                if result == GameResult.P2_WIN: return 1.0 if current_player == 1 else -1.0
+                return 0.0
+
+            actions = ActionGenerator.generate_legal_actions(node.state, self.card_db)
+            if not actions:
+                return 0.0
+
+            # Encode State
+            tensor_t = None
+            if self.state_converter:
+                tensor = self.state_converter(node.state, getattr(node.state, 'active_player_id', 0), self.card_db)
+                if 'torch' in globals():
+                    if isinstance(tensor, torch.Tensor):
+                        tensor_t = tensor
+                        if tensor_t.dim() == 1: tensor_t = tensor_t.unsqueeze(0)
+                    elif isinstance(tensor, (list, np.ndarray)):
+                        # FIX: Handle Int Tokens for Transformer
+                        is_int = False
+                        if isinstance(tensor, list) and len(tensor) > 0 and isinstance(tensor[0], int):
+                            is_int = True
+                        elif isinstance(tensor, np.ndarray) and np.issubdtype(tensor.dtype, np.integer):
+                            is_int = True
+
+                        dtype = torch.long if is_int else torch.float32
+                        tensor_t = torch.tensor(tensor, dtype=dtype).unsqueeze(0)
+
+            if tensor_t is None:
+                 return 0.0
+
+            if 'torch' in globals():
+                with torch.no_grad():
+                     policy_logits, value = self.network(tensor_t)
+                policy = torch.softmax(policy_logits, dim=1).squeeze(0).numpy()
+                val = float(value.item())
+            else:
+                policy = [1.0/len(actions)] * 1024
+                val = 0.0
+
+            # Create children
+            for i, act in enumerate(actions):
+                # Simple prior mapping (assuming actions match policy index roughly or uniform)
+                # In real engine, we need ActionEncoder. Here just take uniform or index match
+                idx = i % len(policy) if len(policy) > 0 else 0
+                prior = float(policy[idx])
+
+                next_state = node.state.clone()
+                # Execute
+                if hasattr(next_state, 'execute_action'): # If GameInstance linked
+                     next_state.execute_action(act)
+                else:
+                     # Simulate execution via PhaseManager/CommandSystem logic
+                     if act.type == ActionType.PASS:
+                         PhaseManager.next_phase(next_state, self.card_db)
+                     elif act.type == ActionType.MANA_CHARGE:
+                         pid = getattr(next_state, 'active_player_id', 0)
+                         next_state.players[pid].mana_zone.append(CardStub(getattr(act, 'card_id', 0)))
+                         # Remove from hand?
+                         hand = next_state.players[pid].hand
+                         if hand: hand.pop(0)
+
+                child = MCTSNode(next_state, parent=node, action=act)
+                child.prior = prior
+                node.children.append(child)
+
+            return val
+
+        def _backpropagate(self, node: Optional[MCTSNode], value: float) -> None:
+            while node is not None:
+                node.visit_count += 1
+                node.value_sum += value
+                value = -value
+                node = node.parent
