@@ -14,7 +14,38 @@ from dm_ai_module import GameCommand, ActionType, CommandType
 BLOCK = 10
 
 class StateTokenizer:
-    def __init__(self, vocab_size: int = 1000, max_len: int = 200):
+    # Constants matching C++ TokenConverter
+    TOKEN_PAD = 0
+    TOKEN_CLS = 1
+    TOKEN_SEP = 2
+    TOKEN_UNK = 3
+
+    BASE_ZONE_MARKER = 10
+    BASE_STATE_MARKER = 50
+    BASE_PHASE_MARKER = 80
+    BASE_CONTEXT_MARKER = 100
+    BASE_COMMAND_MARKER = 200
+    BASE_CARD_ID = 1000
+
+    MARKER_HAND_SELF = 10
+    MARKER_MANA_SELF = 11
+    MARKER_BATTLE_SELF = 12
+    MARKER_SHIELD_SELF = 13
+    MARKER_GRAVE_SELF = 14
+    MARKER_DECK_SELF = 15
+
+    MARKER_HAND_OPP = 20
+    MARKER_MANA_OPP = 21
+    MARKER_BATTLE_OPP = 22
+    MARKER_SHIELD_OPP = 23
+    MARKER_GRAVE_OPP = 24
+    MARKER_DECK_OPP = 25
+
+    STATE_TAPPED = 50
+    STATE_SICK = 51
+    STATE_FACE_DOWN = 52
+
+    def __init__(self, vocab_size: int = 10000, max_len: int = 512):
         self.vocab_size = vocab_size
         self.max_len = max_len
 
@@ -22,52 +53,123 @@ class StateTokenizer:
         tokens = []
 
         try:
+            # 1. CLS Token
+            tokens.append(self.TOKEN_CLS)
+
+            # 2. Game Metadata
+            tokens.append(self.BASE_CONTEXT_MARKER + 0) # Context Start
+            tokens.append(getattr(state, 'turn_number', 1))
+
+            phase = getattr(state, 'current_phase', 0)
+            try:
+                phase = int(phase)
+            except:
+                phase = 0
+            tokens.append(self.BASE_PHASE_MARKER + phase)
+
             p = state.players[player_id]
             opp = state.players[1 - player_id]
 
-            # MARKER: HAND (1001) -> use lower IDs or special tokens within vocab
-            # For this simple test, we just assume markers are within range if vocab is large enough.
-            # But 1001 > 1000 (vocab_size), causing IndexError.
-            # Let's use 100, 101, 102, 103 for markers if vocab is small.
-            # Or better, clamp markers too.
+            tokens.append(len(p.mana_zone))
+            tokens.append(len(opp.mana_zone))
 
-            # Simple fix: Use 999 for all markers or special reserved IDs < vocab_size
-            MARKER_HAND = min(1001, self.vocab_size - 1)
-            MARKER_MANA = min(1002, self.vocab_size - 1)
-            MARKER_BATTLE = min(1003, self.vocab_size - 1)
-            MARKER_OPP = min(1004, self.vocab_size - 1)
+            # 3. Zones
+            self._append_zone(tokens, p.battle_zone, self.MARKER_BATTLE_SELF, True)
+            self._append_zone(tokens, opp.battle_zone, self.MARKER_BATTLE_OPP, True)
 
-            tokens.append(MARKER_HAND)
-            for c in p.hand:
-                cid = c.card_id if hasattr(c, 'card_id') else c
-                tokens.append(min(cid, self.vocab_size-1))
+            self._append_zone(tokens, p.mana_zone, self.MARKER_MANA_SELF, True)
+            self._append_zone(tokens, opp.mana_zone, self.MARKER_MANA_OPP, True)
 
-            tokens.append(MARKER_MANA)
-            for c in p.mana_zone:
-                cid = c.card_id if hasattr(c, 'card_id') else c
-                tokens.append(min(cid, self.vocab_size-1))
+            self._append_zone(tokens, p.hand, self.MARKER_HAND_SELF, True)
 
-            tokens.append(MARKER_BATTLE)
-            for c in p.battle_zone:
-                cid = c.card_id if hasattr(c, 'card_id') else c
-                tokens.append(min(cid, self.vocab_size-1))
+            # Opp Hand (Masked)
+            tokens.append(self.MARKER_HAND_OPP)
+            for _ in opp.hand:
+                tokens.append(self.TOKEN_UNK)
 
-            tokens.append(MARKER_OPP)
-            for c in opp.battle_zone:
-                cid = c.card_id if hasattr(c, 'card_id') else c
-                tokens.append(min(cid, self.vocab_size-1))
+            # Shields
+            tokens.append(self.MARKER_SHIELD_SELF)
+            for _ in p.shield_zone:
+                tokens.append(self.TOKEN_UNK)
+
+            tokens.append(self.MARKER_SHIELD_OPP)
+            for _ in opp.shield_zone:
+                tokens.append(self.TOKEN_UNK)
+
+            # Graveyard
+            self._append_zone(tokens, p.graveyard, self.MARKER_GRAVE_SELF, True)
+            self._append_zone(tokens, opp.graveyard, self.MARKER_GRAVE_OPP, True)
+
+            # Deck
+            tokens.append(self.MARKER_DECK_SELF)
+            for _ in p.deck:
+                tokens.append(self.TOKEN_UNK)
+
+            tokens.append(self.MARKER_DECK_OPP)
+            for _ in opp.deck:
+                tokens.append(self.TOKEN_UNK)
+
+            # 4. Command History
+            tokens.append(self.TOKEN_SEP)
+            self._append_command_history(tokens, state, 30)
 
         except Exception as e:
-            # Fallback for robustness
+            # Fallback
             pass
 
         # Pad/Truncate
         if len(tokens) > self.max_len:
             tokens = tokens[:self.max_len]
         else:
-            tokens += [0] * (self.max_len - len(tokens))
+            tokens += [self.TOKEN_PAD] * (self.max_len - len(tokens))
 
         return np.array(tokens, dtype=np.int64)
+
+    def _append_zone(self, tokens: List[int], zone: List[Any], zone_marker: int, visible: bool):
+        tokens.append(zone_marker)
+        for card in zone:
+            self._append_card(tokens, card, visible)
+
+    def _append_card(self, tokens: List[int], card: Any, visible: bool):
+        if not visible:
+            tokens.append(self.TOKEN_UNK)
+            return
+
+        cid = getattr(card, 'card_id', None)
+        if cid is None:
+             cid = getattr(card, 'id', 0)
+
+        try:
+            cid = int(cid)
+        except:
+            cid = 0
+
+        tokens.append(self.BASE_CARD_ID + cid)
+
+        if getattr(card, 'is_tapped', False):
+            tokens.append(self.STATE_TAPPED)
+
+        is_sick = getattr(card, 'sick', False) or getattr(card, 'summoning_sickness', False)
+        if is_sick:
+            tokens.append(self.STATE_SICK)
+
+    def _append_command_history(self, tokens: List[int], state: Any, limit: int):
+        history = getattr(state, 'command_history', [])
+        start = max(0, len(history) - limit)
+        for i in range(start, len(history)):
+            cmd = history[i]
+            ctype = 0
+            if isinstance(cmd, dict):
+                ctype = cmd.get('type', 0)
+            else:
+                ctype = getattr(cmd, 'type', 0)
+
+            try:
+                ctype = int(ctype)
+            except:
+                pass
+
+            tokens.append(self.BASE_COMMAND_MARKER + ctype)
 
 class ActionEncoder:
     def __init__(self, action_dim: int = 600):

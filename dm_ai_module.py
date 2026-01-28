@@ -54,9 +54,13 @@ class CommandSystem:
             if hasattr(cmd, 'execute') and callable(getattr(cmd, 'execute')):
                 try:
                     cmd.execute(state)
-                    return
                 except TypeError:
                     cmd.execute(state, ctx)
+                if not hasattr(state, 'command_history'):
+                    state.command_history = []
+                state.command_history.append(cmd)
+                return
+
             # Fallback: if cmd is dict-like, try to map basic commands
             if isinstance(cmd, dict):
                 t = cmd.get('type')
@@ -65,6 +69,9 @@ class CommandSystem:
                     pid = getattr(state, 'active_player_id', player_id)
                     cid = cmd.get('card_id') or cmd.get('instance_id') or 0
                     state.players[pid].mana_zone.append(CardStub(cid))
+                    if not hasattr(state, 'command_history'):
+                        state.command_history = []
+                    state.command_history.append(cmd)
         except Exception:
             pass
 
@@ -123,6 +130,7 @@ class GameState:
         self.turn_number = 1
         self.game_over = False
         self.winner = -1
+        self.command_history: List[Any] = []
 
     def add_card_to_hand(self, player: int, card_id: int, instance_id: Optional[int] = None, count: int = 1):
         """
