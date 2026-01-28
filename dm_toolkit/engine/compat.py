@@ -963,121 +963,121 @@ class EngineCompat:
                                 _assign_if_exists(cmd_def, 'owner_id', cmd_dict[key])
                             break
 
-                        # Map Zones (best-effort): try Zone enum, otherwise fall back to string.
-                        fz = cmd_dict.get('from_zone')
-                        tz = cmd_dict.get('to_zone')
+                    # Map Zones (best-effort): try Zone enum, otherwise fall back to string.
+                    fz = cmd_dict.get('from_zone')
+                    tz = cmd_dict.get('to_zone')
 
-                        zone_alias = {
-                            # Legacy / UI strings
-                            'MANA_ZONE': 'MANA',
-                            'BATTLE_ZONE': 'BATTLE',
-                            'SHIELD_ZONE': 'SHIELD',
-                        }
-                        fz_norm = zone_alias.get(str(fz), str(fz)) if fz is not None else ''
-                        tz_norm = zone_alias.get(str(tz), str(tz)) if tz is not None else ''
+                    zone_alias = {
+                        # Legacy / UI strings
+                        'MANA_ZONE': 'MANA',
+                        'BATTLE_ZONE': 'BATTLE',
+                        'SHIELD_ZONE': 'SHIELD',
+                    }
+                    fz_norm = zone_alias.get(str(fz), str(fz)) if fz is not None else ''
+                    tz_norm = zone_alias.get(str(tz), str(tz)) if tz is not None else ''
 
-                        # Ensure we always assign strings if CommandDef expects strings,
-                        # or enums if it expects enums.
-                        # Based on pybind11 errors "arg0: str", CommandDef.from_zone is a string.
-                        # So we should pass the normalized string name of the zone.
+                    # Ensure we always assign strings if CommandDef expects strings,
+                    # or enums if it expects enums.
+                    # Based on pybind11 errors "arg0: str", CommandDef.from_zone is a string.
+                    # So we should pass the normalized string name of the zone.
 
-                        # We use the normalized strings (MANA, HAND, etc.)
-                        cmd_def.from_zone = str(fz_norm or '')
-                        cmd_def.to_zone = str(tz_norm or '')
+                    # We use the normalized strings (MANA, HAND, etc.)
+                    cmd_def.from_zone = str(fz_norm or '')
+                    cmd_def.to_zone = str(tz_norm or '')
 
-                        cmd_def.mutation_kind = str(cmd_dict.get('mutation_kind', ''))
-                        cmd_def.input_value_key = str(cmd_dict.get('input_value_key', ''))
-                        cmd_def.output_value_key = str(cmd_dict.get('output_value_key', ''))
+                    cmd_def.mutation_kind = str(cmd_dict.get('mutation_kind', ''))
+                    cmd_def.input_value_key = str(cmd_dict.get('input_value_key', ''))
+                    cmd_def.output_value_key = str(cmd_dict.get('output_value_key', ''))
 
-                        # Filter Mapping
-                        filter_dict = cmd_dict.get('target_filter')
-                        if filter_dict:
-                            f = dm_ai_module.FilterDef()
-                            if 'zones' in filter_dict: f.zones = filter_dict['zones']
-                            if 'types' in filter_dict: f.types = filter_dict['types']
+                    # Filter Mapping
+                    filter_dict = cmd_dict.get('target_filter')
+                    if filter_dict:
+                        f = dm_ai_module.FilterDef()
+                        if 'zones' in filter_dict: f.zones = filter_dict['zones']
+                        if 'types' in filter_dict: f.types = filter_dict['types']
 
-                            # Safe property assignment
-                            if 'owner' in filter_dict and hasattr(f, 'owner'): f.owner = filter_dict['owner']
-                            if 'count' in filter_dict and hasattr(f, 'count'): f.count = filter_dict['count']
+                        # Safe property assignment
+                        if 'owner' in filter_dict and hasattr(f, 'owner'): f.owner = filter_dict['owner']
+                        if 'count' in filter_dict and hasattr(f, 'count'): f.count = filter_dict['count']
 
-                            cmd_def.target_filter = f
+                        cmd_def.target_filter = f
 
-                        # Target Scope Mapping
-                        scope_str = cmd_dict.get('target_group')
-                        # Guard access to TargetScope: may be missing in stubbed/native fallback
-                        _TargetScope = getattr(dm_ai_module, 'TargetScope', None)
-                        if scope_str and _TargetScope is not None and hasattr(_TargetScope, scope_str):
-                            try:
-                                cmd_def.target_group = getattr(_TargetScope, scope_str)
-                            except Exception:
-                                # If assignment fails, fall back to string label
-                                cmd_def.target_group = str(scope_str)
-                        elif scope_str:
-                            # No TargetScope enum available: assign normalized string
+                    # Target Scope Mapping
+                    scope_str = cmd_dict.get('target_group')
+                    # Guard access to TargetScope: may be missing in stubbed/native fallback
+                    _TargetScope = getattr(dm_ai_module, 'TargetScope', None)
+                    if scope_str and _TargetScope is not None and hasattr(_TargetScope, scope_str):
+                        try:
+                            cmd_def.target_group = getattr(_TargetScope, scope_str)
+                        except Exception:
+                            # If assignment fails, fall back to string label
                             cmd_def.target_group = str(scope_str)
+                    elif scope_str:
+                        # No TargetScope enum available: assign normalized string
+                        cmd_def.target_group = str(scope_str)
 
-                        # Execution Context
-                        source_id = -1
-                        player_id = state.active_player_id
+                    # Execution Context
+                    source_id = -1
+                    player_id = state.active_player_id
 
-                        # Use legacy action context if available
-                        if hasattr(cmd, '_action'):
-                            act = cmd._action
-                            if hasattr(act, 'source_instance_id'):
-                                source_id = act.source_instance_id
-                            if hasattr(act, 'target_player') and act.target_player != 255:
-                                player_id = act.target_player
+                    # Use legacy action context if available
+                    if hasattr(cmd, '_action'):
+                        act = cmd._action
+                        if hasattr(act, 'source_instance_id'):
+                            source_id = act.source_instance_id
+                        if hasattr(act, 'target_player') and act.target_player != 255:
+                            player_id = act.target_player
 
-                        # Phase 4.3: Ensure required fields are present for CommandSystem
-                        # If cmd_def has instance_id, use it for source_id if source_id is -1
-                        if source_id == -1 and cmd_def.instance_id > 0:
-                            source_id = cmd_def.instance_id
+                    # Phase 4.3: Ensure required fields are present for CommandSystem
+                    # If cmd_def has instance_id, use it for source_id if source_id is -1
+                    if source_id == -1 and cmd_def.instance_id > 0:
+                        source_id = cmd_def.instance_id
 
-                        # Execute
-                        # If a target_filter is present but instance_id wasn't assigned,
-                        # attempt a Python-side target resolution as a fallback.
-                        ctx: Dict[str, Any] = {}
-                        filter_dict = cmd_dict.get('target_filter') or {}
-                        assigned_any = False
+                    # Execute
+                    # If a target_filter is present but instance_id wasn't assigned,
+                    # attempt a Python-side target resolution as a fallback.
+                    ctx: Dict[str, Any] = {}
+                    filter_dict = cmd_dict.get('target_filter') or {}
+                    assigned_any = False
 
-                        def _resolve_zone_instances(zname: str) -> List[Any]:
-                            # Normalize common legacy names
-                            if zname in ('BATTLE_ZONE', 'BATTLE'):
-                                return cast(List[Any], getattr(state.players[player_id], 'battle_zone', []))
-                            if zname in ('HAND',):
-                                return cast(List[Any], getattr(state.players[player_id], 'hand', []))
-                            if zname in ('MANA_ZONE', 'MANA'):
-                                return cast(List[Any], getattr(state.players[player_id], 'mana_zone', []))
-                            if zname in ('SHIELD_ZONE', 'SHIELD'):
-                                return cast(List[Any], getattr(state.players[player_id], 'shield_zone', []))
-                            if zname in ('DECK',):
-                                return cast(List[Any], getattr(state.players[player_id], 'deck', []))
-                            return []
+                    def _resolve_zone_instances(zname: str) -> List[Any]:
+                        # Normalize common legacy names
+                        if zname in ('BATTLE_ZONE', 'BATTLE'):
+                            return cast(List[Any], getattr(state.players[player_id], 'battle_zone', []))
+                        if zname in ('HAND',):
+                            return cast(List[Any], getattr(state.players[player_id], 'hand', []))
+                        if zname in ('MANA_ZONE', 'MANA'):
+                            return cast(List[Any], getattr(state.players[player_id], 'mana_zone', []))
+                        if zname in ('SHIELD_ZONE', 'SHIELD'):
+                            return cast(List[Any], getattr(state.players[player_id], 'shield_zone', []))
+                        if zname in ('DECK',):
+                            return cast(List[Any], getattr(state.players[player_id], 'deck', []))
+                        return []
 
-                        if filter_dict and not getattr(cmd_def, 'instance_id', 0):
-                            logger.debug('EngineCompat: resolving filter zones %s', filter_dict.get('zones'))
-                            zones = filter_dict.get('zones') or []
-                            instances = []
-                            for z in zones:
-                                logger.debug('EngineCompat: resolving zone %s', z)
-                                for inst in _resolve_zone_instances(str(z)):
-                                    logger.debug('EngineCompat: found instance %s', getattr(inst, 'instance_id', None))
-                                    instances.append(inst)
+                    if filter_dict and not getattr(cmd_def, 'instance_id', 0):
+                        logger.debug('EngineCompat: resolving filter zones %s', filter_dict.get('zones'))
+                        zones = filter_dict.get('zones') or []
+                        instances = []
+                        for z in zones:
+                            logger.debug('EngineCompat: resolving zone %s', z)
+                            for inst in _resolve_zone_instances(str(z)):
+                                logger.debug('EngineCompat: found instance %s', getattr(inst, 'instance_id', None))
+                                instances.append(inst)
 
-                            # If instances found, call CommandSystem per-instance
-                            if instances:
-                                for inst in instances:
-                                    try:
-                                        cmd_def.instance_id = int(getattr(inst, 'instance_id', getattr(inst, 'id', 0) or 0))
-                                        dm_ai_module.CommandSystem.execute_command(state, cmd_def, cmd_def.instance_id or source_id, player_id, ctx)
-                                        assigned_any = True
-                                    except Exception:
-                                        pass
-                                if assigned_any:
-                                    logger.debug('EngineCompat: executed per-instance for command')
-                                    return
+                        # If instances found, call CommandSystem per-instance
+                        if instances:
+                            for inst in instances:
+                                try:
+                                    cmd_def.instance_id = int(getattr(inst, 'instance_id', getattr(inst, 'id', 0) or 0))
+                                    dm_ai_module.CommandSystem.execute_command(state, cmd_def, cmd_def.instance_id or source_id, player_id, ctx)
+                                    assigned_any = True
+                                except Exception:
+                                    pass
+                            if assigned_any:
+                                logger.debug('EngineCompat: executed per-instance for command')
+                                return
 
-                        # Default single-shot execute if no per-instance fallback
+                    # Default single-shot execute if no per-instance fallback
                         logger.debug('EngineCompat: calling CommandSystem.execute_command single-shot')
                         dm_ai_module.CommandSystem.execute_command(state, cmd_def, source_id, player_id, ctx)
                         logger.debug('EngineCompat: called CommandSystem.execute_command')

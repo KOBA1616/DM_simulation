@@ -3,7 +3,8 @@
     [string]$Config = "Release",
     [ValidateSet('msvc','mingw')]
     [string]$Toolchain = 'msvc',
-    [switch]$Build
+    [switch]$Build,
+    [switch]$AllowFallback
 )
 
 $ErrorActionPreference = "Stop"
@@ -38,8 +39,12 @@ if (-not (Test-Path $buildDir)) {
         Write-Error "Automatic build failed: $_"
     }
     if (-not (Test-Path $buildDir)) {
-        Write-Error "Build directory still missing after automatic build. Aborting to avoid running with Python fallback."
-        exit 1
+        if (-not $AllowFallback) {
+            Write-Error "Build directory still missing after automatic build. Aborting to avoid running with Python fallback."
+            exit 1
+        } else {
+            Write-Warning "Build directory still missing; proceeding with Python fallback as requested by -AllowFallback."
+        }
     }
 }
 
@@ -55,18 +60,35 @@ if (-not [string]::IsNullOrWhiteSpace($mingwBin) -and (Test-Path $mingwBin)) {
     }
 }
 
-$env:PYTHONPATH = "$projectRoot;$env:PYTHONPATH"
+$existing = @()
+if ($env:PYTHONPATH) {
+    $existing = $env:PYTHONPATH -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+}
+$env:PYTHONPATH = $projectRoot
+if ($existing.Count -gt 0) {
+    $env:PYTHONPATH = $env:PYTHONPATH + ';' + ($existing -join ';')
+}
 
 # Prefer native build artefact: search build dir for dm_ai_module*.pyd and set override
 try {
-    $pyd = Get-ChildItem -Path $buildDir -Filter "dm_ai_module*.pyd" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+    # Search preferred locations for native artefact. Include build dir and common bin/Release.
+    $searchDirs = @($buildDir, (Join-Path $projectRoot 'bin\Release')) | Where-Object { $_ -and (Test-Path $_) }
+    $pyd = $null
+    foreach ($dir in $searchDirs) {
+        $pyd = Get-ChildItem -Path $dir -Filter "dm_ai_module*.pyd" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($pyd) { break }
+    }
     if ($pyd) {
         $full = $pyd.FullName
         Write-Host "Found native dm_ai_module at $full -- forcing loader override."
         $env:DM_AI_MODULE_NATIVE = $full
-        # Ensure directory containing pyd is on PYTHONPATH first
+        # Ensure directory containing pyd is on PYTHONPATH first; avoid empty entries and duplicates
         $pydDir = Split-Path -Parent $full
-        $env:PYTHONPATH = "$pydDir;$env:PYTHONPATH"
+        $current = @()
+        if ($env:PYTHONPATH) { $current = $env:PYTHONPATH -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } }
+        if ($current -notcontains $pydDir) {
+            $env:PYTHONPATH = $pydDir + ';' + ($current -join ';')
+        }
     }
 } catch {
     # non-fatal

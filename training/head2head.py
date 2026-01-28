@@ -10,6 +10,38 @@ sys.path.insert(0, str(repo_root))
 
 import onnxruntime as ort
 from dm_toolkit.ai.agent.transformer_model import DuelTransformer
+import os
+import glob
+
+# Prefer native dm_ai_module (.pyd) when available so all matches use the C++ engine.
+# If `DM_AI_MODULE_NATIVE` is set, prefer that path. Otherwise search common build output
+# directories (bin/Release, build-msvc, build-mingw) for a dm_ai_module*.pyd and
+# place its directory at the front of sys.path before importing.
+native_override = os.environ.get('DM_AI_MODULE_NATIVE')
+if native_override and os.path.exists(native_override):
+    pyd_dir = os.path.dirname(native_override)
+    if pyd_dir not in sys.path:
+        sys.path.insert(0, pyd_dir)
+else:
+    # search common locations under repo_root
+    candidates = []
+    candidates.append(str(repo_root / 'bin' / 'Release'))
+    candidates.append(str(repo_root / 'build-msvc'))
+    candidates.append(str(repo_root / 'build-mingw'))
+    for d in candidates:
+        try:
+            pattern = os.path.join(d, 'dm_ai_module*.pyd')
+            found = glob.glob(pattern)
+            if found:
+                pyd_dir = os.path.dirname(found[0])
+                if pyd_dir not in sys.path:
+                    sys.path.insert(0, pyd_dir)
+                # set env var for downstream tools/logs
+                os.environ['DM_AI_MODULE_NATIVE'] = found[0]
+                break
+        except Exception:
+            pass
+
 import dm_ai_module as dm
 import random
 import time
@@ -86,6 +118,16 @@ def eval_policy_batch(sess, token_seqs):
     try:
         dbg = {'event': 'eval_call', 'input_name': inp, 'arr_shape': list(arr.shape)}
         print("H2H_JSON: " + __import__('json').dumps(dbg, ensure_ascii=False))
+        # also emit a small head of the input array for inspection
+        try:
+            # capture up to first 4 sequences and first 16 tokens
+            r = int(min(4, arr.shape[0]))
+            c = int(min(16, arr.shape[1])) if arr.ndim >= 2 else 0
+            arr_head = [list(map(int, arr[i, :c])) for i in range(r)] if r > 0 else []
+            dbg2 = {'event': 'eval_input_head', 'input_name': inp, 'rows': r, 'cols': c, 'arr_head': arr_head}
+            print("H2H_JSON: " + __import__('json').dumps(dbg2, ensure_ascii=False))
+        except Exception:
+            pass
     except Exception:
         pass
     out_names = [o.name for o in sess.get_outputs()]
@@ -295,6 +337,18 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
             pass
         instances.append(inst)
 
+    # Emit GameResult enum debug so we can interpret winner values
+    try:
+        gr_none = getattr(dm, 'GameResult').NONE
+        try:
+            gr_none_val = int(gr_none)
+        except Exception:
+            gr_none_val = str(gr_none)
+        gr_dbg = {'event': 'game_result_info', 'NONE': gr_none_val, 'type': type(gr_none).__name__}
+        print("H2H_JSON: " + __import__('json').dumps(gr_dbg, ensure_ascii=False))
+    except Exception:
+        pass
+
     finished = [False] * n
     results = [0] * n
     # diagnostic storage per-instance
@@ -324,13 +378,29 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
         legals_b = []
 
         for i, inst in enumerate(instances):
+            # Loop-level heartbeat so we can see iteration/finalization behavior
+            try:
+                loop_dbg = {'event': 'loop_iter', 'index': i, 'finished': bool(finished[i])}
+                print("H2H_JSON: " + __import__('json').dumps(loop_dbg, ensure_ascii=False))
+            except Exception:
+                pass
             if finished[i]:
                 continue
             state = inst.state
-            if state.winner != dm.GameResult.NONE:
-                finished[i] = True
-                results[i] = 1 if state.winner == dm.GameResult.P1_WIN else (2 if state.winner == dm.GameResult.P2_WIN else 0)
-                continue
+            try:
+                pre_legal_dbg = {'event': 'before_legal', 'index': i, 'state_repr': str(state)[:120], 'winner': getattr(state, 'winner', None)}
+                print("H2H_JSON: " + __import__('json').dumps(pre_legal_dbg, ensure_ascii=False))
+            except Exception:
+                pass
+            try:
+                w = getattr(state, 'winner', None)
+                # Treat positive winner codes as terminal (1=P1 win, 2=P2 win). Some bindings use -1 for NONE.
+                if w is not None and int(w) > 0:
+                    finished[i] = True
+                    results[i] = 1 if int(w) == int(getattr(dm.GameResult, 'P1_WIN', 1)) else (2 if int(w) == int(getattr(dm.GameResult, 'P2_WIN', 2)) else 0)
+                    continue
+            except Exception:
+                pass
 
             active = state.active_player_id
             try:
@@ -355,6 +425,29 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 print("H2H_JSON: " + __import__('json').dumps(legal_inspect, ensure_ascii=False))
             except Exception:
                 pass
+            # Emit fuller debug: state repr and sample of legal actions (first 8)
+            try:
+                try:
+                    state_repr = str(state)
+                except Exception:
+                    state_repr = None
+                legal_sample = []
+                try:
+                    for a in list(legal)[:8]:
+                        try:
+                            # map_action may fail; prefer best-effort serializable form
+                            legal_sample.append(map_action(a))
+                        except Exception:
+                            try:
+                                legal_sample.append(a.to_dict() if hasattr(a, 'to_dict') else str(a))
+                            except Exception:
+                                legal_sample.append(str(a))
+                except Exception:
+                    legal_sample = None
+                full_dbg = {'event': 'legal_full', 'index': i, 'state_repr': state_repr, 'legal_sample': legal_sample}
+                print("H2H_JSON: " + __import__('json').dumps(full_dbg, ensure_ascii=False))
+            except Exception:
+                pass
             if not legal:
                 dm.PhaseManager.next_phase(state, CARD_DB)
                 continue
@@ -363,6 +456,20 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 seq = dm.TensorConverter.convert_to_sequence(state, active, CARD_DB)
             except Exception:
                 seq = [0] * 200
+
+            # Dump the raw sequence produced by TensorConverter for debugging
+            try:
+                seq_type = type(seq).__name__
+                seq_len = len(seq) if hasattr(seq, '__len__') else None
+                # capture a small head for inspection
+                try:
+                    seq_head = list(seq)[:16] if hasattr(seq, '__iter__') else None
+                except Exception:
+                    seq_head = None
+                seq_dbg = {'event': 'seq_dump', 'index': i, 'seq_type': seq_type, 'seq_len': seq_len, 'seq_head': seq_head}
+                print("H2H_JSON: " + __import__('json').dumps(seq_dbg, ensure_ascii=False))
+            except Exception:
+                pass
 
             # store last sequence for diagnostics
             try:
@@ -485,6 +592,34 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 print("H2H_JSON: " + __import__('json').dumps(dbg_leg, ensure_ascii=False))
             except Exception:
                 pass
+            # Mask illegal indices (set to -inf) so selection only considers legal actions
+            try:
+                legal_indices = [lm.get('index') for lm in legal_map if lm.get('index') is not None]
+                policy_masked = np.full_like(policy_logits, -np.inf, dtype=float)
+                if legal_indices:
+                    for li in legal_indices:
+                        try:
+                            if li is not None and 0 <= int(li) < len(policy_logits):
+                                policy_masked[int(li)] = float(policy_logits[int(li)])
+                        except Exception:
+                            continue
+                else:
+                    # no legal indices, keep mask (will force random choice later)
+                    policy_masked = np.full_like(policy_logits, -np.inf, dtype=float)
+                # Emit top-k from masked logits
+                try:
+                    k = 5
+                    topo = list(map(int, np.argsort(-policy_masked)[:k]))
+                    topo_scores = [float(policy_masked[ii]) if not np.isneginf(policy_masked[ii]) else None for ii in topo]
+                    topo_info = []
+                    legal_set = set([int(x) for x in legal_indices]) if legal_indices else set()
+                    for ii, sc in zip(topo, topo_scores):
+                        topo_info.append({'index': int(ii), 'score': sc, 'is_legal': (int(ii) in legal_set)})
+                    print("H2H_JSON: " + __import__('json').dumps({'event': 'policy_topk', 'index': game_idx, 'topk': topo_info}, ensure_ascii=False))
+                except Exception:
+                    pass
+            except Exception:
+                policy_masked = np.full_like(policy_logits, -np.inf, dtype=float)
             best_score = -1e9
             for act in legal:
                 try:
@@ -497,9 +632,14 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                         idx = dm.ActionEncoder.action_to_index(act)
                 except Exception:
                     idx = -1
-                if idx is None or idx < 0 or idx >= len(policy_logits):
+                if idx is None:
                     continue
-                score = float(policy_logits[idx])
+                try:
+                    if int(idx) < 0 or int(idx) >= len(policy_logits):
+                        continue
+                except Exception:
+                    continue
+                score = float(policy_masked[int(idx)]) if not np.isneginf(policy_masked[int(idx)]) else -np.inf
                 # apply small penalty to PASS actions if configured
                 try:
                     is_pass_act = dm.is_action_type(act, dm.ActionType.PASS)
@@ -512,6 +652,21 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                     chosen = act
             if chosen is None:
                 chosen = random.choice(legal)
+            # compute chosen index for diagnostics
+            try:
+                try:
+                    if isinstance(chosen, dict):
+                        chosen_idx = dm.CommandEncoder.command_to_index(chosen)
+                    elif hasattr(chosen, 'to_dict'):
+                        chosen_idx = dm.CommandEncoder.command_to_index(chosen.to_dict())
+                    else:
+                        chosen_idx = dm.ActionEncoder.action_to_index(chosen)
+                except Exception:
+                    chosen_idx = None
+                chosen_score = float(policy_masked[int(chosen_idx)]) if chosen_idx is not None and 0 <= int(chosen_idx) < len(policy_masked) and not np.isneginf(policy_masked[int(chosen_idx)]) else None
+                print("H2H_JSON: " + __import__('json').dumps({'event': 'chosen_action', 'index': game_idx, 'chosen_index': (int(chosen_idx) if chosen_idx is not None else None), 'chosen_score': chosen_score, 'chosen_repr': map_action(chosen) if True else str(chosen)}, ensure_ascii=False))
+            except Exception:
+                pass
             else:
                 # If model chose PASS but other non-PASS legal actions exist,
                 # prefer a non-PASS action to avoid sterile PASS-only loops.
@@ -642,6 +797,30 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 print("H2H_JSON: " + __import__('json').dumps(dbg_leg, ensure_ascii=False))
             except Exception:
                 pass
+            # Mask illegal indices (player B) and emit top-k from masked logits
+            try:
+                legal_indices = [lm.get('index') for lm in legal_map if lm.get('index') is not None]
+                policy_masked = np.full_like(policy_logits, -np.inf, dtype=float)
+                if legal_indices:
+                    for li in legal_indices:
+                        try:
+                            if li is not None and 0 <= int(li) < len(policy_logits):
+                                policy_masked[int(li)] = float(policy_logits[int(li)])
+                        except Exception:
+                            continue
+                try:
+                    k = 5
+                    topo = list(map(int, np.argsort(-policy_masked)[:k]))
+                    topo_scores = [float(policy_masked[ii]) if not np.isneginf(policy_masked[ii]) else None for ii in topo]
+                    topo_info = []
+                    legal_set = set([int(x) for x in legal_indices]) if legal_indices else set()
+                    for ii, sc in zip(topo, topo_scores):
+                        topo_info.append({'index': int(ii), 'score': sc, 'is_legal': (int(ii) in legal_set)})
+                    print("H2H_JSON: " + __import__('json').dumps({'event': 'policy_topk', 'index': game_idx, 'topk': topo_info}, ensure_ascii=False))
+                except Exception:
+                    pass
+            except Exception:
+                policy_masked = np.full_like(policy_logits, -np.inf, dtype=float)
             best_score = -1e9
             for act in legal:
                 try:
@@ -653,9 +832,14 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                         idx = dm.ActionEncoder.action_to_index(act)
                 except Exception:
                     idx = -1
-                if idx is None or idx < 0 or idx >= len(policy_logits):
+                if idx is None:
                     continue
-                score = float(policy_logits[idx])
+                try:
+                    if int(idx) < 0 or int(idx) >= len(policy_logits):
+                        continue
+                except Exception:
+                    continue
+                score = float(policy_masked[int(idx)]) if not np.isneginf(policy_masked[int(idx)]) else -np.inf
                 # apply small penalty to PASS actions if configured
                 try:
                     is_pass_act = dm.is_action_type(act, dm.ActionType.PASS)
@@ -668,6 +852,21 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                     chosen = act
             if chosen is None:
                 chosen = random.choice(legal)
+            # compute chosen index for diagnostics (player B)
+            try:
+                try:
+                    if isinstance(chosen, dict):
+                        chosen_idx = dm.CommandEncoder.command_to_index(chosen)
+                    elif hasattr(chosen, 'to_dict'):
+                        chosen_idx = dm.CommandEncoder.command_to_index(chosen.to_dict())
+                    else:
+                        chosen_idx = dm.ActionEncoder.action_to_index(chosen)
+                except Exception:
+                    chosen_idx = None
+                chosen_score = float(policy_masked[int(chosen_idx)]) if chosen_idx is not None and 0 <= int(chosen_idx) < len(policy_masked) and not np.isneginf(policy_masked[int(chosen_idx)]) else None
+                print("H2H_JSON: " + __import__('json').dumps({'event': 'chosen_action', 'index': game_idx, 'chosen_index': (int(chosen_idx) if chosen_idx is not None else None), 'chosen_score': chosen_score, 'chosen_repr': map_action(chosen) if True else str(chosen)}, ensure_ascii=False))
+            except Exception:
+                pass
             # record chosen action representation
             try:
                 last_chosen[game_idx] = map_action(chosen)
