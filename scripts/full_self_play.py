@@ -200,17 +200,17 @@ def attack_phase(gi, card_db=None, trace: bool = False):
     target = 1 - ap
 
     # If we have a card_db, prefer using the engine's IntentGenerator to pick a legal attack action
+    try:
+        if card_db is not None:
             try:
-                if card_db is not None:
-                    try:
-                        legal = dm.IntentGenerator.generate_legal_commands(state, card_db) or []
-                    except Exception:
-                        legal = []
-                    if not legal:
-                        try:
-                            legal = commands.generate_legal_commands(state, card_db) or []
-                        except Exception:
-                            legal = []
+                legal = dm.IntentGenerator.generate_legal_commands(state, card_db) or []
+            except Exception:
+                legal = []
+            if not legal:
+                try:
+                    legal = commands.generate_legal_commands(state, card_db) or []
+                except Exception:
+                    legal = []
 
             if trace:
                 try:
@@ -551,62 +551,70 @@ def attack_phase(gi, card_db=None, trace: bool = False):
 
 
 def play_one_full(seed: int | None = None, trace: bool = False) -> int:
-    if seed is not None:
-        random.seed(seed)
+    print("=" * 60)
+    print("WARNING: This Python-based game loop is DEPRECATED.")
+    print("Please use `dm-cli sim` or `dm_toolkit.domain.simulation`")
+    print("which utilizes the C++ ParallelRunner for correct execution.")
+    print("=" * 60)
+    return int(dm.GameResult.NONE)
 
-    card_db = dm.JsonLoader.load_cards('data/cards.json')
-    gi = dm.GameInstance(0, card_db)
-    deck = [1] * 40
-    gi.state.set_deck(0, deck[:])
-    gi.state.set_deck(1, deck[:])
-    gi.start_game()
-
-    # Randomize starting player
-    gi.state.active_player_id = random.choice([0, 1])
-
-    turn = 0
-    while gi.state.winner == dm.GameResult.NONE and turn < 200:
-        turn += 1
-        if trace:
-            print(f"\n=== Turn {turn} (active P{gi.state.active_player_id}) ===")
-
-        # Untap
-        untap_phase(gi.state)
-        if trace:
-            pass
-
-        # Draw
-        draw_phase(gi.state, trace)
-        if trace:
-            p = gi.state.players[gi.state.active_player_id]
-            print(f"  After draw: hand={len(getattr(p,'hand',[]))} deck={len(getattr(p,'deck',[]))}")
-
-        # Mana charge
-        mana_charge_phase(gi.state, trace)
-        if trace:
-            p = gi.state.players[gi.state.active_player_id]
-            print(f"  Mana zone size: {len(getattr(p,'mana_zone',[]))}")
-
-        # Summon
-        summon_phase(gi.state, trace)
-        if trace:
-            p = gi.state.players[gi.state.active_player_id]
-            print(f"  Battle zone size: {len(getattr(p,'battle_zone',[]))}")
-
-        # Attack
-        attack_phase(gi, card_db, trace)
-        if trace:
-            tp = gi.state.players[1 - gi.state.active_player_id]
-            print(f"  Opponent shields: {len(getattr(tp,'shield_zone',[]))}")
-
-        # Alternate active player
-        gi.state.active_player_id = 1 - gi.state.active_player_id
-
-        # Optional: increment turn counter every full round
-        if turn % 2 == 0:
-            gi.state.turn_number += 1
-
-    return int(gi.state.winner)
+    # DEPRECATED IMPLEMENTATION COMMENTED OUT BELOW:
+    # if seed is not None:
+    #     random.seed(seed)
+    #
+    # card_db = dm.JsonLoader.load_cards('data/cards.json')
+    # gi = dm.GameInstance(0, card_db)
+    # deck = [1] * 40
+    # gi.state.set_deck(0, deck[:])
+    # gi.state.set_deck(1, deck[:])
+    # gi.start_game()
+    #
+    # # Randomize starting player
+    # gi.state.active_player_id = random.choice([0, 1])
+    #
+    # turn = 0
+    # while gi.state.winner == dm.GameResult.NONE and turn < 200:
+    #     turn += 1
+    #     if trace:
+    #         print(f"\n=== Turn {turn} (active P{gi.state.active_player_id}) ===")
+    #
+    #     # Untap
+    #     untap_phase(gi.state)
+    #     if trace:
+    #         pass
+    #
+    #     # Draw
+    #     draw_phase(gi.state, trace)
+    #     if trace:
+    #         p = gi.state.players[gi.state.active_player_id]
+    #         print(f"  After draw: hand={len(getattr(p,'hand',[]))} deck={len(getattr(p,'deck',[]))}")
+    #
+    #     # Mana charge
+    #     mana_charge_phase(gi.state, trace)
+    #     if trace:
+    #         p = gi.state.players[gi.state.active_player_id]
+    #         print(f"  Mana zone size: {len(getattr(p,'mana_zone',[]))}")
+    #
+    #     # Summon
+    #     summon_phase(gi.state, trace)
+    #     if trace:
+    #         p = gi.state.players[gi.state.active_player_id]
+    #         print(f"  Battle zone size: {len(getattr(p,'battle_zone',[]))}")
+    #
+    #     # Attack
+    #     attack_phase(gi, card_db, trace)
+    #     if trace:
+    #         tp = gi.state.players[1 - gi.state.active_player_id]
+    #         print(f"  Opponent shields: {len(getattr(tp,'shield_zone',[]))}")
+    #
+    #     # Alternate active player
+    #     gi.state.active_player_id = 1 - gi.state.active_player_id
+    #
+    #     # Optional: increment turn counter every full round
+    #     if turn % 2 == 0:
+    #         gi.state.turn_number += 1
+    #
+    # return int(gi.state.winner)
 
 
 def minimal_attack_test(seed: int | None = None, trace: bool = False) -> int:
@@ -653,36 +661,6 @@ def minimal_attack_test(seed: int | None = None, trace: bool = False) -> int:
     tp = gi.state.players[1]
     if trace:
         print(f"Mini test: after attack target_shields={len(getattr(tp,'shield_zone',[]))} shield_ids={_zone_ids(getattr(tp,'shield_zone',[]))}")
-
-    # If RESOLVE_BATTLE had no effect, try issuing a direct BREAK_SHIELD action targeting the shield instance
-    try:
-        post = len(getattr(tp, 'shield_zone', []))
-        if post > 0:
-            # attempt BREAK_SHIELD on the shield instance
-            try:
-                fb = dm.Action()
-                fb.type = dm.ActionType.BREAK_SHIELD
-                if hasattr(fb, 'target_instance_id'):
-                    fb.target_instance_id = getattr(sh, 'instance_id', None)
-                else:
-                    fb.target_player = 1
-                if trace:
-                    print(f"Mini test: attempting resolve_action(BREAK_SHIELD) target_instance={getattr(sh,'instance_id',None)}")
-                try:
-                    from dm_toolkit.compat_wrappers import execute_action_compat
-                    execute_action_compat(gi.state, fb, card_db if 'card_db' in locals() else None)
-                except Exception:
-                    try:
-                        gi.resolve_action(fb)
-                    except Exception:
-                        pass
-                if trace:
-                    print(f"Mini test: after BREAK_SHIELD target_shields={len(getattr(tp,'shield_zone',[]))} shield_ids={_zone_ids(getattr(tp,'shield_zone',[]))}")
-            except Exception:
-                if trace:
-                    print("Mini test: resolve_action(BREAK_SHIELD) failed")
-    except Exception:
-        pass
 
     return int(gi.state.winner)
 
@@ -704,51 +682,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-def minimal_attack_test(seed: int | None = None, trace: bool = False) -> int:
-    if seed is not None:
-        random.seed(seed)
-    card_db = dm.JsonLoader.load_cards('data/cards.json')
-    gi = dm.GameInstance(0, card_db)
-    gi.start_game()
-
-    # Ensure we have a single attacker and a single shield to test RESOLVE_BATTLE path
-    try:
-        atk = dm.CardInstance()
-        atk.card_id = 1
-        atk.instance_id = _alloc_instance_id()
-    except Exception:
-        try:
-            atk = dm.CardStub(1, _alloc_instance_id())
-        except Exception:
-            atk = SimpleNamespace(card_id=1, instance_id=_alloc_instance_id())
-
-    try:
-        sh = dm.CardInstance()
-        sh.card_id = 2
-        sh.instance_id = _alloc_instance_id()
-    except Exception:
-        try:
-            sh = dm.CardStub(2, _alloc_instance_id())
-        except Exception:
-            sh = SimpleNamespace(card_id=2, instance_id=_alloc_instance_id())
-
-    # Place attacker and shield
-    gi.state.players[0].battle_zone.clear()
-    gi.state.players[1].shield_zone.clear()
-    gi.state.players[0].battle_zone.append(atk)
-    gi.state.players[1].shield_zone.append(sh)
-    gi.state.active_player_id = 0
-
-    if trace:
-        print(f"Mini test: attacker.instance={getattr(atk,'instance_id',None)} shield.instance={getattr(sh,'instance_id',None)}")
-
-    # Run attack_phase once
-    attack_phase(gi, card_db, trace)
-
-    tp = gi.state.players[1]
-    if trace:
-        print(f"Mini test: after attack target_shields={len(getattr(tp,'shield_zone',[]))} shield_ids={_zone_ids(getattr(tp,'shield_zone',[]))}")
-
-    return int(gi.state.winner)

@@ -15,45 +15,53 @@ import dm_ai_module as dm
 
 
 def play_once(seed: int | None = None) -> int:
-    if seed is not None:
-        random.seed(seed)
+    print("=" * 60)
+    print("WARNING: This Python-based game loop is DEPRECATED.")
+    print("Please use `dm-cli sim` or `dm_toolkit.domain.simulation`")
+    print("which utilizes the C++ ParallelRunner for correct execution.")
+    print("=" * 60)
+    return int(dm.GameResult.NONE)
 
-    card_db = dm.JsonLoader.load_cards("data/cards.json")
-    gi = dm.GameInstance(0, card_db)
-    # Prepare identical decks
-    deck = [1] * 40
-    gi.state.set_deck(0, deck[:])
-    gi.state.set_deck(1, deck[:])
-    gi.start_game()
-
-    # Optionally randomize starting player for fairness
-    # If attribute exists, we can set it; default keep what engine provides
-    if hasattr(gi.state, 'active_player_id'):
-        # 50 random starting player
-        gi.state.active_player_id = random.choice([0, 1])
-
-    # Simple loop: active player attacks opponent (break shield) until winner.
-    # Use available API: mutate shield_zone directly if engine doesn't expose execute.
-    while gi.state.winner == dm.GameResult.NONE:
-        ap = gi.state.active_player_id
-        target = 1 - ap
-
-        # If shields present, remove one
-        if len(getattr(gi.state.players[target], 'shield_zone', [])) > 0:
-            gi.state.players[target].shield_zone.pop()
-        else:
-            # set winner (target has no shields -> attacker wins)
-            gi.state.winner = dm.GameResult.P1_WIN if ap == 0 else dm.GameResult.P2_WIN
-            break
-
-        # Advance turn manually if PhaseManager not updating: alternate active player
-        gi.state.active_player_id = target
-
-        # Safety cap to avoid infinite loop
-        if gi.state.turn_number > 1000:
-            break
-
-    return int(gi.state.winner)
+    # DEPRECATED IMPLEMENTATION COMMENTED OUT BELOW:
+    # if seed is not None:
+    #     random.seed(seed)
+    #
+    # card_db = dm.JsonLoader.load_cards("data/cards.json")
+    # gi = dm.GameInstance(0, card_db)
+    # # Prepare identical decks
+    # deck = [1] * 40
+    # gi.state.set_deck(0, deck[:])
+    # gi.state.set_deck(1, deck[:])
+    # gi.start_game()
+    #
+    # # Optionally randomize starting player for fairness
+    # # If attribute exists, we can set it; default keep what engine provides
+    # if hasattr(gi.state, 'active_player_id'):
+    #     # 50 random starting player
+    #     gi.state.active_player_id = random.choice([0, 1])
+    #
+    # # Simple loop: active player attacks opponent (break shield) until winner.
+    # # Use available API: mutate shield_zone directly if engine doesn't expose execute.
+    # while gi.state.winner == dm.GameResult.NONE:
+    #     ap = gi.state.active_player_id
+    #     target = 1 - ap
+    #
+    #     # If shields present, remove one
+    #     if len(getattr(gi.state.players[target], 'shield_zone', [])) > 0:
+    #         gi.state.players[target].shield_zone.pop()
+    #     else:
+    #         # set winner (target has no shields -> attacker wins)
+    #         gi.state.winner = dm.GameResult.P1_WIN if ap == 0 else dm.GameResult.P2_WIN
+    #         break
+    #
+    #     # Advance turn manually if PhaseManager not updating: alternate active player
+    #     gi.state.active_player_id = target
+    #
+    #     # Safety cap to avoid infinite loop
+    #     if gi.state.turn_number > 1000:
+    #         break
+    #
+    # return int(gi.state.winner)
 
 
 def main():
