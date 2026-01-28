@@ -51,6 +51,7 @@ def main():
     parser_sim.add_argument("--games", type=int, default=100, help="Number of games")
     parser_sim.add_argument("--seed", type=int, default=None, help="Random seed")
     parser_sim.add_argument("--quiet", action="store_true", help="Suppress output")
+    parser_sim.add_argument("--model", default=None, help="Path to trained model file")
 
     # Validate Subcommand
     parser_val = subparsers.add_parser("validate", help="Validate card data")
