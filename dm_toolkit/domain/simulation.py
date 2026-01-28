@@ -84,20 +84,34 @@ class SimulationRunner:
             if self.evaluator_type == "Model":
                 try:
                     import torch
-                    from dm_toolkit.ai.agent.network import AlphaZeroNetwork
+                    import numpy as np
+                    from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 
                     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-                    # Input Size check
-                    dummy_state = dm_ai_module.GameState(42)
-                    dummy_vec = EngineCompat.TensorConverter_convert_to_tensor(dummy_state, 0, self.card_db)
-                    input_size = len(dummy_vec)
-                    action_size = 600
+                    vocab_size = 1000
+                    action_dim = 600
+                    d_model = 256
+                    nhead = 8
+                    num_layers = 6
+                    dim_feedforward = 1024
+                    max_len = 200
 
-                    self.torch_network = AlphaZeroNetwork(input_size, action_size).to(device)
+                    self.torch_network = DuelTransformer(
+                        vocab_size=vocab_size,
+                        action_dim=action_dim,
+                        d_model=d_model,
+                        nhead=nhead,
+                        num_layers=num_layers,
+                        dim_feedforward=dim_feedforward,
+                        max_len=max_len
+                    ).to(device)
 
                     if self.model_path and os.path.exists(self.model_path):
-                        self.torch_network.load_state_dict(torch.load(self.model_path, map_location=device))
+                        checkpoint = torch.load(self.model_path, map_location=device)
+                        # Handle both full checkpoint dict and direct state_dict
+                        state_dict = checkpoint.get('model_state_dict', checkpoint)
+                        self.torch_network.load_state_dict(state_dict)
                         msg = f"Loaded model from {self.model_path}"
                         try:
                             msg = tr("Loaded model from {path}").format(path=self.model_path)
@@ -111,20 +125,42 @@ class SimulationRunner:
 
                     self.torch_network.eval()
 
-                    # Batch Callback
-                    def batch_inference(input_array):
+                    def model_batch_evaluate(states):
+                        sequences = []
+                        for s in states:
+                            # Convert state to token sequence
+                            seq = dm_ai_module.TensorConverter.convert_to_sequence(s, s.active_player_id, self.card_db)
+                            sequences.append(seq)
+
+                        # Pad sequences
+                        # Assuming convert_to_sequence returns list of ints. Pad with 0.
+                        max_len_batch = 200
+                        padded_seqs = []
+                        for seq in sequences:
+                            if seq is None:
+                                s_list = [0] * max_len_batch
+                            else:
+                                s_list = list(seq)
+                                if len(s_list) > max_len_batch:
+                                    s_list = s_list[:max_len_batch]
+                                else:
+                                    s_list = s_list + [0] * (max_len_batch - len(s_list))
+                            padded_seqs.append(s_list)
+
+                        input_tensor = torch.tensor(padded_seqs, dtype=torch.long).to(device)
+                        padding_mask = (input_tensor == 0)
+
                         with torch.no_grad():
-                            tensor = torch.from_numpy(input_array).float().to(device)
-                            policy_logits, values = self.torch_network(tensor)
+                            policy_logits, values = self.torch_network(input_tensor, padding_mask=padding_mask)
                             policies = torch.softmax(policy_logits, dim=1).cpu().numpy()
                             vals = values.squeeze(1).cpu().numpy()
-                            return policies, vals
 
-                    # Register global callback
-                    EngineCompat.register_batch_inference_numpy(batch_inference)
+                        results = []
+                        for i in range(len(states)):
+                            results.append((policies[i], float(vals[i])))
+                        return results
 
-                    self.neural_evaluator = dm_ai_module.NeuralEvaluator(self.card_db)
-                    evaluator_func = self.neural_evaluator.evaluate
+                    evaluator_func = model_batch_evaluate
 
                 except ImportError:
                     if finished_callback:
