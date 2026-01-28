@@ -1141,10 +1141,7 @@ if 'MCTS' not in globals():
                         dtype = torch.long if is_int else torch.float32
                         tensor_t = torch.tensor(tensor, dtype=dtype).unsqueeze(0)
 
-            if tensor_t is None:
-                 return 0.0
-
-            if 'torch' in globals():
+            if 'torch' in globals() and tensor_t is not None:
                 with torch.no_grad():
                      policy_logits, value = self.network(tensor_t)
                 policy = torch.softmax(policy_logits, dim=1).squeeze(0).numpy()

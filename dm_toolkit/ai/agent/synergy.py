@@ -1,6 +1,26 @@
-import torch
-import torch.nn as nn
-import numpy as np
+try:
+    import torch
+    import torch.nn as nn
+except ImportError:
+    class torch:
+        class Tensor: pass
+        def zeros(*args): return None
+        def from_numpy(*args): return None
+        class nn:
+            class functional:
+                def embedding(*args): return None
+    class nn:
+        class Module: pass
+        class Embedding(Module):
+             def __init__(self, *args, **kwargs): pass
+
+try:
+    import numpy as np
+except ImportError:
+    class np:
+        def load(*args): return None
+        class ndarray: pass
+
 import json
 import os
 from typing import Optional, cast, Any, List, Dict

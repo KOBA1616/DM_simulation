@@ -3,8 +3,11 @@ DEPRECATED: This module contains a pure Python implementation of MCTS which is n
 Please use the C++ implementation `dm_ai_module.MCTS` instead.
 """
 import math
-import torch
-import numpy as np
+try:
+    import torch
+    import numpy as np
+except ImportError:
+    pass
 import dm_ai_module
 from dm_toolkit import commands
 from typing import Any, Optional, List, Dict, Tuple, Callable
