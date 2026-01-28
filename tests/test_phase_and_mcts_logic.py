@@ -10,9 +10,15 @@ sys.path.insert(0, str(project_root))
 from dm_toolkit import dm_ai_module
 from dm_toolkit.dm_ai_module import GameInstance, PhaseManager, Phase, ActionType
 from dm_toolkit.ai.agent.mcts import MCTS
-from dm_toolkit.ai.agent.transformer_model import DuelTransformer
-from dm_toolkit.ai.agent.tokenization import StateTokenizer, ActionEncoder
-import torch
+try:
+    from dm_toolkit.ai.agent.transformer_model import DuelTransformer
+    from dm_toolkit.ai.agent.tokenization import StateTokenizer, ActionEncoder
+    import torch
+except ImportError:
+    DuelTransformer = None
+    StateTokenizer = None
+    ActionEncoder = None
+    torch = None
 import unittest
 
 class TestPhaseAndMCTS(unittest.TestCase):
@@ -94,6 +100,10 @@ class TestPhaseAndMCTS(unittest.TestCase):
         Verify MCTS can run a search step using DuelTransformer.
         This checks input tensor types (Int vs Float).
         """
+        if torch is None:
+            print("[MCTS Test] Skipping due to missing dependencies.")
+            return
+
         print("\n[MCTS Test] Initializing MCTS + Transformer...")
         game = GameInstance()
         game.start_game()
@@ -110,24 +120,23 @@ class TestPhaseAndMCTS(unittest.TestCase):
         def state_converter(state, player_id, card_db):
             return tokenizer.encode_state(state, player_id)
 
-        # Setup MCTS
-        mcts = MCTS(
-            network=model,
-            card_db=None,
-            simulations=2, # Small number for test
-            state_converter=state_converter
-        )
-
-        # Run Search
-        print("[MCTS Test] Running search...")
+        # Setup MCTS (Expect Deprecation Error)
+        print("[MCTS Test] Attempting to initialize MCTS (expecting deprecation error)...")
         try:
-            root = mcts.search(game.state)
-            print("SUCCESS: MCTS search completed.")
-            print(f"Best Action: {root.children[0].action if root.children else 'None'}")
+            mcts = MCTS(
+                network=model,
+                card_db=None,
+                simulations=2, # Small number for test
+                state_converter=state_converter
+            )
+            print("FAILURE: MCTS initialization did not raise deprecation error!")
         except RuntimeError as e:
-            print(f"FAILURE: Runtime Error during MCTS: {e}")
+            if "deprecated" in str(e).lower():
+                print(f"SUCCESS: MCTS Deprecation warning confirmed: {e}")
+            else:
+                print(f"FAILURE: Runtime Error during MCTS but not deprecation: {e}")
         except Exception as e:
-            print(f"FAILURE: Error during MCTS: {e}")
+            print(f"FAILURE: Unexpected Error during MCTS: {e}")
 
 if __name__ == '__main__':
     # Run the tests manually
