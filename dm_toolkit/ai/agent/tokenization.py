@@ -11,7 +11,7 @@ class StateTokenizer:
         self.vocab_size = vocab_size
         self.max_len = max_len
 
-    def encode_state(self, state: Any, player_id: int) -> np.ndarray:
+    def encode_state(self, state: Any, player_id: int, card_db: Any = None) -> np.ndarray:
         tokens = []
 
         try:
