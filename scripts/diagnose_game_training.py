@@ -174,8 +174,8 @@ def main():
     if all_pass:
         print("\n✅ すべての診断に合格しました")
         print("\n推奨アクション:")
-        print("  1. python generate_transformer_training_data.py --samples 1000")
-        print("  2. python train_transformer_phase4.py --epochs 5")
+        print("  1. python training/generate_training_data.py --samples 1000")
+        print("  2. python training/train_transformer_phase4.py --epochs 5")
     else:
         print("\n❌ いくつかの診断に失敗しました")
         print("\n修正が必要な項目:")

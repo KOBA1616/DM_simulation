@@ -470,7 +470,7 @@ class GameWindow(QMainWindow):
             self._stop_trainer()
 
     def _start_trainer(self) -> None:
-        script_path = os.path.join(os.getcwd(), "python", "training", "train_transformer_phase4.py")
+        script_path = os.path.join(os.getcwd(), "training", "train_transformer_phase4.py")
         if not os.path.exists(script_path):
             self.log_viewer.log_message(f"Trainer script not found: {script_path}")
             return
