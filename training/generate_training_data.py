@@ -116,7 +116,7 @@ def main():
     print("\n" + "=" * 80)
     print("✓ Training data generation complete")
     print("\nNext step:")
-    print("  python python/training/train_transformer_phase4.py --epochs 3")
+    print("  python training/train_transformer_phase4.py --epochs 3")
     print("=" * 80)
 
 if __name__ == "__main__":
