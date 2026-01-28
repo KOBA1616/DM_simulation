@@ -103,6 +103,7 @@ class Player:
         self.battle_zone: List[CardStub] = []
         self.graveyard: List[CardStub] = []
         self.deck: List[int] = []
+        self.shield_zone: List[CardStub] = []
         self.life: int = 20
 
 
@@ -114,6 +115,7 @@ class GameState:
         self.pending_effects: List[Any] = []
         self.turn_number = 1
         self.game_over = False
+        self.winner: Optional[int] = -1
 
     def add_card_to_hand(self, player: int, card_id: int, instance_id: Optional[int] = None, count: int = 1):
         """
@@ -307,8 +309,8 @@ class PhaseManager:
         return
 
     @staticmethod
-    def check_game_over(state: GameState, result_out: Any = None) -> bool:
-        return False
+    def check_game_over(state: GameState, result_out: Any = None) -> Any:
+        return False, GameResult.NONE
 
 
 class GameResult(IntEnum):
@@ -556,125 +558,6 @@ if 'MutateCommand' not in globals():
                 except Exception:
                     pass
 
-        if 'ActionGenerator' not in globals():
-            class ActionGenerator:
-                def __init__(self, registry: Any = None):
-                    self.registry = registry
-
-                def generate(self, state: Any, player_id: int) -> list:
-                    return []
-
-        if 'ActionEncoder' not in globals():
-            class ActionEncoder:
-                def __init__(self):
-                    pass
-
-                def encode(self, action: Any) -> dict:
-                    try:
-                        return {
-                            'type': getattr(action, 'type', None),
-                            'card_id': getattr(action, 'card_id', None),
-                            'source_instance_id': getattr(action, 'source_instance_id', getattr(action, 'instance_id', None))
-                        }
-                    except Exception:
-                        return {}
-
-        if 'EffectResolver' not in globals():
-            class EffectResolver:
-                @staticmethod
-                def resolve(state: Any, effect: Any, player_id: int) -> None:
-                    pass
-
-        if 'TokenConverter' not in globals():
-            class TokenConverter:
-                def to_tokens(self, obj: Any) -> list:
-                    try:
-                        if obj is None:
-                            return []
-                        if isinstance(obj, list):
-                            return [int(x) for x in obj][:256]
-                        if hasattr(obj, 'instance_id'):
-                            return [int(getattr(obj, 'instance_id')) % 8192]
-                        if isinstance(obj, dict):
-                            tokens = []
-                            for k, v in obj.items():
-                                try:
-                                    tokens.append(abs(hash(k)) % 8192)
-                                    if isinstance(v, int):
-                                        tokens.append(v % 8192)
-                                    else:
-                                        tokens.append(abs(hash(str(v))) % 8192)
-                                except Exception:
-                                    continue
-                            return tokens[:256]
-                        return [abs(hash(str(obj))) % 8192]
-                    except Exception:
-                        return []
-
-                @staticmethod
-                def get_vocab_size() -> int:
-                    return 8192
-
-                @staticmethod
-                def encode_state(state: Any, player_id: int, max_len: int = 512) -> list:
-                    tokens: list[int] = []
-                    try:
-                        players = getattr(state, 'players', None)
-                        if players is None or player_id >= len(players):
-                            return tokens
-                        p = players[player_id]
-                        tokens.append(int(getattr(p, 'player_id', player_id)) % 8192)
-                        for zone in ('hand', 'battle_zone', 'mana_zone', 'shield_zone', 'graveyard'):
-                            z = getattr(p, zone, []) or []
-                            tokens.append(len(z) % 8192)
-                            for c in z:
-                                cid = getattr(c, 'card_id', None) or getattr(c, 'base_id', None) or getattr(c, 'id', None)
-                                if cid is None:
-                                    tokens.append(abs(hash(str(c))) % 8192)
-                                else:
-                                    try:
-                                        tokens.append(int(cid) % 8192)
-                                    except Exception:
-                                        tokens.append(abs(hash(str(cid))) % 8192)
-                                if len(tokens) >= max_len:
-                                    return tokens[:max_len]
-                        return tokens[:max_len]
-                    except Exception:
-                        return tokens[:max_len]
-
-        if 'TransitionCommand' not in globals():
-            class TransitionCommand:
-                def __init__(self, instance_id: int = -1, from_zone: str = '', to_zone: str = '', **kwargs: Any):
-                    self.instance_id = instance_id
-                    self.from_zone = from_zone
-                    self.to_zone = to_zone
-                    for k, v in kwargs.items():
-                        try:
-                            setattr(self, k, v)
-                        except Exception:
-                            pass
-
-                def execute(self, state: Any) -> None:
-                    try:
-                        inst = state.get_card_instance(self.instance_id) if hasattr(state, 'get_card_instance') else None
-                        if inst is None:
-                            return
-                        for p in state.players:
-                            for zone_name in ('hand', 'battle_zone', 'mana_zone', 'shield_zone', 'graveyard', 'deck'):
-                                z = getattr(p, zone_name, [])
-                                for i, o in enumerate(list(z)):
-                                    if getattr(o, 'instance_id', None) == getattr(inst, 'instance_id', None):
-                                        try:
-                                            z.pop(i)
-                                        except Exception:
-                                            pass
-                        dest = 'graveyard' if 'GRAVE' in str(self.to_zone).upper() else ('battle_zone' if 'BATTLE' in str(self.to_zone).upper() else 'hand')
-                        try:
-                            state.players[getattr(state, 'active_player_id', 0)].__dict__.setdefault(dest, []).append(inst)
-                        except Exception:
-                            pass
-                    except Exception:
-                        pass
         def execute(self, state: Any) -> None:
             try:
                 inst = state.get_card_instance(self.instance_id) if hasattr(state, 'get_card_instance') else None
@@ -684,6 +567,126 @@ if 'MutateCommand' not in globals():
                     inst.is_tapped = True
                 if getattr(self.mutation_type, 'name', None) == 'UNTAP' or str(self.mutation_type) == 'UNTAP':
                     inst.is_tapped = False
+            except Exception:
+                pass
+
+if 'ActionGenerator' not in globals():
+    class ActionGenerator:
+        def __init__(self, registry: Any = None):
+            self.registry = registry
+
+        def generate(self, state: Any, player_id: int) -> list:
+            return []
+
+if 'ActionEncoder' not in globals():
+    class ActionEncoder:
+        def __init__(self):
+            pass
+
+        def encode(self, action: Any) -> dict:
+            try:
+                return {
+                    'type': getattr(action, 'type', None),
+                    'card_id': getattr(action, 'card_id', None),
+                    'source_instance_id': getattr(action, 'source_instance_id', getattr(action, 'instance_id', None))
+                }
+            except Exception:
+                return {}
+
+if 'EffectResolver' not in globals():
+    class EffectResolver:
+        @staticmethod
+        def resolve(state: Any, effect: Any, player_id: int) -> None:
+            pass
+
+if 'TokenConverter' not in globals():
+    class TokenConverter:
+        def to_tokens(self, obj: Any) -> list:
+            try:
+                if obj is None:
+                    return []
+                if isinstance(obj, list):
+                    return [int(x) for x in obj][:256]
+                if hasattr(obj, 'instance_id'):
+                    return [int(getattr(obj, 'instance_id')) % 8192]
+                if isinstance(obj, dict):
+                    tokens = []
+                    for k, v in obj.items():
+                        try:
+                            tokens.append(abs(hash(k)) % 8192)
+                            if isinstance(v, int):
+                                tokens.append(v % 8192)
+                            else:
+                                tokens.append(abs(hash(str(v))) % 8192)
+                        except Exception:
+                            continue
+                    return tokens[:256]
+                return [abs(hash(str(obj))) % 8192]
+            except Exception:
+                return []
+
+        @staticmethod
+        def get_vocab_size() -> int:
+            return 8192
+
+        @staticmethod
+        def encode_state(state: Any, player_id: int, max_len: int = 512) -> list:
+            tokens: list[int] = []
+            try:
+                players = getattr(state, 'players', None)
+                if players is None or player_id >= len(players):
+                    return tokens
+                p = players[player_id]
+                tokens.append(int(getattr(p, 'player_id', player_id)) % 8192)
+                for zone in ('hand', 'battle_zone', 'mana_zone', 'shield_zone', 'graveyard'):
+                    z = getattr(p, zone, []) or []
+                    tokens.append(len(z) % 8192)
+                    for c in z:
+                        cid = getattr(c, 'card_id', None) or getattr(c, 'base_id', None) or getattr(c, 'id', None)
+                        if cid is None:
+                            tokens.append(abs(hash(str(c))) % 8192)
+                        else:
+                            try:
+                                tokens.append(int(cid) % 8192)
+                            except Exception:
+                                tokens.append(abs(hash(str(cid))) % 8192)
+                        if len(tokens) >= max_len:
+                            return tokens[:max_len]
+                return tokens[:max_len]
+            except Exception:
+                return tokens[:max_len]
+
+if 'TransitionCommand' not in globals():
+    class TransitionCommand:
+        def __init__(self, instance_id: int = -1, from_zone: str = '', to_zone: str = '', **kwargs: Any):
+            self.instance_id = instance_id
+            self.from_zone = from_zone
+            self.to_zone = to_zone
+            for k, v in kwargs.items():
+                try:
+                    setattr(self, k, v)
+                except Exception:
+                    pass
+
+        def execute(self, state: Any) -> None:
+            try:
+                inst = state.get_card_instance(self.instance_id) if hasattr(state, 'get_card_instance') else None
+                if inst is None:
+                    return
+                for p in state.players:
+                    for zone_name in ('hand', 'battle_zone', 'mana_zone', 'shield_zone', 'graveyard', 'deck'):
+                        z = getattr(p, zone_name, [])
+                        for i, o in enumerate(list(z)):
+                            if getattr(o, 'instance_id', None) == getattr(inst, 'instance_id', None):
+                                try:
+                                    z.pop(i)
+                                except Exception:
+                                    pass
+                dest = 'graveyard' if 'GRAVE' in str(self.to_zone).upper() else ('battle_zone' if 'BATTLE' in str(self.to_zone).upper() else 'hand')
+                try:
+                    state.players[getattr(state, 'active_player_id', 0)].__dict__.setdefault(dest, []).append(inst)
+                except Exception:
+                    pass
             except Exception:
                 pass
 
