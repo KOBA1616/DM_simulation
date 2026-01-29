@@ -284,3 +284,183 @@ class DuelTransformer(nn.Module):
                  action_idx = torch.multinomial(probs, 1).item()
 
         return action_idx, value.item()
+
+class DuelTransformerWithActionEmbedding(nn.Module):
+    def __init__(
+        self,
+        vocab_size: int,
+        num_action_types: int,
+        max_params_per_action: int,
+        d_model: int = 256,
+        nhead: int = 8,
+        num_layers: int = 6,
+        dim_feedforward: int = 1024,
+        max_len: int = 200
+    ):
+        super().__init__()
+        self.d_model = d_model
+        self.max_len = max_len
+
+        # State Encoder
+        self.token_embedding = nn.Embedding(vocab_size, d_model)
+        self.pos_embedding = nn.Parameter(torch.randn(max_len, d_model) * 0.02)
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model,
+            nhead=nhead,
+            dim_feedforward=dim_feedforward,
+            activation='gelu',
+            batch_first=True,
+            norm_first=True
+        )
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+
+        # Action Type Embedding
+        self.action_type_embedding = nn.Embedding(num_action_types, d_model // 2)
+
+        # Action Classification Head
+        self.action_type_head = nn.Sequential(
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, num_action_types)
+        )
+
+        # Parameter Prediction Head
+        self.action_param_head = nn.Sequential(
+            nn.LayerNorm(d_model + d_model // 2),
+            nn.Linear(d_model + d_model // 2, max_params_per_action)
+        )
+
+        # Value Head
+        self.value_head = nn.Sequential(
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, d_model),
+            nn.GELU(),
+            nn.Linear(d_model, 1)
+        )
+
+        self._init_weights()
+
+    def _init_weights(self) -> None:
+        for name, p in self.named_parameters():
+            if 'pos_embedding' in name or 'action_type_embedding' in name:
+                 if p.dim() > 1:
+                     nn.init.normal_(p, std=0.02)
+            elif p.dim() > 1:
+                nn.init.xavier_uniform_(p)
+
+    def forward(self, x, padding_mask=None):
+        B, S = x.shape
+
+        # State Encoding
+        emb = self.token_embedding(x)
+        seq_len = min(S, self.max_len)
+        pos = self.pos_embedding[:seq_len, :].unsqueeze(0).expand(B, seq_len, self.d_model)
+        emb = emb[:, :seq_len, :] + pos
+        encoded = self.transformer_encoder(emb, src_key_padding_mask=padding_mask)
+        state_repr = encoded[:, 0, :]  # CLS token
+
+        # Step 1: Action Type Selection
+        action_type_logits = self.action_type_head(state_repr)
+
+        # Step 2: Parameter Prediction
+        param_logits = []
+        for action_type_id in range(self.action_type_embedding.num_embeddings):
+            type_emb = self.action_type_embedding(
+                torch.tensor([action_type_id], device=x.device).expand(B)
+            )
+            combined = torch.cat([state_repr, type_emb], dim=-1)
+            param_logit = self.action_param_head(combined)
+            param_logits.append(param_logit)
+
+        param_logits = torch.stack(param_logits, dim=1)  # [B, num_action_types, max_params]
+
+        value = torch.tanh(self.value_head(state_repr))
+
+        return action_type_logits, param_logits, value
+
+
+def compute_loss_hierarchical(model_output, target_actions, target_values):
+    """
+    Computes loss for hierarchical action prediction.
+    Args:
+        model_output: (action_type_logits, param_logits, value_pred)
+        target_actions: [B, 2] -> [action_type_id, param_index]
+        target_values: [B]
+    """
+    action_type_logits, param_logits, value_pred = model_output
+
+    target_type = target_actions[:, 0].long()
+    target_param = target_actions[:, 1].long()
+
+    # Type Loss
+    type_loss = F.cross_entropy(action_type_logits, target_type)
+
+    # Parameter Loss
+    B = action_type_logits.size(0)
+    selected_param_logits = param_logits[torch.arange(B), target_type]
+    param_loss = F.cross_entropy(selected_param_logits, target_param)
+
+    # Value Loss
+    value_loss = F.mse_loss(value_pred.squeeze(), target_values)
+
+    total_loss = type_loss + param_loss + value_loss
+    return total_loss
+
+
+def extend_action_types(model, num_new_types):
+    """
+    Extends the action type embedding and head to support new types.
+    """
+    old_embedding = model.action_type_embedding
+    device = old_embedding.weight.device
+    new_embedding = nn.Embedding(
+        old_embedding.num_embeddings + num_new_types,
+        old_embedding.embedding_dim
+    ).to(device)
+
+    with torch.no_grad():
+        new_embedding.weight[:old_embedding.num_embeddings] = old_embedding.weight
+        nn.init.normal_(new_embedding.weight[old_embedding.num_embeddings:], std=0.02)
+
+    model.action_type_embedding = new_embedding
+
+    old_head = model.action_type_head[-1]
+    new_head = nn.Linear(old_head.in_features, old_head.out_features + num_new_types).to(device)
+    with torch.no_grad():
+        new_head.weight[:old_head.out_features] = old_head.weight
+        new_head.bias[:old_head.out_features] = old_head.bias
+
+    model.action_type_head[-1] = new_head
+
+
+def encode_action_hierarchical(action_dict):
+    """
+    Encodes an action dictionary into [type_id, param_index].
+    """
+    action_type_map = {
+        'PASS': 0,
+        'MANA_CHARGE': 1,
+        'PLAY_FROM_ZONE': 2,
+    }
+
+    # Handle dictionary or object
+    t = action_dict.get('type') if isinstance(action_dict, dict) else getattr(action_dict, 'type', None)
+
+    # Handle Enum or String
+    if hasattr(t, 'name'):
+        t_str = t.name
+    else:
+        t_str = str(t)
+
+    # Normalize 'PLAY_CARD' to 'PLAY_FROM_ZONE' if needed, or just handle legacy
+    if t_str == 'PLAY_CARD': # Legacy support
+        t_str = 'PLAY_FROM_ZONE'
+
+    type_id = action_type_map.get(t_str, 0)
+
+    if isinstance(action_dict, dict):
+        param_idx = int(action_dict.get('slot_index', 0))
+    else:
+        param_idx = int(getattr(action_dict, 'slot_index', 0))
+
+    return [type_id, param_idx]
