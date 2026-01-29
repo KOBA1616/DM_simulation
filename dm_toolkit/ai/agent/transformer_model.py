@@ -108,9 +108,8 @@ class DuelTransformer(nn.Module):
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
         # 4. Heads
-        # Policy Head: Predicts action logits from the "CLS" token (index 0) or Global Pooling
-        # Updated: Output to reserved_dim
-        self.policy_head = nn.Sequential(
+        # Phase Specific Policies
+        self.main_head = nn.Sequential(
             nn.LayerNorm(d_model),
             nn.Linear(d_model, reserved_dim)
         )
@@ -124,6 +123,17 @@ class DuelTransformer(nn.Module):
                 torch.zeros(reserved_dim - action_dim, dtype=torch.bool)
             ])
         )
+        self.mana_head = nn.Sequential(
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, action_dim)
+        )
+        self.attack_head = nn.Sequential(
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, action_dim)
+        )
+
+        # Alias for backward compatibility
+        self.policy_head = self.main_head
 
         # Value Head: Predicts win probability
         self.value_head = nn.Sequential(
@@ -140,12 +150,12 @@ class DuelTransformer(nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, x: torch.Tensor, padding_mask: Optional[torch.Tensor] = None, legal_action_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor, padding_mask: Optional[torch.Tensor] = None, phase_ids: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             x: [Batch, SeqLen] (Integer Token IDs)
             padding_mask: [Batch, SeqLen] (Boolean, True = Pad/Ignored) - Optional
-            legal_action_mask: [Batch, reserved_dim] (Boolean, True = Legal) - Optional
+            phase_ids: [Batch] (Integer Phase IDs) - Optional
         """
         B, S = x.shape
 
@@ -187,18 +197,27 @@ class DuelTransformer(nn.Module):
         cls_token = encoded[:, 0, :]
 
         # 5. Heads
-        policy_logits = self.policy_head(cls_token) # [Batch, reserved_dim]
+        if phase_ids is not None:
+            # Initialize with main head outputs
+            policy_logits = self.main_head(cls_token)
 
-        # Masking Logic
-        # 1. Mask inactive dimensions (actions not yet defined)
-        # inactive_mask: [B, reserved_dim] where True means inactive
-        inactive_mask = ~self.active_action_mask.unsqueeze(0).expand(B, -1)
-        policy_logits = policy_logits.masked_fill(inactive_mask, -1e9)
+            # Apply Mana Phase Head (Phase.MANA = 2)
+            mask_mana = (phase_ids == 2)
+            if mask_mana.any():
+                # We only compute the head for the relevant subset to save compute?
+                # Actually, slicing and computing might be slower if batch is small, but logically correct.
+                # However, since we initialized policy_logits with main_head, we are overwriting.
+                # A more efficient way if we had many heads:
+                # policy_logits = torch.empty(B, self.policy_head[1].out_features, device=x.device, dtype=cls_token.dtype)
+                # But initialization with main_head is fine for now.
+                policy_logits[mask_mana] = self.mana_head(cls_token[mask_mana])
 
-        # 2. Mask illegal actions (if mask provided)
-        if legal_action_mask is not None:
-            illegal_mask = ~legal_action_mask
-            policy_logits = policy_logits.masked_fill(illegal_mask, -1e9)
+            # Apply Attack Phase Head (Phase.ATTACK = 4)
+            mask_attack = (phase_ids == 4)
+            if mask_attack.any():
+                policy_logits[mask_attack] = self.attack_head(cls_token[mask_attack])
+        else:
+            policy_logits = self.policy_head(cls_token)
 
         value = torch.tanh(self.value_head(cls_token))
 

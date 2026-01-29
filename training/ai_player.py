@@ -16,7 +16,6 @@ from dm_ai_module import GameCommand
 class AIPlayer:
     def __init__(self, model_path: str, device='cpu', config=None):
         self.device = device
-        self.tokenizer = StateTokenizer()
         # Default Config (matches train_simple.py)
         self.config = config or {
             'vocab_size': 10000,
@@ -27,6 +26,8 @@ class AIPlayer:
             'dim_feedforward': 1024,
             'max_len': 200
         }
+
+        self.tokenizer = StateTokenizer(max_len=self.config.get('max_len', 200))
 
         # Ensure action_dim matches CommandEncoder schema when available
         try:
@@ -70,9 +71,12 @@ class AIPlayer:
         state_tensor = torch.tensor([state_tokens], dtype=torch.long).to(self.device)
         padding_mask = (state_tensor == 0)
 
+        phase = int(getattr(game_state, 'current_phase', 0))
+        phase_ids = torch.tensor([phase], dtype=torch.long).to(self.device)
+
         # 2. Inference
         with torch.no_grad():
-            policy_logits, _ = self.model(state_tensor, padding_mask=padding_mask)
+            policy_logits, _ = self.model(state_tensor, padding_mask=padding_mask, phase_ids=phase_ids)
 
         # 3. Masking (Optional)
         if valid_indices is not None and len(valid_indices) > 0:
