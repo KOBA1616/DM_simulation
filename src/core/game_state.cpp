@@ -1,6 +1,7 @@
 #include "game_state.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/pipeline_executor.hpp" // Include for cloning
+#include <cmath>
 
 namespace dm::core {
 
@@ -219,6 +220,39 @@ namespace dm::core {
             it = global_card_stats.emplace(cid, cs).first;
         }
         return it->second;
+    }
+
+    float GameState::calculate_board_advantage(PlayerID player_id, const std::map<CardID, CardDefinition>& card_db) const {
+        if(player_id >= players.size()) return 0.0f;
+        const Player& me = players[player_id];
+        const Player& opp = players[1 - player_id];
+
+        float score = 0.0f;
+
+        // Shield difference (most important)
+        score += (static_cast<int>(me.shield_zone.size()) - static_cast<int>(opp.shield_zone.size())) * 0.4f;
+
+        // Mana difference
+        int my_mana = 0, opp_mana = 0;
+        for (const auto& c : me.mana_zone) if (!c.is_tapped) my_mana++;
+        for (const auto& c : opp.mana_zone) if (!c.is_tapped) opp_mana++;
+        score += (my_mana - opp_mana) * 0.1f;
+
+        // Battle zone evaluation (power sum)
+        int my_power = 0, opp_power = 0;
+        for (const auto& c : me.battle_zone) {
+            if (card_db.count(c.card_id)) {
+                my_power += card_db.at(c.card_id).power;
+            }
+        }
+        for (const auto& c : opp.battle_zone) {
+            if (card_db.count(c.card_id)) {
+                opp_power += card_db.at(c.card_id).power;
+            }
+        }
+        score += (my_power - opp_power) * 0.001f; // Power is 1000-10000 so small weight
+
+        return std::tanh(score); // Normalize to [-1, 1]
     }
 
 }

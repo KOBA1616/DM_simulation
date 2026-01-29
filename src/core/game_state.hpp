@@ -152,6 +152,7 @@ namespace dm::core {
         GameState create_observer_view(PlayerID observer_id) const;
 
         // Declarations for methods implemented in other files
+        float calculate_board_advantage(PlayerID player_id, const std::map<CardID, CardDefinition>& card_db) const;
         void update_loop_check();
         void initialize_card_stats(const std::map<CardID, CardDefinition>& card_db, int deck_size);
         bool load_card_stats_from_json(const std::string& filepath);
