@@ -1,6 +1,8 @@
 #include "game_state.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/pipeline_executor.hpp" // Include for cloning
+#include "engine/systems/game_logic_system.hpp"
+#include "engine/systems/card/card_registry.hpp"
 
 namespace dm::core {
 
@@ -219,6 +221,38 @@ namespace dm::core {
             it = global_card_stats.emplace(cid, cs).first;
         }
         return it->second;
+    }
+
+    GameState::StateSnapshot GameState::create_snapshot() const {
+        StateSnapshot snap;
+        snap.commands_since_snapshot = command_history;
+        snap.hash_at_snapshot = calculate_hash();
+        return snap;
+    }
+
+    void GameState::restore_snapshot(const StateSnapshot& snap) {
+        if (command_history.size() < snap.commands_since_snapshot.size()) {
+             return;
+        }
+        while (command_history.size() > snap.commands_since_snapshot.size()) {
+            undo();
+        }
+    }
+
+    void GameState::make_move(const Action& action) {
+        move_start_indices.push_back(command_history.size());
+        const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+        dm::engine::systems::GameLogicSystem::resolve_action_oneshot(*this, action, card_db);
+    }
+
+    void GameState::unmake_move() {
+        if (move_start_indices.empty()) return;
+        size_t target_size = move_start_indices.back();
+        move_start_indices.pop_back();
+
+        while (command_history.size() > target_size) {
+            undo();
+        }
     }
 
 }
