@@ -154,7 +154,7 @@ def train(args):
 
     # Model Config (from Requirements)
     VOCAB_SIZE = 1000
-    ACTION_DIM = 600
+    ACTION_DIM = None  # Determined from CommandEncoder or dataset below
     D_MODEL = 256
     NHEAD = 8
     LAYERS = 6
@@ -178,6 +178,25 @@ def train(args):
 
     print(f"Loaded dataset from {args.data_path}: {total_size} total samples.")
     print(f"Train size: {train_size}, Validation size: {val_size}")
+
+    # Determine ACTION_DIM: prefer canonical CommandEncoder size if available
+    try:
+        import dm_ai_module as _dm
+        if hasattr(_dm, 'CommandEncoder') and getattr(_dm.CommandEncoder, 'TOTAL_COMMAND_SIZE', None) is not None:
+            desired = int(_dm.CommandEncoder.TOTAL_COMMAND_SIZE)
+            if full_dataset.policies.shape[1] != desired:
+                print(f"ERROR: dataset policy dim ({full_dataset.policies.shape[1]}) != CommandEncoder.TOTAL_COMMAND_SIZE ({desired}).")
+                print("Please convert or regenerate your dataset so policies have length equal to the canonical CommandEncoder size.")
+                raise SystemExit(1)
+            ACTION_DIM = desired
+            print(f"Using CommandEncoder.TOTAL_COMMAND_SIZE = {ACTION_DIM}")
+        else:
+            ACTION_DIM = int(full_dataset.policies.shape[1])
+            print(f"Using action_dim derived from dataset: {ACTION_DIM}")
+    except Exception:
+        # Fall back to dataset-derived action dim
+        ACTION_DIM = int(full_dataset.policies.shape[1])
+        print(f"Warning: failed to read CommandEncoder.TOTAL_COMMAND_SIZE, using dataset-derived action_dim: {ACTION_DIM}")
 
     # Estimated steps per epoch used for ETA calculations
     effective_batch = BATCH_SIZE * ACCUM_STEPS

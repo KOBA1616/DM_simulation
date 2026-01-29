@@ -107,7 +107,12 @@ else:
     _native_CommandEncoder = CommandEncoder
 
     class CommandEncoder:
+        # Mirror prototype layout where possible
         TOTAL_COMMAND_SIZE = getattr(_native_CommandEncoder, 'TOTAL_COMMAND_SIZE', 276)
+        MANA_CHARGE_BASE = 1
+        MANA_CHARGE_SLOTS = 19
+        PLAY_FROM_ZONE_BASE = 20
+        PLAY_FROM_ZONE_SLOTS = 256
 
         @staticmethod
         def index_to_command(idx: int):
@@ -121,7 +126,23 @@ else:
             except Exception:
                 pass
 
-            # Defensive extraction of candidate numeric fields
+            # Normalize type string
+            if isinstance(cmd, dict):
+                t = cmd.get('type')
+            else:
+                t = getattr(cmd, 'type', None)
+            if isinstance(t, bytes):
+                try:
+                    t = t.decode('utf-8')
+                except Exception:
+                    t = str(t)
+            tt = t.upper() if isinstance(t, str) else None
+
+            # Explicit PASS mapping
+            if tt == 'PASS' or t == 'PASS':
+                return 0
+
+            # Collect numeric candidates for slot/instance ids
             slot_candidates = []
             if isinstance(cmd, dict):
                 for k in ('slot_index', 'instance_id', 'source_instance_id', 'id'):
@@ -131,6 +152,63 @@ else:
                 for k in ('slot_index', 'instance_id', 'source_instance_id', 'id'):
                     slot_candidates.append(getattr(cmd, k, None))
 
+            # Handle MANA_CHARGE explicitly (prototype expects indices 1..19)
+            if tt == 'MANA_CHARGE' or t == 'MANA_CHARGE':
+                for sc in slot_candidates:
+                    if sc is None:
+                        continue
+                    try:
+                        si = int(sc)
+                    except Exception:
+                        continue
+                    # clamp/validate into expected range
+                    if si < CommandEncoder.MANA_CHARGE_BASE or si >= CommandEncoder.PLAY_FROM_ZONE_BASE:
+                        si = CommandEncoder.MANA_CHARGE_BASE + (abs(si) % CommandEncoder.MANA_CHARGE_SLOTS)
+                    return si
+                # no numeric candidate: pick deterministic mana slot
+                try:
+                    s = json.dumps(cmd, sort_keys=True)
+                except Exception:
+                    s = str(cmd)
+                return CommandEncoder.MANA_CHARGE_BASE + (abs(hash(s)) % CommandEncoder.MANA_CHARGE_SLOTS)
+
+            # Handle PLAY_FROM_ZONE / PLAY
+            if tt == 'PLAY_FROM_ZONE' or tt == 'PLAY' or t in ('PLAY_FROM_ZONE', 'PLAY'):
+                for sc in slot_candidates:
+                    if sc is None:
+                        continue
+                    try:
+                        si = int(sc)
+                    except Exception:
+                        continue
+                    # map into play slot window
+                    idx = CommandEncoder.PLAY_FROM_ZONE_BASE + (si % CommandEncoder.PLAY_FROM_ZONE_SLOTS)
+                    return idx
+                # no numeric candidate: hash into play window
+                try:
+                    s = json.dumps(cmd, sort_keys=True)
+                except Exception:
+                    s = str(cmd)
+                return CommandEncoder.PLAY_FROM_ZONE_BASE + (abs(hash(s)) % CommandEncoder.PLAY_FROM_ZONE_SLOTS)
+
+            # Handle ATTACK commands: map deterministically into play window as fallback
+            if tt == 'ATTACK' or t == 'ATTACK':
+                for sc in slot_candidates:
+                    if sc is None:
+                        continue
+                    try:
+                        si = int(sc)
+                    except Exception:
+                        continue
+                    idx = CommandEncoder.PLAY_FROM_ZONE_BASE + (si % CommandEncoder.PLAY_FROM_ZONE_SLOTS)
+                    return idx
+                try:
+                    s = json.dumps(cmd, sort_keys=True)
+                except Exception:
+                    s = str(cmd)
+                return CommandEncoder.PLAY_FROM_ZONE_BASE + (abs(hash(s)) % CommandEncoder.PLAY_FROM_ZONE_SLOTS)
+
+            # Try to faux-call native encoder with a slot_index candidate
             for sc in slot_candidates:
                 if sc is None:
                     continue
@@ -139,8 +217,7 @@ else:
                 except Exception:
                     continue
                 try:
-                    # attempt to use native layout when possible
-                    faux = {'type': cmd.get('type') if isinstance(cmd, dict) else getattr(cmd, 'type', None), 'slot_index': si}
+                    faux = {'type': t if isinstance(cmd, dict) else getattr(cmd, 'type', None), 'slot_index': si}
                     return _native_CommandEncoder.command_to_index(faux)
                 except Exception:
                     try:
@@ -148,7 +225,7 @@ else:
                     except Exception:
                         continue
 
-            # Stable JSON/string hash fallback
+            # Stable JSON/string hash fallback into full canonical range
             try:
                 s = json.dumps(cmd, sort_keys=True)
             except Exception:

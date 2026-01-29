@@ -1,0 +1,273 @@
+Using PyTorch model: models/checkpoints/policy_finetuned.pth
+[
+  {
+    "note": "playable_state",
+    "model_action_dim": 276,
+    "topk": [
+      {
+        "idx": 3,
+        "score": 3.5825560092926025
+      },
+      {
+        "idx": 0,
+        "score": 2.8209517002105713
+      },
+      {
+        "idx": 1,
+        "score": 1.5874134302139282
+      },
+      {
+        "idx": 5,
+        "score": 1.554977297782898
+      },
+      {
+        "idx": 67,
+        "score": 1.5146235227584839
+      },
+      {
+        "idx": 4,
+        "score": 1.471596121788025
+      },
+      {
+        "idx": 81,
+        "score": 1.3443849086761475
+      },
+      {
+        "idx": 97,
+        "score": 1.2901438474655151
+      },
+      {
+        "idx": 50,
+        "score": 1.234748125076294
+      },
+      {
+        "idx": 195,
+        "score": 1.099709153175354
+      },
+      {
+        "idx": 272,
+        "score": 0.9996505975723267
+      },
+      {
+        "idx": 182,
+        "score": 0.9965232610702515
+      },
+      {
+        "idx": 123,
+        "score": 0.9414319396018982
+      },
+      {
+        "idx": 14,
+        "score": 0.827388346195221
+      },
+      {
+        "idx": 215,
+        "score": 0.8254289031028748
+      },
+      {
+        "idx": 149,
+        "score": 0.8217076063156128
+      }
+    ],
+    "legal": [
+      {
+        "cmd": {
+          "type": "PASS",
+          "uid": "d622104b-80d3-4aa7-991c-cfe7b3777aca",
+          "legacy_warning": false,
+          "legacy_original_type": "PASS",
+          "instance_id": null,
+          "aliases": [
+            "PASS"
+          ]
+        },
+        "index": 0
+      },
+      {
+        "cmd": {
+          "type": "PLAY_FROM_ZONE",
+          "uid": "4874b89e-928f-43f0-972d-f0249d6a39ab",
+          "legacy_warning": false,
+          "legacy_original_type": "PLAY_CARD",
+          "instance_id": 1002,
+          "from_zone": "HAND",
+          "to_zone": "BATTLE",
+          "unified_type": "PLAY",
+          "target_group": "NONE",
+          "aliases": [
+            "PLAY_CARD"
+          ]
+        },
+        "index": 254
+      }
+    ],
+    "legal_ranks": [
+      {
+        "cmd": {
+          "type": "PASS",
+          "uid": "d622104b-80d3-4aa7-991c-cfe7b3777aca",
+          "legacy_warning": false,
+          "legacy_original_type": "PASS",
+          "instance_id": null,
+          "aliases": [
+            "PASS"
+          ]
+        },
+        "index": 0,
+        "rank": 1,
+        "score": 2.8209517002105713
+      },
+      {
+        "cmd": {
+          "type": "PLAY_FROM_ZONE",
+          "uid": "4874b89e-928f-43f0-972d-f0249d6a39ab",
+          "legacy_warning": false,
+          "legacy_original_type": "PLAY_CARD",
+          "instance_id": 1002,
+          "from_zone": "HAND",
+          "to_zone": "BATTLE",
+          "unified_type": "PLAY",
+          "target_group": "NONE",
+          "aliases": [
+            "PLAY_CARD"
+          ]
+        },
+        "index": 254,
+        "rank": 174,
+        "score": -1.0234235525131226
+      }
+    ]
+  },
+  {
+    "note": "attack_state",
+    "model_action_dim": 276,
+    "topk": [
+      {
+        "idx": 3,
+        "score": 3.584401845932007
+      },
+      {
+        "idx": 0,
+        "score": 2.8150405883789062
+      },
+      {
+        "idx": 1,
+        "score": 1.586452603340149
+      },
+      {
+        "idx": 5,
+        "score": 1.5312159061431885
+      },
+      {
+        "idx": 67,
+        "score": 1.5165009498596191
+      },
+      {
+        "idx": 4,
+        "score": 1.4740689992904663
+      },
+      {
+        "idx": 81,
+        "score": 1.3342409133911133
+      },
+      {
+        "idx": 97,
+        "score": 1.2899208068847656
+      },
+      {
+        "idx": 50,
+        "score": 1.2472039461135864
+      },
+      {
+        "idx": 195,
+        "score": 1.1110401153564453
+      },
+      {
+        "idx": 182,
+        "score": 1.0277048349380493
+      },
+      {
+        "idx": 272,
+        "score": 1.0143269300460815
+      },
+      {
+        "idx": 123,
+        "score": 0.9139443039894104
+      },
+      {
+        "idx": 149,
+        "score": 0.8454806804656982
+      },
+      {
+        "idx": 215,
+        "score": 0.8410826325416565
+      },
+      {
+        "idx": 14,
+        "score": 0.8231691718101501
+      }
+    ],
+    "legal": [
+      {
+        "cmd": {
+          "type": "PASS",
+          "uid": "eff3f25a-84f8-4001-8de9-0546963de9fd",
+          "legacy_warning": false,
+          "legacy_original_type": "PASS",
+          "instance_id": null,
+          "aliases": [
+            "PASS"
+          ]
+        },
+        "index": 0
+      },
+      {
+        "cmd": {
+          "type": "ATTACK_PLAYER",
+          "uid": "69835bef-df1a-48e7-8d79-9ccdb0f3ae91",
+          "legacy_warning": false,
+          "legacy_original_type": "ATTACK_PLAYER",
+          "instance_id": 7777,
+          "target_player": 1,
+          "aliases": [
+            "ATTACK_PLAYER"
+          ]
+        },
+        "index": 107
+      }
+    ],
+    "legal_ranks": [
+      {
+        "cmd": {
+          "type": "PASS",
+          "uid": "eff3f25a-84f8-4001-8de9-0546963de9fd",
+          "legacy_warning": false,
+          "legacy_original_type": "PASS",
+          "instance_id": null,
+          "aliases": [
+            "PASS"
+          ]
+        },
+        "index": 0,
+        "rank": 1,
+        "score": 2.8150405883789062
+      },
+      {
+        "cmd": {
+          "type": "ATTACK_PLAYER",
+          "uid": "69835bef-df1a-48e7-8d79-9ccdb0f3ae91",
+          "legacy_warning": false,
+          "legacy_original_type": "ATTACK_PLAYER",
+          "instance_id": 7777,
+          "target_player": 1,
+          "aliases": [
+            "ATTACK_PLAYER"
+          ]
+        },
+        "index": 107,
+        "rank": 211,
+        "score": -1.4139974117279053
+      }
+    ]
+  }
+]
