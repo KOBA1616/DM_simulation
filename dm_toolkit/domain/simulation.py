@@ -127,10 +127,12 @@ class SimulationRunner:
 
                     def model_batch_evaluate(states):
                         sequences = []
+                        phases = []
                         for s in states:
                             # Convert state to token sequence
                             seq = dm_ai_module.TensorConverter.convert_to_sequence(s, s.active_player_id, self.card_db)
                             sequences.append(seq)
+                            phases.append(int(getattr(s, 'current_phase', 0)))
 
                         # Pad sequences
                         # Assuming convert_to_sequence returns list of ints. Pad with 0.
@@ -149,9 +151,10 @@ class SimulationRunner:
 
                         input_tensor = torch.tensor(padded_seqs, dtype=torch.long).to(device)
                         padding_mask = (input_tensor == 0)
+                        phase_ids = torch.tensor(phases, dtype=torch.long).to(device)
 
                         with torch.no_grad():
-                            policy_logits, values = self.torch_network(input_tensor, padding_mask=padding_mask)
+                            policy_logits, values = self.torch_network(input_tensor, padding_mask=padding_mask, phase_ids=phase_ids)
                             policies = torch.softmax(policy_logits, dim=1).cpu().numpy()
                             vals = values.squeeze(1).cpu().numpy()
 
