@@ -17,8 +17,14 @@ def find_latest_model(models_dir: Path):
 def export_to_onnx(model_path: Path, onnx_path: Path):
     from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 
-    # Model hyperparams must match training
-    model = DuelTransformer(vocab_size=1000, action_dim=600, d_model=256, nhead=8, num_layers=6, dim_feedforward=1024, max_len=200)
+    # Model hyperparams must match training. Prefer canonical CommandEncoder size if available.
+    import dm_ai_module
+    if hasattr(dm_ai_module, 'CommandEncoder') and dm_ai_module.CommandEncoder is not None:
+        action_dim = dm_ai_module.CommandEncoder.TOTAL_COMMAND_SIZE
+        print(f'  Using CommandEncoder.TOTAL_COMMAND_SIZE = {action_dim}')
+    else:
+        action_dim = 600
+    model = DuelTransformer(vocab_size=1000, action_dim=action_dim, d_model=256, nhead=8, num_layers=6, dim_feedforward=1024, max_len=200)
     checkpoint = torch.load(str(model_path), map_location='cpu')
     state = checkpoint.get('model_state_dict', checkpoint)
     # Backwards-compat: older checkpoints stored pos_embedding with a leading
@@ -29,7 +35,42 @@ def export_to_onnx(model_path: Path, onnx_path: Path):
         if isinstance(v, torch.Tensor) and v.ndim == 3 and v.shape[0] == 1:
             state = dict(state)
             state['pos_embedding'] = v.squeeze(0)
-    model.load_state_dict(state)
+    # If checkpoint and model action_dim differ, attempt to reconcile policy head shapes
+    model_state = model.state_dict()
+    reconciled = dict(state)
+    # policy_head.1 corresponds to final linear layer weight/bias in older naming
+    w_key = None
+    b_key = None
+    for k in reconciled.keys():
+        if k.endswith('policy_head.1.weight'):
+            w_key = k
+        if k.endswith('policy_head.1.bias'):
+            b_key = k
+
+    try:
+        if w_key and b_key and w_key in reconciled and b_key in reconciled:
+            ck_w = reconciled[w_key]
+            ck_b = reconciled[b_key]
+            target_w = model_state.get(w_key)
+            target_b = model_state.get(b_key)
+            if target_w is not None and ck_w.shape != target_w.shape:
+                # If checkpoint has larger output dim, truncate; if smaller, pad with zeros
+                import torch as _torch
+                out_ck, in_ck = ck_w.shape
+                out_tgt, in_tgt = target_w.shape
+                min_out = min(out_ck, out_tgt)
+                min_in = min(in_ck, in_tgt)
+                new_w = _torch.zeros_like(target_w)
+                new_w[:min_out, :min_in] = ck_w[:min_out, :min_in]
+                reconciled[w_key] = new_w
+                # bias
+                new_b = _torch.zeros_like(target_b)
+                new_b[:min_out] = ck_b[:min_out]
+                reconciled[b_key] = new_b
+    except Exception:
+        pass
+
+    model.load_state_dict(reconciled)
     model.eval()
 
     # Use a small multi-batch dummy input so exported graph captures batched

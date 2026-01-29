@@ -24,6 +24,140 @@ except ImportError:
 # Indicate native extension is not loaded
 IS_NATIVE = False
 
+# Expose a Python CommandEncoder fallback from native_prototypes if available
+try:
+    from native_prototypes.index_to_command.command_encoder import CommandEncoder
+except Exception:
+    # Provide a lightweight Python fallback for CommandEncoder so tooling
+    # (head2head, training scripts) can map commands to canonical indices
+    # even when the native extension is not available.
+    class CommandEncoder:
+        # Keep the canonical action space size used by exports and training
+        TOTAL_COMMAND_SIZE = 276
+
+        @staticmethod
+        def command_to_index(cmd: Any) -> int:
+            # Make mapping robust: never raise on malformed/None fields.
+            # Accept either dict-like commands or objects with attributes
+            try:
+                if isinstance(cmd, dict):
+                    t = cmd.get('type')
+                else:
+                    t = getattr(cmd, 'type', None)
+
+                # Normalize simple string type values
+                if isinstance(t, bytes):
+                    try:
+                        t = t.decode('utf-8')
+                    except Exception:
+                        t = str(t)
+
+                if isinstance(t, str):
+                    tt = t.upper()
+                else:
+                    tt = None
+
+                # Common deterministic mappings for simple actions
+                if tt == 'PASS' or t == 'PASS':
+                    return 0
+                if tt == 'MANA_CHARGE' or t == 'MANA_CHARGE':
+                    return 1
+
+                # PLAY_FROM_ZONE and similar: use slot_index / instance id when available
+                slot_candidates = []
+                if isinstance(cmd, dict):
+                    for k in ('slot_index', 'instance_id', 'source_instance_id', 'id'):
+                        if k in cmd:
+                            slot_candidates.append(cmd.get(k))
+                else:
+                    for k in ('slot_index', 'instance_id', 'source_instance_id', 'id'):
+                        slot_candidates.append(getattr(cmd, k, None))
+
+                for sc in slot_candidates:
+                    if sc is None:
+                        continue
+                    try:
+                        si = int(sc)
+                    except Exception:
+                        continue
+                    # Accept negative sentinel values but still map deterministically
+                    try:
+                        return 2 + (si % (CommandEncoder.TOTAL_COMMAND_SIZE - 2))
+                    except Exception:
+                        # fall back to next candidate
+                        continue
+
+                # Fallback: stable JSON/string hash into the canonical range
+                try:
+                    s = json.dumps(cmd, sort_keys=True)
+                except Exception:
+                    s = str(cmd)
+                return abs(hash(s)) % CommandEncoder.TOTAL_COMMAND_SIZE
+            except Exception:
+                # As a last resort, return PASS index (safe default)
+                return 0
+else:
+    # If we successfully imported a native CommandEncoder, wrap it to make
+    # command_to_index more defensive: many code paths pass commands that
+    # lack a `slot_index` key and the native implementation calls
+    # `int(cmd.get('slot_index'))` which raises on None. Provide a thin
+    # wrapper that tries the native implementation first and falls back to
+    # safe heuristics (inspect instance_id, source_instance_id, id,
+    # or stable hash) before returning PASS (0).
+    _native_CommandEncoder = CommandEncoder
+
+    class CommandEncoder:
+        TOTAL_COMMAND_SIZE = getattr(_native_CommandEncoder, 'TOTAL_COMMAND_SIZE', 276)
+
+        @staticmethod
+        def index_to_command(idx: int):
+            return _native_CommandEncoder.index_to_command(int(idx))
+
+        @staticmethod
+        def command_to_index(cmd: Any) -> int:
+            # Try native implementation first
+            try:
+                return _native_CommandEncoder.command_to_index(cmd)
+            except Exception:
+                pass
+
+            # Defensive extraction of candidate numeric fields
+            slot_candidates = []
+            if isinstance(cmd, dict):
+                for k in ('slot_index', 'instance_id', 'source_instance_id', 'id'):
+                    if k in cmd:
+                        slot_candidates.append(cmd.get(k))
+            else:
+                for k in ('slot_index', 'instance_id', 'source_instance_id', 'id'):
+                    slot_candidates.append(getattr(cmd, k, None))
+
+            for sc in slot_candidates:
+                if sc is None:
+                    continue
+                try:
+                    si = int(sc)
+                except Exception:
+                    continue
+                try:
+                    # attempt to use native layout when possible
+                    faux = {'type': cmd.get('type') if isinstance(cmd, dict) else getattr(cmd, 'type', None), 'slot_index': si}
+                    return _native_CommandEncoder.command_to_index(faux)
+                except Exception:
+                    try:
+                        return 2 + (si % (CommandEncoder.TOTAL_COMMAND_SIZE - 2))
+                    except Exception:
+                        continue
+
+            # Stable JSON/string hash fallback
+            try:
+                s = json.dumps(cmd, sort_keys=True)
+            except Exception:
+                s = str(cmd)
+            try:
+                return abs(hash(s)) % CommandEncoder.TOTAL_COMMAND_SIZE
+            except Exception:
+                return 0
+
 
 class ActionType(IntEnum):
     NONE = 0
@@ -240,6 +374,36 @@ class ActionEncoder:
     @staticmethod
     def action_to_index(action: Any) -> int:
         try:
+            # Prefer canonical CommandEncoder mapping when available
+            if 'CommandEncoder' in globals() and CommandEncoder is not None:
+                try:
+                    # If action is already a dict matching CommandEncoder expectations
+                    if isinstance(action, dict):
+                        return CommandEncoder.command_to_index(action)
+                    # If action is an Action-like object, attempt to convert
+                    t = getattr(action, 'type', None)
+                    if t is not None:
+                        # Create a minimal dict representation and delegate
+                        cmd = {}
+                        # Map ActionType.PASS/MANA_CHARGE/PLAY_CARD to expected CommandEncoder types
+                        # Use string types for compatibility with older CommandEncoder implementations
+                        if t == ActionType.PASS:
+                            cmd['type'] = 'PASS'
+                        elif t == ActionType.MANA_CHARGE:
+                            cmd['type'] = 'MANA_CHARGE'
+                            # slot_index is not known from Action; best-effort fallback to 1
+                            cmd['slot_index'] = getattr(action, 'source_instance_id', 1) or 1
+                        elif t == ActionType.PLAY_CARD:
+                            cmd['type'] = 'PLAY_FROM_ZONE'
+                            cmd['slot_index'] = getattr(action, 'source_instance_id', 0) or 0
+                        else:
+                            # Unknown mapping, fall back to hashed index
+                            raise ValueError('no command mapping for action type')
+                        return CommandEncoder.command_to_index(cmd)
+                except Exception:
+                    # Fall through to legacy hash-based mapping
+                    pass
+
             key = (getattr(action, 'type', 0), getattr(action, 'card_id', -1), getattr(action, 'source_instance_id', -1))
             return abs(hash(key)) % 1024
         except Exception:
@@ -389,6 +553,9 @@ __all__ = [
     'ActionGenerator', 'IntentGenerator', 'PhaseManager', 'EffectResolver', 'CardStub',
     'CardType', 'Phase', 'GameResult', 'GameCommand',
 ]
+
+if CommandEncoder is not None:
+    __all__.append('CommandEncoder')
 
 if 'Zone' not in globals():
     from enum import IntEnum

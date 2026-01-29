@@ -1,0 +1,71 @@
+{
+  "timestamp": "2026-01-28T18:29:46.634820",
+  "actions": [
+    {
+      "type": "models",
+      "report": {
+        "base_dir": "models",
+        "pattern": "duel_transformer_*.pth",
+        "count_before": 3,
+        "size_before": 189854415,
+        "removed_by_count": [],
+        "removed_by_size": [],
+        "archived": [],
+        "count_after": 3,
+        "size_after": 189854415
+      }
+    },
+    {
+      "type": "models_onnx",
+      "report": {
+        "base_dir": "models",
+        "pattern": "*.onnx",
+        "count_before": 26,
+        "size_before": 14302114,
+        "removed_by_count": [
+          "models\\duel_transformer_20260129_023842.onnx",
+          "models\\duel_transformer_20260129_012756.onnx",
+          "models\\duel_transformer_20260123_143241.onnx",
+          "models\\duel_transformer_20260123_141536.onnx",
+          "models\\duel_transformer_20260123_091254.onnx",
+          "models\\best.onnx",
+          "models\\duel_transformer_20260123_082027.onnx",
+          "models\\duel_transformer_20260123_030852.onnx",
+          "models\\duel_transformer_20260123_030635.onnx",
+          "models\\duel_transformer_20260123_030422.onnx",
+          "models\\duel_transformer_20260123_030348.onnx",
+          "models\\duel_transformer_20260123_030314.onnx",
+          "models\\duel_transformer_20260123_025935.onnx",
+          "models\\duel_transformer_20260123_025916.onnx",
+          "models\\duel_transformer_20260123_025533.onnx",
+          "models\\duel_transformer_20260123_024002.onnx",
+          "models\\duel_transformer_20260123_023804.onnx",
+          "models\\duel_transformer_20260123_023624.onnx",
+          "models\\duel_transformer_20260123_023502.onnx",
+          "models\\duel_transformer_20260123_023328.onnx",
+          "models\\duel_transformer_20260123_023237.onnx",
+          "models\\duel_transformer_20260123_023123.onnx",
+          "models\\duel_transformer_20260123_011509.onnx"
+        ],
+        "removed_by_size": [],
+        "archived": [],
+        "count_after": 3,
+        "size_after": 1814241
+      }
+    },
+    {
+      "type": "data",
+      "report": {
+        "base_dir": "data",
+        "pattern": "transformer_training_data_iter*.npz",
+        "count_before": 3,
+        "size_before": 5177,
+        "removed_by_count": [],
+        "removed_by_size": [],
+        "archived": [],
+        "count_after": 3,
+        "size_after": 5177
+      }
+    }
+  ]
+}
