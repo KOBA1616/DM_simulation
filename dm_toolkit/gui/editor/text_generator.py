@@ -1042,7 +1042,7 @@ class CardTextGenerator:
 
         action_proxy = {
             "type": cmd_type,
-            "scope": command_copy.get("target_group", "NONE"),
+            "scope": command_copy.get("scope") or command_copy.get("target_group", "NONE"),
             "filter": command_copy.get("target_filter") or command_copy.get("filter", {}),
             "value1": command_copy.get("amount") if command_copy.get("amount") is not None else command_copy.get("value1", 0),
             "value2": command_copy.get("val2") or command_copy.get("value2", 0),
@@ -1094,6 +1094,11 @@ class CardTextGenerator:
         if cmd_type == "IF" and "target_filter" in command_copy:
             if "condition" not in action_proxy or not action_proxy["condition"]:
                 action_proxy["target_filter"] = command_copy.get("target_filter")
+
+        # Ensure default duration for restrictions
+        if cmd_type in ["SPELL_RESTRICTION", "CANNOT_PUT_CREATURE", "CANNOT_SUMMON_CREATURE", "PLAYER_CANNOT_ATTACK", "LOCK_SPELL"]:
+             if action_proxy["value1"] <= 0:
+                 action_proxy["value1"] = 1
 
         # Some templates expect source_zone rather than from_zone
         action_proxy["source_zone"] = command_copy.get("from_zone") or command_copy.get("source_zone", "")
@@ -1710,45 +1715,6 @@ class CardTextGenerator:
                   return f"{target_str}をカードの下に重ねる。"
              return f"{target_str}を{amt}{unit}カードの下に重ねる。"
 
-        elif atype == "LOCK_SPELL":
-             scope = action.get("scope") or action.get("target_group", "NONE")
-             target_str_lock = "プレイヤー"
-             if scope in ["PLAYER_OPPONENT", "OPPONENT"]:
-                  target_str_lock = "相手"
-             elif scope in ["PLAYER_SELF", "SELF"]:
-                  target_str_lock = "自分"
-             elif scope == "ALL_PLAYERS":
-                  target_str_lock = "すべてのプレイヤー"
-             else:
-                  target_str_lock, _ = cls._resolve_target(action, is_spell)
-
-             duration = val1 if val1 > 0 else 1
-             return f"{target_str_lock}は{duration}ターンの間、呪文を唱えられない。"
-
-        elif atype in ["SPELL_RESTRICTION", "CANNOT_PUT_CREATURE", "CANNOT_SUMMON_CREATURE", "PLAYER_CANNOT_ATTACK"]:
-             scope = action.get("scope") or action.get("target_group", "NONE")
-             target_str_lock = "プレイヤー"
-             if scope in ["PLAYER_OPPONENT", "OPPONENT"]:
-                  target_str_lock = "相手"
-             elif scope in ["PLAYER_SELF", "SELF"]:
-                  target_str_lock = "自分"
-             elif scope == "ALL_PLAYERS":
-                  target_str_lock = "すべてのプレイヤー"
-             else:
-                  target_str_lock, _ = cls._resolve_target(action, is_spell)
-
-             duration = val1 if val1 > 0 else 1
-
-             if atype == "SPELL_RESTRICTION":
-                 action_text = "呪文を唱えられない"
-             elif atype == "CANNOT_PUT_CREATURE":
-                 action_text = "クリーチャーを出せない"
-             elif atype == "CANNOT_SUMMON_CREATURE":
-                 action_text = "クリーチャーを召喚できない"
-             elif atype == "PLAYER_CANNOT_ATTACK":
-                 action_text = "攻撃できない"
-
-             return f"{target_str_lock}は{duration}ターンの間、{action_text}。"
 
         elif atype == "RESET_INSTANCE":
              return f"{target_str}の状態を初期化する（効果を無視する）。"
@@ -2557,6 +2523,15 @@ class CardTextGenerator:
         scope = action.get("scope", action.get('target_group', "NONE"))
         filter_def = action.get("filter", action.get('target_filter', {}))
         atype = action.get("type", "")
+
+        # Handle Restriction Targets (Player Targets without possessive 's)
+        if atype in ["SPELL_RESTRICTION", "CANNOT_PUT_CREATURE", "CANNOT_SUMMON_CREATURE", "PLAYER_CANNOT_ATTACK", "LOCK_SPELL"]:
+             if scope in ["PLAYER_OPPONENT", "OPPONENT"]:
+                  return "相手", ""
+             elif scope in ["PLAYER_SELF", "SELF"]:
+                  return "自分", ""
+             elif scope == "ALL_PLAYERS":
+                  return "すべてのプレイヤー", ""
 
         # Handle Trigger Source targeting
         if filter_def.get('is_trigger_source'):
