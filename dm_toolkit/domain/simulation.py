@@ -128,11 +128,30 @@ class SimulationRunner:
                     def model_batch_evaluate(states):
                         sequences = []
                         phases = []
+                        legal_masks = []
+                        reserved_dim = self.torch_network.reserved_dim
+
                         for s in states:
                             # Convert state to token sequence
                             seq = dm_ai_module.TensorConverter.convert_to_sequence(s, s.active_player_id, self.card_db)
                             sequences.append(seq)
                             phases.append(int(getattr(s, 'current_phase', 0)))
+
+                            # Generate legal mask
+                            try:
+                                legal_actions = dm_ai_module.IntentGenerator.generate_legal_actions(s, self.card_db)
+                                mask = np.zeros(reserved_dim, dtype=bool)
+                                for action in legal_actions:
+                                    try:
+                                        idx = dm_ai_module.CommandEncoder.command_to_index(action)
+                                        if 0 <= idx < reserved_dim:
+                                            mask[idx] = True
+                                    except:
+                                        continue
+                                legal_masks.append(mask)
+                            except Exception:
+                                # Fallback
+                                legal_masks.append(np.ones(reserved_dim, dtype=bool))
 
                         # Pad sequences
                         # Assuming convert_to_sequence returns list of ints. Pad with 0.
@@ -152,9 +171,10 @@ class SimulationRunner:
                         input_tensor = torch.tensor(padded_seqs, dtype=torch.long).to(device)
                         padding_mask = (input_tensor == 0)
                         phase_ids = torch.tensor(phases, dtype=torch.long).to(device)
+                        legal_mask_tensor = torch.tensor(np.array(legal_masks), dtype=torch.bool).to(device)
 
                         with torch.no_grad():
-                            policy_logits, values = self.torch_network(input_tensor, padding_mask=padding_mask, phase_ids=phase_ids)
+                            policy_logits, values = self.torch_network(input_tensor, padding_mask=padding_mask, phase_ids=phase_ids, legal_action_mask=legal_mask_tensor)
                             policies = torch.softmax(policy_logits, dim=1).cpu().numpy()
                             vals = values.squeeze(1).cpu().numpy()
 
