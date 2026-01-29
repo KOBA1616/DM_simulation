@@ -150,12 +150,13 @@ class DuelTransformer(nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, x: torch.Tensor, padding_mask: Optional[torch.Tensor] = None, phase_ids: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x: torch.Tensor, padding_mask: Optional[torch.Tensor] = None, phase_ids: Optional[torch.Tensor] = None, legal_action_mask: Optional[torch.Tensor] = None) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Args:
             x: [Batch, SeqLen] (Integer Token IDs)
             padding_mask: [Batch, SeqLen] (Boolean, True = Pad/Ignored) - Optional
             phase_ids: [Batch] (Integer Phase IDs) - Optional
+            legal_action_mask: [Batch, reserved_dim] (Boolean, True = Legal) - Optional
         """
         B, S = x.shape
 
@@ -210,14 +211,29 @@ class DuelTransformer(nn.Module):
                 # A more efficient way if we had many heads:
                 # policy_logits = torch.empty(B, self.policy_head[1].out_features, device=x.device, dtype=cls_token.dtype)
                 # But initialization with main_head is fine for now.
-                policy_logits[mask_mana] = self.mana_head(cls_token[mask_mana])
+                # Assign only to active dimension slice since phase heads match action_dim (or their specific size)
+                out_dim = self.mana_head[-1].out_features
+                policy_logits[mask_mana, :out_dim] = self.mana_head(cls_token[mask_mana])
 
             # Apply Attack Phase Head (Phase.ATTACK = 4)
             mask_attack = (phase_ids == 4)
             if mask_attack.any():
-                policy_logits[mask_attack] = self.attack_head(cls_token[mask_attack])
+                out_dim = self.attack_head[-1].out_features
+                policy_logits[mask_attack, :out_dim] = self.attack_head(cls_token[mask_attack])
         else:
             policy_logits = self.policy_head(cls_token)
+
+        # ★ Masking Application
+        # 1. Mask inactive dimensions
+        # active_action_mask is [reserved_dim]
+        # We expand it to [Batch, reserved_dim]
+        inactive_mask = ~self.active_action_mask.unsqueeze(0).expand(B, -1)
+        policy_logits = policy_logits.masked_fill(inactive_mask, -1e9)
+
+        # 2. Mask illegal actions (Learning / Inference)
+        if legal_action_mask is not None:
+            illegal_mask = ~legal_action_mask
+            policy_logits = policy_logits.masked_fill(illegal_mask, -1e9)
 
         value = torch.tanh(self.value_head(cls_token))
 
