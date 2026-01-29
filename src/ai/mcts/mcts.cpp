@@ -105,6 +105,7 @@ namespace dm::ai {
         PhaseManager::fast_forward(root_gs, *card_db_);
         
         // Explicitly free the old tree before allocating the new one to reduce peak memory usage
+        transposition_table_.clear();
         last_root_.reset();
         last_root_ = std::make_unique<MCTSNode>(std::move(root_gs));
         MCTSNode* root = last_root_.get();
@@ -264,6 +265,15 @@ namespace dm::ai {
             child->parent = node;
             child->action_from_parent = action;
             child->prior = p;
+
+            size_t hash = child->state.calculate_hash();
+            if (MCTSNode* existing = transposition_table_.lookup(hash)) {
+                child->visit_count = existing->visit_count;
+                child->value_sum = existing->value_sum;
+                child->value_squared_sum = existing->value_squared_sum;
+            } else {
+                transposition_table_.store(hash, child.get());
+            }
             
             node->children.push_back(std::move(child));
         }

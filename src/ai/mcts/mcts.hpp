@@ -9,6 +9,7 @@
 #include <cmath>
 #include <functional>
 #include "core/action.hpp" // Include Action struct definition
+#include "ai/mcts/tree_manager.hpp"
 
 namespace dm::ai {
 
@@ -98,6 +99,8 @@ namespace dm::ai {
 
         // PIMC parameters
         int pimc_samples_ = 4;
+
+        TranspositionTable transposition_table_;
     };
 
 }
