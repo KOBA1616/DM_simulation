@@ -87,9 +87,13 @@ def train_simple(data_path: str = "data/transformer_training_data.npz", epochs: 
         action_dim = int(policies.shape[1])
         print(f"  Using action_dim derived from dataset: {action_dim}")
 
+    # Idea 2: Reserved Dimension for Dynamic Output Layer
+    reserved_dim = 1024
+
     model = DuelTransformer(
         vocab_size=1000,
         action_dim=action_dim,
+        reserved_dim=reserved_dim,
         d_model=256,
         nhead=8,
         num_layers=6,
@@ -100,6 +104,7 @@ def train_simple(data_path: str = "data/transformer_training_data.npz", epochs: 
     # Count params
     total_params = sum(p.numel() for p in model.parameters())
     print(f"  Model parameters: {total_params:,}")
+    print(f"  Action Dim: {action_dim}, Reserved Dim: {reserved_dim}")
     
     # Optimizer
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
@@ -114,10 +119,19 @@ def train_simple(data_path: str = "data/transformer_training_data.npz", epochs: 
         # Normalize scale to keep magnitudes reasonable
         inv = inv / _np.mean(inv)
         class_weights = torch.tensor(inv, dtype=torch.float32).to(device)
+        # We need to pad class_weights if action_dim < reserved_dim
+        if len(class_weights) < reserved_dim:
+            pad_size = reserved_dim - len(class_weights)
+            # Pad with 1.0 (neutral weight) or 0.0?
+            # Since these classes shouldn't appear in data, weight doesn't matter much unless model predicts them.
+            # But model masks them out.
+            class_weights = torch.cat([class_weights, torch.ones(pad_size, device=device)])
+
         policy_loss_fn = nn.CrossEntropyLoss(weight=class_weights)
         print('  Using class-weighted CrossEntropyLoss (fallback for hard labels)')
     except Exception:
         policy_loss_fn = nn.CrossEntropyLoss()
+
     # KL loss will be used when policy_batch appears to be a probability distribution (soft labels).
     kl_loss_fn = lambda log_probs, target_probs: F.kl_div(log_probs, target_probs, reduction='batchmean')
     value_loss_fn = nn.MSELoss()
@@ -133,20 +147,19 @@ def train_simple(data_path: str = "data/transformer_training_data.npz", epochs: 
         epoch_value_loss = 0.0
         num_batches = 0
         
-        for batch_idx, (state_batch, policy_batch, value_batch) in enumerate(dataloader):
-            # Unpack depending on whether legal_masks included
-            if legal_masks is not None:
-                state_batch, policy_batch, value_batch, legal_mask_batch = state_batch, policy_batch, value_batch, None
+        for batch_idx, batch in enumerate(dataloader):
+             # Unpack depending on whether legal_masks included
             try:
-                # If dataset included legal masks then DataLoader yields 4-tuple
                 if len(batch) == 4:
                     state_batch, policy_batch, value_batch, legal_mask_batch = batch
                 else:
                     state_batch, policy_batch, value_batch = batch
                     legal_mask_batch = None
             except Exception:
-                # Fallback (older dataloaders)
+                # Fallback
                 legal_mask_batch = None
+                if len(batch) >= 3:
+                     state_batch, policy_batch, value_batch = batch[:3]
 
             state_batch = state_batch.to(device)
             policy_batch = policy_batch.to(device)
@@ -154,40 +167,48 @@ def train_simple(data_path: str = "data/transformer_training_data.npz", epochs: 
             if legal_mask_batch is not None:
                 legal_mask_batch = legal_mask_batch.to(device)
             
+            # Pad inputs to reserved_dim if necessary
+            if policy_batch.shape[1] < reserved_dim:
+                pad_size = reserved_dim - policy_batch.shape[1]
+                # Pad policies with 0.0
+                policy_batch = torch.cat([policy_batch, torch.zeros(policy_batch.shape[0], pad_size, dtype=policy_batch.dtype, device=device)], dim=1)
+
+            if legal_mask_batch is not None and legal_mask_batch.shape[1] < reserved_dim:
+                 pad_size = reserved_dim - legal_mask_batch.shape[1]
+                 # Pad mask with False (illegal)
+                 legal_mask_batch = torch.cat([legal_mask_batch, torch.zeros(legal_mask_batch.shape[0], pad_size, dtype=torch.bool, device=device)], dim=1)
+
             # Forward
             optimizer.zero_grad()
-            # padding_mask: current heuristic is (state == 0). If your tokenizer/padding token differs,
-            # replace this with the tokenizer's padding token or explicit padding mask provided by DataCollector.
+            # padding_mask: current heuristic is (state == 0).
             padding_mask = (state_batch == 0)
-            policy_logits, value_pred = model(state_batch, padding_mask=padding_mask)
             
-            # Loss
-            # If legal action mask is available, disallow illegal actions by masking logits and
-            # zeroing/renormalizing target probabilities on illegal positions so the model does not learn them.
+            # Pass legal_action_mask to model for internal masking
+            policy_logits, value_pred = model(state_batch, padding_mask=padding_mask, legal_action_mask=legal_mask_batch)
+
+            # Loss Preparation
+            target_probs = policy_batch.clone()
+
             if legal_mask_batch is not None:
-                # legal_mask_batch expected shape [B, action_dim], dtype=bool
-                illegal_mask = ~legal_mask_batch
-                policy_logits = policy_logits.masked_fill(illegal_mask, -1e9)
-                # Zero out target prob mass on illegal actions and renormalize per-sample
-                target_probs = policy_batch.clone()
-                target_probs = target_probs * legal_mask_batch.float()
-                sums = target_probs.sum(dim=1, keepdim=True)
-                small = 1e-8
-                needs_uniform = (sums < small).squeeze(1)
-                # For samples where all target mass fell into illegal actions, replace with uniform over legal
-                if needs_uniform.any():
-                    for i in torch.nonzero(needs_uniform, as_tuple=False):
-                        idx = i.item()
-                        legal = legal_mask_batch[idx]
-                        if legal.any():
-                            target_probs[idx] = legal.float() / legal.float().sum()
-                        else:
-                            # extremely degenerate: no legal actions? leave target as-is
-                            pass
-                    sums = target_probs.sum(dim=1, keepdim=True)
-                target_probs = target_probs / (sums + small)
-            else:
-                target_probs = policy_batch
+                 # Ensure target distribution respects mask (zero out illegal actions in target)
+                 target_probs = target_probs * legal_mask_batch.float()
+
+                 # Renormalize
+                 sums = target_probs.sum(dim=1, keepdim=True)
+                 small = 1e-8
+                 needs_uniform = (sums < small).squeeze(1)
+
+                 # If sample has no legal actions in target (data inconsistency or all filtered), fix it
+                 if needs_uniform.any():
+                     for i in torch.nonzero(needs_uniform, as_tuple=False):
+                         idx = i.item()
+                         legal = legal_mask_batch[idx]
+                         if legal.any():
+                             target_probs[idx] = legal.float() / legal.float().sum()
+                         else:
+                             pass
+                     sums = target_probs.sum(dim=1, keepdim=True)
+                 target_probs = target_probs / (sums + small)
 
             # Decide loss type: if target looks like a distribution (soft labels), use KLDiv; else CrossEntropy
             use_kl = False
@@ -203,11 +224,12 @@ def train_simple(data_path: str = "data/transformer_training_data.npz", epochs: 
 
             if use_kl:
                 # KLDiv expects log-probs and target probs
+                # policy_logits are already masked with -inf, so log_softmax is correct
                 log_probs = F.log_softmax(policy_logits, dim=1)
                 loss_policy = kl_loss_fn(log_probs, target_probs)
-                # Note: we keep CrossEntropy class_weights as fallback for hard targets
             else:
                 # Hard targets: argmax then CrossEntropy
+                # Note: target_probs has been renormalized, so argmax is valid
                 policy_targets = torch.argmax(target_probs, dim=1)
                 loss_policy = policy_loss_fn(policy_logits, policy_targets)
 
@@ -249,6 +271,8 @@ def train_simple(data_path: str = "data/transformer_training_data.npz", epochs: 
         'model_state_dict': model.state_dict(),
         'optimizer_state_dict': optimizer.state_dict(),
         'epoch': epochs,
+        'action_dim': action_dim,
+        'reserved_dim': reserved_dim
     }, checkpoint_path)
     print(f"  Saved to {checkpoint_path}")
     # Run artifact manager to prune/archive artifacts (best-effort)
