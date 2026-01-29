@@ -662,6 +662,11 @@ void bind_core(py::module& m) {
     py::class_<CommandSystemWrapper>(m, "CommandSystem")
         .def_static("execute_command", &CommandSystemWrapper::execute_command);
 
+    py::class_<GameState::StateSnapshot>(m, "StateSnapshot")
+        .def(py::init<>())
+        .def_readwrite("commands_since_snapshot", &GameState::StateSnapshot::commands_since_snapshot)
+        .def_readwrite("hash_at_snapshot", &GameState::StateSnapshot::hash_at_snapshot);
+
     py::class_<GameState, std::shared_ptr<GameState>>(m, "GameState")
         .def(py::init<int>())
         .def("setup_test_duel", &GameState::setup_test_duel)
@@ -694,6 +699,10 @@ void bind_core(py::module& m) {
         .def("get_pending_effect_count", [](const GameState& s) { return s.pending_effects.size(); })
         .def("create_observer_view", &GameState::create_observer_view)
         .def("clone", &GameState::clone)
+        .def("create_snapshot", &GameState::create_snapshot)
+        .def("restore_snapshot", &GameState::restore_snapshot)
+        .def("make_move", &GameState::make_move)
+        .def("unmake_move", &GameState::unmake_move)
         .def("get_card_instance", [](GameState& s, int id) {
             try {
                 return s.get_card_instance(id);
@@ -866,6 +875,26 @@ void bind_core(py::module& m) {
         .def("on_card_play", &GameState::on_card_play)
         .def("vectorize_card_stats", &GameState::vectorize_card_stats)
         .def("calculate_hash", &GameState::calculate_hash)
+        .def_property_readonly("pending_effects", [](const GameState& s) {
+             try {
+                py::list list;
+                for (const auto& pe : s.pending_effects) {
+                    py::dict d;
+                    d["type"] = pe.type;
+                    d["source_instance_id"] = pe.source_instance_id;
+                    d["controller"] = pe.controller;
+                    d["resolve_type"] = pe.resolve_type;
+                    list.append(d);
+                }
+                return list;
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Error in pending_effects property: " + std::string(e.what()));
+            } catch (...) {
+                throw std::runtime_error("Unknown error in pending_effects property");
+            }
+        })
         .def("get_pending_effects_info", [](const GameState& s) {
             try {
                 py::list list;

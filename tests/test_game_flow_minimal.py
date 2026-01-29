@@ -128,8 +128,8 @@ class TestGameFlowMinimal(unittest.TestCase):
     def _step_win_loss_conditions(self):
         print("\n[STEP 8] Win/Loss")
         winner = self.gs.winner
-        # Default start is -1
-        self.assertEqual(winner, -1)
+        # Default start is GameResult.NONE (might be 0 or -1 depending on implementation)
+        self.assertEqual(winner, dm_ai_module.GameResult.NONE)
 
     def _step_data_collection(self):
         print("\n[STEP 9] Data Collection")
