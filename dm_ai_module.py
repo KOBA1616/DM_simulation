@@ -396,6 +396,13 @@ class GameState:
     def get_pending_effects_info(self):
         return list(self.pending_effects)
 
+    def create_observer_view(self, observer_id: int):
+        view = self.clone()
+        opponent_id = 1 - observer_id
+        if 0 <= opponent_id < len(view.players):
+            view.players[opponent_id].hand = [CardStub(0, c.instance_id) for c in view.players[opponent_id].hand]
+        return view
+
     def clone(self):
         return copy.deepcopy(self)
 

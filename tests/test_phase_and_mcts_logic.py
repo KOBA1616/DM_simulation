@@ -116,15 +116,21 @@ class TestPhaseAndMCTS(unittest.TestCase):
         def state_converter(state, player_id, card_db):
             return tokenizer.encode_state(state, player_id)
 
-        print("[MCTS Test] Expecting RuntimeError on instantiation...")
-        with self.assertRaises(RuntimeError) as cm:
-             MCTS(
-                network=model,
-                card_db=None,
-                simulations=2, # Small number for test
-                state_converter=state_converter
-            )
-        print("SUCCESS: Caught expected RuntimeError (Deprecated).")
+        print("[MCTS Test] Instantiating MCTS with Observer View...")
+        mcts = MCTS(
+            network=model,
+            card_db=None,
+            simulations=2, # Small number for test
+            state_converter=state_converter,
+            player_id=0
+        )
+        print("MCTS Instantiated.")
+
+        # Run search
+        print("Running MCTS Search...")
+        root = mcts.search(game.state)
+        print(f"MCTS Search Complete. Root visits: {root.visit_count}")
+        self.assertGreater(root.visit_count, 0)
 
 if __name__ == '__main__':
     # Run the tests manually
