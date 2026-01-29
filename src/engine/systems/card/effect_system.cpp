@@ -307,9 +307,9 @@ namespace dm::engine {
              pipeline->set_context_var("$source", ctx.source_instance_id);
 
              int controller = 0;
-             if(ctx.source_instance_id >= 0 && (size_t)ctx.source_instance_id < ctx.game_state.card_owner_map.size()) {
-                 controller = ctx.game_state.card_owner_map[ctx.source_instance_id];
-             }
+             if(ctx.source_instance_id >= 0) {
+                controller = ctx.game_state.get_card_owner(ctx.source_instance_id);
+            }
              pipeline->set_context_var("$controller", controller);
 
          } else {
@@ -331,8 +331,8 @@ namespace dm::engine {
              pipeline->set_context_var("$source", ctx.source_instance_id);
 
              int controller = 0;
-             if(ctx.source_instance_id >= 0 && (size_t)ctx.source_instance_id < ctx.game_state.card_owner_map.size()) {
-                 controller = ctx.game_state.card_owner_map[ctx.source_instance_id];
+             if(ctx.source_instance_id >= 0) {
+                 controller = ctx.game_state.get_card_owner(ctx.source_instance_id);
              }
              pipeline->set_context_var("$controller", controller);
          }
@@ -382,8 +382,8 @@ namespace dm::engine {
             return card->owner;
         }
 
-        if (instance_id >= 0 && instance_id < (int)game_state.card_owner_map.size()) {
-            return game_state.card_owner_map[instance_id];
+        if (instance_id >= 0) {
+            return game_state.get_card_owner(instance_id);
         }
         return game_state.active_player_id;
     }

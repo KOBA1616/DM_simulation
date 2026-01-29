@@ -325,12 +325,7 @@ namespace dm::engine::game_command {
 
             // Also update card_owner_map if instance_id is within range
             if (card.instance_id >= 0) {
-                 if ((size_t)card.instance_id >= state.card_owner_map.size()) {
-                     state.card_owner_map.resize(card.instance_id + 1, 0); // Should handle resizing appropriately, usually ID is pre-allocated
-                 }
-                 if ((size_t)card.instance_id < state.card_owner_map.size()) {
-                     state.card_owner_map[card.instance_id] = player_id;
-                 }
+                 state.set_card_owner(card.instance_id, player_id);
             }
         }
     }

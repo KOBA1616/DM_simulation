@@ -16,6 +16,7 @@
 #include <random>
 #include <optional>
 #include <functional>
+#include <cstdint>
 
 // Forward declarations
 namespace dm::engine::systems {
@@ -94,6 +95,9 @@ namespace dm::core {
         // Requires full definition of GameCommand in .cpp for deletion
         std::vector<std::shared_ptr<dm::engine::game_command::GameCommand>> command_history;
 
+        // Incremented on each mutation of `command_history` to help detect unexpected modifications
+        uint64_t history_sentinel = 0;
+
         // Command recording support
         std::vector<std::shared_ptr<dm::engine::game_command::GameCommand>>* command_redirect_target = nullptr;
 
@@ -160,6 +164,10 @@ namespace dm::core {
 
         // Helper to register a manually created card instance into the owner map (For Unit Tests)
         void register_card_instance(const CardInstance& card);
+        // Safe accessors for card_owner_map to avoid out-of-bounds writes
+        void ensure_owner_map_for(int instance_id);
+        void set_card_owner(int instance_id, PlayerID owner);
+        PlayerID get_card_owner(int instance_id) const;
 
         void undo();
 

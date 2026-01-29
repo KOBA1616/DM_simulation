@@ -66,7 +66,7 @@ namespace dm::engine {
 
                     PlayerID card_owner = player_id; // Default assumption for owned zone
                     if (instance.instance_id >= 0 && (size_t)instance.instance_id < state.card_owner_map.size()) {
-                        card_owner = state.card_owner_map[instance.instance_id];
+                        card_owner = state.get_card_owner(instance.instance_id);
                     }
 
                     if (TargetUtils::is_valid_target(instance, def, unit_cost.filter, state, player_id, card_owner, false)) {
@@ -194,7 +194,7 @@ namespace dm::engine {
 
                     PlayerID card_owner = player_id;
                     if (instance.instance_id >= 0 && (size_t)instance.instance_id < state.card_owner_map.size()) {
-                        card_owner = state.card_owner_map[instance.instance_id];
+                        card_owner = state.get_card_owner(instance.instance_id);
                     }
 
                     if (TargetUtils::is_valid_target(instance, def, unit_cost.filter, state, player_id, card_owner, false)) {

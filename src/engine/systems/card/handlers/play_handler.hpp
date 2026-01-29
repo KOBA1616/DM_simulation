@@ -26,7 +26,7 @@ namespace dm::engine {
 
                 PlayerID controller = ctx.game_state.active_player_id;
                 if (ctx.source_instance_id >= 0 && ctx.source_instance_id < (int)ctx.game_state.card_owner_map.size()) {
-                     controller = ctx.game_state.card_owner_map[ctx.source_instance_id];
+                     controller = ctx.game_state.get_card_owner(ctx.source_instance_id);
                 }
 
                 std::vector<PlayerID> target_players;

@@ -163,7 +163,7 @@ namespace dm::engine {
                      // Need controllers
                      dm::core::PlayerID card_owner = 0;
                      if (instance.instance_id < (int)state.card_owner_map.size())
-                         card_owner = state.card_owner_map[instance.instance_id];
+                         card_owner = state.get_card_owner(instance.instance_id);
 
                      // Avoid recursion: ignore_passives = true
                      if (is_valid_target(instance, def, passive.target_filter, state, passive.controller, card_owner, true, nullptr)) {
@@ -234,7 +234,7 @@ namespace dm::engine {
                 if (passive.type == dm::core::PassiveType::CANNOT_BLOCK) {
                     dm::core::PlayerID blocker_owner = 0;
                      if (blocker.instance_id < (int)game_state.card_owner_map.size())
-                         blocker_owner = game_state.card_owner_map[blocker.instance_id];
+                         blocker_owner = game_state.get_card_owner(blocker.instance_id);
 
                     if (is_valid_target(blocker, blocker_def, passive.target_filter, game_state, passive.controller, blocker_owner, true, nullptr)) {
                         return false;

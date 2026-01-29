@@ -9,6 +9,15 @@ namespace dm::engine {
     using namespace dm::core;
 
     std::vector<Action> IntentGenerator::generate_legal_actions(const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+        try {
+            std::filesystem::create_directories("logs");
+            std::ofstream diag("logs/crash_diag.txt", std::ios::app);
+            if (diag) {
+                diag << "INTENT_GEN entry player=" << static_cast<int>(game_state.active_player_id)
+                     << " phase=" << static_cast<int>(game_state.current_phase) << "\n";
+                diag.close();
+            }
+        } catch(...) {}
         // Helper to dump actions for debugging
         auto dump_actions = [&](const std::vector<Action>& actions, const std::string& context) {
             try {

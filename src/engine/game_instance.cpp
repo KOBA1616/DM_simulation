@@ -7,6 +7,7 @@
 #include "engine/systems/continuous_effect_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "engine/systems/card/effect_system.hpp" // Added for EffectSystem
+#include "diag_win32.h"
 #include <functional>
 #include <iostream>
 #include <fstream>
@@ -35,6 +36,11 @@ namespace dm::engine {
 
         // Refactored: Use TriggerManager to setup event handling logic
         systems::TriggerManager::setup_event_handling(state, trigger_manager, card_db);
+    }
+
+    GameInstance::~GameInstance() {
+        // Use low-level Win32 write only to avoid CRT/heap activity during destructor
+        try { diag_write_win32(std::string("GameInstance::~GameInstance seed=") + std::to_string(initial_seed_)); } catch(...) {}
     }
 
     void GameInstance::start_game() {
@@ -386,8 +392,8 @@ namespace dm::engine {
         auto populate_owner = [&](const Player& p) {
             auto register_cards = [&](const std::vector<CardInstance>& cards) {
                 for (const auto& c : cards) {
-                    if (c.instance_id >= 0 && c.instance_id < (int)state.card_owner_map.size()) {
-                        state.card_owner_map[c.instance_id] = p.id;
+                    if (c.instance_id >= 0) {
+                        state.set_card_owner(c.instance_id, p.id);
                     }
                 }
             };

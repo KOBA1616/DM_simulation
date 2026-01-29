@@ -15,8 +15,13 @@ def pytest_configure(config):
         # Force-load the repository dm_ai_module.py wrapper into sys.modules so
         # tests use the Python stub/wrapper instead of accidentally importing a
         # partial/native extension that may not expose the expected enums.
+        # For debugging native crashes, allow skipping this behavior by setting
+        # the environment variable `DM_SKIP_FORCE_WRAPPER=1` when running pytest.
+        import os
+        if os.environ.get('DM_SKIP_FORCE_WRAPPER'):
+            return
         try:
-            import sys, os, importlib.util
+            import sys, importlib.util
             root = os.path.dirname(os.path.abspath(__file__))
             wrapper_path = os.path.join(root, 'dm_ai_module.py')
             if os.path.exists(wrapper_path):

@@ -39,6 +39,8 @@ namespace dm::engine {
         GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db);
         // 2. Default (Uses CardRegistry Singleton)
         GameInstance(uint32_t seed);
+        // Destructor (explicit so we can instrument destruction)
+        ~GameInstance();
 
         // Core API
         void start_game();

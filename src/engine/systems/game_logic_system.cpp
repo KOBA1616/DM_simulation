@@ -16,6 +16,7 @@
 #include "engine/utils/action_primitive_utils.hpp"
 #include <iostream>
 #include <algorithm>
+#include <fstream>
 
 namespace dm::engine::systems {
 
@@ -29,7 +30,7 @@ namespace dm::engine::systems {
     // Private helper implementation
     std::pair<core::Zone, core::PlayerID> GameLogicSystem::get_card_location(const core::GameState& state, int instance_id) {
         if (instance_id < 0 || (size_t)instance_id >= state.card_owner_map.size()) return {Zone::GRAVEYARD, 0};
-        PlayerID owner = state.card_owner_map[instance_id];
+        PlayerID owner = state.get_card_owner(instance_id);
         if (owner >= state.players.size()) return {Zone::GRAVEYARD, 0};
         const Player& p = state.players[owner];
 
@@ -51,6 +52,15 @@ namespace dm::engine::systems {
     }
 
     void GameLogicSystem::dispatch_action(PipelineExecutor& pipeline, core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db) {
+        try {
+            std::ofstream diag("logs/crash_diag.txt", std::ios::app);
+            if (diag) {
+                diag << "dispatch_action entry type=" << static_cast<int>(action.type)
+                     << " src=" << action.source_instance_id << " tgt=" << action.target_instance_id
+                     << " slot=" << action.slot_index << "\n";
+                diag.close();
+            }
+        } catch(...) {}
         // Map PlayerIntent to handler
         // Simplified mapping for now
 
@@ -381,9 +391,19 @@ namespace dm::engine::systems {
 
         int card_id = exec.resolve_int(inst.args.value("card", 0));
         int instance_id = card_id;
+        try {
+            std::ofstream diag("logs/crash_diag.txt", std::ios::app);
+            if (diag) {
+                diag << "handle_play_card entry inst_card_arg=" << card_id << "\n";
+                diag.close();
+            }
+        } catch(...) {}
 
         CardInstance* card = state.get_card_instance(instance_id);
-        if (!card) return;
+        if (!card) {
+            try { std::ofstream d("logs/crash_diag.txt", std::ios::app); if(d){d<<"handle_play_card: card not found id="<<instance_id<<"\n";}} catch(...) {}
+            return;
+        }
 
         // --- Gatekeeper: Check for Prohibitions (CANNOT_SUMMON, etc.) ---
         int origin_int = exec.resolve_int(inst.args.value("origin_zone", -1));
@@ -609,6 +629,7 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_resolve_play(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                               const std::map<core::CardID, core::CardDefinition>& card_db) {
+        try { std::ofstream d("logs/crash_diag.txt", std::ios::app); if(d){ d<<"handle_resolve_play entry args="<<inst.args.dump()<<"\n"; d.flush(); d.close(); } } catch(...) {}
         int instance_id = exec.resolve_int(inst.args.value("card", 0));
         const CardInstance* card = state.get_card_instance(instance_id);
         if (!card) return;
@@ -718,8 +739,10 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_attack(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                         const std::map<core::CardID, core::CardDefinition>& card_db) {
-         int instance_id = exec.resolve_int(inst.args.value("source", 0));
-         int target_id = exec.resolve_int(inst.args.value("target", -1));
+        try { std::ofstream d("logs/crash_diag.txt", std::ios::app); if(d){ d<<"handle_attack entry args="<<inst.args.dump()<<"\n"; d.flush(); d.close(); } } catch(...) {}
+            int instance_id = exec.resolve_int(inst.args.value("source", 0));
+            int target_id = exec.resolve_int(inst.args.value("target", -1));
+            try { std::ofstream d("logs/crash_diag.txt", std::ios::app); if(d){ d<<"handle_attack entry src="<<instance_id<<" tgt="<<target_id<<"\n";} } catch(...) {}
 
          const CardInstance* card = state.get_card_instance(instance_id);
          if (!card || !card_db.count(card->card_id)) return;
@@ -758,7 +781,9 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_block(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                        const std::map<core::CardID, core::CardDefinition>& card_db) {
+        try { std::ofstream d("logs/crash_diag.txt", std::ios::app); if(d){ d<<"handle_block entry args="<<inst.args.dump()<<"\n"; d.flush(); d.close(); } } catch(...) {}
         int blocker_id = exec.resolve_int(inst.args.value("blocker", -1));
+        try { std::ofstream d("logs/crash_diag.txt", std::ios::app); if(d){ d<<"handle_block entry blocker="<<blocker_id<<"\n";} } catch(...) {}
         if (blocker_id == -1) return;
 
         const CardInstance* blocker = state.get_card_instance(blocker_id);
@@ -803,6 +828,7 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_resolve_battle(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                                 const std::map<core::CardID, core::CardDefinition>& card_db) {
+        try { std::ofstream d("logs/crash_diag.txt", std::ios::app); if(d){ d<<"handle_resolve_battle entry args="<<inst.args.dump()<<"\n"; d.flush(); d.close(); } } catch(...) {}
         int attacker_id = exec.resolve_int(inst.args.value("attacker", -1));
         int defender_id = exec.resolve_int(inst.args.value("defender", -1));
 
@@ -890,6 +916,7 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_break_shield(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                               const std::map<core::CardID, core::CardDefinition>& card_db) {
+        try { std::ofstream d("logs/crash_diag.txt", std::ios::app); if(d){ d<<"handle_break_shield entry args="<<inst.args.dump()<<"\n"; d.flush(); d.close(); } } catch(...) {}
         // Support either single shield ("shield") or batch ("shields")
         std::vector<int> shield_ids;
         if (inst.args.find("shields") != inst.args.end()) {
@@ -967,7 +994,8 @@ namespace dm::engine::systems {
 
         // Helper for CHECK_S_TRIGGER (static method implementation)
         void GameLogicSystem::handle_check_s_trigger(PipelineExecutor& exec, GameState& state, const Instruction& inst,
-                              const std::map<core::CardID, core::CardDefinition>& card_db) {
+                      const std::map<core::CardID, core::CardDefinition>& card_db) {
+           try { std::ofstream d("logs/crash_diag.txt", std::ios::app); if(d){ d<<"handle_check_s_trigger entry args="<<inst.args.dump()<<"\n"; d.flush(); d.close(); } } catch(...) {}
            int card_id = exec.resolve_int(inst.args.value("card", -1));
 
            std::string decision_key = "$strigger_" + std::to_string(card_id);

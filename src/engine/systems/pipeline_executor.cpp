@@ -4,6 +4,7 @@
 #include "engine/systems/card/condition_system.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include <iostream>
+#include "../diag_win32.h"
 #include <cstdio>
 #include <algorithm>
 #include <random>
@@ -35,7 +36,9 @@ namespace dm::engine::systems {
             if (instructions && !instructions->empty()) inst_dump = (*instructions)[0].args.dump();
             // Removed noisy stderr diagnostic
             // std::fprintf(stderr, "[DIAG PUSH] %s:%d before_size=%zu parent_idx=%d parent_pc=%d inst=%s\n", __FILE__, __LINE__, before_size, parent_idx, parent_pc, inst_dump.c_str());
+            try { diag_write_win32(std::string("CALLSTACK PUSH before_size=") + std::to_string(before_size) + " parent_idx=" + std::to_string(parent_idx) + " inst=" + inst_dump); } catch(...) {}
             call_stack.push_back({instructions, 0, LoopContext{}});
+            try { diag_write_win32(std::string("CALLSTACK PUSH after_size=") + std::to_string(call_stack.size()) + " inst=" + inst_dump); } catch(...) {}
             size_t after_size = call_stack.size();
             // std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
         }
@@ -87,7 +90,9 @@ namespace dm::engine::systems {
             }
 
             if (frame.pc >= (int)frame.instructions->size()) {
+                try { diag_write_win32(std::string("CALLSTACK POP before_pc=") + std::to_string(frame.pc) + " stack_sz=" + std::to_string(call_stack.size())); } catch(...) {}
                 call_stack.pop_back();
+                try { diag_write_win32(std::string("CALLSTACK POP after_stack_sz=") + std::to_string(call_stack.size())); } catch(...) {}
                 continue;
             }
 
@@ -140,7 +145,57 @@ namespace dm::engine::systems {
             log_entry["stack_depth"] = call_stack.size();
             execution_history.push_back(log_entry);
 
+            // Mark pre-execution in persistent diag (flush to file immediately)
+            try {
+                std::filesystem::create_directories("logs");
+                std::ofstream diag("logs/crash_diag.txt", std::ios::app);
+                if (diag) {
+                    std::string args_dump = "";
+                    try { args_dump = inst.args.dump(); } catch(...) { args_dump = "<dump_error>"; }
+                    int parent_pc = -1;
+                    if (call_stack.size() >= 2) parent_pc = call_stack[call_stack.size()-2].pc;
+                    diag << "PRE_EXEC pc=" << frame.pc << " parent_pc=" << parent_pc
+                         << " op=" << static_cast<int>(inst.op)
+                         << " stack=" << call_stack.size()
+                         << " args=" << args_dump << "\n";
+                    diag.flush();
+                    diag.close();
+                }
+            } catch(...) {}
+            // Also emit low-level write for robustness during teardown
+            try { diag_write_win32(std::string("PRE_EXEC pc=") + std::to_string(frame.pc) + " op=" + std::to_string((int)inst.op) + " stack=" + std::to_string(call_stack.size())); } catch(...) {}
+
             execute_instruction(inst, state, card_db);
+
+            // low-level post-exec marker
+            try { diag_write_win32(std::string("POST_EXEC pc=") + std::to_string(frame.pc) + " op=" + std::to_string((int)inst.op) + " stack=" + std::to_string(call_stack.size())); } catch(...) {}
+
+            // Mark post-execution and include recent command_history snapshot
+            try {
+                std::filesystem::create_directories("logs");
+                std::ofstream diag("logs/crash_diag.txt", std::ios::app);
+                if (diag) {
+                    diag << "POST_EXEC pc=" << frame.pc << " op=" << static_cast<int>(inst.op)
+                         << " stack=" << call_stack.size();
+                    try {
+                        size_t chsz = state.command_history.size();
+                        diag << " history_sz=" << chsz;
+                        if (chsz > 0) {
+                            diag << " recent_cmds=";
+                            size_t start = (chsz > 5) ? chsz - 5 : 0;
+                            for (size_t i = start; i < chsz; ++i) {
+                                try {
+                                    diag << static_cast<int>(state.command_history[i]->get_type());
+                                } catch(...) { diag << "?"; }
+                                if (i + 1 < chsz) diag << ",";
+                            }
+                        }
+                    } catch(...) { diag << " history_err"; }
+                    diag << "\n";
+                    diag.flush();
+                    diag.close();
+                }
+            } catch(...) {}
 
             // If new frames were pushed, log parent pc change for diagnostics
             if ((int)call_stack.size() > current_stack_size) {
@@ -244,9 +299,41 @@ namespace dm::engine::systems {
         return j_stack;
     }
 
-     void PipelineExecutor::execute_instruction(const Instruction& inst, GameState& state,
+    void PipelineExecutor::execute_instruction(const Instruction& inst, GameState& state,
                                                const std::map<core::CardID, core::CardDefinition>& card_db) {
+        // Lightweight diagnostic: record entry to instruction executor
+        try {
+            std::ofstream diag("logs/crash_diag.txt", std::ios::app);
+            if (diag) {
+                int top_pc = -1;
+                if (!call_stack.empty()) top_pc = call_stack.back().pc;
+                diag << "EXEC_INSTR op=" << static_cast<int>(inst.op)
+                     << " top_pc=" << top_pc
+                     << " call_stack_size=" << call_stack.size() << "\n";
+                diag.close();
+            }
+        } catch(...) {}
         switch (inst.op) {
+            // NOTE: Temporarily disable direct PLAY/ATTACK/BLOCK handlers
+            // to bisect a native heap-corruption observed during pytest runs.
+            // These were added to delegate legacy ops directly to GameLogicSystem,
+            // but disabling them allows us to test whether that change caused
+            // the crash. Re-enable after investigation if desired.
+#if 0
+            case InstructionOp::PLAY: {
+                // Legacy/shortcut PLAY instruction should delegate to play handler
+                GameLogicSystem::handle_play_card(*this, state, inst, card_db);
+                break;
+            }
+            case InstructionOp::ATTACK: {
+                GameLogicSystem::handle_attack(*this, state, inst, card_db);
+                break;
+            }
+            case InstructionOp::BLOCK: {
+                GameLogicSystem::handle_block(*this, state, inst, card_db);
+                break;
+            }
+#endif
             case InstructionOp::GAME_ACTION: {
                 if (inst.args.is_null()) return;
                 std::string type = resolve_string(inst.args.value("type", ""));
@@ -560,8 +647,9 @@ namespace dm::engine::systems {
 
              PlayerID owner = card_ptr->owner;
              if (owner > 1) {
-                 if (state.card_owner_map.size() > (size_t)id) owner = state.card_owner_map[id];
-                 else owner = state.active_player_id;
+                 owner = state.get_card_owner(id);
+             } else {
+                 owner = state.active_player_id;
              }
 
              Zone from_zone = Zone::GRAVEYARD;

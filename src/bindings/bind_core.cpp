@@ -746,9 +746,7 @@ void bind_core(py::module& m) {
                  for (int id : ids) {
                      s.players[pid].deck.push_back(CardInstance(id, counter, pid));
                      // Update owner map
-                     if ((size_t)counter < s.card_owner_map.size()) {
-                        s.card_owner_map[counter] = pid;
-                     }
+                      s.set_card_owner(counter, pid);
                      counter++;
                  }
             } catch (const py::error_already_set& e) {
@@ -766,8 +764,7 @@ void bind_core(py::module& m) {
                  c.summoning_sickness = sick;
                  s.players[pid].battle_zone.push_back(c);
                  // Update owner map
-                 if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 100, 0);
-                 s.card_owner_map[iid] = pid;
+                 s.set_card_owner(iid, pid);
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {
@@ -781,8 +778,7 @@ void bind_core(py::module& m) {
                  CardInstance c(cid, iid, pid);
                  s.players[pid].hand.push_back(c);
                  // Update owner map to allow lookup
-                 if (s.card_owner_map.size() <= (size_t)iid) s.card_owner_map.resize(iid + 100, 0);
-                 s.card_owner_map[iid] = pid;
+                 s.set_card_owner(iid, pid);
             } catch (const py::error_already_set& e) {
                 throw;
             } catch (const std::exception& e) {

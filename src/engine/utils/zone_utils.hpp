@@ -31,8 +31,9 @@ namespace dm::engine {
 
             PlayerID owner_id = 0;
             // Phase A: Use O(1) owner map if available, or infer
-            if (card.instance_id >= 0 && card.instance_id < (int)game_state.card_owner_map.size()) {
-                owner_id = game_state.card_owner_map[card.instance_id];
+            if (card.instance_id >= 0) {
+                auto o = game_state.get_card_owner(card.instance_id);
+                if (o >= 0) owner_id = o;
             } else {
                 // Fallback implies risk, but acceptable for now
                 // Assuming card.owner field not available yet

@@ -15,14 +15,59 @@ from typing import Any, List, Optional
 import copy
 import math
 
+# Try to load native extension if present in build output (prefer native C++ implementation)
+try:
+    import importlib.util, importlib.machinery, sys
+    _root = os.path.dirname(__file__)
+    _candidates = [
+        os.path.join(_root, 'bin', 'Release', 'dm_ai_module.cp312-win_amd64.pyd'),
+        os.path.join(_root, 'build-msvc', 'Release', 'dm_ai_module.cp312-win_amd64.pyd'),
+        os.path.join(_root, 'build-msvc', 'dm_ai_module.cp312-win_amd64.pyd'),
+    ]
+    _loaded_native = False
+    for _p in _candidates:
+        try:
+            if _p and os.path.exists(_p):
+                # Load with the canonical module name so the pyd's PyInit symbol matches
+                loader = importlib.machinery.ExtensionFileLoader('dm_ai_module', _p)
+                spec = importlib.util.spec_from_loader('dm_ai_module', loader)
+                mod = importlib.util.module_from_spec(spec)
+                loader.exec_module(mod)
+                # Copy public attributes into this module's globals
+                for _k, _v in mod.__dict__.items():
+                    if _k.startswith('__'):
+                        continue
+                    globals()[_k] = _v
+                # Ensure the imported extension is the module seen by import machinery
+                try:
+                    sys.modules['dm_ai_module'] = mod
+                except Exception:
+                    pass
+                IS_NATIVE = True
+                _loaded_native = True
+                break
+        except Exception:
+            continue
+    if _loaded_native:
+        # Expose that we loaded native and stop defining Python fallback
+        __all__ = list(globals().keys())
+        # Nothing more to do; native symbols are present
+        pass
+except Exception:
+    IS_NATIVE = False
+
+
 try:
     import torch
     import numpy as np
 except ImportError:
     pass
 
-# Indicate native extension is not loaded
-IS_NATIVE = False
+# If native extension loader above didn't set `IS_NATIVE`, default to False
+try:
+    IS_NATIVE
+except NameError:
+    IS_NATIVE = False
 
 # Expose a Python CommandEncoder fallback from native_prototypes if available
 try:
@@ -1194,6 +1239,32 @@ def commands_from_actions(actions: list, state: Optional[Any] = None) -> list:
         except Exception:
             continue
     return out
+
+
+# If we loaded the native extension earlier, augment it with any Python-only
+# helper symbols defined in this shim so tests and tooling can import a
+# superset of native functionality (e.g., `CardStub` helpers).
+try:
+    if IS_NATIVE:
+        import sys as _sys
+        _native = _sys.modules.get('dm_ai_module')
+        if _native is not None and isinstance(_native, type(importlib)) or True:
+            for _name, _obj in list(globals().items()):
+                if _name.startswith('_'):
+                    continue
+                if _name in ('sys','os','importlib','importlib_util','importlib_machinery'):
+                    continue
+                try:
+                    if not hasattr(_native, _name):
+                        setattr(_native, _name, _obj)
+                except Exception:
+                    continue
+            try:
+                setattr(_native, 'IS_NATIVE', True)
+            except Exception:
+                pass
+except Exception:
+    pass
 
 
 def generate_commands(state: Any, card_db: Any = None) -> list:

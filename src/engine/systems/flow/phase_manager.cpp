@@ -159,7 +159,7 @@ namespace dm::engine {
             auto register_cards = [&](const std::vector<CardInstance>& cards) {
                 for (const auto& c : cards) {
                     if (c.instance_id >= 0 && c.instance_id < (int)state.card_owner_map.size()) {
-                        state.card_owner_map[c.instance_id] = p.id;
+                        state.set_card_owner(c.instance_id, p.id);
                     }
                 }
             };

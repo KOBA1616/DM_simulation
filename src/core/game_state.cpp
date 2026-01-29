@@ -1,8 +1,10 @@
 #include "game_state.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/pipeline_executor.hpp" // Include for cloning
+#include "engine/diag_win32.h"
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
+#include <fstream>
 
 namespace dm::core {
 
@@ -13,7 +15,10 @@ namespace dm::core {
         }
     }
 
-    GameState::~GameState() = default;
+    GameState::~GameState() {
+        // Avoid C++ stream/CRT allocations in destructor path; use low-level write only.
+        try { diag_write_win32(std::string("GameState::~GameState turn=") + std::to_string(turn_number) + " card_owner_map_sz=" + std::to_string(card_owner_map.size())); } catch(...) {}
+    }
     GameState::GameState(GameState&&) noexcept = default;
     GameState& GameState::operator=(GameState&&) noexcept = default;
 
@@ -97,18 +102,65 @@ namespace dm::core {
     void GameState::register_card_instance(const CardInstance& card) {
         if (card.instance_id < 0) return;
         if (card.instance_id >= (int)card_owner_map.size()) {
-            card_owner_map.resize(card.instance_id + 100, 0); // Proactively resize
+            try { diag_write_win32(std::string("RESIZE card_owner_map before_sz=") + std::to_string(card_owner_map.size()) + " target_id=" + std::to_string(card.instance_id)); } catch(...) {}
+            // Conservative resize: ensure exactly enough space to hold this id and use -1 as unknown owner
+            size_t new_sz = (size_t)card.instance_id + 1;
+            card_owner_map.resize(new_sz, static_cast<PlayerID>(-1));
+            try { diag_write_win32(std::string("RESIZE card_owner_map after_sz=") + std::to_string(card_owner_map.size())); } catch(...) {}
         }
-        card_owner_map[card.instance_id] = card.owner;
+        try { diag_write_win32(std::string("REGISTER_CARD instance_id=") + std::to_string(card.instance_id) + " owner=" + std::to_string((int)card.owner)); } catch(...) {}
+        // Defensive write: only write when index valid
+        if (card.instance_id >= 0 && card.instance_id < (int)card_owner_map.size()) {
+            card_owner_map[card.instance_id] = card.owner;
+        } else {
+            try { diag_write_win32(std::string("REGISTER_CARD SKIPPED OOB instance_id=") + std::to_string(card.instance_id)); } catch(...) {}
+        }
+    }
+
+    void GameState::ensure_owner_map_for(int instance_id) {
+        if (instance_id < 0) return;
+        if ((size_t)instance_id >= card_owner_map.size()) {
+            try { diag_write_win32(std::string("ENSURE_OWNER_MAP for id=") + std::to_string(instance_id) + " before_sz=" + std::to_string(card_owner_map.size())); } catch(...) {}
+            card_owner_map.resize((size_t)instance_id + 1, static_cast<PlayerID>(-1));
+            try { diag_write_win32(std::string("ENSURE_OWNER_MAP after_sz=") + std::to_string(card_owner_map.size())); } catch(...) {}
+        }
+    }
+
+    void GameState::set_card_owner(int instance_id, PlayerID owner) {
+        if (instance_id < 0) return;
+        ensure_owner_map_for(instance_id);
+        if (instance_id >= 0 && (size_t)instance_id < card_owner_map.size()) {
+            card_owner_map[instance_id] = owner;
+        } else {
+            try { diag_write_win32(std::string("SET_CARD_OWNER SKIPPED OOB id=") + std::to_string(instance_id)); } catch(...) {}
+        }
+    }
+
+    PlayerID GameState::get_card_owner(int instance_id) const {
+        if (instance_id < 0) return static_cast<PlayerID>(-1);
+        if ((size_t)instance_id >= card_owner_map.size()) return static_cast<PlayerID>(-1);
+        return card_owner_map[instance_id];
     }
 
     CardInstance* GameState::get_card_instance(int instance_id) {
+        try {
+            std::ofstream diag("logs/crash_diag.txt", std::ios::app);
+            if (diag) {
+                diag << "get_card_instance entry id=" << instance_id << " owner_map_sz=" << card_owner_map.size() << "\n";
+                diag.close();
+            }
+        } catch(...) {}
         if(instance_id < 0 || instance_id >= (int)card_owner_map.size()) return nullptr;
         PlayerID pid = card_owner_map[instance_id];
         if(pid >= players.size()) return nullptr;
 
         auto find_in = [&](std::vector<CardInstance>& v) -> CardInstance* {
-            for(auto& c : v) if(c.instance_id == instance_id) return &c;
+            for(auto& c : v) {
+                if(c.instance_id == instance_id) {
+                    try { std::ofstream d("logs/crash_diag.txt", std::ios::app); if(d){ d<<"GET_CARD found id="<<instance_id<<" owner="<<(int)pid<<"\n"; d.flush(); d.close(); } } catch(...) {}
+                    return &c;
+                }
+            }
             return nullptr;
         };
 
@@ -126,12 +178,24 @@ namespace dm::core {
     }
 
     const CardInstance* GameState::get_card_instance(int instance_id) const {
+        try {
+            std::ofstream diag("logs/crash_diag.txt", std::ios::app);
+            if (diag) {
+                diag << "get_card_instance const entry id=" << instance_id << " owner_map_sz=" << card_owner_map.size() << "\n";
+                diag.close();
+            }
+        } catch(...) {}
         if(instance_id < 0 || instance_id >= (int)card_owner_map.size()) return nullptr;
         PlayerID pid = card_owner_map[instance_id];
         if(pid >= players.size()) return nullptr;
 
         auto find_in = [&](const std::vector<CardInstance>& v) -> const CardInstance* {
-            for(const auto& c : v) if(c.instance_id == instance_id) return &c;
+            for(const auto& c : v) {
+                if(c.instance_id == instance_id) {
+                    try { std::ofstream d("logs/crash_diag.txt", std::ios::app); if(d){ d<<"GET_CARD_CONST found id="<<instance_id<<" owner="<<(int)pid<<"\n"; d.flush(); d.close(); } } catch(...) {}
+                    return &c;
+                }
+            }
             return nullptr;
         };
 
@@ -173,12 +237,62 @@ namespace dm::core {
     }
 
     void GameState::execute_command(std::shared_ptr<dm::engine::game_command::GameCommand> cmd) {
+        try {
+            std::ofstream diag("logs/crash_diag.txt", std::ios::app);
+            if (diag) {
+                diag << "EXEC_CMD entry type=" << static_cast<int>(cmd->get_type())
+                     << " history_sz=" << command_history.size() << "\n";
+                diag.flush();
+                diag.close();
+            }
+        } catch(...) {}
+
+        try { diag_write_win32(std::string("EXEC_CMD BEFORE_EXEC type=") + std::to_string((int)cmd->get_type()) + " history_sz=" + std::to_string(command_history.size()) + " history_sentinel=" + std::to_string(history_sentinel)); } catch(...) {}
+        // Also write a flushed text record before executing the command to help post-mortem analysis.
+        try {
+            std::ofstream pre("logs/crash_diag.txt", std::ios::app);
+            if (pre) {
+                pre << "EXEC_CMD TEXT_BEFORE type=" << static_cast<int>(cmd->get_type()) << " history_sz=" << command_history.size() << " history_sentinel=" << history_sentinel << "\n";
+                pre.flush();
+                pre.close();
+            }
+        } catch(...) {}
+
         cmd->execute(*this);
+
+        // Low-level and text marker immediately after command execution
+        try { diag_write_win32(std::string("EXEC_CMD AFTER_EXEC type=") + std::to_string((int)cmd->get_type()) + " history_sz=" + std::to_string(command_history.size()) + " history_sentinel=" + std::to_string(history_sentinel)); } catch(...) {}
+        try {
+            std::ofstream post("logs/crash_diag.txt", std::ios::app);
+            if (post) {
+                post << "EXEC_CMD TEXT_AFTER type=" << static_cast<int>(cmd->get_type()) << " history_sz=" << command_history.size() << " history_sentinel=" << history_sentinel << "\n";
+                post.flush();
+                post.close();
+            }
+        } catch(...) {}
+
         if (command_redirect_target) {
+            try { diag_write_win32(std::string("EXEC_CMD REDIRECT push history_sz_before=") + std::to_string(command_history.size()) + " history_sentinel=" + std::to_string(history_sentinel)); } catch(...) {}
             command_redirect_target->push_back(std::move(cmd));
+            // update sentinel after mutation
+            try { ++history_sentinel; } catch(...) {}
+            try { diag_write_win32(std::string("EXEC_CMD REDIRECT pushed history_sz_after=") + std::to_string(command_history.size()) + " history_sentinel=" + std::to_string(history_sentinel)); } catch(...) {}
         } else {
+            try { diag_write_win32(std::string("EXEC_CMD push history_sz_before=") + std::to_string(command_history.size()) + " history_sentinel=" + std::to_string(history_sentinel)); } catch(...) {}
             command_history.push_back(std::move(cmd));
+            // update sentinel after mutation
+            try { ++history_sentinel; } catch(...) {}
+            try { diag_write_win32(std::string("EXEC_CMD pushed history_sz_after=") + std::to_string(command_history.size()) + " history_sentinel=" + std::to_string(history_sentinel)); } catch(...) {}
         }
+
+        try {
+            std::ofstream diag("logs/crash_diag.txt", std::ios::app);
+            if (diag) {
+                diag << "EXEC_CMD exit history_sz=" << command_history.size() << "\n";
+                diag.flush();
+                diag.close();
+            }
+        } catch(...) {}
     }
 
     // Removed unique_ptr overload implementation
@@ -221,6 +335,26 @@ namespace dm::core {
             it = global_card_stats.emplace(cid, cs).first;
         }
         return it->second;
+    }
+
+    float GameState::calculate_board_advantage(PlayerID player_id, const std::map<CardID, CardDefinition>& card_db) const {
+        // Simple fallback heuristic used by some AI paths: sum powers on board for player minus opponent.
+        try {
+            if (player_id < 0 || player_id >= (PlayerID)players.size()) return 0.0f;
+            int my_power = 0;
+            int opp_power = 0;
+            for (size_t pid = 0; pid < players.size(); ++pid) {
+                int sum = 0;
+                for (const auto& c : players[pid].battle_zone) {
+                    auto it = card_db.find(c.card_id);
+                    if (it != card_db.end()) sum += it->second.power;
+                }
+                if ((PlayerID)pid == player_id) my_power = sum; else opp_power = sum;
+            }
+            return static_cast<float>(my_power - opp_power);
+        } catch(...) {
+            return 0.0f;
+        }
     }
 
     GameState::StateSnapshot GameState::create_snapshot() const {

@@ -15,6 +15,7 @@
 #include "engine/game_command/action_commands.hpp"
 #include "engine/utils/dev_tools.hpp"
 #include <pybind11/stl.h>
+#include <fstream>
 
 using namespace dm;
 using namespace dm::core;
@@ -257,7 +258,18 @@ void bind_engine(py::module& m) {
 
     // Systems
     py::class_<IntentGenerator>(m, "IntentGenerator")
-        .def_static("generate_legal_actions", &IntentGenerator::generate_legal_actions);
+        .def_static("generate_legal_actions", [](const GameState& gs, const std::map<CardID, CardDefinition>& db){
+            try {
+                std::filesystem::create_directories("logs");
+                std::ofstream diag("logs/crash_diag.txt", std::ios::app);
+                if (diag) {
+                    diag << "BINDING generate_legal_actions entry player=" << static_cast<int>(gs.active_player_id)
+                         << " phase=" << static_cast<int>(gs.current_phase) << "\n";
+                    diag.close();
+                }
+            } catch(...) {}
+            return IntentGenerator::generate_legal_actions(gs, db);
+        });
 
     // Alias for backward compatibility
     m.attr("ActionGenerator") = m.attr("IntentGenerator");
@@ -362,7 +374,7 @@ void bind_engine(py::module& m) {
             return std::make_unique<GameInstance>(seed, db);
         }))
         .def(py::init<uint32_t>())
-        .def_readonly("state", &GameInstance::state)
+        .def_property_readonly("state", [](GameInstance &g) -> core::GameState& { return g.state; }, py::return_value_policy::reference_internal)
         .def("start_game", &GameInstance::start_game)
         .def("resolve_action", &GameInstance::resolve_action)
         .def("execute_command", [&m](GameInstance& gi, py::object obj) {

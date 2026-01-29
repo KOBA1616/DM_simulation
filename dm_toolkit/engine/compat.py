@@ -1109,10 +1109,21 @@ class EngineCompat:
         except Exception:
             pass
 
-        # Last resort: no-op with warning
-
+        # Last resort: no-op with warning. Emit detailed debug/exception info
         try:
-            logger.warning('ExecuteCommand could not execute given command/object: %s', cmd)
+            # Try to include any prepared dict representation for easier debugging
+            try:
+                logger.warning('ExecuteCommand could not execute given command/object; cmd=%s cmd_dict=%s', cmd, cmd_dict)
+            except Exception:
+                logger.warning('ExecuteCommand could not execute given command/object: %s', cmd)
+
+            # Also log a full exception stacktrace if one was captured earlier
+            # (there may be prior logger.exception calls in the mapping path);
+            # include an explicit debug marker so the log can be grepped.
+            try:
+                logger.debug('ExecuteCommand: dumping locals for diagnosis: state_active_player=%s', getattr(state, 'active_player_id', None))
+            except Exception:
+                pass
         except Exception:
             pass
 

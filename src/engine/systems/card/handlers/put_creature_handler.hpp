@@ -74,7 +74,7 @@ namespace dm::engine {
                 if (source) {
                     controller = source->owner;
                     if (ctx.game_state.card_owner_map.size() > (size_t)ctx.source_instance_id) {
-                         controller = ctx.game_state.card_owner_map[ctx.source_instance_id];
+                         controller = ctx.game_state.get_card_owner(ctx.source_instance_id);
                     }
                 }
 
@@ -96,7 +96,7 @@ namespace dm::engine {
                 if (ctx.game_state.card_owner_map.size() <= (size_t)target_id) {
                     ctx.game_state.card_owner_map.resize(target_id + 1, 255);
                 }
-                ctx.game_state.card_owner_map[target_id] = controller;
+                ctx.game_state.set_card_owner(target_id, controller);
 
                 // Trigger ON_PLAY / ON_OTHER_ENTER
                 systems::TriggerSystem::instance().resolve_trigger(ctx.game_state, TriggerType::ON_PLAY, target_id, ctx.card_db);

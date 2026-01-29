@@ -195,7 +195,7 @@ namespace dm::engine::systems {
         }
 
         if (instance_id >= 0 && instance_id < (int)game_state.card_owner_map.size()) {
-            return game_state.card_owner_map[instance_id];
+            return game_state.get_card_owner(instance_id);
         }
         return game_state.active_player_id;
     }

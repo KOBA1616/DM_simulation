@@ -96,13 +96,13 @@ namespace dm::engine::systems {
                             }
                         } else {
                             // Expanded Scope Logic
-                            PlayerID controller = state.card_owner_map[instance_id];
+                            PlayerID controller = state.get_card_owner(instance_id);
                             PlayerID event_player = event.player_id;
 
                             // Try to infer event player from instance if missing
                             if (event_player == 255 && event.instance_id != -1) {
                                 if (event.instance_id < (int)state.card_owner_map.size())
-                                    event_player = state.card_owner_map[event.instance_id];
+                                    event_player = state.get_card_owner(event.instance_id);
                             }
 
                             bool player_match = false;
@@ -147,7 +147,7 @@ namespace dm::engine::systems {
 
                         if (condition_met) {
                             // Match!
-                            PlayerID controller = state.card_owner_map[instance_id];
+                            PlayerID controller = state.get_card_owner(instance_id);
                             PendingEffect pending(EffectType::TRIGGER_ABILITY, instance_id, controller);
                             pending.resolve_type = ResolveType::EFFECT_RESOLUTION;
                             pending.effect_def = effect; // Copy effect
@@ -179,7 +179,7 @@ namespace dm::engine::systems {
                         ReactionCandidate c;
                         c.card_id = card->card_id;
                         c.instance_id = instance_id;
-                        c.player_id = state.card_owner_map[instance_id];
+                        c.player_id = state.get_card_owner(instance_id);
                         c.type = ReactionType::SHIELD_TRIGGER;
                         candidates.push_back(c);
                     }

@@ -29,7 +29,7 @@ namespace dm::engine {
                          }
                     }
 
-                    if (TargetUtils::is_valid_target(creature, card_db.at(creature.card_id), eff.target_filter, game_state, eff.controller, game_state.card_owner_map[creature.instance_id])) {
+                    if (TargetUtils::is_valid_target(creature, card_db.at(creature.card_id), eff.target_filter, game_state, eff.controller, game_state.get_card_owner(creature.instance_id))) {
                         buff += eff.value;
                     }
                 }
@@ -65,7 +65,7 @@ namespace dm::engine {
                             const auto& def = card_db.at(card.card_id);
                             dm::core::PlayerID controller = 0;
                             if (card.instance_id < (int)game_state.card_owner_map.size()) {
-                                controller = game_state.card_owner_map[card.instance_id];
+                                controller = game_state.get_card_owner(card.instance_id);
                             }
 
                             if (TargetUtils::is_valid_target(card, def, eff.target_filter, game_state, eff.controller, controller)) {
@@ -92,7 +92,7 @@ namespace dm::engine {
                         if (def.cost == eff.value) {
                              dm::core::PlayerID controller = 0;
                             if (card.instance_id < (int)game_state.card_owner_map.size()) {
-                                controller = game_state.card_owner_map[card.instance_id];
+                                controller = game_state.get_card_owner(card.instance_id);
                             }
                             if (TargetUtils::is_valid_target(card, def, eff.target_filter, game_state, eff.controller, controller)) {
                                 return true;

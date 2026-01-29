@@ -31,7 +31,7 @@ namespace dm::engine {
             PlayerID controller = ctx.game_state.active_player_id;
             // Attempt to determine controller from source
             if (ctx.source_instance_id >= 0 && ctx.source_instance_id < (int)ctx.game_state.card_owner_map.size()) {
-                 controller = ctx.game_state.card_owner_map[ctx.source_instance_id];
+                 controller = ctx.game_state.get_card_owner(ctx.source_instance_id);
             }
 
             for (int target_id : targets) {
@@ -70,7 +70,7 @@ namespace dm::engine {
                     // Determine controller for this instance
                     dm::core::PlayerID controller = ctx.game_state.active_player_id;
                     if (tid >= 0 && (size_t)tid < ctx.game_state.card_owner_map.size()) {
-                        controller = (dm::core::PlayerID)ctx.game_state.card_owner_map[tid];
+                        controller = (dm::core::PlayerID)ctx.game_state.get_card_owner(tid);
                     }
                     // Resolve play from stack for this instance
                     dm::engine::systems::GameLogicSystem::resolve_play_from_stack(ctx.game_state, tid, 0, dm::core::SpawnSource::HAND_SUMMON, controller, ctx.card_db);
