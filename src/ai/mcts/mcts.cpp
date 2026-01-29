@@ -179,7 +179,15 @@ namespace dm::ai {
             for (size_t i = 0; i < batch_nodes.size(); ++i) {
                 MCTSNode* node = batch_nodes[i];
                 expand_node(node, policies[i]);
-                backpropagate(node, values[i]);
+
+                float val = values[i];
+                // Apply dense reward mixing if depth > 0 (node has parent)
+                if (node->parent != nullptr) {
+                     float dense = node->state.calculate_board_advantage(node->state.active_player_id, *card_db_);
+                     val = 0.9f * val + 0.1f * dense;
+                }
+
+                backpropagate(node, val);
                 revert_virtual_loss(node);
                 simulations_finished++;
             }
