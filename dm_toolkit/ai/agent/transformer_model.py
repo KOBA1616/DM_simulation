@@ -9,6 +9,21 @@ except ImportError:
             pass
         @staticmethod
         def randn(*args): return torch.Tensor()
+        @staticmethod
+        def ones(*args, **kwargs): return torch.Tensor()
+        @staticmethod
+        def zeros(*args, **kwargs): return torch.Tensor()
+        @staticmethod
+        def cat(*args, **kwargs): return torch.Tensor()
+        class bool: pass
+        @staticmethod
+        def multinomial(*args, **kwargs): return torch.Tensor()
+        @staticmethod
+        def no_grad():
+             class NoGrad:
+                 def __enter__(self): pass
+                 def __exit__(self, *args): pass
+             return NoGrad()
     class nn:
         class Module:
             pass
@@ -29,10 +44,11 @@ except ImportError:
         class GELU(Module):
             pass
     class F:
-        pass
+        @staticmethod
+        def softmax(*args, **kwargs): return torch.Tensor()
 
 import math
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from dm_toolkit.ai.agent.synergy import SynergyGraph
 
 class DuelTransformer(nn.Module):
@@ -41,6 +57,8 @@ class DuelTransformer(nn.Module):
 
     Replaces the fixed-length feature vector with a token-based sequence model.
     Incorporates Synergy Bias Mask for card compatibility understanding.
+
+    Updated with Dynamic Output Layer support (Idea 2).
 
     Specs:
     - Input: Token Sequence (Integer IDs)
@@ -52,11 +70,16 @@ class DuelTransformer(nn.Module):
     - Activation: GELU
     - Context Length: Dynamic (Max ~512)
     """
-    def __init__(self, vocab_size: int, action_dim: int, d_model: int = 256, nhead: int = 8, num_layers: int = 6, dim_feedforward: int = 1024, max_len: int = 200, synergy_matrix_path: Optional[str] = None) -> None:
+    def __init__(self, vocab_size: int, action_dim: int, reserved_dim: int = 1024, d_model: int = 256, nhead: int = 8, num_layers: int = 6, dim_feedforward: int = 1024, max_len: int = 200, synergy_matrix_path: Optional[str] = None) -> None:
         super().__init__()
         self.d_model = d_model
         self.max_len = max_len
         self.nhead = nhead
+        self.action_dim = action_dim
+        self.reserved_dim = reserved_dim
+
+        if action_dim > reserved_dim:
+            raise ValueError(f"action_dim {action_dim} cannot be larger than reserved_dim {reserved_dim}")
 
         # 1. Embeddings
         self.token_embedding = nn.Embedding(vocab_size, d_model)
@@ -88,7 +111,17 @@ class DuelTransformer(nn.Module):
         # Phase Specific Policies
         self.main_head = nn.Sequential(
             nn.LayerNorm(d_model),
-            nn.Linear(d_model, action_dim)
+            nn.Linear(d_model, reserved_dim)
+        )
+
+        # Active Action Mask (Buffer)
+        # Tracks which dimensions are currently in use
+        self.register_buffer(
+            'active_action_mask',
+            torch.cat([
+                torch.ones(action_dim, dtype=torch.bool),
+                torch.zeros(reserved_dim - action_dim, dtype=torch.bool)
+            ])
         )
         self.mana_head = nn.Sequential(
             nn.LayerNorm(d_model),
@@ -189,3 +222,49 @@ class DuelTransformer(nn.Module):
         value = torch.tanh(self.value_head(cls_token))
 
         return policy_logits, value
+
+    def activate_reserved_actions(self, new_action_count: int) -> None:
+        """Enables previously reserved action dimensions."""
+        current_active = int(self.active_action_mask.sum().item())
+        new_total = current_active + new_action_count
+
+        if new_total > self.reserved_dim:
+            raise ValueError(f"Exceeds reserved dimensions {self.reserved_dim}")
+
+        self.active_action_mask[current_active:new_total] = True
+        self.action_dim = new_total
+        print(f"Action dimensions expanded: {current_active} -> {new_total}")
+
+    def predict_action(self, state_tokens: torch.Tensor, legal_actions: Optional[List[int]] = None) -> Tuple[int, float]:
+        """
+        Helper for inference.
+        Args:
+            state_tokens: [1, SeqLen]
+            legal_actions: List of legal action indices (optional)
+        Returns:
+            (action_idx, value)
+        """
+        self.eval()
+        legal_mask = None
+        if legal_actions is not None:
+             legal_mask = torch.zeros(self.reserved_dim, dtype=torch.bool, device=state_tokens.device)
+             # Filter indices within reserved range
+             valid_indices = [idx for idx in legal_actions if 0 <= idx < self.reserved_dim]
+             if valid_indices:
+                 legal_mask[valid_indices] = True
+             legal_mask = legal_mask.unsqueeze(0) # [1, reserved_dim]
+
+        with torch.no_grad():
+             policy_logits, value = self(state_tokens, legal_action_mask=legal_mask)
+
+             # Softmax (safe with large negative numbers)
+             probs = F.softmax(policy_logits, dim=-1)
+
+             # Sample
+             if probs.sum() == 0:
+                 # Fallback if everything masked (shouldn't happen if legal_actions provided correctly)
+                 action_idx = 0
+             else:
+                 action_idx = torch.multinomial(probs, 1).item()
+
+        return action_idx, value.item()
