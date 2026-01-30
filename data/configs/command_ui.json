@@ -141,6 +141,19 @@
     "visible": ["str_param", "amount", "input_link"],
     "labels": { "str_param": "Effect ID", "amount": "Duration (Turns)" }
   },
+  "ATTACH": {
+    "visible": ["target_group", "target_filter", "input_link"]
+  },
+  "COST_REDUCTION": {
+    "visible": ["value1", "condition", "input_link"],
+    "labels": { "value1": "Reduction Amount" }
+  },
+  "SELECT_TARGET": {
+    "visible": ["target_group", "target_filter", "amount", "input_link", "output_link"],
+    "labels": { "amount": "Count" },
+    "produces_output": true,
+    "outputs": { "output_value_key": "Selected Target" }
+  },
   "APPLY_MODIFIER": {
     "visible": ["target_group", "target_filter", "str_param", "amount", "duration", "input_link"],
     "labels": { "str_param": "Effect ID", "amount": "Value / Duration", "duration": "Duration" }
@@ -264,9 +277,9 @@
     "BUFFER": [ "LOOK_TO_BUFFER", "REVEAL_TO_BUFFER", "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE" ],
     "CHEAT_PUT": [ "PUT_CREATURE", "MEKRAID", "FRIEND_BURST", "REVOLUTION_CHANGE", "MOVE_TO_UNDER_CARD" ],
     "GRANT": [ "MUTATE", "POWER_MOD", "ADD_KEYWORD", "TAP", "UNTAP", "REGISTER_DELAYED_EFFECT", "APPLY_MODIFIER", "RESET_INSTANCE" ],
-    "LOGIC": [ "QUERY", "FLOW", "SELECT_NUMBER", "DECLARE_NUMBER", "CHOICE", "SELECT_OPTION", "IF", "IF_ELSE", "ELSE", "STAT" ],
+    "LOGIC": [ "QUERY", "FLOW", "SELECT_NUMBER", "DECLARE_NUMBER", "CHOICE", "SELECT_OPTION", "IF", "IF_ELSE", "ELSE", "STAT", "SELECT_TARGET" ],
     "BATTLE": [ "BREAK_SHIELD", "RESOLVE_BATTLE", "SHIELD_BURN", "SHIELD_TRIGGER", "ADD_SHIELD", "SEND_SHIELD_TO_GRAVE" ],
     "RESTRICTION": [ "SPELL_RESTRICTION", "CANNOT_PUT_CREATURE", "CANNOT_SUMMON_CREATURE", "PLAYER_CANNOT_ATTACK" ],
-    "SPECIAL": [ "GAME_RESULT", "COST_REFERENCE" ]
+    "SPECIAL": [ "GAME_RESULT", "COST_REFERENCE", "COST_REDUCTION", "ATTACH" ]
   }
 }
