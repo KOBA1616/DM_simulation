@@ -7,6 +7,7 @@
 from enum import Enum, auto
 from typing import Any, List, Optional, Dict, Union
 from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
+from dm_toolkit.gui.editor.text_resources import CardTextResources
 
 class FieldType(Enum):
     """Enumeration of supported field types for the schema."""
@@ -100,7 +101,21 @@ class SchemaLoader:
         'mutation_kind': {'type': FieldType.STRING, 'label': 'Mutation Kind'},
         'ref_mode':      {'type': FieldType.SELECT, 'label': 'Reference Mode', 'hint': 'ref_mode_combo'},
         'generate_opts': {'type': FieldType.OPTIONS_CONTROL, 'label': 'Options', 'hint': 'options_control'},
-        'condition':     {'type': FieldType.CONDITION, 'label': 'Condition'}
+        'condition':     {'type': FieldType.CONDITION, 'label': 'Condition'},
+        # Numeric Fields
+        'val2':          {'type': FieldType.INT, 'label': 'Value 2'},
+        'min_value':     {'type': FieldType.INT, 'label': 'Min Value'},
+        'max_value':     {'type': FieldType.INT, 'label': 'Max Value'},
+        'select_count':  {'type': FieldType.INT, 'label': 'Select Count'},
+        'option_count':  {'type': FieldType.INT, 'label': 'Option Count'},
+        # Boolean Fields
+        'explicit_self': {'type': FieldType.BOOL, 'label': 'Explicit Self'},
+        # String/Other Fields
+        'play_flags':    {'type': FieldType.STRING, 'label': 'Play Flags'},
+        # Select Fields with Options
+        'result':        {'type': FieldType.SELECT, 'label': 'Result', 'options': ['WIN', 'LOSE', 'DRAW']},
+        'duration':      {'type': FieldType.SELECT, 'label': 'Duration', 'options': sorted(list(CardTextResources.DURATION_TRANSLATION.keys()))},
+        'query_mode':    {'type': FieldType.SELECT, 'label': 'Query Mode', 'options': ['CARDS_MATCHING_FILTER', 'COUNT_CARDS'] + sorted(list(CardTextResources.STAT_KEY_MAP.keys()))},
     }
 
     @classmethod
@@ -168,11 +183,13 @@ class SchemaLoader:
         label = mapping.get('label', key.replace('_', ' ').title())
         hint = mapping.get('hint')
         min_val = mapping.get('min')
+        options = mapping.get('options')
 
         return FieldSchema(
             key=key,
             label=label,
             field_type=f_type,
             widget_hint=hint,
-            min_value=min_val
+            min_value=min_val,
+            options=options
         )

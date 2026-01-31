@@ -1044,8 +1044,8 @@ class CardTextGenerator:
             "type": cmd_type,
             "scope": command_copy.get("target_group", "NONE"),
             "filter": command_copy.get("target_filter") or command_copy.get("filter", {}),
-            "value1": command_copy.get("amount") if command_copy.get("amount") is not None else command_copy.get("value1", 0),
-            "value2": command_copy.get("val2") or command_copy.get("value2", 0),
+            "value1": int(command_copy.get("amount") if command_copy.get("amount") is not None else (command_copy.get("value1") or 0)),
+            "value2": int(command_copy.get("val2") or command_copy.get("value2") or 0),
             "optional": command_copy.get("optional", False),
             "up_to": command_copy.get("up_to", False),
             # Prefer the normalized key, but accept legacy key if present.
@@ -1069,9 +1069,9 @@ class CardTextGenerator:
         if "flags" in command_copy:
             action_proxy["flags"] = command_copy.get("flags")
         if "look_count" in command_copy:
-            action_proxy["look_count"] = command_copy.get("look_count")
+            action_proxy["look_count"] = int(command_copy.get("look_count") or 0)
         if "add_count" in command_copy:
-            action_proxy["add_count"] = command_copy.get("add_count")
+            action_proxy["add_count"] = int(command_copy.get("add_count") or 0)
         if "rest_zone" in command_copy:
             action_proxy["rest_zone"] = command_copy.get("rest_zone")
         if "max_cost" in command_copy:
@@ -1157,8 +1157,8 @@ class CardTextGenerator:
         elif original_cmd_type == "SELECT_NUMBER" or original_cmd_type == "DECLARE_NUMBER":
             # Map Schema (min_value, amount) -> Action (value1, value2)
             # Schema: amount is MAX, min_value is MIN
-            action_proxy["value1"] = command_copy.get("min_value", 1)  # Min
-            action_proxy["value2"] = command_copy.get("amount", 6)     # Max
+            action_proxy["value1"] = int(command_copy.get("min_value") or 1)  # Min
+            action_proxy["value2"] = int(command_copy.get("amount") or 6)     # Max
         elif original_cmd_type == "CHOICE":
             # Map CHOICE into SELECT_OPTION natural language generation
             flags = command_copy.get("flags", []) or []
