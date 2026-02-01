@@ -312,3 +312,40 @@ LAYER_TYPES = [
     "SET_KEYWORD",
     "FORCE_ATTACK"
 ]
+
+# =============================================================================
+# Game Results
+# =============================================================================
+GAME_RESULTS = [
+    "P1_WIN",
+    "P2_WIN",
+    "DRAW"
+]
+
+# =============================================================================
+# Stat Keys (For Query/Conditions)
+# =============================================================================
+STAT_KEYS = [
+    "MANA_COUNT",
+    "CREATURE_COUNT",
+    "SHIELD_COUNT",
+    "HAND_COUNT",
+    "GRAVEYARD_COUNT",
+    "BATTLE_ZONE_COUNT",
+    "OPPONENT_MANA_COUNT",
+    "OPPONENT_CREATURE_COUNT",
+    "OPPONENT_SHIELD_COUNT",
+    "OPPONENT_HAND_COUNT",
+    "OPPONENT_GRAVEYARD_COUNT",
+    "OPPONENT_BATTLE_ZONE_COUNT",
+    "CARDS_DRAWN_THIS_TURN",
+    "MANA_CIVILIZATION_COUNT"
+]
+
+# =============================================================================
+# Query Modes
+# =============================================================================
+QUERY_MODES = [
+    "CARDS_MATCHING_FILTER",
+    "COUNT_CARDS"
+] + STAT_KEYS

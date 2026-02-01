@@ -71,8 +71,8 @@
     "outputs": { "output_value_key": "Query Result" }
   },
   "FLOW": {
-    "visible": ["str_param"],
-    "labels": { "str_param": "Flow Instruction" }
+    "visible": ["str_param", "amount"],
+    "labels": { "str_param": "Flow Instruction", "amount": "Phase ID / Value" }
   },
   "SEARCH_DECK": {
     "visible": ["target_filter", "amount", "to_zone", "input_link", "output_link"],
@@ -256,17 +256,30 @@
     "produces_output": true,
     "outputs": { "output_value_key": "Declared Number" }
   },
+  "ATTACH": {
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "labels": { "amount": "Count" }
+  },
+  "COST_REDUCTION": {
+    "visible": ["target_group", "target_filter", "amount", "input_link"],
+    "labels": { "amount": "Reduction Amount" }
+  },
+  "COUNT_CARDS": {
+    "visible": ["target_filter", "input_link", "output_link"],
+    "produces_output": true,
+    "outputs": { "output_value_key": "Count" }
+  },
   "COMMAND_GROUPS": {
     "DRAW": [ "DRAW_CARD" ],
     "CARD_MOVE": [ "TRANSITION", "MOVE_CARD", "REPLACE_CARD_MOVE", "RETURN_TO_HAND", "DISCARD", "DESTROY", "MANA_CHARGE" ],
     "DECK_OPS": [ "SEARCH_DECK", "LOOK_AND_ADD", "REVEAL_CARDS", "SHUFFLE_DECK", "SEARCH_DECK_BOTTOM", "SEND_TO_DECK_BOTTOM" ],
     "PLAY": [ "PLAY_FROM_ZONE", "CAST_SPELL", "SUMMON_TOKEN" ],
     "BUFFER": [ "LOOK_TO_BUFFER", "REVEAL_TO_BUFFER", "SELECT_FROM_BUFFER", "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE" ],
-    "CHEAT_PUT": [ "PUT_CREATURE", "MEKRAID", "FRIEND_BURST", "REVOLUTION_CHANGE", "MOVE_TO_UNDER_CARD" ],
+    "CHEAT_PUT": [ "PUT_CREATURE", "MEKRAID", "FRIEND_BURST", "REVOLUTION_CHANGE", "MOVE_TO_UNDER_CARD", "ATTACH" ],
     "GRANT": [ "MUTATE", "POWER_MOD", "ADD_KEYWORD", "TAP", "UNTAP", "REGISTER_DELAYED_EFFECT", "APPLY_MODIFIER", "RESET_INSTANCE" ],
-    "LOGIC": [ "QUERY", "FLOW", "SELECT_NUMBER", "DECLARE_NUMBER", "CHOICE", "SELECT_OPTION", "IF", "IF_ELSE", "ELSE", "STAT" ],
+    "LOGIC": [ "QUERY", "FLOW", "SELECT_NUMBER", "DECLARE_NUMBER", "CHOICE", "SELECT_OPTION", "IF", "IF_ELSE", "ELSE", "STAT", "COUNT_CARDS" ],
     "BATTLE": [ "BREAK_SHIELD", "RESOLVE_BATTLE", "SHIELD_BURN", "SHIELD_TRIGGER", "ADD_SHIELD", "SEND_SHIELD_TO_GRAVE" ],
     "RESTRICTION": [ "SPELL_RESTRICTION", "CANNOT_PUT_CREATURE", "CANNOT_SUMMON_CREATURE", "PLAYER_CANNOT_ATTACK" ],
-    "SPECIAL": [ "GAME_RESULT", "COST_REFERENCE" ]
+    "SPECIAL": [ "GAME_RESULT", "COST_REFERENCE", "COST_REDUCTION" ]
   }
 }
