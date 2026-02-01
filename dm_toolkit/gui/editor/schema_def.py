@@ -100,7 +100,10 @@ class SchemaLoader:
         'mutation_kind': {'type': FieldType.STRING, 'label': 'Mutation Kind'},
         'ref_mode':      {'type': FieldType.SELECT, 'label': 'Reference Mode', 'hint': 'ref_mode_combo'},
         'generate_opts': {'type': FieldType.OPTIONS_CONTROL, 'label': 'Options', 'hint': 'options_control'},
-        'condition':     {'type': FieldType.CONDITION, 'label': 'Condition'}
+        'condition':     {'type': FieldType.CONDITION, 'label': 'Condition'},
+        'result':        {'type': FieldType.SELECT, 'label': 'Result', 'hint': 'game_result'},
+        'query_mode':    {'type': FieldType.SELECT, 'label': 'Query Mode', 'hint': 'query_mode_combo'},
+        'option_count':  {'type': FieldType.INT, 'label': 'Option Count', 'min': 1}
     }
 
     @classmethod

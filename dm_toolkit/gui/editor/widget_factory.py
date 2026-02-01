@@ -16,7 +16,7 @@ from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.forms.parts.variable_link_widget import VariableLinkWidget
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
 from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWidget
-from dm_toolkit.consts import CARD_TYPES
+from dm_toolkit.consts import CARD_TYPES, GAME_RESULTS, QUERY_MODES
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_resources import CardTextResources # Import for duration text
 
@@ -335,8 +335,14 @@ def _create_select_widget(parent, schema, cb):
         if schema.default is None:
             widget.addItem("---", None)
         
-        if schema.options:
-            for opt in schema.options:
+        options = schema.options
+        if hint == 'game_result':
+            options = GAME_RESULTS
+        elif hint == 'query_mode_combo':
+            options = QUERY_MODES
+
+        if options:
+            for opt in options:
                 # Use CardTextResources for translation if available (e.g. DURATION_THIS_TURN)
                 label = str(opt)
                 if opt in CardTextResources.DURATION_TRANSLATION:
