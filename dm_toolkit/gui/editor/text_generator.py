@@ -1045,7 +1045,7 @@ class CardTextGenerator:
             "scope": command_copy.get("target_group", "NONE"),
             "filter": command_copy.get("target_filter") or command_copy.get("filter", {}),
             "value1": command_copy.get("amount") if command_copy.get("amount") is not None else command_copy.get("value1", 0),
-            "value2": command_copy.get("val2") or command_copy.get("value2", 0),
+            "value2": command_copy.get("val2") if command_copy.get("val2") is not None else command_copy.get("value2", 0),
             "optional": command_copy.get("optional", False),
             "up_to": command_copy.get("up_to", False),
             # Prefer the normalized key, but accept legacy key if present.
@@ -1648,7 +1648,7 @@ class CardTextGenerator:
              mode = action.get("query_mode") or action.get("str_param") or action.get("str_val") or ""
              stat_name, stat_unit = CardTextResources.STAT_KEY_MAP.get(str(mode), (None, None))
              if stat_name:
-                 base = f"{stat_name}{stat_unit}を数える。"
+                 base = f"{stat_name}（{stat_unit}）を数える。" if stat_unit else f"{stat_name}を数える。"
                  if input_key:
                      usage_label = cls._format_input_usage_label(input_usage)
                      if usage_label:
