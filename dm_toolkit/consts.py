@@ -312,3 +312,45 @@ LAYER_TYPES = [
     "SET_KEYWORD",
     "FORCE_ATTACK"
 ]
+
+# =============================================================================
+# Game Results
+# =============================================================================
+GAME_RESULTS = [
+    "WIN",
+    "LOSE",
+    "DRAW"
+]
+
+# =============================================================================
+# Query Modes
+# =============================================================================
+QUERY_MODES = [
+    "CARDS_MATCHING_FILTER",
+    "MANA_CIVILIZATION_COUNT",
+    "SHIELD_COUNT",
+    "HAND_COUNT",
+    "CARDS_DRAWN_THIS_TURN",
+    "CREATURE_COUNT",
+    "GRAVEYARD_COUNT",
+    "BATTLE_ZONE_COUNT",
+    "OPPONENT_MANA_COUNT",
+    "OPPONENT_CREATURE_COUNT",
+    "OPPONENT_SHIELD_COUNT",
+    "OPPONENT_HAND_COUNT",
+    "OPPONENT_GRAVEYARD_COUNT",
+    "OPPONENT_BATTLE_ZONE_COUNT"
+]
+
+# =============================================================================
+# Duration Types
+# =============================================================================
+DURATION_TYPES = [
+    "PERMANENT",
+    "THIS_TURN",
+    "UNTIL_START_OF_YOUR_TURN",
+    "UNTIL_END_OF_YOUR_TURN",
+    "UNTIL_START_OF_OPPONENT_TURN",
+    "UNTIL_END_OF_OPPONENT_TURN",
+    "DURING_OPPONENT_TURN"
+]
