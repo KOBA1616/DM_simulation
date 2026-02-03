@@ -51,18 +51,25 @@ namespace dm::ai {
 #ifdef USE_ONNXRUNTIME
             if (onnx_model_) {
                 try {
-                    // 1. Collect tokens and find max length
+                    // 1. Collect tokens and find max length, also collect phases
                     std::vector<std::vector<int>> batch_tokens;
                     batch_tokens.reserve(n);
                     size_t max_len = 0;
+
+                    std::vector<int64_t> phases_vec;
+                    phases_vec.reserve(n);
+
                     for (const auto& s : states) {
                         if (!s) {
                             batch_tokens.push_back({});
+                            phases_vec.push_back(0);
                             continue;
                         }
                         auto tokens = dm::ai::encoders::TokenConverter::encode_state(*s, s->active_player_id);
                         if (tokens.size() > max_len) max_len = tokens.size();
                         batch_tokens.push_back(std::move(tokens));
+
+                        phases_vec.push_back(static_cast<int64_t>(s->current_phase));
                     }
 
                     // 2. Prepare flat input tensors (input_ids, mask)
@@ -88,12 +95,17 @@ namespace dm::ai {
                     const auto& input_names = onnx_model_->get_input_names();
                     std::string input_ids_name = "input_ids";
                     std::string mask_name = "mask";
+                    std::string phase_ids_name = "phase_ids";
 
                     // Try to match detected names if possible
                     if (input_names.size() >= 2) {
                         for(const auto& name : input_names) {
-                            if (name.find("mask") != std::string::npos) mask_name = name;
-                            if (name.find("input") != std::string::npos || name.find("ids") != std::string::npos) input_ids_name = name;
+                            std::string lname = name;
+                            std::transform(lname.begin(), lname.end(), lname.begin(), [](unsigned char c){ return std::tolower(c); });
+
+                            if (lname.find("mask") != std::string::npos && lname.find("phase") == std::string::npos) mask_name = name;
+                            else if (lname.find("input") != std::string::npos || lname.find("ids") != std::string::npos && lname.find("phase") == std::string::npos) input_ids_name = name;
+                            else if (lname.find("phase") != std::string::npos) phase_ids_name = name;
                         }
                     }
 
@@ -111,12 +123,20 @@ namespace dm::ai {
                             std::string lname = name;
                             // to lower for simple checks
                             std::transform(lname.begin(), lname.end(), lname.begin(), [](unsigned char c){ return std::tolower(c); });
-                            if (lname.find("mask") != std::string::npos || lname.find("attention_mask") != std::string::npos) {
+
+                            if (lname.find("mask") != std::string::npos && lname.find("phase") == std::string::npos) {
                                 inputs.push_back({name, {static_cast<int64_t>(n), static_cast<int64_t>(max_len)}, mask.data(), dm::ai::inference::TensorType::BOOL});
-                            } else if (lname.find("input") != std::string::npos || lname.find("id") != std::string::npos) {
+                            } else if (lname.find("input") != std::string::npos || (lname.find("ids") != std::string::npos && lname.find("phase") == std::string::npos)) {
                                 inputs.push_back({name, {static_cast<int64_t>(n), static_cast<int64_t>(max_len)}, input_ids.data(), dm::ai::inference::TensorType::INT64});
+                            } else if (lname.find("phase") != std::string::npos) {
+                                inputs.push_back({name, {static_cast<int64_t>(n)}, phases_vec.data(), dm::ai::inference::TensorType::INT64});
+                            } else if (lname.find("legal_action") != std::string::npos) {
+                                // TODO: We don't have reserved_dim or easy access to it here for legal_action_mask
+                                // Just ignore for now or provide empty/ones if strictly required.
+                                // Ideally ONNX model should have legal_action_mask as optional or handled.
+                                // If needed we would generate legal actions here similar to Python.
                             } else {
-                                // Unknown input, attempt to pass input_ids as a fallback
+                                // Unknown input, attempt to pass input_ids as a fallback if it looks like main input
                                 inputs.push_back({name, {static_cast<int64_t>(n), static_cast<int64_t>(max_len)}, input_ids.data(), dm::ai::inference::TensorType::INT64});
                             }
                         }
