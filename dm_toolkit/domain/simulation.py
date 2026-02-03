@@ -36,6 +36,11 @@ class SimulationRunner:
         progress_callback: Callable[[int, str], None]
         finished_callback: Callable[[float, str], None]
         """
+        # Keep references to objects to prevent GC
+        self.neural_evaluator = None
+        self.torch_network = None
+        use_cpp_evaluator = False
+
         try:
             if not EngineCompat.is_available():
                 if finished_callback:
@@ -77,130 +82,155 @@ class SimulationRunner:
             # Setup Evaluator
             evaluator_func = None
 
-            # Keep references to objects to prevent GC
-            self.neural_evaluator = None
-            self.torch_network = None
-
             if self.evaluator_type == "Model":
-                try:
-                    import torch
-                    import numpy as np
-                    from dm_toolkit.ai.agent.transformer_model import DuelTransformer
+                # Check for ONNX Model -> C++ Native Path
+                if self.model_path and self.model_path.endswith('.onnx'):
+                    try:
+                        self.neural_evaluator = dm_ai_module.NeuralEvaluator(self.card_db)
+                        self.neural_evaluator.load_model(self.model_path)
+                        # Set model type to TRANSFORMER
+                        # Assuming ModelType.TRANSFORMER matches Python definitions
+                        # Need to check bindings if ModelType is exposed.
+                        # Based on memory, ModelType enum is exposed.
+                        if hasattr(dm_ai_module, 'ModelType'):
+                            self.neural_evaluator.set_model_type(dm_ai_module.ModelType.TRANSFORMER)
+                        else:
+                            # Fallback if enum not directly exposed or named differently?
+                            # Assuming bindings expose it as NeuralEvaluator inner enum or module level.
+                            # Bindings say: py::enum_<ModelType>(m, "ModelType")...
+                            self.neural_evaluator.set_model_type(dm_ai_module.ModelType.TRANSFORMER)
 
-                    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                        use_cpp_evaluator = True
+                        if progress_callback:
+                            progress_callback(5, tr("Using C++ ONNX Evaluator"))
 
-                    vocab_size = 1000
-                    action_dim = 600
-                    d_model = 256
-                    nhead = 8
-                    num_layers = 6
-                    dim_feedforward = 1024
-                    max_len = 200
+                    except Exception as e:
+                        msg = f"Error loading ONNX model: {e}"
+                        if finished_callback:
+                            finished_callback(0.0, msg)
+                        return
 
-                    self.torch_network = DuelTransformer(
-                        vocab_size=vocab_size,
-                        action_dim=action_dim,
-                        d_model=d_model,
-                        nhead=nhead,
-                        num_layers=num_layers,
-                        dim_feedforward=dim_feedforward,
-                        max_len=max_len
-                    ).to(device)
+                else:
+                    # Python PyTorch Path (Legacy)
+                    try:
+                        import torch
+                        import numpy as np
+                        from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 
-                    if self.model_path and os.path.exists(self.model_path):
-                        checkpoint = torch.load(self.model_path, map_location=device)
-                        # Handle both full checkpoint dict and direct state_dict
-                        state_dict = checkpoint.get('model_state_dict', checkpoint)
-                        self.torch_network.load_state_dict(state_dict)
-                        msg = f"Loaded model from {self.model_path}"
+                        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+                        vocab_size = 1000
+                        action_dim = 600
+                        d_model = 256
+                        nhead = 8
+                        num_layers = 6
+                        dim_feedforward = 1024
+                        max_len = 200
+
+                        self.torch_network = DuelTransformer(
+                            vocab_size=vocab_size,
+                            action_dim=action_dim,
+                            d_model=d_model,
+                            nhead=nhead,
+                            num_layers=num_layers,
+                            dim_feedforward=dim_feedforward,
+                            max_len=max_len
+                        ).to(device)
+
+                        if self.model_path and os.path.exists(self.model_path):
+                            checkpoint = torch.load(self.model_path, map_location=device)
+                            # Handle both full checkpoint dict and direct state_dict
+                            state_dict = checkpoint.get('model_state_dict', checkpoint)
+                            self.torch_network.load_state_dict(state_dict)
+                            msg = f"Loaded model from {self.model_path}"
+                            try:
+                                msg = tr("Loaded model from {path}").format(path=self.model_path)
+                            except Exception:
+                                pass
+                            if progress_callback:
+                                progress_callback(5, msg)
+                        else:
+                            if progress_callback:
+                                progress_callback(5, tr("Using initialized model (Untrained)"))
+
+                        self.torch_network.eval()
+
+                        def model_batch_evaluate(states):
+                            sequences = []
+                            phases = []
+                            legal_masks = []
+                            reserved_dim = self.torch_network.reserved_dim
+
+                            for s in states:
+                                # Convert state to token sequence
+                                seq = dm_ai_module.TensorConverter.convert_to_sequence(s, s.active_player_id, self.card_db)
+                                sequences.append(seq)
+                                phases.append(int(getattr(s, 'current_phase', 0)))
+
+                                # Generate legal mask
+                                try:
+                                    legal_actions = dm_ai_module.IntentGenerator.generate_legal_actions(s, self.card_db)
+                                    mask = np.zeros(reserved_dim, dtype=bool)
+                                    for action in legal_actions:
+                                        try:
+                                            idx = dm_ai_module.CommandEncoder.command_to_index(action)
+                                            if 0 <= idx < reserved_dim:
+                                                mask[idx] = True
+                                        except:
+                                            continue
+                                    legal_masks.append(mask)
+                                except Exception:
+                                    # Fallback
+                                    legal_masks.append(np.ones(reserved_dim, dtype=bool))
+
+                            # Pad sequences
+                            # Assuming convert_to_sequence returns list of ints. Pad with 0.
+                            max_len_batch = 200
+                            padded_seqs = []
+                            for seq in sequences:
+                                if seq is None:
+                                    s_list = [0] * max_len_batch
+                                else:
+                                    s_list = list(seq)
+                                    if len(s_list) > max_len_batch:
+                                        s_list = s_list[:max_len_batch]
+                                    else:
+                                        s_list = s_list + [0] * (max_len_batch - len(s_list))
+                                padded_seqs.append(s_list)
+
+                            input_tensor = torch.tensor(padded_seqs, dtype=torch.long).to(device)
+                            padding_mask = (input_tensor == 0)
+                            phase_ids = torch.tensor(phases, dtype=torch.long).to(device)
+                            legal_mask_tensor = torch.tensor(np.array(legal_masks), dtype=torch.bool).to(device)
+
+                            with torch.no_grad():
+                                policy_logits, values = self.torch_network(input_tensor, padding_mask=padding_mask, phase_ids=phase_ids, legal_action_mask=legal_mask_tensor)
+                                policies = torch.softmax(policy_logits, dim=1).cpu().numpy()
+                                vals = values.squeeze(1).cpu().numpy()
+
+                            results = []
+                            for i in range(len(states)):
+                                results.append((policies[i], float(vals[i])))
+                            return results
+
+                        evaluator_func = model_batch_evaluate
+
+                        # Register callback for Native C++ MCTS integration
+                        EngineCompat.register_batch_inference_numpy(model_batch_evaluate)
+
+                    except ImportError:
+                        if finished_callback:
+                            finished_callback(0.0, tr("Error: PyTorch not available for Model evaluation."))
+                        return
+                    except Exception as e:
+                        msg = f"Error loading model: {e}"
                         try:
-                            msg = tr("Loaded model from {path}").format(path=self.model_path)
+                            msg = tr("Error loading model: {e}").format(e=e)
                         except Exception:
                             pass
-                        if progress_callback:
-                            progress_callback(5, msg)
-                    else:
-                        if progress_callback:
-                            progress_callback(5, tr("Using initialized model (Untrained)"))
-
-                    self.torch_network.eval()
-
-                    def model_batch_evaluate(states):
-                        sequences = []
-                        phases = []
-                        legal_masks = []
-                        reserved_dim = self.torch_network.reserved_dim
-
-                        for s in states:
-                            # Convert state to token sequence
-                            seq = dm_ai_module.TensorConverter.convert_to_sequence(s, s.active_player_id, self.card_db)
-                            sequences.append(seq)
-                            phases.append(int(getattr(s, 'current_phase', 0)))
-
-                            # Generate legal mask
-                            try:
-                                legal_actions = dm_ai_module.IntentGenerator.generate_legal_actions(s, self.card_db)
-                                mask = np.zeros(reserved_dim, dtype=bool)
-                                for action in legal_actions:
-                                    try:
-                                        idx = dm_ai_module.CommandEncoder.command_to_index(action)
-                                        if 0 <= idx < reserved_dim:
-                                            mask[idx] = True
-                                    except:
-                                        continue
-                                legal_masks.append(mask)
-                            except Exception:
-                                # Fallback
-                                legal_masks.append(np.ones(reserved_dim, dtype=bool))
-
-                        # Pad sequences
-                        # Assuming convert_to_sequence returns list of ints. Pad with 0.
-                        max_len_batch = 200
-                        padded_seqs = []
-                        for seq in sequences:
-                            if seq is None:
-                                s_list = [0] * max_len_batch
-                            else:
-                                s_list = list(seq)
-                                if len(s_list) > max_len_batch:
-                                    s_list = s_list[:max_len_batch]
-                                else:
-                                    s_list = s_list + [0] * (max_len_batch - len(s_list))
-                            padded_seqs.append(s_list)
-
-                        input_tensor = torch.tensor(padded_seqs, dtype=torch.long).to(device)
-                        padding_mask = (input_tensor == 0)
-                        phase_ids = torch.tensor(phases, dtype=torch.long).to(device)
-                        legal_mask_tensor = torch.tensor(np.array(legal_masks), dtype=torch.bool).to(device)
-
-                        with torch.no_grad():
-                            policy_logits, values = self.torch_network(input_tensor, padding_mask=padding_mask, phase_ids=phase_ids, legal_action_mask=legal_mask_tensor)
-                            policies = torch.softmax(policy_logits, dim=1).cpu().numpy()
-                            vals = values.squeeze(1).cpu().numpy()
-
-                        results = []
-                        for i in range(len(states)):
-                            results.append((policies[i], float(vals[i])))
-                        return results
-
-                    evaluator_func = model_batch_evaluate
-
-                    # Register callback for Native C++ MCTS integration
-                    EngineCompat.register_batch_inference_numpy(model_batch_evaluate)
-
-                except ImportError:
-                    if finished_callback:
-                        finished_callback(0.0, tr("Error: PyTorch not available for Model evaluation."))
-                    return
-                except Exception as e:
-                    msg = f"Error loading model: {e}"
-                    try:
-                        msg = tr("Error loading model: {e}").format(e=e)
-                    except Exception:
-                        pass
-                    if finished_callback:
-                        finished_callback(0.0, msg)
-                    return
+                        if finished_callback:
+                            finished_callback(0.0, msg)
+                        return
 
             elif self.evaluator_type == "Heuristic":
                 self.heuristic = dm_ai_module.HeuristicEvaluator(self.card_db)
@@ -281,7 +311,8 @@ class SimulationRunner:
 
                 try:
                     results_info = EngineCompat.ParallelRunner_play_games(
-                        runner, chunk_initial_states, evaluator_func,
+                        runner, chunk_initial_states,
+                        self.neural_evaluator if use_cpp_evaluator else evaluator_func,
                         temperature=1.0, add_noise=False, threads=self.threads
                     )
                     all_results.extend(results_info)
@@ -327,6 +358,6 @@ class SimulationRunner:
 
         finally:
             # Cleanup Callback
-            if self.evaluator_type == "Model":
+            if self.evaluator_type == "Model" and not use_cpp_evaluator:
                 # Unregister callback to prevent memory leaks and crash on exit
                 EngineCompat.register_batch_inference_numpy(None)
