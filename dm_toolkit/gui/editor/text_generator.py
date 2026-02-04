@@ -1808,7 +1808,7 @@ class CardTextGenerator:
                 return f"{deck_owner}山札の上から、その数だけ表向きにする。"
             return f"{deck_owner}山札の上から{val1}枚を表向きにする。"
 
-        elif atype == "COUNT_CARDS":
+        elif atype == "COUNT_CARDS" or atype == "MEASURE_COUNT":
             if not target_str or target_str == "カード":
                  return f"({tr('COUNT_CARDS')})"
             return f"{target_str}の数を数える。"

@@ -7,6 +7,7 @@
 from enum import Enum, auto
 from typing import Any, List, Optional, Dict, Union
 from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
+from dm_toolkit.consts import GAME_RESULTS, QUERY_MODES, DURATION_TYPES
 
 class FieldType(Enum):
     """Enumeration of supported field types for the schema."""
@@ -100,7 +101,10 @@ class SchemaLoader:
         'mutation_kind': {'type': FieldType.STRING, 'label': 'Mutation Kind'},
         'ref_mode':      {'type': FieldType.SELECT, 'label': 'Reference Mode', 'hint': 'ref_mode_combo'},
         'generate_opts': {'type': FieldType.OPTIONS_CONTROL, 'label': 'Options', 'hint': 'options_control'},
-        'condition':     {'type': FieldType.CONDITION, 'label': 'Condition'}
+        'condition':     {'type': FieldType.CONDITION, 'label': 'Condition'},
+        'duration':      {'type': FieldType.SELECT, 'label': 'Duration', 'options': DURATION_TYPES},
+        'result':        {'type': FieldType.SELECT, 'label': 'Game Result', 'hint': 'game_result', 'options': GAME_RESULTS},
+        'query_mode':    {'type': FieldType.SELECT, 'label': 'Query Mode', 'hint': 'query_mode_combo', 'options': QUERY_MODES}
     }
 
     @classmethod
@@ -168,11 +172,13 @@ class SchemaLoader:
         label = mapping.get('label', key.replace('_', ' ').title())
         hint = mapping.get('hint')
         min_val = mapping.get('min')
+        options = mapping.get('options')
 
         return FieldSchema(
             key=key,
             label=label,
             field_type=f_type,
             widget_hint=hint,
-            min_value=min_val
+            min_value=min_val,
+            options=options
         )
