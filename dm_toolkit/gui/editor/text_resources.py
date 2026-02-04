@@ -289,6 +289,8 @@ class CardTextResources:
         "REPLACE_CARD_MOVE": "{target}を{from_zone}に置くかわりに{to_zone}に置く。",
         "REPLACE_MOVE_CARD": "（置換移動）",
         "APPLY_MODIFIER": "効果を付与する。",
+        "MEASURE_COUNT": "{target}の数を数える。",
+        "NONE": "",
         
         # --- IF/IF_ELSE/ELSE Control Flow ---
         "IF": "（条件判定: {condition_detail}）",
