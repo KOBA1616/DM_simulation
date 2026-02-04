@@ -105,12 +105,12 @@ if(USE_ONNXRUNTIME)
     include(FetchContent)
 
     if(WIN32)
-        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.18.0/onnxruntime-win-x64-1.18.0.zip")
+        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.20.1/onnxruntime-win-x64-1.20.1.zip")
     elseif(APPLE)
-        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.18.0/onnxruntime-osx-universal2-1.18.0.tgz")
+        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.20.1/onnxruntime-osx-universal2-1.20.1.tgz")
     else()
         # Linux x64
-        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.18.0/onnxruntime-linux-x64-1.18.0.tgz")
+        set(ORT_URL "https://github.com/microsoft/onnxruntime/releases/download/v1.20.1/onnxruntime-linux-x64-1.20.1.tgz")
     endif()
 
     FetchContent_Declare(
@@ -210,6 +210,7 @@ set(SRC_AI
     src/ai/encoders/action_encoder.cpp
     src/ai/batch_evaluator.cpp
     src/ai/mcts/mcts.cpp
+    src/ai/mcts/mcts_evaluator.cpp
     src/ai/evaluator/heuristic_evaluator.cpp
     src/ai/evaluator/beam_search_evaluator.cpp
     src/ai/self_play/self_play.cpp
@@ -223,6 +224,7 @@ set(SRC_AI
     src/bindings/python_batch_inference.cpp
     src/ai/inference/pimc_generator.cpp
     src/ai/inference/deck_inference.cpp
+    src/ai/inference/native_inference.cpp
     src/ai/pomdp/pomdp.cpp
     src/ai/neural_net/self_attention.cpp # Added
     # Optional neural evaluator / inference (guarded by USE_LIBTORCH / USE_ONNXRUNTIME)
@@ -252,6 +254,7 @@ pybind11_add_module(dm_ai_module
     src/bindings/bind_core.cpp
     src/bindings/bind_engine.cpp
     src/bindings/bind_ai.cpp
+    src/bindings/inference_bindings.cpp
 )
 target_link_libraries(dm_ai_module PRIVATE dm_core)
 

@@ -240,7 +240,8 @@ namespace dm::engine::systems {
             }
             case PlayerIntent::PASS:
             {
-                PhaseManager::next_phase(state, card_db);
+                // Use fast_forward to automatically progress through phases with no legal actions
+                PhaseManager::fast_forward(state, card_db);
                 break;
             }
             case PlayerIntent::MANA_CHARGE:
@@ -250,6 +251,10 @@ namespace dm::engine::systems {
             Instruction inst(InstructionOp::GAME_ACTION, args);
             inst.args["type"] = "MANA_CHARGE";
             handle_mana_charge(pipeline, state, inst);
+            
+            // DM Rule: After mana charge (max 1 per turn), automatically advance to next phase
+            // Use fast_forward to skip phases with no legal actions
+            PhaseManager::fast_forward(state, card_db);
                 break;
             }
             case PlayerIntent::PLAY_CARD_INTERNAL:
@@ -1059,6 +1064,9 @@ namespace dm::engine::systems {
          auto block = std::make_shared<std::vector<Instruction>>();
          block->push_back(move);
          exec.call_stack.push_back({block, 0, LoopContext{}});
+         
+         // Mark that mana has been charged this turn (max 1 per turn rule)
+         state.turn_stats.mana_charged_this_turn = true;
     }
 
     void GameLogicSystem::handle_resolve_reaction(PipelineExecutor& exec, GameState& state, const Instruction& inst,

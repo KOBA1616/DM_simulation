@@ -754,7 +754,8 @@ class EngineCompat:
                         pass
 
                     # Fail fast earlier to break test hang and gather stack trace
-                    if cnt > 15:
+                    # Reduced threshold from 15 to 5 for faster debugging
+                    if cnt > 5:
                         raise RuntimeError(f"PhaseManager.next_phase: phase did not advance after {cnt} attempts (before={before})")
                 else:
                     # reset counter on progress
@@ -883,7 +884,33 @@ class EngineCompat:
                 # Try to resolve CommandType from flexible inputs (name, numeric, enum)
                 cmd_type_obj = None
                 try:
-                    if hasattr(dm_ai_module, 'CommandType'):
+                    # Try EngineCommandType first (for game commands)
+                    if hasattr(dm_ai_module, 'EngineCommandType'):
+                        # If it's already an enum-like object, try to use directly
+                        if isinstance(type_val, (int,)):
+                            try:
+                                cmd_type_obj = dm_ai_module.EngineCommandType(int(type_val))
+                            except Exception:
+                                cmd_type_obj = None
+                        elif isinstance(type_val, str):
+                            # Numeric string?
+                            try:
+                                if type_val.isdigit():
+                                    cmd_type_obj = dm_ai_module.EngineCommandType(int(type_val))
+                            except Exception:
+                                pass
+                            if cmd_type_obj is None and hasattr(dm_ai_module.EngineCommandType, type_val):
+                                cmd_type_obj = getattr(dm_ai_module.EngineCommandType, type_val)
+                        else:
+                            # Try direct assignment for enum-like objects
+                            try:
+                                first_attr = next(attr for attr in dir(dm_ai_module.EngineCommandType) if not attr.startswith('_'))
+                                if isinstance(type_val, type(getattr(dm_ai_module.EngineCommandType, first_attr))):
+                                    cmd_type_obj = type_val
+                            except:
+                                pass
+                    # Fallback to legacy CommandType if EngineCommandType not found
+                    if cmd_type_obj is None and hasattr(dm_ai_module, 'CommandType'):
                         # If it's already an enum-like object, try to use directly
                         if isinstance(type_val, (int,)):
                             try:
@@ -901,13 +928,19 @@ class EngineCompat:
                                 cmd_type_obj = getattr(dm_ai_module.CommandType, type_val)
                         else:
                             # Try direct assignment for enum-like objects
-                            if isinstance(type_val, type(getattr(dm_ai_module.CommandType, list(dir(dm_ai_module.CommandType))[0]))):
-                                cmd_type_obj = type_val
+                            try:
+                                first_attr = next(attr for attr in dir(dm_ai_module.CommandType) if not attr.startswith('_'))
+                                if isinstance(type_val, type(getattr(dm_ai_module.CommandType, first_attr))):
+                                    cmd_type_obj = type_val
+                            except:
+                                pass
                 except Exception:
                     cmd_type_obj = None
 
                 # Only proceed to CommandSystem mapping if we have a type object and command system available
+                logger.debug(f'EngineCompat: cmd_type_obj={cmd_type_obj}, has_CommandSystem={hasattr(dm_ai_module, "CommandSystem")}')
                 if cmd_type_obj is not None and hasattr(dm_ai_module, 'CommandSystem') and hasattr(dm_ai_module.CommandSystem, 'execute_command'):
+                    logger.debug('EngineCompat: Entering CommandSystem mapping')
                     # Map dict to CommandDef (create instance)
                     cmd_def = dm_ai_module.CommandDef()
                     try:
@@ -1078,12 +1111,12 @@ class EngineCompat:
                                 return
 
                     # Default single-shot execute if no per-instance fallback
-                        logger.debug('EngineCompat: calling CommandSystem.execute_command single-shot')
-                        dm_ai_module.CommandSystem.execute_command(state, cmd_def, source_id, player_id, ctx)
-                        logger.debug('EngineCompat: called CommandSystem.execute_command')
-                        return # Success: Return only if executed by CommandSystem
-            except Exception:
-                logger.exception('EngineCompat: exception during CommandSystem mapping')
+                    logger.debug(f'EngineCompat: calling CommandSystem.execute_command single-shot, cmd_def.type={getattr(cmd_def, "type", None)}, source_id={source_id}, player_id={player_id}')
+                    dm_ai_module.CommandSystem.execute_command(state, cmd_def, source_id, player_id, ctx)
+                    logger.debug('EngineCompat: called CommandSystem.execute_command successfully')
+                    return # Success: Return only if executed by CommandSystem
+            except Exception as e:
+                logger.exception(f'EngineCompat: exception during CommandSystem mapping: {e}')
                 # Fallthrough on error to try legacy path
                 pass
 

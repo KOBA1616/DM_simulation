@@ -27,6 +27,8 @@ PYBIND11_MODULE(dm_ai_module, m) {
     bind_core(m);
     bind_engine(m);
     bind_ai(m);
+    // Inference bindings (ONNX / LibTorch wrappers)
+    try { bind_inference(m); } catch(...) {}
     try {
         std::ofstream out("logs/module_init.txt", std::ios::app);
         if (out) {

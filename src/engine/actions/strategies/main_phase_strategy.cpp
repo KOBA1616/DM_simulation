@@ -8,7 +8,12 @@ namespace dm::engine {
 
     using namespace dm::core;
 
-    void MainPhaseStrategy::generate(const GameState& state, const Player& player, std::vector<Action>& actions, const std::map<CardID, CardDefinition>& card_db) {
+    std::vector<Action> MainPhaseStrategy::generate(const ActionGenContext& ctx) {
+        std::vector<Action> actions;
+        const auto& state = ctx.game_state;
+        const auto& player = state.players[ctx.player_id];
+        const auto& card_db = ctx.card_db;
+        
         // 1. Play cards from hand
         for (const auto& card : player.hand) {
             if (!card_db.count(card.card_id)) continue;
@@ -54,22 +59,6 @@ namespace dm::engine {
                 // If Evolution (or NEO choosing Evolution):
                 if (is_evolution || is_neo) {
                     // We must find valid evolution sources in Battle Zone.
-                    // Evolution filter is usually implicit in the card definition?
-                    // Currently, CardDefinition doesn't store "Evolution Condition" (Race/Civ).
-                    // We need to support it.
-                    // Assumption: `races` field implies race requirement? Or filter_ids?
-                    // For now, let's assume ANY creature matching Race/Civ is valid if logic exists.
-                    // Or simply: If it IS evolution, we generate actions for each valid target.
-
-                    // Filter Logic:
-                    // If card_def has `evolution_condition` (not yet in struct), we use it.
-                    // Or we check `races` for race evolution.
-
-                    // Let's iterate all creatures and check compatibility.
-                    // Simple logic: Same Race or Civilization?
-                    // Standard DM: Evolution is usually "Race Evolution".
-                    // Let's check races.
-
                     for (const auto& source : player.battle_zone) {
                         const auto& source_def = card_db.at(source.card_id);
 
@@ -78,19 +67,11 @@ namespace dm::engine {
 
                         if (card_def.evolution_condition.has_value()) {
                             // Use the explicit evolution condition filter
-                            // We check if 'source' is a valid target for the evolution filter
                             if (TargetUtils::is_valid_target(source, source_def, *card_def.evolution_condition, state, player.id, player.id, false)) {
                                 valid = true;
                             }
                         } else {
-                            // 1. Race Match (Standard Fallback)
-                            // If the evolution creature specifies a race to evolve from...
-                            // But CardDefinition doesn't explicitly say "Evolves from X".
-                            // It just has "Races".
-                            // For MVP, we assume "Evolves from SAME Race" or "Matches Civilization"?
-                            // Let's use `TargetUtils` if we had a filter.
-                            // Without explicit filter, we'll be permissive or strict based on race intersection.
-
+                            // Race Match (Standard Fallback)
                             for (const auto& r : card_def.races) {
                                 if (TargetUtils::CardProperties<CardDefinition>::has_race(source_def, r)) {
                                     valid = true;
@@ -99,9 +80,7 @@ namespace dm::engine {
                             }
                         }
 
-                        // NEO usually evolves from same Civ or Race?
-                        // NEO: "Put on one of your creatures". Usually generic.
-                        // Let's assume NEO can evolve on ANY creature for now (or same Civ).
+                        // NEO usually evolves from same Civ or Race
                         if (is_neo) valid = true;
 
                         if (valid) {
@@ -121,12 +100,11 @@ namespace dm::engine {
         // 2. Use Abilities (e.g. Castle, Field, activated abilities on board)
         // ... (existing logic)
 
-        // 3. Pass (End Turn) - Always legal in Main Phase if stack is empty?
-        // Actually Main Phase -> Attack Phase.
-        // If we want to end turn, we pass to Attack Phase, then Pass in Attack Phase.
-        // But PlayerIntent::PASS usually means "Next Phase".
+        // 3. Pass (End Turn)
         Action pass_action;
         pass_action.type = PlayerIntent::PASS;
         actions.push_back(pass_action);
+        
+        return actions;
     }
 }

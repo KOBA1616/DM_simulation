@@ -69,6 +69,7 @@ namespace dm::core {
         int creatures_played_this_turn = 0;
         int spells_cast_this_turn = 0;
         int current_chain_depth = 0;
+        bool mana_charged_this_turn = false;  // DM Rule: max 1 mana charge per turn
     };
 
 }

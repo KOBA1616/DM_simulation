@@ -1,8 +1,10 @@
 #include "mcts.hpp"
+#include "mcts_evaluator.hpp"
 #include "engine/actions/intent_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "ai/encoders/action_encoder.hpp"
+#include "../inference/native_inference.hpp"
 #include <cmath>
 #include <limits>
 #include <random>
@@ -116,7 +118,16 @@ namespace dm::ai {
         root_batch.reserve(1);
         root_batch.push_back(std::make_shared<GameState>(root->state.clone()));
 
-        auto [root_policies, root_values] = evaluator(root_batch);
+        std::pair<std::vector<std::vector<float>>, std::vector<float>> root_eval_res;
+        if (dm::ai::inference::NativeInferenceManager::instance().has_model()) {
+            dm::ai::mcts::BatchEvaluator be(batch_size_);
+            root_eval_res = be.evaluate(root_batch);
+        } else {
+            if (!evaluator) throw std::runtime_error("No evaluator provided and no native model available");
+            root_eval_res = evaluator(root_batch);
+        }
+        auto &root_policies = root_eval_res.first;
+        auto &root_values = root_eval_res.second;
         expand_node(root, root_policies[0]);
         backpropagate(root, root_values[0]);
         
@@ -174,7 +185,16 @@ namespace dm::ai {
                 continue;
             }
             
-            auto [policies, values] = evaluator(batch_states);
+            std::pair<std::vector<std::vector<float>>, std::vector<float>> eval_res;
+            if (dm::ai::inference::NativeInferenceManager::instance().has_model()) {
+                dm::ai::mcts::BatchEvaluator be(batch_size_);
+                eval_res = be.evaluate(batch_states);
+            } else {
+                if (!evaluator) throw std::runtime_error("No evaluator provided and no native model available");
+                eval_res = evaluator(batch_states);
+            }
+            auto &policies = eval_res.first;
+            auto &values = eval_res.second;
             
             for (size_t i = 0; i < batch_nodes.size(); ++i) {
                 MCTSNode* node = batch_nodes[i];

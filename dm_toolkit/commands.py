@@ -35,19 +35,19 @@ def _call_native_action_generator(state: Any, card_db: Any) -> List[Any]:
     if AG is None:
         return []
 
-    # 2) Try static/classmethod generate_legal_commands
+    # 2) Try static/classmethod generate_legal_actions (preferred)
     try:
-        if hasattr(AG, 'generate_legal_commands'):
+        if hasattr(AG, 'generate_legal_actions'):
             try:
-                return AG.generate_legal_commands(state, card_db) or []
+                return AG.generate_legal_actions(state, card_db) or []
             except Exception:
                 pass
     except Exception:
         pass
 
-    # 3) Try legacy generate_legal_actions
+    # 3) Fallback to generate_legal_commands if it exists
     try:
-        if hasattr(AG, 'generate_legal_actions'):
+        if hasattr(AG, 'generate_legal_commands'):
             try:
                 return AG.generate_legal_commands(state, card_db) or []
             except Exception:

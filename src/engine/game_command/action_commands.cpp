@@ -2,6 +2,7 @@
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "commands.hpp" // For TransitionCommand
+#include <fstream>  // For debug logging
 
 namespace dm::engine::game_command {
 
@@ -82,15 +83,66 @@ namespace dm::engine::game_command {
     }
 
     void ManaChargeCommand::execute(core::GameState& state) {
-        // Mana Charge is just a Transition, but we can use the logic system to handle triggers/events if any
-        // or just direct transition.
-        const auto& card_db = CardRegistry::get_all_definitions();
+        using namespace dm::core;
+        
+        // Log for debugging - FIRST THING
+        try {
+            std::ofstream lout("logs/manacharge_trace.txt", std::ios::app);
+            if (lout) {
+                lout << "MANA_CHARGE_CMD CALLED id=" << card_id << "\n";
+                lout.close();
+            }
+        } catch(...) {}
+        
+        // Direct card transition from Hand to Mana Zone
+        // Find card location first
+        const CardInstance* card_ptr = state.get_card_instance(card_id);
+        if (!card_ptr) {
+            try {
+                std::ofstream lout("logs/manacharge_trace.txt", std::ios::app);
+                if (lout) {
+                    lout << "MANA_CHARGE_CMD ERROR: card_ptr is null for id=" << card_id << "\n";
+                    lout.close();
+                }
+            } catch(...) {}
+            return;
+        }
 
-        core::Action action;
-        action.type = core::PlayerIntent::MANA_CHARGE;
-        action.source_instance_id = card_id;
+        PlayerID owner = card_ptr->owner;
+        Zone from_zone = Zone::GRAVEYARD;
+        bool found = false;
+        
+        const Player& p = state.players[owner];
+        for(const auto& c : p.hand) {
+            if(c.instance_id == card_id) {
+                from_zone = Zone::HAND;
+                found = true;
+                break;
+            }
+        }
+        
+        if (!found) {
+            // Card not in hand, cannot mana charge
+            return;
+        }
 
-        GameLogicSystem::resolve_action_oneshot(state, action, card_db);
+        // Execute card move from Hand to Mana Zone
+        auto move_cmd = std::make_unique<TransitionCommand>(card_id, Zone::HAND, Zone::MANA, owner);
+        state.execute_command(std::move(move_cmd));
+        
+        // DM Rule: Mark that mana was charged this turn (max 1 per turn)
+        state.turn_stats.mana_charged_this_turn = true;
+        
+        // Log for debugging
+        try {
+            std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+            if (lout) {
+                lout << "MANA_CHARGE_CMD id=" << card_id
+                     << " owner=" << owner
+                     << " result=success, set mana_charged_this_turn=true\n";
+                lout.close();
+            }
+        } catch(...) {}
     }
 
     void ManaChargeCommand::invert(core::GameState& state) {

@@ -56,6 +56,13 @@ void bind_engine(py::module& m) {
         .value("GAME_RESULT", dm::engine::game_command::CommandType::GAME_RESULT)
         .value("SHUFFLE", dm::engine::game_command::CommandType::SHUFFLE)
         .value("ADD_CARD", dm::engine::game_command::CommandType::ADD_CARD)
+        .value("PLAY_CARD", dm::engine::game_command::CommandType::PLAY_CARD)
+        .value("ATTACK", dm::engine::game_command::CommandType::ATTACK)
+        .value("BLOCK", dm::engine::game_command::CommandType::BLOCK)
+        .value("USE_ABILITY", dm::engine::game_command::CommandType::USE_ABILITY)
+        .value("MANA_CHARGE", dm::engine::game_command::CommandType::MANA_CHARGE)
+        .value("RESOLVE_PENDING_EFFECT", dm::engine::game_command::CommandType::RESOLVE_PENDING_EFFECT)
+        .value("PASS_TURN", dm::engine::game_command::CommandType::PASS_TURN)
         .export_values();
 
     py::class_<dm::engine::game_command::TransitionCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::TransitionCommand>>(m, "TransitionCommand")
@@ -455,5 +462,6 @@ void bind_engine(py::module& m) {
         .def_static("setup_scenario", &PhaseManager::setup_scenario)
         .def_static("start_turn", &PhaseManager::start_turn)
         .def_static("next_phase", &PhaseManager::next_phase)
+        .def_static("fast_forward", &PhaseManager::fast_forward)
         .def_static("check_game_over", &PhaseManager::check_game_over);
 }

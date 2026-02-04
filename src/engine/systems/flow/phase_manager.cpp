@@ -6,6 +6,8 @@
 #include "engine/systems/trigger_system/trigger_system.hpp"
 #include "core/constants.hpp"
 #include <iostream>
+#include <fstream>
+#include <filesystem>
 #include <algorithm>
 
 namespace dm::engine {
@@ -221,7 +223,13 @@ namespace dm::engine {
     }
 
     void PhaseManager::draw_card(GameState& game_state, Player& player) {
+        using namespace dm::engine::game_command;
+        
         if (player.deck.empty()) {
+            // Deck is empty, player loses immediately
+            GameResult loss_result = (player.id == 0) ? GameResult::P2_WIN : GameResult::P1_WIN;
+            auto cmd = std::make_unique<GameResultCommand>(loss_result);
+            game_state.execute_command(std::move(cmd));
             return;
         }
         move_card_cmd(game_state, player.deck, Zone::DECK, Zone::HAND, player.id);
@@ -229,13 +237,53 @@ namespace dm::engine {
 
     void PhaseManager::fast_forward(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         GameResult result;
+        int loop_count = 0;
         while (true) {
+            ++loop_count;
+            
+            // DEBUG: Log each iteration
+            try {
+                std::filesystem::create_directories("logs");
+                std::ofstream ofs("logs/fast_forward_debug.txt", std::ios::app);
+                if (ofs) {
+                    ofs << "[FastForward] loop=" << loop_count
+                        << " phase=" << static_cast<int>(game_state.current_phase)
+                        << " player=" << static_cast<int>(game_state.active_player_id)
+                        << " turn=" << game_state.turn_number << "\n";
+                }
+            } catch (...) {}
+            
             if (check_game_over(game_state, result)) {
+                try {
+                    std::filesystem::create_directories("logs");
+                    std::ofstream ofs("logs/fast_forward_debug.txt", std::ios::app);
+                    if (ofs) {
+                        ofs << "[FastForward] game_over at loop=" << loop_count << "\n";
+                    }
+                } catch (...) {}
                 return;
             }
             
             auto actions = IntentGenerator::generate_legal_actions(game_state, card_db);
+            
+            try {
+                std::filesystem::create_directories("logs");
+                std::ofstream ofs("logs/fast_forward_debug.txt", std::ios::app);
+                if (ofs) {
+                    ofs << "[FastForward] loop=" << loop_count
+                        << " actions_count=" << actions.size() << "\n";
+                }
+            } catch (...) {}
+            
             if (!actions.empty()) {
+                try {
+                    std::filesystem::create_directories("logs");
+                    std::ofstream ofs("logs/fast_forward_debug.txt", std::ios::app);
+                    if (ofs) {
+                        ofs << "[FastForward] exit with actions at loop=" << loop_count
+                            << " phase=" << static_cast<int>(game_state.current_phase) << "\n";
+                    }
+                } catch (...) {}
                 return;
             }
             
@@ -394,6 +442,12 @@ namespace dm::engine {
         if (next_p != game_state.current_phase) {
              auto cmd = std::make_unique<FlowCommand>(FlowCommand::FlowType::PHASE_CHANGE, static_cast<int>(next_p));
              game_state.execute_command(std::move(cmd));
+        }
+
+        // Check game over after phase transition
+        GameResult result;
+        if (check_game_over(game_state, result)) {
+            return; // Game has ended, no further processing needed
         }
 
         // Post-transition logic (Triggers)

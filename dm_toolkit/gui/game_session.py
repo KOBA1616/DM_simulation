@@ -433,29 +433,21 @@ class GameSession:
             self.callback_log(tr("Command Conversion Error: {error}").format(error=e))
             return
 
-        # 2. Execute via EngineCompat
+        # 2. Execute via EngineCompat or direct C++ command
         try:
-            # Diagnostic: dump state before execution
-            try:
-                pre = EngineCompat.dump_state_debug(self.gs, max_samples=2)
-                try:
-                    self.callback_log(f"Debug Execute PRE -> {pre}")
-                except Exception:
-                    pass
-            except Exception:
-                pass
-
-            EngineCompat.ExecuteCommand(self.gs, cmd_dict, self.card_db)
-
-            # Diagnostic: dump state after execution
-            try:
-                post = EngineCompat.dump_state_debug(self.gs, max_samples=2)
-                try:
-                    self.callback_log(f"Debug Execute POST -> {post}")
-                except Exception:
-                    pass
-            except Exception:
-                pass
+            # For MANA_CHARGE, use direct C++ command creation (EngineCompat path doesn't work for action commands)
+            # After execution, call fast_forward to auto-advance through empty phases
+            if cmd_dict.get('type') == 'MANA_CHARGE' and 'instance_id' in cmd_dict:
+                if dm_ai_module and hasattr(dm_ai_module, 'ManaChargeCommand'):
+                    cpp_cmd = dm_ai_module.ManaChargeCommand(int(cmd_dict['instance_id']))
+                    self.gs.execute_command(cpp_cmd)
+                    # C++ engine should auto-advance via fast_forward after MANA_CHARGE
+                    if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'fast_forward'):
+                        dm_ai_module.PhaseManager.fast_forward(self.gs, self.card_db)
+                else:
+                    EngineCompat.ExecuteCommand(self.gs, cmd_dict, self.card_db)
+            else:
+                EngineCompat.ExecuteCommand(self.gs, cmd_dict, self.card_db)
 
             # 3. Log
             log_str = f"P{EngineCompat.get_active_player_id(self.gs)} {tr('Action')}: {cmd_dict.get('type', 'UNKNOWN')}"
@@ -477,41 +469,9 @@ class GameSession:
         if self.check_and_handle_input_wait():
             return
 
-        # Auto Pass check
-        if dm_ai_module and self.gs:
-            try:
-                pending_count = self.gs.get_pending_effect_count()
-            except Exception:
-                pending_count = 0
-            # Use cmd_dict type for check
-            act_type_str = cmd_dict.get('type')
-
-            # Helper to check type equivalence
-            is_pass = act_type_str == 'PASS'
-            is_charge = act_type_str == 'MANA_CHARGE'
-
-            # Also check against Enum if available
-            if hasattr(dm_ai_module, 'ActionType'):
-                try:
-                    if not is_pass and act_type_str == str(dm_ai_module.ActionType.PASS):
-                        is_pass = True
-                    if not is_charge and act_type_str == str(dm_ai_module.ActionType.MANA_CHARGE):
-                        is_charge = True
-                except Exception:
-                    pass
-
-            if (is_pass or is_charge) and pending_count == 0:
-                EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
-
-                # Check for game over after phase transition (safe invocation)
-                if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'check_game_over'):
-                    try:
-                        is_over, winner = EngineCompat.PhaseManager_check_game_over(self.gs)
-                        if is_over:
-                            self.gs.game_over = True
-                    except Exception:
-                        pass
-
+        # C++ engine now handles phase progression automatically (PASS command calls PhaseManager::next_phase internally)
+        # No need to call next_phase from Python side
+        
         self.callback_update_ui()
 
     def check_and_handle_input_wait(self) -> bool:
@@ -582,7 +542,7 @@ class GameSession:
             active_pid = EngineCompat.get_active_player_id(self.gs)
             is_human = (self.player_modes.get(active_pid) == 'Human')
 
-            # Additional debug: log active player, waiting state, pending effects
+            # Additional debug: log active player, waiting state, pending effects, current phase
             try:
                 waiting = getattr(self.gs, 'waiting_for_user_input', False)
             except Exception:
@@ -592,7 +552,11 @@ class GameSession:
             except Exception:
                 pending_count = 'NA'
             try:
-                self.callback_log(f"Debug: active_pid={active_pid}, waiting={waiting}, pending_effects={pending_count}")
+                current_phase = EngineCompat.get_current_phase(self.gs)
+            except Exception:
+                current_phase = 'NA'
+            try:
+                self.callback_log(f"Debug: active_pid={active_pid}, waiting={waiting}, pending_effects={pending_count}, phase={current_phase}")
             except Exception:
                 pass
 
@@ -763,44 +727,44 @@ class GameSession:
                 if len(resolve_cmds) > 1:
                     pass
 
-                if not cmds:
-                    EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
-                    self.callback_update_ui()
+                # C++ engine handles phase progression via fast_forward
+                # No need to call next_phase from Python side
 
                 return
 
-            # AI Logic
+            # AI Logic - C++ engine handles phase progression via fast_forward when no actions available
             if not cmds:
-                EngineCompat.PhaseManager_next_phase(self.gs, self.card_db)
-            else:
-                # Prefer a non-PASS command if available to avoid always executing
-                # a leading PASS (which can prevent useful actions like MANA_CHARGE).
-                best_cmd = None
-                try:
-                    for c in cmds:
+                self.callback_update_ui()
+                return
+            
+            # Prefer a non-PASS command if available to avoid always executing
+            # a leading PASS (which can prevent useful actions like MANA_CHARGE).
+            best_cmd = None
+            try:
+                for c in cmds:
+                    try:
+                        d = c.to_dict()
+                    except Exception:
+                        d = {}
+                    t = d.get('type') if isinstance(d, dict) else None
+                    if t is None:
+                        # Fallback: inspect string repr for PASS marker
                         try:
-                            d = c.to_dict()
-                        except Exception:
-                            d = {}
-                        t = d.get('type') if isinstance(d, dict) else None
-                        if t is None:
-                            # Fallback: inspect string repr for PASS marker
-                            try:
-                                s = str(d)
-                                if 'PASS' not in s:
-                                    best_cmd = c
-                                    break
-                            except Exception:
-                                continue
-                        else:
-                            if t != 'PASS':
+                            s = str(d)
+                            if 'PASS' not in s:
                                 best_cmd = c
                                 break
-                except Exception:
-                    best_cmd = None
+                        except Exception:
+                            continue
+                    else:
+                        if t != 'PASS':
+                            best_cmd = c
+                            break
+            except Exception:
+                best_cmd = None
 
-                if best_cmd is None:
-                    best_cmd = cmds[0]
+            if best_cmd is None:
+                best_cmd = cmds[0]
 
                 if self.ai_player:
                     try:

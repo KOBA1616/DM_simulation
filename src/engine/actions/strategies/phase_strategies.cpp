@@ -16,14 +16,17 @@ namespace dm::engine {
         const auto& game_state = ctx.game_state;
         const Player& active_player = game_state.players[game_state.active_player_id];
 
-        for (size_t i = 0; i < active_player.hand.size(); ++i) {
-            const auto& card = active_player.hand[i];
-            Action action;
-            action.type = PlayerIntent::MANA_CHARGE;
-            action.card_id = card.card_id;
-            action.source_instance_id = card.instance_id;
-            action.slot_index = static_cast<int>(i);
-            actions.push_back(action);
+        // DM Rule: Max 1 mana charge per turn
+        if (!game_state.turn_stats.mana_charged_this_turn) {
+            for (size_t i = 0; i < active_player.hand.size(); ++i) {
+                const auto& card = active_player.hand[i];
+                Action action;
+                action.type = PlayerIntent::MANA_CHARGE;
+                action.card_id = card.card_id;
+                action.source_instance_id = card.instance_id;
+                action.slot_index = static_cast<int>(i);
+                actions.push_back(action);
+            }
         }
 
         Action pass;

@@ -3,6 +3,8 @@
 #include <stdexcept>
 #include <Python.h>
 #include <iostream>
+// Attempt to use native inference manager if available
+#include "ai/inference/native_inference.hpp"
 
 namespace dm::python {
 
@@ -77,6 +79,26 @@ namespace dm::python {
     }
 
     BatchOutput call_flat_batch_callback(const std::vector<float>& flat, size_t n, size_t stride) {
+        // Use native inference if a native model is loaded (checked at startup);
+        // do not fall back to Python dynamically inside runtime loops.
+        if (dm::ai::inference::NativeInferenceManager::instance().has_model()) {
+            auto native_out = dm::ai::inference::NativeInferenceManager::instance().infer_flat_ptr(flat.data(), flat.size(), static_cast<int>(n), static_cast<int>(stride));
+            if (!native_out.first.empty() || !native_out.second.empty()) {
+                BatchOutput out;
+                if (!native_out.first.empty() && n > 0 && (native_out.first.size() % n == 0)) {
+                    size_t action_size = native_out.first.size() / n;
+                    out.first.resize(n);
+                    for (size_t i = 0; i < n; ++i) {
+                        out.first[i].assign(native_out.first.begin() + i * action_size, native_out.first.begin() + (i + 1) * action_size);
+                    }
+                }
+                out.second = std::move(native_out.second);
+                return out;
+            }
+            throw std::runtime_error("Native inference returned empty outputs");
+        }
+
+        // No native model loaded -> call Python callback (only path to use Python).
         PyGILState_STATE _gstate = PyGILState_Ensure();
         try {
             BatchOutput out;
@@ -87,6 +109,7 @@ namespace dm::python {
                     cb_copy = g_flat_callback;
                 }
                 if (!cb_copy) {
+                    PyGILState_Release(_gstate);
                     throw std::runtime_error("No flat batch inference callback registered");
                 }
                 out = cb_copy(flat, n, stride);
@@ -120,6 +143,24 @@ namespace dm::python {
     }
 
     BatchOutput call_sequence_batch_callback(const SequenceBatchInput& input) {
+        // Prefer native sequence inference if model loaded; do not dynamically fall back.
+        if (dm::ai::inference::NativeInferenceManager::instance().has_model()) {
+            auto native_out = dm::ai::inference::NativeInferenceManager::instance().infer_sequence(input);
+            if (!native_out.first.empty() || !native_out.second.empty()) {
+                BatchOutput out;
+                if (!native_out.first.empty() && input.size() > 0 && (native_out.first.size() % input.size() == 0)) {
+                    size_t action_size = native_out.first.size() / input.size();
+                    out.first.resize(input.size());
+                    for (size_t i = 0; i < input.size(); ++i) {
+                        out.first[i].assign(native_out.first.begin() + i * action_size, native_out.first.begin() + (i + 1) * action_size);
+                    }
+                }
+                out.second = std::move(native_out.second);
+                return out;
+            }
+            throw std::runtime_error("Native sequence inference returned empty outputs");
+        }
+
         PyGILState_STATE _gstate = PyGILState_Ensure();
         try {
             BatchOutput out;
@@ -130,6 +171,7 @@ namespace dm::python {
                     cb_copy = g_seq_callback;
                 }
                 if (!cb_copy) {
+                    PyGILState_Release(_gstate);
                     throw std::runtime_error("No sequence batch inference callback registered");
                 }
                 out = cb_copy(input);

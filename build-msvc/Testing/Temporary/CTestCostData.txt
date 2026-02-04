@@ -1,3 +1,0 @@
-python_pytest 0 0
----
-python_pytest

@@ -100,17 +100,26 @@ namespace dm::engine {
             return res;
         }
 
+        // DEBUG: Log current phase before switch
+        try {
+            std::filesystem::create_directories("logs");
+            std::ofstream ofs("logs/intent_generator_phase_debug.txt", std::ios::app);
+            if (ofs) {
+                ofs << "[IntentGenerator] current_phase=" << static_cast<int>(game_state.current_phase)
+                    << " player=" << static_cast<int>(game_state.active_player_id)
+                    << " turn=" << game_state.turn_number << "\n";
+            }
+        } catch (...) {}
+
         switch (game_state.current_phase) {
             case Phase::START_OF_TURN:
             case Phase::DRAW:
                 {
-                    // No actions logic required for these phases in current design, just PASS
-                    std::vector<Action> actions;
-                    Action pass;
-                    pass.type = PlayerIntent::PASS;
-                    actions.push_back(pass);
-                    dump_actions(actions, "pass_phase");
-                    return actions;
+                    // No player actions allowed in START_OF_TURN/DRAW phases
+                    // Return empty vector so fast_forward will advance to next phase
+                    std::vector<Action> empty;
+                    dump_actions(empty, "auto_advance_phase");
+                    return empty;
                 }
             case Phase::MANA:
                 {
