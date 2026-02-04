@@ -1105,6 +1105,9 @@ class CardTextGenerator:
             else:
                  action_proxy["type"] = "SEND_TO_MANA"
 
+        if original_cmd_type == "MEASURE_COUNT":
+             action_proxy["type"] = "COUNT_CARDS"
+
         if original_cmd_type == "SHIELD_TRIGGER":
              return "S・トリガー"
 
@@ -1737,6 +1740,9 @@ class CardTextGenerator:
              else:
                   target_str_lock, _ = cls._resolve_target(action, is_spell)
 
+             # Duration MUST be at least 1 for these restrictions to make sense textually.
+             # 0 usually implies "until end of turn" but "0ターンの間" is awkward.
+             # We assume val1=0 or 1 means "this turn" effectively (1 turn duration).
              duration = val1 if val1 > 0 else 1
 
              if atype == "SPELL_RESTRICTION":

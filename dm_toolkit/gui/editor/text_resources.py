@@ -289,7 +289,12 @@ class CardTextResources:
         "REPLACE_CARD_MOVE": "{target}を{from_zone}に置くかわりに{to_zone}に置く。",
         "REPLACE_MOVE_CARD": "（置換移動）",
         "APPLY_MODIFIER": "効果を付与する。",
-        
+        "MEASURE_COUNT": "{target}の数を数える。",
+        "SHIELD_TRIGGER": "S・トリガー",
+        "FLOW": "進行制御: {str_val}",
+        "QUERY": "質問: {str_val}",
+        "STAT": "統計更新: {str_val}",
+
         # --- IF/IF_ELSE/ELSE Control Flow ---
         "IF": "（条件判定: {condition_detail}）",
         "IF_ELSE": "（条件分岐: {condition_detail}...）",
