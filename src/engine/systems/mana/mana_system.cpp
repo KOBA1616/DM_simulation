@@ -141,7 +141,7 @@ namespace dm::engine {
 
         if (cost <= 0) {
             // Use Command for undo support
-            auto cmd = std::make_unique<game_command::FlowCommand>(game_command::FlowCommand::FlowType::SET_PLAYED_WITHOUT_MANA, 1);
+            auto cmd = std::make_shared<game_command::FlowCommand>(game_command::FlowCommand::FlowType::SET_PLAYED_WITHOUT_MANA, 1);
             game_state.execute_command(std::move(cmd));
             return true;
         }
@@ -153,7 +153,7 @@ namespace dm::engine {
         for (int idx : indices) {
             // Must find instance_id
             int iid = player.mana_zone[idx].instance_id;
-            auto cmd = std::make_unique<game_command::MutateCommand>(iid, game_command::MutateCommand::MutationType::TAP);
+            auto cmd = std::make_shared<game_command::MutateCommand>(iid, game_command::MutateCommand::MutationType::TAP);
             game_state.execute_command(std::move(cmd));
         }
 
@@ -166,7 +166,7 @@ namespace dm::engine {
         int cost = cost_override;
 
         if (cost <= 0) {
-            auto cmd = std::make_unique<game_command::FlowCommand>(game_command::FlowCommand::FlowType::SET_PLAYED_WITHOUT_MANA, 1);
+            auto cmd = std::make_shared<game_command::FlowCommand>(game_command::FlowCommand::FlowType::SET_PLAYED_WITHOUT_MANA, 1);
             game_state.execute_command(std::move(cmd));
             return true;
         }
@@ -177,7 +177,7 @@ namespace dm::engine {
         for (int idx : indices) {
             // Must find instance_id
             int iid = player.mana_zone[idx].instance_id;
-            auto cmd = std::make_unique<game_command::MutateCommand>(iid, game_command::MutateCommand::MutationType::TAP);
+            auto cmd = std::make_shared<game_command::MutateCommand>(iid, game_command::MutateCommand::MutationType::TAP);
             game_state.execute_command(std::move(cmd));
         }
 

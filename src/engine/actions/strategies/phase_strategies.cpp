@@ -16,6 +16,16 @@ namespace dm::engine {
         const auto& game_state = ctx.game_state;
         const Player& active_player = game_state.players[game_state.active_player_id];
 
+        // DEBUG: Log mana_charged_this_turn状態
+        try {
+            std::ofstream ofs("logs/mana_phase_debug.txt", std::ios::app);
+            if (ofs) {
+                ofs << "[ManaPhaseStrategy] mana_charged_this_turn=" 
+                    << (game_state.turn_stats.mana_charged_this_turn ? "TRUE" : "FALSE")
+                    << " turn=" << game_state.turn_number << "\n";
+            }
+        } catch(...) {}
+
         // DM Rule: Max 1 mana charge per turn
         if (!game_state.turn_stats.mana_charged_this_turn) {
             for (size_t i = 0; i < active_player.hand.size(); ++i) {
@@ -27,11 +37,13 @@ namespace dm::engine {
                 action.slot_index = static_cast<int>(i);
                 actions.push_back(action);
             }
+            
+            // Also offer PASS to skip mana charge
+            Action pass;
+            pass.type = PlayerIntent::PASS;
+            actions.push_back(pass);
         }
-
-        Action pass;
-        pass.type = PlayerIntent::PASS;
-        actions.push_back(pass);
+        // If already charged this turn, return empty (auto-advance to MAIN phase)
 
         return actions;
     }
@@ -184,9 +196,13 @@ namespace dm::engine {
             }
         }
 
-        Action pass;
-        pass.type = PlayerIntent::PASS;
-        actions.push_back(pass);
+        // Only add PASS if there are actual playable actions
+        // If no actions (can't play any cards), return empty to trigger auto-advance
+        if (!actions.empty()) {
+            Action pass;
+            pass.type = PlayerIntent::PASS;
+            actions.push_back(pass);
+        }
 
         return actions;
     }
@@ -252,9 +268,13 @@ namespace dm::engine {
             }
         }
 
-        Action pass;
-        pass.type = PlayerIntent::PASS;
-        actions.push_back(pass);
+        // Only add PASS if there are actual attack actions
+        // If no attacks possible, return empty to trigger auto-advance
+        if (!actions.empty()) {
+            Action pass;
+            pass.type = PlayerIntent::PASS;
+            actions.push_back(pass);
+        }
 
         return actions;
     }
@@ -284,9 +304,13 @@ namespace dm::engine {
                 }
             }
         }
-        Action pass;
-        pass.type = PlayerIntent::PASS;
-        actions.push_back(pass);
+        // Only add PASS if there are actual block actions
+        // If no blocks possible, return empty to trigger auto-advance
+        if (!actions.empty()) {
+            Action pass;
+            pass.type = PlayerIntent::PASS;
+            actions.push_back(pass);
+        }
         return actions;
     }
 

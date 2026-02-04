@@ -187,7 +187,7 @@ namespace dm::engine {
         
         // Reset Turn Stats
         using namespace dm::engine::game_command;
-        auto cmd_stats = std::make_unique<FlowCommand>(FlowCommand::FlowType::RESET_TURN_STATS, 0);
+        auto cmd_stats = std::make_shared<FlowCommand>(FlowCommand::FlowType::RESET_TURN_STATS, 0);
         game_state.execute_command(std::move(cmd_stats));
 
         // Untap (Using Command)
@@ -195,7 +195,7 @@ namespace dm::engine {
 
         // Clear Summoning Sickness
         for (auto& card : active_player.battle_zone) {
-             auto cmd = std::make_unique<MutateCommand>(card.instance_id, MutateCommand::MutationType::SET_SUMMONING_SICKNESS, 0);
+             auto cmd = std::make_shared<MutateCommand>(card.instance_id, MutateCommand::MutationType::SET_SUMMONING_SICKNESS, 0);
              game_state.execute_command(std::move(cmd));
         }
 
@@ -411,7 +411,7 @@ namespace dm::engine {
             case Phase::END_OF_TURN:
                 // Cleanup Step
                 {
-                     auto cmd_cleanup = std::make_unique<FlowCommand>(FlowCommand::FlowType::CLEANUP_STEP, 0);
+                     auto cmd_cleanup = std::make_shared<FlowCommand>(FlowCommand::FlowType::CLEANUP_STEP, 0);
                      game_state.execute_command(std::move(cmd_cleanup));
                 }
 
@@ -425,12 +425,12 @@ namespace dm::engine {
 
                      // FlowCommand for Turn Number
                      if (next_turn != game_state.turn_number) {
-                         auto cmd_turn = std::make_unique<FlowCommand>(FlowCommand::FlowType::TURN_CHANGE, next_turn);
+                         auto cmd_turn = std::make_shared<FlowCommand>(FlowCommand::FlowType::TURN_CHANGE, next_turn);
                          game_state.execute_command(std::move(cmd_turn));
                      }
 
                      // FlowCommand for Active Player
-                     auto cmd_active = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_ACTIVE_PLAYER, next_active);
+                     auto cmd_active = std::make_shared<FlowCommand>(FlowCommand::FlowType::SET_ACTIVE_PLAYER, next_active);
                      game_state.execute_command(std::move(cmd_active));
 
                      next_p = Phase::START_OF_TURN;
@@ -440,7 +440,7 @@ namespace dm::engine {
 
         // Execute Phase Change Command
         if (next_p != game_state.current_phase) {
-             auto cmd = std::make_unique<FlowCommand>(FlowCommand::FlowType::PHASE_CHANGE, static_cast<int>(next_p));
+             auto cmd = std::make_shared<FlowCommand>(FlowCommand::FlowType::PHASE_CHANGE, static_cast<int>(next_p));
              game_state.execute_command(std::move(cmd));
         }
 

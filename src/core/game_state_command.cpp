@@ -237,6 +237,15 @@ namespace dm::engine::game_command {
 
     // --- FlowCommand ---
     void FlowCommand::execute(GameState& state) {
+        // DEBUG: Log flow command execution
+        try {
+            std::ofstream ofs("logs/flow_command_debug.txt", std::ios::app);
+            if (ofs) {
+                ofs << "[FlowCommand::execute] type=" << static_cast<int>(flow_type)
+                    << " new_value=" << new_value << "\n";
+            }
+        } catch(...) {}
+
         switch (flow_type) {
             case FlowType::PHASE_CHANGE:
                 previous_value = static_cast<int>(state.current_phase);
@@ -288,6 +297,24 @@ namespace dm::engine::game_command {
                      }), passives.end());
                 }
                 break;
+            case FlowType::SET_PLAYED_WITHOUT_MANA:
+                previous_value = state.turn_stats.played_without_mana;
+                state.turn_stats.played_without_mana = new_value;
+                break;
+            case FlowType::SET_MANA_CHARGED:
+                previous_bool_value = state.turn_stats.mana_charged_this_turn;
+                state.turn_stats.mana_charged_this_turn = (new_value != 0);
+                // DEBUG: Log the flag change
+                try {
+                    std::ofstream ofs("logs/mana_phase_debug.txt", std::ios::app);
+                    if (ofs) {
+                        ofs << "[FlowCommand] SET_MANA_CHARGED from " 
+                            << (previous_bool_value ? "TRUE" : "FALSE")
+                            << " to " << (state.turn_stats.mana_charged_this_turn ? "TRUE" : "FALSE")
+                            << " (new_value=" << new_value << ")\n";
+                    }
+                } catch(...) {}
+                break;
             default: break;
         }
     }
@@ -309,6 +336,12 @@ namespace dm::engine::game_command {
                 // Restore removed items (Note: Survivors have decremented counters, which is not reverted here yet)
                 state.active_modifiers.insert(state.active_modifiers.end(), removed_modifiers.begin(), removed_modifiers.end());
                 state.passive_effects.insert(state.passive_effects.end(), removed_passives.begin(), removed_passives.end());
+                break;
+            case FlowType::SET_PLAYED_WITHOUT_MANA:
+                state.turn_stats.played_without_mana = previous_value;
+                break;
+            case FlowType::SET_MANA_CHARGED:
+                state.turn_stats.mana_charged_this_turn = previous_bool_value;
                 break;
             default: break;
         }

@@ -757,14 +757,14 @@ namespace dm::engine::systems {
          if (RestrictionSystem::instance().is_attack_forbidden(state, *card, def, target_id, card_db)) return;
 
          // 1. Update Attack State using Commands
-         auto cmd_src = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_SOURCE, instance_id);
+         auto cmd_src = std::make_shared<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_SOURCE, instance_id);
          state.execute_command(std::move(cmd_src));
 
-         auto cmd_tgt = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_TARGET, target_id);
+         auto cmd_tgt = std::make_shared<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_TARGET, target_id);
          state.execute_command(std::move(cmd_tgt));
 
          // Reset blocking state implicitly by clearing blocker (if any from previous? should be new attack)
-         auto cmd_blk = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_BLOCKING_CREATURE, -1);
+         auto cmd_blk = std::make_shared<FlowCommand>(FlowCommand::FlowType::SET_BLOCKING_CREATURE, -1);
          state.execute_command(std::move(cmd_blk));
 
          // Infer target player if target_id is -1 (Player Attack)
@@ -772,13 +772,13 @@ namespace dm::engine::systems {
          if (target_id == -1) {
              target_player = 1 - state.active_player_id;
          }
-         auto cmd_plyr = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_PLAYER, target_player);
+         auto cmd_plyr = std::make_shared<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_PLAYER, target_player);
          state.execute_command(std::move(cmd_plyr));
 
-         auto cmd_tap = std::make_unique<MutateCommand>(instance_id, MutateCommand::MutationType::TAP);
+         auto cmd_tap = std::make_shared<MutateCommand>(instance_id, MutateCommand::MutationType::TAP);
          state.execute_command(std::move(cmd_tap));
 
-         auto phase_cmd = std::make_unique<FlowCommand>(FlowCommand::FlowType::PHASE_CHANGE, static_cast<int>(Phase::BLOCK));
+         auto phase_cmd = std::make_shared<FlowCommand>(FlowCommand::FlowType::PHASE_CHANGE, static_cast<int>(Phase::BLOCK));
          state.execute_command(std::move(phase_cmd));
 
          (void)card_db;
@@ -799,11 +799,11 @@ namespace dm::engine::systems {
         if (RestrictionSystem::instance().is_block_forbidden(state, *blocker, def, card_db)) return;
 
         // 1. Tap Blocker
-        auto cmd_tap = std::make_unique<MutateCommand>(blocker_id, MutateCommand::MutationType::TAP);
+        auto cmd_tap = std::make_shared<MutateCommand>(blocker_id, MutateCommand::MutationType::TAP);
         state.execute_command(std::move(cmd_tap));
 
         // 2. Update Attack State
-        auto cmd_blk = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_BLOCKING_CREATURE, blocker_id);
+        auto cmd_blk = std::make_shared<FlowCommand>(FlowCommand::FlowType::SET_BLOCKING_CREATURE, blocker_id);
         state.execute_command(std::move(cmd_blk));
 
         // 3. Trigger ON_BLOCK
@@ -1094,11 +1094,11 @@ namespace dm::engine::systems {
         CardInstance* new_creature = state.get_card_instance(source_id);
         if (new_creature) {
             new_creature->turn_played = state.turn_number;
-            auto tap_cmd = std::make_unique<MutateCommand>(source_id, MutateCommand::MutationType::TAP);
+            auto tap_cmd = std::make_shared<MutateCommand>(source_id, MutateCommand::MutationType::TAP);
             state.execute_command(std::move(tap_cmd));
         }
 
-        auto flow_cmd = std::make_unique<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_SOURCE, source_id);
+        auto flow_cmd = std::make_shared<FlowCommand>(FlowCommand::FlowType::SET_ATTACK_SOURCE, source_id);
         state.execute_command(std::move(flow_cmd));
 
         (void)card_db;

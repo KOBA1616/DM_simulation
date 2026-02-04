@@ -435,15 +435,23 @@ class GameSession:
 
         # 2. Execute via EngineCompat or direct C++ command
         try:
-            # For MANA_CHARGE, use direct C++ command creation (EngineCompat path doesn't work for action commands)
-            # After execution, call fast_forward to auto-advance through empty phases
+            # For MANA_CHARGE, use direct C++ command creation
+            # Do NOT call fast_forward here - let the game naturally progress through AI/player actions
             if cmd_dict.get('type') == 'MANA_CHARGE' and 'instance_id' in cmd_dict:
+                print(f"[DEBUG] Creating ManaChargeCommand for instance_id={cmd_dict['instance_id']}")
                 if dm_ai_module and hasattr(dm_ai_module, 'ManaChargeCommand'):
                     cpp_cmd = dm_ai_module.ManaChargeCommand(int(cmd_dict['instance_id']))
+                    print(f"[DEBUG] Created C++ ManaChargeCommand: {cpp_cmd}")
                     self.gs.execute_command(cpp_cmd)
-                    # C++ engine should auto-advance via fast_forward after MANA_CHARGE
-                    if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'fast_forward'):
-                        dm_ai_module.PhaseManager.fast_forward(self.gs, self.card_db)
+                    print("[DEBUG] ManaChargeCommand executed")
+                else:
+                    print("[DEBUG] Using EngineCompat.ExecuteCommand for MANA_CHARGE")
+                    EngineCompat.ExecuteCommand(self.gs, cmd_dict, self.card_db)
+            # For PASS, use direct C++ PassCommand which automatically calls fast_forward
+            elif cmd_dict.get('type') == 'PASS':
+                if dm_ai_module and hasattr(dm_ai_module, 'PassCommand'):
+                    cpp_cmd = dm_ai_module.PassCommand()
+                    self.gs.execute_command(cpp_cmd)
                 else:
                     EngineCompat.ExecuteCommand(self.gs, cmd_dict, self.card_db)
             else:
@@ -766,46 +774,48 @@ class GameSession:
             if best_cmd is None:
                 best_cmd = cmds[0]
 
-                if self.ai_player:
-                    try:
-                        # Mask invalid actions
-                        valid_indices = []
-                        cmd_map = {}
-                        encoder = self.ai_player.action_encoder
+            # AI player logic: use AI to select best action
+            if self.ai_player:
+                try:
+                    # Mask invalid actions
+                    valid_indices = []
+                    cmd_map = {}
+                    encoder = self.ai_player.action_encoder
 
-                        for cmd in cmds:
-                            idx = encoder.encode_action(cmd, self.gs, active_pid)
-                            if idx != -1:
-                                valid_indices.append(idx)
-                                cmd_map[idx] = cmd
-                            else:
-                                # Log one example of an unencodable action for diagnostics
+                    for cmd in cmds:
+                        idx = encoder.encode_action(cmd, self.gs, active_pid)
+                        if idx != -1:
+                            valid_indices.append(idx)
+                            cmd_map[idx] = cmd
+                        else:
+                            # Log one example of an unencodable action for diagnostics
+                            try:
+                                d = None
                                 try:
-                                    d = None
-                                    try:
-                                        d = cmd.to_dict()
-                                    except Exception:
-                                        d = str(cmd)
-                                    self.callback_log(f"Debug: encode_action -> -1 for cmd: {d}")
+                                    d = cmd.to_dict()
                                 except Exception:
-                                    pass
+                                    d = str(cmd)
+                                self.callback_log(f"Debug: encode_action -> -1 for cmd: {d}")
+                            except Exception:
+                                pass
 
-                        if valid_indices:
-                            ai_cmd = self.ai_player.get_action(self.gs, active_pid, valid_indices)
-                            ai_idx = encoder.encode_action(ai_cmd, self.gs, active_pid)
-                            if ai_idx in cmd_map:
-                                best_cmd = cmd_map[ai_idx]
-                            else:
-                                best_cmd = ai_cmd
+                    if valid_indices:
+                        ai_cmd = self.ai_player.get_action(self.gs, active_pid, valid_indices)
+                        ai_idx = encoder.encode_action(ai_cmd, self.gs, active_pid)
+                        if ai_idx in cmd_map:
+                            best_cmd = cmd_map[ai_idx]
+                        else:
+                            best_cmd = ai_cmd
 
-                    except Exception as e:
-                        try:
-                            self.callback_log(f"AI Error: {e}")
-                        except Exception:
-                            pass
+                except Exception as e:
+                    try:
+                        self.callback_log(f"AI Error: {e}")
+                    except Exception:
+                        pass
 
-                if best_cmd:
-                    self.execute_action(best_cmd)
+            # Execute the selected action
+            if best_cmd:
+                self.execute_action(best_cmd)
 
             self.callback_update_ui()
 

@@ -127,11 +127,13 @@ namespace dm::engine::game_command {
         }
 
         // Execute card move from Hand to Mana Zone
-        auto move_cmd = std::make_unique<TransitionCommand>(card_id, Zone::HAND, Zone::MANA, owner);
+        auto move_cmd = std::make_shared<TransitionCommand>(card_id, Zone::HAND, Zone::MANA, owner);
         state.execute_command(std::move(move_cmd));
         
         // DM Rule: Mark that mana was charged this turn (max 1 per turn)
-        state.turn_stats.mana_charged_this_turn = true;
+        // Use FlowCommand for proper undo support
+        auto flow_cmd = std::make_shared<FlowCommand>(FlowCommand::FlowType::SET_MANA_CHARGED, 1);
+        state.execute_command(std::move(flow_cmd));
         
         // Log for debugging
         try {
@@ -139,7 +141,7 @@ namespace dm::engine::game_command {
             if (lout) {
                 lout << "MANA_CHARGE_CMD id=" << card_id
                      << " owner=" << owner
-                     << " result=success, set mana_charged_this_turn=true\n";
+                     << " result=success, set mana_charged_this_turn=true via FlowCommand\n";
                 lout.close();
             }
         } catch(...) {}
