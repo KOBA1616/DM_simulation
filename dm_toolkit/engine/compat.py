@@ -1117,11 +1117,68 @@ class EngineCompat:
             except Exception:
                 logger.warning('ExecuteCommand could not execute given command/object: %s', cmd)
 
-            # Also log a full exception stacktrace if one was captured earlier
-            # (there may be prior logger.exception calls in the mapping path);
-            # include an explicit debug marker so the log can be grepped.
+            # Also log a full exception stacktrace and rich diagnostic info
+            # (there may be prior logger.exception calls in the mapping path).
             try:
-                logger.debug('ExecuteCommand: dumping locals for diagnosis: state_active_player=%s', getattr(state, 'active_player_id', None))
+                import traceback as _traceback
+
+                # Primary: recent exception text (may be 'NoneType: None' if no recent exception)
+                try:
+                    tb = _traceback.format_exc()
+                    if tb and tb.strip() and 'NoneType' not in tb:
+                        logger.debug('ExecuteCommand traceback:\n%s', tb)
+                    else:
+                        logger.debug('ExecuteCommand: no recent exception traceback available')
+                except Exception:
+                    try:
+                        logger.debug('ExecuteCommand: traceback.format_exc() failed')
+                    except Exception:
+                        pass
+
+                # Dump prepared command dictionary types and truncated reprs to aid diagnosis
+                try:
+                    if cmd_dict:
+                        types_summary = {k: type(v).__name__ for k, v in cmd_dict.items()}
+                        repr_summary = {k: (repr(v)[:200] + '...' if len(repr(v)) > 200 else repr(v)) for k, v in cmd_dict.items()}
+                        logger.debug('ExecuteCommand: cmd_dict types=%s', types_summary)
+                        logger.debug('ExecuteCommand: cmd_dict reprs=%s', repr_summary)
+                    else:
+                        try:
+                            logger.debug('ExecuteCommand: no cmd_dict prepared; raw cmd=%s', repr(cmd))
+                        except Exception:
+                            logger.debug('ExecuteCommand: no cmd_dict and raw cmd repr failed')
+                except Exception:
+                    try:
+                        logger.debug('ExecuteCommand: failed to dump cmd_dict details')
+                    except Exception:
+                        pass
+
+                # If a native CommandDef was constructed, dump its common attrs
+                try:
+                    if 'cmd_def' in locals() and cmd_def is not None:
+                        try:
+                            attrs = {}
+                            for a in ('type', 'instance_id', 'from_zone', 'to_zone', 'target_group', 'owner_id'):
+                                if hasattr(cmd_def, a):
+                                    try:
+                                        attrs[a] = getattr(cmd_def, a)
+                                    except Exception:
+                                        attrs[a] = '<unreadable>'
+                            logger.debug('ExecuteCommand: cmd_def attrs=%s', attrs)
+                        except Exception:
+                            logger.debug('ExecuteCommand: failed to inspect cmd_def')
+                except Exception:
+                    pass
+
+                # Snapshot of game state for context (compact)
+                try:
+                    sd = EngineCompat.dump_state_debug(state, max_samples=2)
+                    logger.debug('ExecuteCommand: state snapshot=%s', sd)
+                except Exception:
+                    try:
+                        logger.debug('ExecuteCommand: failed to dump state snapshot')
+                    except Exception:
+                        pass
             except Exception:
                 pass
         except Exception:
