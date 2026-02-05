@@ -10,6 +10,7 @@ namespace dm::core {
         MANA_CHARGE,
         MOVE_CARD, // Deprecated/Generic: Prefer specific intents
         PLAY_CARD,
+        PLAY_FROM_ZONE, // Play card from any zone (unified handler)
         ATTACK_PLAYER,
         ATTACK_CREATURE,
         BLOCK,

@@ -26,7 +26,7 @@ except ImportError:
     dm_ai_module = None
 
 
-class GameSession:
+class GameSessionSimplified:
     """Simplified game session that leverages C++ engine for game progression."""
     
     DEFAULT_DECK: List[int] = []

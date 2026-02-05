@@ -136,26 +136,6 @@ namespace dm::engine::systems {
             case PlayerIntent::DECLARE_PLAY:
             {
                 int iid = action.source_instance_id;
-                
-                // Debug logging
-                try {
-                    std::ofstream log("logs/declare_play_debug.txt", std::ios::app);
-                    if (log) {
-                        log << "DECLARE_PLAY: instance_id=" << iid;
-                        if (auto* c = state.get_card_instance(iid)) {
-                            log << " card_id=" << c->card_id;
-                            if (card_db.count(c->card_id)) {
-                                const auto& def = card_db.at(c->card_id);
-                                log << " cost=" << def.cost;
-                                int adj_cost = ManaSystem::get_adjusted_cost(state, state.players[state.active_player_id], def);
-                                log << " adjusted_cost=" << adj_cost;
-                                bool can_pay = ManaSystem::can_pay_cost(state, state.players[state.active_player_id], def, card_db);
-                                log << " can_pay=" << (can_pay ? "true" : "false");
-                            }
-                        }
-                        log << "\n";
-                    }
-                } catch(...) {}
 
                 // Identify source zone dynamically
                 auto loc = get_card_location(state, iid);
@@ -172,45 +152,12 @@ namespace dm::engine::systems {
                 if (auto* c = state.get_card_instance(iid)) {
                     if (card_db.count(c->card_id)) {
                         const auto& def = card_db.at(c->card_id);
-                        
-                        // Debug logging
-                        try {
-                            std::ofstream log("logs/pay_cost_debug.txt", std::ios::app);
-                            if (log) {
-                                log << "PAY_COST: instance_id=" << iid << " card_id=" << c->card_id;
-                                int adj_cost = ManaSystem::get_adjusted_cost(state, state.players[state.active_player_id], def);
-                                log << " adjusted_cost=" << adj_cost;
-                                
-                                // Count untapped mana
-                                int untapped_mana = 0;
-                                for (const auto& m : state.players[state.active_player_id].mana_zone) {
-                                    if (!m.is_tapped) untapped_mana++;
-                                }
-                                log << " untapped_mana=" << untapped_mana;
-                            }
-                        } catch(...) {}
-                        
-                        bool payment_success = ManaSystem::auto_tap_mana(state, state.players[state.active_player_id], def, card_db);
-                        
-                        // Debug logging
-                        try {
-                            std::ofstream log("logs/pay_cost_debug.txt", std::ios::app);
-                            if (log) {
-                                log << " payment_success=" << (payment_success ? "true" : "false") << "\n";
-                            }
-                        } catch(...) {}
-                        
-                        if (payment_success) {
-                            // Mark as paid (using is_tapped flag on stack card)
-                            // Use Command to allow undo
-                            auto cmd = std::make_unique<MutateCommand>(iid, MutateCommand::MutationType::TAP);
-                            state.execute_command(std::move(cmd));
-                        } else {
-                            // Payment failed - return card from stack to hand
-                            auto return_cmd = std::make_unique<TransitionCommand>(iid, Zone::STACK, Zone::HAND, state.active_player_id);
-                            state.execute_command(std::move(return_cmd));
-                        }
+                        ManaSystem::auto_tap_mana(state, state.players[state.active_player_id], def, card_db);
                     }
+                    // Mark as paid (using is_tapped flag on stack card)
+                    // Use Command to allow undo
+                    auto cmd = std::make_unique<MutateCommand>(iid, MutateCommand::MutationType::TAP);
+                    state.execute_command(std::move(cmd));
                 }
                 break;
             }
@@ -1118,6 +1065,8 @@ namespace dm::engine::systems {
          block->push_back(move);
          exec.call_stack.push_back({block, 0, LoopContext{}});
          
+         // Mark that mana has been charged this turn (max 1 per turn rule)
+         // NOTE: Mana charge flag now set by ManaChargeCommand via FlowCommand (UNDO support)
     }
 
     void GameLogicSystem::handle_resolve_reaction(PipelineExecutor& exec, GameState& state, const Instruction& inst,

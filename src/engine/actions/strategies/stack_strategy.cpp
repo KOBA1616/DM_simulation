@@ -1,5 +1,6 @@
 #include "stack_strategy.hpp"
 #include "engine/systems/card/target_utils.hpp"
+#include "engine/systems/mana/mana_system.hpp"
 #include <iostream>
 
 namespace dm::engine {
@@ -35,16 +36,18 @@ namespace dm::engine {
                 actions.push_back(resolve);
             } else {
                 // Not paid -> PAY_COST
-                // Validate if cost CAN be paid?
-                // For generation, we usually assume it's legal to TRY to pay.
-                // Or check ManaSystem::can_pay_cost?
-                // Since DECLARE_PLAY already happened (which usually checks cost legality),
-                // we assume payment is possible or at least attempted.
-                Action pay;
-                pay.type = PlayerIntent::PAY_COST;
-                pay.source_instance_id = card.instance_id;
-                pay.card_id = card.card_id;
-                actions.push_back(pay);
+                // Check if cost CAN be paid before generating the action
+                if (card_db.count(card.card_id)) {
+                    const auto& def = card_db.at(card.card_id);
+                    // Check if player can pay the cost
+                    if (ManaSystem::can_pay_cost(game_state, active_player, def, card_db)) {
+                        Action pay;
+                        pay.type = PlayerIntent::PAY_COST;
+                        pay.source_instance_id = card.instance_id;
+                        pay.card_id = card.card_id;
+                        actions.push_back(pay);
+                    }
+                }
             }
         }
 
