@@ -175,12 +175,31 @@ namespace dm::engine {
 
              // Compile Commands
              for (const auto& cmd : effect.commands) {
-                 nlohmann::json args;
-                 args["type"] = "EXECUTE_COMMAND";
-                 nlohmann::json cmd_json;
-                 dm::core::to_json(cmd_json, cmd);
-                 args["cmd"] = cmd_json;
-                 then_block.emplace_back(InstructionOp::GAME_ACTION, args);
+                 if (cmd.type == CommandType::LOOK_TO_BUFFER || cmd.type == CommandType::REVEAL_TO_BUFFER) {
+                      Instruction move(InstructionOp::MOVE);
+                      move.args["target"] = "DECK_TOP";
+                      if (!cmd.input_value_key.empty()) {
+                          move.args["count"] = "$" + cmd.input_value_key;
+                      } else {
+                          move.args["count"] = (cmd.amount == 0) ? 1 : cmd.amount;
+                      }
+                      move.args["to"] = "BUFFER";
+                      then_block.push_back(move);
+                 } else if (cmd.type == CommandType::SELECT_FROM_BUFFER) {
+                      Instruction select(InstructionOp::SELECT);
+                      select.args["filter"] = cmd.target_filter;
+                      select.args["count"] = cmd.amount; // Allow 0
+                      std::string out_key = cmd.output_value_key.empty() ? "$selection" : cmd.output_value_key;
+                      select.args["out"] = out_key;
+                      then_block.push_back(select);
+                 } else {
+                     nlohmann::json args;
+                     args["type"] = "EXECUTE_COMMAND";
+                     nlohmann::json cmd_json;
+                     dm::core::to_json(cmd_json, cmd);
+                     args["cmd"] = cmd_json;
+                     then_block.emplace_back(InstructionOp::GAME_ACTION, args);
+                 }
              }
 
              if_inst.then_block = then_block;
@@ -192,12 +211,31 @@ namespace dm::engine {
              }
              // Compile Commands
              for (const auto& cmd : effect.commands) {
-                 nlohmann::json args;
-                 args["type"] = "EXECUTE_COMMAND";
-                 nlohmann::json cmd_json;
-                 dm::core::to_json(cmd_json, cmd);
-                 args["cmd"] = cmd_json;
-                 out_instructions.emplace_back(InstructionOp::GAME_ACTION, args);
+                 if (cmd.type == CommandType::LOOK_TO_BUFFER || cmd.type == CommandType::REVEAL_TO_BUFFER) {
+                      Instruction move(InstructionOp::MOVE);
+                      move.args["target"] = "DECK_TOP";
+                      if (!cmd.input_value_key.empty()) {
+                          move.args["count"] = "$" + cmd.input_value_key;
+                      } else {
+                          move.args["count"] = (cmd.amount == 0) ? 1 : cmd.amount;
+                      }
+                      move.args["to"] = "BUFFER";
+                      out_instructions.push_back(move);
+                 } else if (cmd.type == CommandType::SELECT_FROM_BUFFER) {
+                      Instruction select(InstructionOp::SELECT);
+                      select.args["filter"] = cmd.target_filter;
+                      select.args["count"] = cmd.amount; // Allow 0
+                      std::string out_key = cmd.output_value_key.empty() ? "$selection" : cmd.output_value_key;
+                      select.args["out"] = out_key;
+                      out_instructions.push_back(select);
+                 } else {
+                     nlohmann::json args;
+                     args["type"] = "EXECUTE_COMMAND";
+                     nlohmann::json cmd_json;
+                     dm::core::to_json(cmd_json, cmd);
+                     args["cmd"] = cmd_json;
+                     out_instructions.emplace_back(InstructionOp::GAME_ACTION, args);
+                 }
              }
          }
     }
@@ -254,7 +292,12 @@ namespace dm::engine {
              select_inst.op = InstructionOp::SELECT;
 
              select_inst.args["filter"] = action.filter;
-             select_inst.args["count"] = action.filter.count.value_or(1);
+
+             int count = action.filter.count.value_or(1);
+             if (action.type == EffectPrimitive::SELECT_FROM_BUFFER) {
+                  count = action.value1; // Allow 0
+             }
+             select_inst.args["count"] = count;
 
              std::string out_key = "$selection_" + std::to_string(target_instructions->size());
              if (!action.output_value_key.empty()) {

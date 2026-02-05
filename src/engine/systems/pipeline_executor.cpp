@@ -482,7 +482,7 @@ namespace dm::engine::systems {
              return;
         }
 
-        if (count >= (int)valid_targets.size()) {
+        if (count <= 0 || count >= (int)valid_targets.size()) {
              set_context_var(out_key, valid_targets);
              return;
         }
