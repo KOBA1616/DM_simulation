@@ -45,6 +45,7 @@ class GameSession:
         self.is_running = False
         self.is_processing = False
         self.card_db: CardDB = {}
+        self.native_card_db = None  # Native C++ CardDatabase for PhaseManager
         self.gs: Optional[GameState] = None
 
     def initialize_game(self, card_db: CardDB, seed: int = 42) -> None:
@@ -65,7 +66,21 @@ class GameSession:
 
         # Start game via C++ PhaseManager
         try:
-            dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
+            # Load native CardDatabase if not already loaded
+            if self.native_card_db is None:
+                if hasattr(dm_ai_module, 'JsonLoader'):
+                    try:
+                        self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+                        self.callback_log("Loaded native CardDatabase via JsonLoader")
+                    except Exception as e:
+                        self.callback_log(f"ERROR: JsonLoader failed - {e}")
+                        self.callback_log("Cannot proceed without native CardDatabase")
+                        return
+                else:
+                    self.callback_log("ERROR: JsonLoader not available in dm_ai_module")
+                    return
+
+            dm_ai_module.PhaseManager.start_game(self.gs, self.native_card_db)
             self.callback_log("Game initialized via C++ PhaseManager.start_game")
         except Exception as e:
             self.callback_log(f"start_game failed: {e}")
@@ -89,11 +104,50 @@ class GameSession:
         if not deck1:
             deck1 = self._build_default_deck()
 
+        # Set decks
         self.gs.set_deck(0, deck0)
         self.gs.set_deck(1, deck1)
 
+        # Debug: check deck sizes after set
         try:
-            dm_ai_module.PhaseManager.start_game(self.gs, self.card_db)
+            p0_deck_size = len(self.gs.players[0].deck)
+            p1_deck_size = len(self.gs.players[1].deck)
+            self.callback_log(f"P0 deck size (post-set): {p0_deck_size}")
+            self.callback_log(f"P1 deck size (post-set): {p1_deck_size}")
+        except Exception as e:
+            self.callback_log(f"Failed to check deck sizes: {e}")
+
+        # Start game via C++ PhaseManager
+        try:
+            # Load native CardDatabase if not already loaded
+            if self.native_card_db is None:
+                if hasattr(dm_ai_module, 'JsonLoader'):
+                    try:
+                        self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+                        self.callback_log("Loaded native CardDatabase via JsonLoader")
+                    except Exception as e:
+                        self.callback_log(f"ERROR: JsonLoader failed - {e}")
+                        self.callback_log("Cannot proceed without native CardDatabase")
+                        return
+                else:
+                    self.callback_log("ERROR: JsonLoader not available in dm_ai_module")
+                    return
+
+            dm_ai_module.PhaseManager.start_game(self.gs, self.native_card_db)
+            
+            # Debug: check state after start_game
+            try:
+                p0_hand = len(self.gs.players[0].hand)
+                p0_shields = len(self.gs.players[0].shield_zone)
+                p0_deck = len(self.gs.players[0].deck)
+                p1_hand = len(self.gs.players[1].hand)
+                p1_shields = len(self.gs.players[1].shield_zone)
+                p1_deck = len(self.gs.players[1].deck)
+                self.callback_log(f"After start_game - P0 deck:{p0_deck}, hand:{p0_hand}, shields:{p0_shields}")
+                self.callback_log(f"After start_game - P1 deck:{p1_deck}, hand:{p1_hand}, shields:{p1_shields}")
+            except Exception as e:
+                self.callback_log(f"Failed to check post-start_game state: {e}")
+
         except Exception as e:
             self.callback_log(f"start_game failed: {e}")
 
@@ -135,6 +189,13 @@ class GameSession:
             from dm_toolkit.commands import generate_legal_commands
             cmds = generate_legal_commands(self.gs, self.card_db)
 
+            # DEBUG: Log available commands
+            if cmds:
+                cmd_types = [cmd.to_dict().get('type', 'UNKNOWN') for cmd in cmds[:5]]  # First 5
+                self.callback_log(f"[DEBUG] P{active_pid} has {len(cmds)} commands: {cmd_types}")
+            else:
+                self.callback_log(f"[DEBUG] P{active_pid} has no commands - will fast_forward")
+
             if not cmds:
                 # No commands - let C++ fast_forward progress the game
                 self._fast_forward()
@@ -147,27 +208,28 @@ class GameSession:
                 self.callback_update_ui()
                 return
 
-            # AI player - use C++ to handle automatically
-            # For now, execute first non-PASS action, then fast_forward
+            # AI player - select and execute action
             best_cmd = self._select_ai_action(cmds)
             if best_cmd:
                 self.execute_action(best_cmd)
                 # After AI action, fast_forward to next decision point
+                # This ensures phase progression (e.g., after MANA_CHARGE, move to main phase)
                 self._fast_forward()
-
-            self.callback_update_ui()
+                self.callback_update_ui()
 
         finally:
             self.is_processing = False
 
     def execute_action(self, raw_action: Any):
         """
-        Execute an action and let C++ engine progress automatically.
+        Execute an action and update UI immediately.
         
         This method:
         1. Converts action to command dict
         2. Executes via C++ engine
-        3. Calls fast_forward to progress to next decision point
+        3. Updates UI to show the result
+        
+        Note: Does NOT advance the game - that's step_game()'s responsibility
         """
         if not self.gs:
             return
@@ -180,6 +242,7 @@ class GameSession:
             return
 
         active_pid = EngineCompat.get_active_player_id(self.gs)
+        is_human = (self.player_modes.get(active_pid) == 'Human')
 
         try:
             # Execute command using appropriate C++ command class
@@ -212,9 +275,10 @@ class GameSession:
 
         except Exception as e:
             self.callback_log(f"Execution error: {e}")
+            self.callback_update_ui()
+            return
 
-        # After executing action, fast_forward to next decision point
-        self._fast_forward()
+        # Update UI immediately to show action result
         self.callback_update_ui()
 
     def _fast_forward(self):
@@ -222,13 +286,45 @@ class GameSession:
         if not dm_ai_module or not hasattr(dm_ai_module.PhaseManager, 'fast_forward'):
             return
         
+        if self.native_card_db is None:
+            self.callback_log("ERROR: Cannot call fast_forward without native CardDatabase")
+            return
+        
         try:
-            dm_ai_module.PhaseManager.fast_forward(self.gs, self.card_db)
+            active_pid = EngineCompat.get_active_player_id(self.gs)
+            phase = self.gs.get_phase() if hasattr(self.gs, 'get_phase') else 'UNKNOWN'
+            self.callback_log(f"[DEBUG] Calling fast_forward: P{active_pid} phase={phase}")
+            dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
+            new_phase = self.gs.get_phase() if hasattr(self.gs, 'get_phase') else 'UNKNOWN'
+            self.callback_log(f"[DEBUG] fast_forward completed: phase={new_phase}")
         except Exception as e:
-            self.callback_log(f"fast_forward error: {e}")
+            self.callback_log(f"ERROR executing fast_forward: {e}")
+            import traceback
+            self.callback_log(traceback.format_exc())
 
     def _select_ai_action(self, cmds: List[Any]) -> Any:
-        """Select best action for AI player. Prefer non-PASS, non-NONE actions."""
+        """Select best action for AI player. Priority: PLAY > MANA_CHARGE > others > PASS."""
+        # First pass: look for PLAY_FROM_ZONE (highest priority)
+        for cmd in cmds:
+            try:
+                d = cmd.to_dict()
+                cmd_type = d.get('type')
+                if cmd_type == 'PLAY_FROM_ZONE':
+                    return cmd
+            except Exception:
+                pass
+        
+        # Second pass: look for MANA_CHARGE
+        for cmd in cmds:
+            try:
+                d = cmd.to_dict()
+                cmd_type = d.get('type')
+                if cmd_type == 'MANA_CHARGE':
+                    return cmd
+            except Exception:
+                pass
+        
+        # Third pass: any non-PASS, non-NONE action
         for cmd in cmds:
             try:
                 d = cmd.to_dict()
@@ -236,7 +332,6 @@ class GameSession:
                 # Skip NONE type with legacy_warning (e.g., PAY_COST)
                 if cmd_type == 'NONE' and d.get('legacy_warning'):
                     continue
-                # Prefer non-PASS actions
                 if cmd_type != 'PASS':
                     return cmd
             except Exception:
@@ -246,16 +341,37 @@ class GameSession:
         return cmds[0] if cmds else None
 
     def _build_default_deck(self) -> List[int]:
-        """Build a default deck from card_db."""
+        """Build a default deck from card_db (40 cards)."""
         if not self.card_db:
             return []
         
+        ids: List[int] = []
         try:
-            # Use first 40 cards from card_db
-            all_ids = list(self.card_db.keys())
-            return (all_ids * 40)[:40]
+            # dict-like
+            if isinstance(self.card_db, dict):
+                ids = [int(k) for k in self.card_db.keys()]
+            elif isinstance(self.card_db, list):
+                # cards.json style: list of dicts with 'id'
+                for entry in self.card_db:
+                    try:
+                        if isinstance(entry, dict) and 'id' in entry:
+                            ids.append(int(entry['id']))
+                    except Exception:
+                        continue
         except Exception:
+            ids = []
+
+        if not ids:
             return []
+
+        # Build 40-card deck by repeating available ids
+        deck: List[int] = []
+        i = 0
+        while len(deck) < 40:
+            deck.append(ids[i % len(ids)])
+            i += 1
+        
+        return deck
 
     def generate_legal_commands(self) -> List[Any]:
         """Get legal commands from C++ engine."""
