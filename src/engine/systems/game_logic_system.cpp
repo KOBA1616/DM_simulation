@@ -74,11 +74,39 @@ namespace dm::engine::systems {
         switch (action.type) {
             case PlayerIntent::PLAY_CARD:
             {
-                // Convert Action to Instruction
-                nlohmann::json args;
-                args["card"] = action.source_instance_id;
-                Instruction inst(InstructionOp::PLAY, args);
-                handle_play_card(pipeline, state, inst, card_db);
+                // Stack Lifecycle: DECLARE_PLAY -> PAY_COST -> RESOLVE_PLAY
+                int iid = action.source_instance_id;
+                
+                // Step 1: DECLARE_PLAY - Move to Stack
+                auto loc = get_card_location(state, iid);
+                auto declare_cmd = std::make_unique<game_command::TransitionCommand>(iid, loc.first, Zone::STACK, loc.second);
+                state.execute_command(std::move(declare_cmd));
+                
+                // Step 2: PAY_COST - Auto tap mana
+                if (auto* c = state.get_card_instance(iid)) {
+                    if (card_db.count(c->card_id)) {
+                        const auto& def = card_db.at(c->card_id);
+                        
+                        bool payment_success = ManaSystem::auto_tap_mana(state, state.players[state.active_player_id], def, card_db);
+                        
+                        if (payment_success) {
+                            // Mark as paid (tap the stack card)
+                            auto tap_cmd = std::make_unique<game_command::MutateCommand>(iid, game_command::MutateCommand::MutationType::TAP);
+                            state.execute_command(std::move(tap_cmd));
+                            
+                            // Step 3: RESOLVE_PLAY - Execute resolution
+                            nlohmann::json resolve_args;
+                            resolve_args["card"] = iid;
+                            Instruction resolve_inst(InstructionOp::GAME_ACTION, resolve_args);
+                            resolve_inst.args["type"] = "RESOLVE_PLAY";
+                            handle_resolve_play(pipeline, state, resolve_inst, card_db);
+                        } else {
+                            // Payment failed - return card from stack to hand
+                            auto return_cmd = std::make_unique<game_command::TransitionCommand>(iid, Zone::STACK, Zone::HAND, state.active_player_id);
+                            state.execute_command(std::move(return_cmd));
+                        }
+                    }
+                }
                 break;
             }
             case PlayerIntent::RESOLVE_PLAY:
@@ -135,18 +163,19 @@ namespace dm::engine::systems {
             }
             case PlayerIntent::DECLARE_PLAY:
             {
+                // Stack Lifecycle: DECLARE_PLAY -> PAY_COST -> RESOLVE_PLAY
                 int iid = action.source_instance_id;
                 
                 // Debug logging
                 try {
                     std::ofstream log("logs/declare_play_debug.txt", std::ios::app);
                     if (log) {
-                        log << "DECLARE_PLAY: instance_id=" << iid;
+                        log << "DECLARE_PLAY (with lifecycle): instance_id=" << iid;
                         if (auto* c = state.get_card_instance(iid)) {
                             log << " card_id=" << c->card_id;
                             if (card_db.count(c->card_id)) {
                                 const auto& def = card_db.at(c->card_id);
-                                log << " cost=" << def.cost;
+                                log << " cost=" << def.cost << " type=" << static_cast<int>(def.type);
                                 int adj_cost = ManaSystem::get_adjusted_cost(state, state.players[state.active_player_id], def);
                                 log << " adjusted_cost=" << adj_cost;
                                 bool can_pay = ManaSystem::can_pay_cost(state, state.players[state.active_player_id], def, card_db);
@@ -157,12 +186,46 @@ namespace dm::engine::systems {
                     }
                 } catch(...) {}
 
-                // Identify source zone dynamically
+                // Step 1: DECLARE_PLAY - Move to Stack
                 auto loc = get_card_location(state, iid);
-
-                // Move to Stack from wherever it is
-                auto cmd = std::make_unique<TransitionCommand>(iid, loc.first, Zone::STACK, loc.second);
-                state.execute_command(std::move(cmd));
+                auto declare_cmd = std::make_unique<TransitionCommand>(iid, loc.first, Zone::STACK, loc.second);
+                state.execute_command(std::move(declare_cmd));
+                
+                // Step 2: PAY_COST - Auto tap mana
+                if (auto* c = state.get_card_instance(iid)) {
+                    if (card_db.count(c->card_id)) {
+                        const auto& def = card_db.at(c->card_id);
+                        
+                        bool payment_success = ManaSystem::auto_tap_mana(state, state.players[state.active_player_id], def, card_db);
+                        
+                        // Debug logging
+                        try {
+                            std::ofstream log("logs/declare_play_debug.txt", std::ios::app);
+                            if (log) {
+                                log << "  payment_success=" << (payment_success ? "true" : "false");
+                                if (payment_success) log << " proceeding to resolve\n";
+                                else log << " payment failed, returning to hand\n";
+                            }
+                        } catch(...) {}
+                        
+                        if (payment_success) {
+                            // Mark as paid (tap the stack card)
+                            auto tap_cmd = std::make_unique<game_command::MutateCommand>(iid, game_command::MutateCommand::MutationType::TAP);
+                            state.execute_command(std::move(tap_cmd));
+                            
+                            // Step 3: RESOLVE_PLAY - Execute resolution with effect processing
+                            nlohmann::json resolve_args;
+                            resolve_args["card"] = iid;
+                            Instruction resolve_inst(InstructionOp::GAME_ACTION, resolve_args);
+                            resolve_inst.args["type"] = "RESOLVE_PLAY";
+                            handle_resolve_play(pipeline, state, resolve_inst, card_db);
+                        } else {
+                            // Payment failed - return card from stack to hand
+                            auto return_cmd = std::make_unique<game_command::TransitionCommand>(iid, Zone::STACK, Zone::HAND, state.active_player_id);
+                            state.execute_command(std::move(return_cmd));
+                        }
+                    }
+                }
                 break;
             }
             case PlayerIntent::PAY_COST:
@@ -541,10 +604,7 @@ namespace dm::engine::systems {
                      exec.call_stack.push_back({block, 0, LoopContext{}});
                      size_t after_size = exec.call_stack.size();
                      std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
-                     if (parent_idx >= 0 && parent_idx < (int)exec.call_stack.size()) {
-                         exec.call_stack[parent_idx].pc++;
-                         std::fprintf(stderr, "[DIAG ADVANCE] %s:%d advanced_parent_idx=%d new_pc=%d\n", __FILE__, __LINE__, parent_idx, exec.call_stack[parent_idx].pc);
-                     }
+                     // Removed manual pc++ - pipeline_executor handles this automatically
                  }
 
                  size_t after_size = exec.call_stack.size();
@@ -604,10 +664,7 @@ namespace dm::engine::systems {
                  exec.call_stack.push_back({block, 0, LoopContext{}});
                  size_t after_size = exec.call_stack.size();
                  std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
-                 if (parent_idx >= 0 && parent_idx < (int)exec.call_stack.size()) {
-                     exec.call_stack[parent_idx].pc++;
-                     std::fprintf(stderr, "[DIAG ADVANCE] %s:%d advanced_parent_idx=%d new_pc=%d\n", __FILE__, __LINE__, parent_idx, exec.call_stack[parent_idx].pc);
-                 }
+                 // Removed manual pc++ - pipeline_executor handles this automatically
              }
         }
     }
@@ -677,10 +734,7 @@ namespace dm::engine::systems {
                 exec.call_stack.push_back({block, 0, LoopContext{}});
                 size_t after_size = exec.call_stack.size();
                 std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
-                if (parent_idx >= 0 && parent_idx < (int)exec.call_stack.size()) {
-                    exec.call_stack[parent_idx].pc++;
-                    std::fprintf(stderr, "[DIAG ADVANCE] %s:%d advanced_parent_idx=%d new_pc=%d\n", __FILE__, __LINE__, parent_idx, exec.call_stack[parent_idx].pc);
-                }
+                // Removed manual pc++ - pipeline_executor handles this automatically
             }
         }
     }
@@ -720,9 +774,21 @@ namespace dm::engine::systems {
         std::map<std::string, int> ctx;
 
         if (def.type == CardType::SPELL) {
+            // Compile immediate effects (trigger == NONE or PASSIVE_CONST)
+            // Triggered effects (ON_CAST_SPELL, etc.) will be handled by trigger check
             for (const auto& eff : def.effects) {
+                 // Skip effects with triggers that should fire via trigger system
+                 if (eff.trigger != TriggerType::NONE && eff.trigger != TriggerType::PASSIVE_CONST) {
+                     continue;  // Will be handled by CHECK_SPELL_CAST_TRIGGERS
+                 }
                  EffectSystem::instance().compile_effect(state, eff, instance_id, ctx, card_db, compiled_effects);
             }
+
+            // Check Triggers (ON_CAST_SPELL) - Same pattern as creatures
+            nlohmann::json trig_args;
+            trig_args["type"] = "CHECK_SPELL_CAST_TRIGGERS";
+            trig_args["card"] = instance_id;
+            compiled_effects.emplace_back(InstructionOp::GAME_ACTION, trig_args);
 
             // 2. Move to Graveyard (after effects)
             nlohmann::json move_args;
@@ -787,10 +853,7 @@ namespace dm::engine::systems {
                  exec.call_stack.push_back({block, 0, LoopContext{}});
                  size_t after_size = exec.call_stack.size();
                  std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
-                 if (parent_idx >= 0 && parent_idx < (int)exec.call_stack.size()) {
-                     exec.call_stack[parent_idx].pc++;
-                     std::fprintf(stderr, "[DIAG ADVANCE] %s:%d advanced_parent_idx=%d new_pc=%d\n", __FILE__, __LINE__, parent_idx, exec.call_stack[parent_idx].pc);
-                 }
+                 // Removed manual pc++ - pipeline_executor handles this automatically
              }
         }
     }
@@ -947,10 +1010,7 @@ namespace dm::engine::systems {
                  exec.call_stack.push_back({block, 0, LoopContext{}});
                  size_t after_size = exec.call_stack.size();
                  std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
-                 if (parent_idx >= 0 && parent_idx < (int)exec.call_stack.size()) {
-                     exec.call_stack[parent_idx].pc++;
-                     std::fprintf(stderr, "[DIAG ADVANCE] %s:%d advanced_parent_idx=%d new_pc=%d\n", __FILE__, __LINE__, parent_idx, exec.call_stack[parent_idx].pc);
-                 }
+                 // Removed manual pc++ - pipeline_executor handles this automatically
              }
         }
     }
@@ -1112,12 +1172,42 @@ namespace dm::engine::systems {
          int card_id = exec.resolve_int(inst.args.value("card", 0));
          if (card_id < 0) return;
 
+         // DM Rule: Check if mana was already charged this turn (max 1 per turn per player)
+         const CardInstance* card_ptr = state.get_card_instance(card_id);
+         if (!card_ptr) return;
+         
+         PlayerID owner = card_ptr->owner;
+         if (state.turn_stats.mana_charged_by_player[owner]) {
+             // Already charged this turn, skip
+             try {
+                 std::ofstream lout("logs/manacharge_trace.txt", std::ios::app);
+                 if (lout) {
+                     lout << "handle_mana_charge BLOCKED: already charged this turn for player " << (int)owner << "\n";
+                     lout.close();
+                 }
+             } catch(...) {}
+             return;
+         }
+
+         // Execute the mana charge move
          Instruction move = utils::ActionPrimitiveUtils::create_mana_charge_instruction(card_id);
 
          auto block = std::make_shared<std::vector<Instruction>>();
          block->push_back(move);
          exec.call_stack.push_back({block, 0, LoopContext{}});
          
+         // Set the mana charged flag using FlowCommand (for undo support)
+         auto flow_cmd = std::make_shared<game_command::FlowCommand>(
+             game_command::FlowCommand::FlowType::SET_MANA_CHARGED, 1);
+         state.execute_command(std::move(flow_cmd));
+         
+         try {
+             std::ofstream lout("logs/manacharge_trace.txt", std::ios::app);
+             if (lout) {
+                 lout << "handle_mana_charge SUCCESS: card_id=" << card_id << " player=" << (int)owner << "\n";
+                 lout.close();
+             }
+         } catch(...) {}
     }
 
     void GameLogicSystem::handle_resolve_reaction(PipelineExecutor& exec, GameState& state, const Instruction& inst,
@@ -1157,8 +1247,101 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_select_target(PipelineExecutor& exec, GameState& state, const Instruction& inst) {
         exec.execution_paused = true;
-        // ... set query ...
-        (void)state; (void)inst;
+
+        if (inst.args.is_null()) return;
+
+        // Allow caller to supply explicit valid_targets, otherwise compute from filter
+        std::vector<int> valid_targets;
+        if (inst.args.contains("valid_targets") && inst.args["valid_targets"].is_array()) {
+            for (const auto& v : inst.args["valid_targets"]) {
+                try {
+                    valid_targets.push_back(v.get<int>());
+                } catch(...) {}
+            }
+        } else if (inst.args.contains("filter")) {
+            core::FilterDef filter = inst.args.value("filter", core::FilterDef{});
+
+            std::vector<core::Zone> zones;
+            if (filter.zones.empty()) {
+                zones = {core::Zone::BATTLE, core::Zone::HAND, core::Zone::MANA, core::Zone::SHIELD};
+            } else {
+                for (const auto& z_str : filter.zones) {
+                    if (z_str == "BATTLE_ZONE") zones.push_back(core::Zone::BATTLE);
+                    else if (z_str == "HAND") zones.push_back(core::Zone::HAND);
+                    else if (z_str == "MANA_ZONE") zones.push_back(core::Zone::MANA);
+                    else if (z_str == "SHIELD_ZONE") zones.push_back(core::Zone::SHIELD);
+                    else if (z_str == "GRAVEYARD") zones.push_back(core::Zone::GRAVEYARD);
+                    else if (z_str == "DECK") zones.push_back(core::Zone::DECK);
+                    else if (z_str == "EFFECT_BUFFER") zones.push_back(core::Zone::BUFFER);
+                }
+            }
+
+            PlayerID player_id = state.active_player_id;
+            const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+
+            for (PlayerID pid : {player_id, static_cast<PlayerID>(1 - player_id)}) {
+                for (core::Zone z : zones) {
+                    std::vector<int> zone_indices;
+                    if (z == core::Zone::BUFFER) {
+                        for (const auto& c : state.players[pid].effect_buffer) zone_indices.push_back(c.instance_id);
+                    } else {
+                        zone_indices = state.get_zone(pid, z);
+                    }
+
+                    for (int instance_id : zone_indices) {
+                        if (instance_id < 0) continue;
+                        const auto* card_ptr = state.get_card_instance(instance_id);
+                        if (!card_ptr && z == core::Zone::BUFFER) {
+                            const auto& buf = state.players[pid].effect_buffer;
+                            auto it = std::find_if(buf.begin(), buf.end(), [instance_id](const core::CardInstance& c){ return c.instance_id == instance_id; });
+                            if (it != buf.end()) card_ptr = &(*it);
+                        }
+                        if (!card_ptr) continue;
+                        const auto& card = *card_ptr;
+
+                        if (card_db.count(card.card_id)) {
+                            const auto& def = card_db.at(card.card_id);
+                            if (dm::engine::TargetUtils::is_valid_target(card, def, filter, state, player_id, pid)) {
+                                valid_targets.push_back(instance_id);
+                            }
+                        } else if (card.card_id == 0) {
+                            if (dm::engine::TargetUtils::is_valid_target(card, core::CardDefinition(), filter, state, player_id, pid)) {
+                                valid_targets.push_back(instance_id);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        int count = exec.resolve_int(inst.args.value("count", 1));
+
+        // If no valid targets, behave like pipeline SELECT: set context var to empty and continue
+        if (valid_targets.empty()) {
+            std::string out_key = inst.args.value("out", "$selection");
+            exec.set_context_var(out_key, std::vector<int>{});
+            exec.execution_paused = false;
+            return;
+        }
+
+        // If selection should auto-resolve (count >= available), set context and continue
+        if (count <= 0 || count >= (int)valid_targets.size()) {
+            std::string out_key = inst.args.value("out", "$selection");
+            exec.set_context_var(out_key, valid_targets);
+            exec.execution_paused = false;
+            return;
+        }
+
+        // Otherwise pause execution and create pending query for user input
+        exec.waiting_for_key = inst.args.value("out", std::string("$selection"));
+        state.waiting_for_user_input = true;
+        state.pending_query = GameState::QueryContext{
+            state.pending_query.query_id + 1,
+            "SELECT_TARGET",
+            {{"min", count}, {"max", count}},
+            valid_targets,
+            {}
+        };
     }
 
     void GameLogicSystem::handle_execute_command(PipelineExecutor& exec, GameState& state, const Instruction& inst) {
@@ -1197,6 +1380,47 @@ namespace dm::engine::systems {
         int card_id = exec.resolve_int(inst.args.value("card", 0));
         TriggerSystem::instance().resolve_trigger(state, TriggerType::ON_PLAY, card_id, card_db);
         TriggerSystem::instance().resolve_trigger(state, TriggerType::ON_OTHER_ENTER, card_id, card_db);
+    }
+
+    void GameLogicSystem::handle_check_spell_cast_triggers(PipelineExecutor& exec, GameState& state, const Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db) {
+        int card_id = exec.resolve_int(inst.args.value("card", 0));
+        
+        // Debug logging  
+        {
+            std::ofstream log("c:\\temp\\spell_trigger_debug.txt", std::ios::app);
+            if (log) {
+                log << "CHECK_SPELL_CAST_TRIGGERS called, card_id=" << card_id << std::endl;
+                const CardInstance* card = state.get_card_instance(card_id);
+                if (card) {
+                    log << "  Card found: " << card->card_id << std::endl;
+                    if (card_db.count(card->card_id)) {
+                        const auto& def = card_db.at(card->card_id);
+                        log << "  Card def found, type=" << (int)def.type << ", effects=" << def.effects.size() << std::endl;
+                        for (size_t i = 0; i < def.effects.size(); ++i) {
+                            log << "    Effect " << i << ": trigger=" << (int)def.effects[i].trigger 
+                                << ", trigger_scope=" << (int)def.effects[i].trigger_scope << std::endl;
+                        }
+                    } else {
+                        log << "  Card def NOT found" << std::endl;
+                    }
+                } else {
+                    log << "  Card NOT found (null)" << std::endl;
+                }
+                log << "  Calling TriggerSystem::resolve_trigger..." << std::endl;
+                log.flush();
+            }
+        }
+        
+        TriggerSystem::instance().resolve_trigger(state, TriggerType::ON_CAST_SPELL, card_id, card_db);
+        
+        // Debug logging after
+        {
+            std::ofstream log("c:\\temp\\spell_trigger_debug.txt", std::ios::app);
+            if (log) {
+                log << "  After resolve_trigger, pending_effects.size()=" << state.pending_effects.size() << std::endl;
+                log.flush();
+            }
+        }
     }
 
     void GameLogicSystem::handle_game_result(PipelineExecutor& exec, GameState& state, const Instruction& inst) {

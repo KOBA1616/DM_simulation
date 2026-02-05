@@ -217,15 +217,24 @@ namespace dm::engine::systems {
                  if (!cmd.output_value_key.empty()) {
                      execution_context[cmd.output_value_key] = count;
                  }
-             } else {
-                 std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
+            } else {
+                std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
 
-                 std::map<std::string, int> params;
-                 params["amount"] = resolve_amount(cmd, execution_context);
+                // If there are no valid targets, do not create a pending query that waits for user input.
+                // Instead, set output value (if requested) and continue execution immediately.
+                if (targets.empty()) {
+                    if (!cmd.output_value_key.empty()) {
+                        execution_context[cmd.output_value_key] = 0;
+                    }
+                    return;
+                }
 
-                 QueryCommand query(query_type, targets, params);
-                 query.execute(state);
-             }
+                std::map<std::string, int> params;
+                params["amount"] = resolve_amount(cmd, execution_context);
+
+                QueryCommand query(query_type, targets, params);
+                query.execute(state);
+            }
 
         } else if (cmd.type == core::CommandType::MUTATE) {
             std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);

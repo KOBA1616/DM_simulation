@@ -4,6 +4,9 @@
 #include "engine/systems/card/passive_effect_system.hpp"
 #include <algorithm>
 #include <vector>
+#include <fstream>
+#include <filesystem>
+#include <cstdio>
 
 namespace dm::engine {
 
@@ -13,6 +16,26 @@ namespace dm::engine {
         std::vector<Action> actions;
         const auto& game_state = ctx.game_state;
         const auto& card_db = ctx.card_db;
+
+        // Debug: dump pending effects summary to logs for investigation
+        try {
+            std::filesystem::create_directories("logs");
+            std::ofstream dbg("logs/pending_effects_debug.txt", std::ios::app);
+            if (dbg) {
+                dbg << "[PENDING_DEBUG] active_player=" << static_cast<int>(game_state.active_player_id)
+                    << " pending_count=" << game_state.pending_effects.size() << "\n";
+                for (size_t i = 0; i < game_state.pending_effects.size(); ++i) {
+                    const auto& e = game_state.pending_effects[i];
+                    dbg << "  idx=" << i << " type=" << static_cast<int>(e.type)
+                        << " controller=" << static_cast<int>(e.controller)
+                        << " src=" << e.source_instance_id
+                        << " optional=" << (e.optional ? 1 : 0)
+                        << " resolve_type=" << static_cast<int>(e.resolve_type)
+                        << " num_targets_needed=" << e.num_targets_needed << "\n";
+                }
+                dbg.close();
+            }
+        } catch(...) {}
 
         PlayerID decision_maker = game_state.active_player_id;
         bool ap_has = false;
@@ -98,7 +121,20 @@ namespace dm::engine {
         for (size_t i : active_indices) {
             const auto& eff = game_state.pending_effects[i];
 
-            if (eff.resolve_type == ResolveType::TARGET_SELECT) {
+            // PRIORITY: Handle TRIGGER_ABILITY first (ON_PLAY, ON_ATTACK, etc.)
+            if (eff.type == EffectType::TRIGGER_ABILITY) {
+                Action resolve;
+                resolve.type = PlayerIntent::RESOLVE_EFFECT;
+                resolve.slot_index = static_cast<int>(i);
+                actions.push_back(resolve);
+                
+                // Always add PASS for trigger abilities (they are optional by design)
+                Action pass;
+                pass.type = PlayerIntent::PASS;
+                pass.slot_index = static_cast<int>(i);
+                actions.push_back(pass);
+            }
+            else if (eff.resolve_type == ResolveType::TARGET_SELECT) {
                 if (eff.target_instance_ids.size() >= (size_t)eff.num_targets_needed) {
                     Action resolve;
                     resolve.type = PlayerIntent::RESOLVE_EFFECT;
@@ -448,8 +484,27 @@ namespace dm::engine {
                 resolve.type = PlayerIntent::RESOLVE_EFFECT;
                 resolve.slot_index = static_cast<int>(i);
                 actions.push_back(resolve);
+                
+                // Add PASS action for optional effects
+                if (eff.optional) {
+                    Action pass;
+                    pass.type = PlayerIntent::PASS;
+                    pass.slot_index = static_cast<int>(i);
+                    actions.push_back(pass);
+                }
             }
         }
+        // Emit concise stderr trace for immediate diagnostic visibility
+        if (!actions.empty()) {
+            std::fprintf(stderr, "[PENDING_ACTIONS] count=%zu", actions.size());
+            for (size_t k = 0; k < actions.size(); ++k) {
+                std::fprintf(stderr, " %d", static_cast<int>(actions[k].type));
+            }
+            std::fprintf(stderr, "\n");
+        } else {
+            std::fprintf(stderr, "[PENDING_ACTIONS] empty\n");
+        }
+
         return actions;
     }
 

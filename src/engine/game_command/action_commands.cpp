@@ -109,6 +109,18 @@ namespace dm::engine::game_command {
         }
 
         PlayerID owner = card_ptr->owner;
+        
+        // DM Rule: Check if mana was already charged this turn (max 1 per turn per player)
+        if (state.turn_stats.mana_charged_by_player[owner]) {
+            try {
+                std::ofstream lout("logs/manacharge_trace.txt", std::ios::app);
+                if (lout) {
+                    lout << "MANA_CHARGE_CMD BLOCKED: already charged this turn for player " << (int)owner << "\n";
+                    lout.close();
+                }
+            } catch(...) {}
+            return;
+        }
         Zone from_zone = Zone::GRAVEYARD;
         bool found = false;
         

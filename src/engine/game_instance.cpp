@@ -152,6 +152,16 @@ namespace dm::engine {
 
         std::unique_ptr<GameCommand> cmd = nullptr;
 
+        // Debug logging before switch
+        {
+            std::ofstream dbg("c:\\temp\\resolve_debug.txt", std::ios::app);
+            if (dbg) {
+                dbg << "Before switch: action.type=" << (int)action.type << std::endl;
+                dbg.flush();
+                dbg.close();
+            }
+        }
+
         switch (action.type) {
             case PlayerIntent::PLAY_CARD:
             case PlayerIntent::PLAY_CARD_INTERNAL:
@@ -233,6 +243,87 @@ namespace dm::engine {
                     }
                 }
                 break;
+            case PlayerIntent::RESOLVE_EFFECT:
+                {
+                    {
+                        std::ofstream dbg("c:\\temp\\resolve_debug.txt", std::ios::app);
+                        if (dbg) {
+                            dbg << "Inside RESOLVE_EFFECT case" << std::endl;
+                            dbg.flush();
+                            dbg.close();
+                        }
+                    }
+                    
+                    int effect_idx = action.slot_index;
+                    
+                    {
+                        std::ofstream dbg("c:\\temp\\resolve_debug.txt", std::ios::app);
+                        if (dbg) {
+                            dbg << "effect_idx=" << effect_idx << " pending_effects.size()=" << state.pending_effects.size() << std::endl;
+                            dbg.flush();
+                            dbg.close();
+                        }
+                    }
+                    
+                    if (effect_idx >= 0 && effect_idx < (int)state.pending_effects.size()) {
+                        auto& pe = state.pending_effects[effect_idx];
+                        
+                        {
+                            std::ofstream dbg("c:\\temp\\resolve_debug.txt", std::ios::app);
+                            if (dbg) {
+                                dbg << "has_effect_def=" << (pe.effect_def.has_value() ? "yes" : "no") << std::endl;
+                                dbg.flush();
+                                dbg.close();
+                            }
+                        }
+                        
+                        if (pe.effect_def.has_value()) {
+                            // Resolve the entire effect (actions + commands) using the EffectSystem
+                            // so that commands compiled into the pipeline are executed as expected.
+                            try {
+                                EffectSystem::instance().resolve_effect_with_context(state, pe.effect_def.value(), pe.source_instance_id, pe.execution_context, *card_db);
+                            } catch (...) {
+                                // Fallback: if full effect resolution fails, try resolving individual actions
+                                for (const auto& act : pe.effect_def->actions) {
+                                    try {
+                                        EffectSystem::instance().resolve_action(state, act, pe.source_instance_id, pe.execution_context, *card_db);
+                                    } catch (...) {
+                                        // swallow to avoid leaving pending effect in inconsistent state
+                                    }
+                                }
+                            }
+                        }
+                        
+                        state.pending_effects.erase(state.pending_effects.begin() + effect_idx);
+                        
+                        {
+                            std::ofstream dbg("c:\\temp\\resolve_debug.txt", std::ios::app);
+                            if (dbg) {
+                                dbg << "Erased, new size=" << state.pending_effects.size() << std::endl;
+                                dbg.flush();
+                                dbg.close();
+                            }
+                        }
+                    } else {
+                        std::ofstream dbg("c:\\temp\\resolve_debug.txt", std::ios::app);
+                        if (dbg) {
+                            dbg << "Invalid effect_idx" << std::endl;
+                            dbg.flush();
+                            dbg.close();
+                        }
+                    }
+                }
+                return;
+            case PlayerIntent::DECLARE_PLAY:
+                // Process via dispatch_action (implemented in game_logic_system.cpp)
+                systems::GameLogicSystem::dispatch_action(*pipeline, state, action, *card_db);
+                systems::ContinuousEffectSystem::recalculate(state, *card_db);
+                // Execute any instructions enqueued onto the pipeline during dispatch
+                try {
+                    if (pipeline) pipeline->execute(nullptr, state, *card_db);
+                } catch (...) {}
+
+                return;
             default:
                 // Fallback for atomic actions (PAY_COST, RESOLVE_PLAY) or legacy
                 systems::GameLogicSystem::dispatch_action(*pipeline, state, action, *card_db);
