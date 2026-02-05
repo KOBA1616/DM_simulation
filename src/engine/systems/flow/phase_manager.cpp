@@ -185,6 +185,15 @@ namespace dm::engine {
     void PhaseManager::start_turn(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         Player& active_player = game_state.players[game_state.active_player_id];
         
+        // DEBUG: Log start_turn call
+        try {
+            std::ofstream ofs("logs/start_turn_debug.txt", std::ios::app);
+            if (ofs) {
+                ofs << "[START_TURN] Called for player " << (int)game_state.active_player_id 
+                    << " turn " << game_state.turn_number << "\n";
+            }
+        } catch(...) {}
+        
         // Reset Turn Stats
         using namespace dm::engine::game_command;
         auto cmd_stats = std::make_shared<FlowCommand>(FlowCommand::FlowType::RESET_TURN_STATS, 0);
@@ -442,6 +451,14 @@ namespace dm::engine {
         if (next_p != game_state.current_phase) {
              auto cmd = std::make_shared<FlowCommand>(FlowCommand::FlowType::PHASE_CHANGE, static_cast<int>(next_p));
              game_state.execute_command(std::move(cmd));
+        }
+        
+        // Auto-call start_turn() when entering START_OF_TURN phase
+        if (game_state.current_phase == Phase::START_OF_TURN) {
+            start_turn(game_state, card_db);
+            // Immediately advance to DRAW phase after start_turn processing
+            auto cmd_draw = std::make_shared<FlowCommand>(FlowCommand::FlowType::PHASE_CHANGE, static_cast<int>(Phase::DRAW));
+            game_state.execute_command(std::move(cmd_draw));
         }
 
         // Check game over after phase transition

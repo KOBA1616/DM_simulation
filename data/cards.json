@@ -1142,12 +1142,22 @@
         },
         "commands": [
           {
-            "uid": "6f12d620-478f-40ac-8638-b7627a2cdb05",
-            "type": "LOOK_TO_BUFFER"
+            "uid": "767c0c84-8cba-45d4-9911-4d237d8ef304",
+            "type": "REVEAL_TO_BUFFER",
+            "amount": 4,
+            "from_zone": "DECK_TOP",
+            "input_value_usage": ""
           },
           {
-            "uid": "6e8d901b-23ec-414a-845c-71b2853e0c1c",
-            "type": "MOVE_BUFFER_TO_ZONE"
+            "uid": "ed8b6c93-08f5-4e64-ac59-1dd4fdd7dd6b",
+            "type": "SELECT_FROM_BUFFER",
+            "amount": 0,
+            "input_value_usage": "",
+            "target_filter": {
+              "civilizations": [
+                "WATER"
+              ]
+            }
           },
           {
             "uid": "4eaa2f66-cae3-4d9d-8f35-c3d66527e66c",

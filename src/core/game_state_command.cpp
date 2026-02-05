@@ -237,9 +237,9 @@ namespace dm::engine::game_command {
 
     // --- FlowCommand ---
     void FlowCommand::execute(GameState& state) {
-        // DEBUG: Log flow command execution
+        // DEBUG: Log ALL FlowCommand executions
         try {
-            std::ofstream ofs("logs/flow_command_debug.txt", std::ios::app);
+            std::ofstream ofs("logs/flow_command_exec.txt", std::ios::app);
             if (ofs) {
                 ofs << "[FlowCommand::execute] type=" << static_cast<int>(flow_type)
                     << " new_value=" << new_value << "\n";
@@ -274,7 +274,27 @@ namespace dm::engine::game_command {
                 break;
             case FlowType::RESET_TURN_STATS:
                 previous_turn_stats = state.turn_stats;
+                // DEBUG: Log before reset
+                try {
+                    std::ofstream ofs("logs/reset_turn_stats_debug.txt", std::ios::app);
+                    if (ofs) {
+                        ofs << "[RESET_TURN_STATS] BEFORE: P0_mana_charged=" 
+                            << (state.turn_stats.mana_charged_by_player[0] ? "TRUE" : "FALSE")
+                            << " P1_mana_charged=" 
+                            << (state.turn_stats.mana_charged_by_player[1] ? "TRUE" : "FALSE") << "\n";
+                    }
+                } catch(...) {}
                 state.turn_stats = TurnStats{};
+                // DEBUG: Log after reset
+                try {
+                    std::ofstream ofs("logs/reset_turn_stats_debug.txt", std::ios::app);
+                    if (ofs) {
+                        ofs << "[RESET_TURN_STATS] AFTER: P0_mana_charged=" 
+                            << (state.turn_stats.mana_charged_by_player[0] ? "TRUE" : "FALSE")
+                            << " P1_mana_charged=" 
+                            << (state.turn_stats.mana_charged_by_player[1] ? "TRUE" : "FALSE") << "\n";
+                    }
+                } catch(...) {}
                 break;
             case FlowType::CLEANUP_STEP:
                 {
@@ -302,15 +322,15 @@ namespace dm::engine::game_command {
                 state.turn_stats.played_without_mana = new_value;
                 break;
             case FlowType::SET_MANA_CHARGED:
-                previous_bool_value = state.turn_stats.mana_charged_this_turn;
-                state.turn_stats.mana_charged_this_turn = (new_value != 0);
+                previous_bool_value = state.turn_stats.mana_charged_by_player[state.active_player_id];
+                state.turn_stats.mana_charged_by_player[state.active_player_id] = (new_value != 0);
                 // DEBUG: Log the flag change
                 try {
                     std::ofstream ofs("logs/mana_phase_debug.txt", std::ios::app);
                     if (ofs) {
                         ofs << "[FlowCommand] SET_MANA_CHARGED from " 
                             << (previous_bool_value ? "TRUE" : "FALSE")
-                            << " to " << (state.turn_stats.mana_charged_this_turn ? "TRUE" : "FALSE")
+                            << " to " << (state.turn_stats.mana_charged_by_player[state.active_player_id] ? "TRUE" : "FALSE")
                             << " (new_value=" << new_value << ")\n";
                     }
                 } catch(...) {}
@@ -341,7 +361,7 @@ namespace dm::engine::game_command {
                 state.turn_stats.played_without_mana = previous_value;
                 break;
             case FlowType::SET_MANA_CHARGED:
-                state.turn_stats.mana_charged_this_turn = previous_bool_value;
+                state.turn_stats.mana_charged_by_player[state.active_player_id] = previous_bool_value;
                 break;
             default: break;
         }

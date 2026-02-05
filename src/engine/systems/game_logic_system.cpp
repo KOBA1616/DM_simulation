@@ -240,8 +240,8 @@ namespace dm::engine::systems {
             }
             case PlayerIntent::PASS:
             {
-                // Use fast_forward to automatically progress through phases with no legal actions
-                PhaseManager::fast_forward(state, card_db);
+                // Always advance to next phase when PASS is selected
+                PhaseManager::next_phase(state, card_db);
                 break;
             }
             case PlayerIntent::MANA_CHARGE:

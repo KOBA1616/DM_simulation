@@ -541,6 +541,53 @@ namespace dm::engine::game_command {
                 previous_value = state.turn_stats.played_without_mana;
                 state.turn_stats.played_without_mana = new_value;
                 break;
+            case FlowType::SET_MANA_CHARGED:
+                previous_bool_value = state.turn_stats.mana_charged_by_player[state.active_player_id];
+                state.turn_stats.mana_charged_by_player[state.active_player_id] = (new_value != 0);
+                // DEBUG: Log the flag change
+                try {
+                    std::ofstream ofs("logs/mana_phase_debug.txt", std::ios::app);
+                    if (ofs) {
+                        ofs << "[FlowCommand] SET_MANA_CHARGED from " 
+                            << (previous_bool_value ? "TRUE" : "FALSE")
+                            << " to " << (state.turn_stats.mana_charged_by_player[state.active_player_id] ? "TRUE" : "FALSE")
+                            << " (new_value=" << new_value << " pid=" << (int)state.active_player_id << ")\n";
+                    }
+                } catch(...) {}
+                break;
+            case FlowType::RESET_TURN_STATS:
+                previous_turn_stats = state.turn_stats;
+                state.turn_stats = core::TurnStats{};
+                // DEBUG: Log turn stats reset
+                try {
+                    std::ofstream ofs("logs/reset_turn_stats_debug.txt", std::ios::app);
+                    if (ofs) {
+                        ofs << "[FlowCommand] RESET_TURN_STATS turn=" << state.turn_number
+                            << " active_pid=" << state.active_player_id << "\n";
+                    }
+                } catch(...) {}
+                break;
+            case FlowType::CLEANUP_STEP:
+                {
+                     auto& mods = state.active_modifiers;
+                     for (const auto& m : mods) {
+                         if (m.turns_remaining == 1) removed_modifiers.push_back(m);
+                     }
+                     mods.erase(std::remove_if(mods.begin(), mods.end(), [](core::CostModifier& m) {
+                         if (m.turns_remaining > 0) m.turns_remaining--;
+                         return m.turns_remaining == 0;
+                     }), mods.end());
+
+                     auto& passives = state.passive_effects;
+                     for (const auto& p : passives) {
+                         if (p.turns_remaining == 1) removed_passives.push_back(p);
+                     }
+                     passives.erase(std::remove_if(passives.begin(), passives.end(), [](core::PassiveEffect& p) {
+                         if (p.turns_remaining > 0) p.turns_remaining--;
+                         return p.turns_remaining == 0;
+                     }), passives.end());
+                }
+                break;
             case FlowType::SET_BLOCKING_CREATURE:
                 previous_value = state.current_attack.blocking_creature_id;
                 previous_bool_value = state.current_attack.blocked;
@@ -575,6 +622,21 @@ namespace dm::engine::game_command {
                 break;
             case FlowType::SET_PLAYED_WITHOUT_MANA:
                 state.turn_stats.played_without_mana = previous_value;
+                break;
+            case FlowType::SET_MANA_CHARGED:
+                state.turn_stats.mana_charged_by_player[state.active_player_id] = previous_bool_value;
+                break;
+            case FlowType::RESET_TURN_STATS:
+                state.turn_stats = previous_turn_stats;
+                break;
+            case FlowType::CLEANUP_STEP:
+                // Restore removed modifiers and passives
+                for (const auto& m : removed_modifiers) {
+                    state.active_modifiers.push_back(m);
+                }
+                for (const auto& p : removed_passives) {
+                    state.passive_effects.push_back(p);
+                }
                 break;
             case FlowType::SET_BLOCKING_CREATURE:
                 state.current_attack.blocking_creature_id = previous_value;

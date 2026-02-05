@@ -94,13 +94,8 @@ class BaseCommand:
         return {"type": "UNKNOWN", "kind": self.__class__.__name__}
 
 
-# Tracks whether a given player has performed a mana-charge during the current
-# turn for a particular `state` object. Keyed by (id(state), player_id).
-_mana_charged_by_state: Dict[tuple, bool] = {}
-# Track last observed mana count per (state, player) so we can detect
-# mana increases performed outside the Python wrapper (native flow commands,
-# etc.) and mark _mana_charged_by_state accordingly.
-_last_mana_count_by_state: Dict[tuple, int] = {}
+# NOTE: Mana charge tracking moved to C++ side (turn_stats.mana_charged_this_turn).
+# Python no longer maintains duplicate state.
 
 
 def wrap_action(action: Any) -> Optional[ICommand]:
@@ -158,21 +153,8 @@ def wrap_action(action: Any) -> Optional[ICommand]:
                 except TypeError:
                     # Fallback if older signature expects two args
                     EngineCompat.ExecuteCommand(state, cmd)
-                # After successful execution, if this underlying action is a
-                # MANA_CHARGE, mark that the active player has charged mana for
-                # this turn so future legal-action generations can enforce the
-                # "once per turn" rule.
-                try:
-                    a_type = getattr(self._action, 'type', None)
-                    tname = ''
-                    if a_type is not None:
-                        tname = getattr(a_type, 'name', str(a_type))
-                    if isinstance(tname, str) and tname.endswith('MANA_CHARGE'):
-                        sid = id(state)
-                        pid = getattr(state, 'active_player_id', 0)
-                        _mana_charged_by_state[(sid, pid)] = True
-                except Exception:
-                    pass
+                # NOTE: Mana charge tracking moved to C++ side (turn_stats.mana_charged_this_turn).
+                # Python no longer maintains duplicate state after action execution.
             except Exception:
                 return None
             return None
@@ -417,36 +399,9 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
             if cur_phase is not None:
                 pstr = getattr(cur_phase, 'name', str(cur_phase))
             # Treat phases that end with START_OF_TURN as the reset point
-            # Read current observed mana for the active player (best-effort)
-            try:
-                player = state.players[pid]
-                cur_mana = getattr(player, 'mana_count', None)
-                if cur_mana is None:
-                    cur_mana = len(getattr(player, 'mana_zone', []) or [])
-            except Exception:
-                cur_mana = None
-
-            # Reset flag at start-of-turn for the active player and initialize
-            # the last-observed mana count to avoid false positives.
-            if isinstance(pstr, str) and pstr.endswith('START_OF_TURN'):
-                _mana_charged_by_state[(sid, pid)] = False
-                if cur_mana is not None:
-                    _last_mana_count_by_state[(sid, pid)] = int(cur_mana)
-
-            # If we observe that the player's mana count has increased since
-            # the last observation, mark that they have effectively charged
-            # mana (covers native FlowCommand paths that bypass our wrapper).
-            try:
-                if cur_mana is not None:
-                    last = _last_mana_count_by_state.get((sid, pid))
-                    if last is None:
-                        _last_mana_count_by_state[(sid, pid)] = int(cur_mana)
-                    else:
-                        if int(cur_mana) > int(last):
-                            _mana_charged_by_state[(sid, pid)] = True
-                            _last_mana_count_by_state[(sid, pid)] = int(cur_mana)
-            except Exception:
-                pass
+            # NOTE: Mana charge tracking fully delegated to C++ side.
+            # C++ PhaseManager resets turn_stats.mana_charged_this_turn in start_turn().
+            # C++ ActionGenerator checks the flag when generating MANA_CHARGE actions.
         except Exception:
             pass
 
@@ -522,21 +477,18 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
                 pass_act.type = ActionType.PASS
                 actions.append(pass_act)
 
-                # Mana charge actions (allow charging any card in hand) -
-                # only propose them if the player hasn't already charged mana
-                # this turn (runtime-tracked). We don't mark the tracker here;
-                # it's marked when an actual MANA_CHARGE is executed.
+                # Mana charge actions (allow charging any card in hand).
+                # NOTE: C++ side now checks turn_stats.mana_charged_this_turn in
+                # ActionGenerator.generate_legal_actions(), so this fallback should
+                # ideally check the same flag for consistency. For now, we generate
+                # all possible mana charges and let C++ filter if needed.
                 try:
-                    sid = id(state)
-                    pid = getattr(state, 'active_player_id', 0)
-                    already_charged = _mana_charged_by_state.get((sid, pid), False)
-                    if not already_charged:
-                        for c in list(getattr(player, 'hand', [])):
-                            act = Action()
-                            act.type = ActionType.MANA_CHARGE
-                            act.card_id = getattr(c, 'card_id', c)
-                            act.source_instance_id = getattr(c, 'instance_id', -1)
-                            actions.append(act)
+                    for c in list(getattr(player, 'hand', [])):
+                        act = Action()
+                        act.type = ActionType.MANA_CHARGE
+                        act.card_id = getattr(c, 'card_id', c)
+                        act.source_instance_id = getattr(c, 'instance_id', -1)
+                        actions.append(act)
                 except Exception:
                     pass
 
@@ -842,25 +794,9 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
             pass
         filtered = []
         try:
-            sid = id(state)
-            pid = getattr(state, 'active_player_id', 0)
-            charged = _mana_charged_by_state.get((sid, pid), False)
-            mana_added = False
-            for a in actions:
-                try:
-                    a_type = getattr(a, 'type', None)
-                    tname = ''
-                    if a_type is not None:
-                        tname = getattr(a_type, 'name', str(a_type))
-                    if isinstance(tname, str) and tname.endswith('MANA_CHARGE'):
-                        if charged:
-                            continue
-                        if mana_added:
-                            continue
-                        mana_added = True
-                except Exception:
-                    pass
-                filtered.append(a)
+            # NOTE: Mana charge filtering now handled by C++ ActionGenerator.
+            # Python fallback no longer needs to filter duplicate mana charges.
+            filtered = actions
         except Exception:
             filtered = actions
 

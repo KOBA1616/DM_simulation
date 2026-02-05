@@ -16,18 +16,20 @@ namespace dm::engine {
         const auto& game_state = ctx.game_state;
         const Player& active_player = game_state.players[game_state.active_player_id];
 
-        // DEBUG: Log mana_charged_this_turn状態
+        // DEBUG: Log mana_charged_this_turn状態 + hand size
         try {
             std::ofstream ofs("logs/mana_phase_debug.txt", std::ios::app);
             if (ofs) {
                 ofs << "[ManaPhaseStrategy] mana_charged_this_turn=" 
-                    << (game_state.turn_stats.mana_charged_this_turn ? "TRUE" : "FALSE")
-                    << " turn=" << game_state.turn_number << "\n";
+                    << (game_state.turn_stats.mana_charged_by_player[game_state.active_player_id] ? "TRUE" : "FALSE")
+                    << " turn=" << game_state.turn_number
+                    << " hand_size=" << active_player.hand.size()
+                    << " active_pid=" << (int)game_state.active_player_id << "\n";
             }
         } catch(...) {}
 
-        // DM Rule: Max 1 mana charge per turn
-        if (!game_state.turn_stats.mana_charged_this_turn) {
+        // DM Rule: Max 1 mana charge per turn per player
+        if (!game_state.turn_stats.mana_charged_by_player[game_state.active_player_id]) {
             for (size_t i = 0; i < active_player.hand.size(); ++i) {
                 const auto& card = active_player.hand[i];
                 Action action;
@@ -38,10 +40,26 @@ namespace dm::engine {
                 actions.push_back(action);
             }
             
+            // DEBUG: Log how many actions generated
+            try {
+                std::ofstream ofs("logs/mana_phase_debug.txt", std::ios::app);
+                if (ofs) {
+                    ofs << "[ManaPhaseStrategy] Generated " << actions.size() << " MANA_CHARGE actions\n";
+                }
+            } catch(...) {}
+            
             // Also offer PASS to skip mana charge
             Action pass;
             pass.type = PlayerIntent::PASS;
             actions.push_back(pass);
+        } else {
+            // DEBUG: Log why we're skipping
+            try {
+                std::ofstream ofs("logs/mana_phase_debug.txt", std::ios::app);
+                if (ofs) {
+                    ofs << "[ManaPhaseStrategy] SKIPPED: already charged this turn\n";
+                }
+            } catch(...) {}
         }
         // If already charged this turn, return empty (auto-advance to MAIN phase)
 
