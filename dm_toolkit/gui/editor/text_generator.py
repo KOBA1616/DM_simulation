@@ -1315,6 +1315,8 @@ class CardTextGenerator:
              return f"{src_zone}から{amt}枚を表向きにしてバッファに置く。"
 
         elif atype == "SELECT_FROM_BUFFER":
+             if val1 == 0:
+                 return f"見たカードすべてを選ぶ。"
              amt = val1 if val1 > 0 else 1
              return f"見たカードの中から{amt}枚を選ぶ。"
 
@@ -2321,10 +2323,12 @@ class CardTextGenerator:
         text = cls._format_game_action_command(atype, action, is_spell, val1, val2, target_str, unit, input_key, input_usage, sample)
         if text: return text
 
+        # Check Buffer Command (Override template if specific logic exists)
+        buf = cls._format_buffer_command(atype, action, is_spell, val1)
+        if buf:
+            template = buf
+
         if not template:
-            # Fallback to buffer commands or logic if not handled by template
-            buf = cls._format_buffer_command(atype, action, is_spell, val1)
-            if buf: return buf
             return f"({tr(atype)})"
 
         if atype == "GRANT_KEYWORD" or atype == "ADD_KEYWORD":
