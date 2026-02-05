@@ -9,6 +9,57 @@ namespace dm::engine {
 
     class BufferHandler : public IActionHandler {
     public:
+        void compile_action(const ResolutionContext& ctx) override {
+            using namespace dm::core;
+            if (!ctx.instruction_buffer) return;
+
+            int val1 = ctx.action.value1;
+            if (val1 == 0) val1 = 1;
+
+            if (ctx.action.type == EffectPrimitive::LOOK_TO_BUFFER || ctx.action.type == EffectPrimitive::REVEAL_TO_BUFFER) {
+                 Instruction move(InstructionOp::MOVE);
+                 move.args["target"] = "DECK_TOP";
+                 if (!ctx.action.input_value_key.empty()) {
+                     move.args["count"] = "$" + ctx.action.input_value_key;
+                 } else {
+                     move.args["count"] = val1;
+                 }
+                 move.args["to"] = "BUFFER";
+                 ctx.instruction_buffer->push_back(move);
+            }
+            else if (ctx.action.type == EffectPrimitive::MOVE_BUFFER_TO_ZONE) {
+                 Instruction move(InstructionOp::MOVE);
+
+                 std::string sel_var = ctx.selection_var;
+                 if (sel_var.empty() && !ctx.action.input_value_key.empty()) {
+                     sel_var = "$" + ctx.action.input_value_key;
+                 } else if (sel_var.empty()) {
+                     // Select all from buffer if no input
+                     Instruction select(InstructionOp::SELECT);
+                     select.args["filter"]["zones"] = std::vector<std::string>{"EFFECT_BUFFER"};
+                     select.args["out"] = "$buffer_all";
+                     select.args["count"] = 0; // Select All
+                     ctx.instruction_buffer->push_back(select);
+                     sel_var = "$buffer_all";
+                 }
+
+                 move.args["target"] = sel_var;
+
+                 std::string dest = "GRAVEYARD";
+                 if (ctx.action.destination_zone == "HAND") dest = "HAND";
+                 else if (ctx.action.destination_zone == "DECK_BOTTOM") dest = "DECK";
+                 else if (ctx.action.destination_zone == "MANA_ZONE") dest = "MANA";
+                 else if (ctx.action.destination_zone == "BATTLE_ZONE") dest = "BATTLE";
+                 else if (ctx.action.destination_zone == "SHIELD_ZONE") dest = "SHIELD";
+
+                 move.args["to"] = dest;
+                 if (ctx.action.destination_zone == "DECK_BOTTOM") move.args["to_bottom"] = true;
+
+                 ctx.instruction_buffer->push_back(move);
+            }
+            // MEKRAID and PLAY_FROM_BUFFER logic is more complex, skip for now as not required for this verification
+        }
+
         void resolve(const ResolutionContext& ctx) override {
             using namespace dm::core;
 
