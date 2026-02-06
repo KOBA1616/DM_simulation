@@ -1834,6 +1834,8 @@ class CardTextGenerator:
         # input_usage = action.get("input_value_usage") or action.get("input_usage")
         is_generic_selection = atype in ["MOVE_CARD", "TRANSITION"]
 
+        template = ""
+
         if atype == "TRANSITION":
             from_z = cls._normalize_zone_name(action.get("from_zone", ""))
             to_z = cls._normalize_zone_name(action.get("to_zone", ""))
