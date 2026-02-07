@@ -77,8 +77,6 @@ namespace dm::engine {
         const Player& active_player = game_state.players[game_state.active_player_id];
 
         // Ensure we record that MainPhaseStrategy::generate was entered at runtime.
-        // This helps detect whether this code path is actually executed in the
-        // imported native module used by Python runs.
         try {
             std::filesystem::create_directories("logs");
             std::ofstream enter_ofs("logs/main_phase_checks.txt", std::ios::app);
@@ -118,6 +116,17 @@ namespace dm::engine {
             if (card_db.count(card.card_id)) {
                 const auto& def = card_db.at(card.card_id);
 
+                bool is_evolution = def.keywords.evolution || def.type == CardType::EVOLUTION_CREATURE;
+                bool is_neo = def.keywords.neo;
+
+                // Global Prohibitions (Lock Effects) - CANNOT_SUMMON check
+                bool summon_restricted = false;
+                if (def.type == CardType::CREATURE || def.type == CardType::EVOLUTION_CREATURE) {
+                    if (PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_SUMMON, card_db)) {
+                        summon_restricted = true;
+                    }
+                }
+
                 // Step 3-4: CANNOT_USE_SPELLS check (Creature check comes later if it's Twinpact)
                 bool spell_restricted = false;
                 if (def.type == CardType::SPELL) {
@@ -130,13 +139,13 @@ namespace dm::engine {
                     }
                 }
 
-                // 1. Standard Play (Creature side if Twinpact)
-                {
+                // 1. Standard Play (Creature side if Twinpact) - Only if NOT evolution, or IS neo (normal mode)
+                if (!is_evolution || is_neo) {
                     int adjusted_cost = ManaSystem::get_adjusted_cost(game_state, active_player, def);
                     int available_mana = ManaSystem::get_usable_mana_count(game_state, active_player.id, def.civilizations, card_db);
                     bool can_pay = ManaSystem::can_pay_cost(game_state, active_player, def, card_db);
 
-                    if (!spell_restricted && can_pay) {
+                    if (!summon_restricted && !spell_restricted && can_pay) {
                         Action action;
                         action.type = PlayerIntent::DECLARE_PLAY;
                         action.card_id = card.card_id;
@@ -144,11 +153,53 @@ namespace dm::engine {
                         action.slot_index = static_cast<int>(i);
                         actions.push_back(action);
                     } else {
-                        log_skip(static_cast<int>(i), card, def, spell_restricted, adjusted_cost, available_mana, can_pay);
+                        log_skip(static_cast<int>(i), card, def, spell_restricted || summon_restricted, adjusted_cost, available_mana, can_pay);
                     }
                 }
 
-                // 2. Twinpact Spell Side Play
+                // 2. Evolution Play (or NEO choosing Evolution)
+                if (is_evolution || is_neo) {
+                    int adjusted_cost = ManaSystem::get_adjusted_cost(game_state, active_player, def);
+                    int available_mana = ManaSystem::get_usable_mana_count(game_state, active_player.id, def.civilizations, card_db);
+                    bool can_pay = ManaSystem::can_pay_cost(game_state, active_player, def, card_db);
+
+                    if (!summon_restricted && !spell_restricted && can_pay) {
+                        for (const auto& source : active_player.battle_zone) {
+                            if (!card_db.count(source.card_id)) continue;
+                            const auto& source_def = card_db.at(source.card_id);
+                            bool valid = false;
+
+                            if (def.evolution_condition.has_value()) {
+                                if (TargetUtils::is_valid_target(source, source_def, *def.evolution_condition, game_state, active_player.id, active_player.id, false)) {
+                                    valid = true;
+                                }
+                            } else {
+                                // Default race matching logic
+                                for (const auto& r : def.races) {
+                                    if (TargetUtils::CardProperties<CardDefinition>::has_race(source_def, r)) {
+                                        valid = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            // NEO fallback (per legacy logic)
+                            if (is_neo) valid = true;
+
+                            if (valid) {
+                                Action action;
+                                action.type = PlayerIntent::DECLARE_PLAY;
+                                action.card_id = card.card_id;
+                                action.source_instance_id = card.instance_id;
+                                action.target_instance_id = source.instance_id; // Evolution Source
+                                action.slot_index = static_cast<int>(i);
+                                action.target_player = active_player.id;
+                                actions.push_back(action);
+                            }
+                        }
+                    }
+                }
+
+                // 3. Twinpact Spell Side Play
                 if (def.spell_side) {
                     const auto& spell_def = *def.spell_side;
                     bool side_restricted = false;
@@ -166,21 +217,18 @@ namespace dm::engine {
                         if (!side_restricted && can_pay_side) {
                             Action action;
                             action.type = PlayerIntent::DECLARE_PLAY;
-                            action.card_id = card.card_id; // Same ID? Or should we use spell_side ID?
-                            // Usually Twinpact cards share ID but behave differently.
-                            // We use `is_spell_side` flag.
+                            action.card_id = card.card_id;
                             action.source_instance_id = card.instance_id;
                             action.slot_index = static_cast<int>(i);
                             action.is_spell_side = true;
                             actions.push_back(action);
                         } else {
-                            // log twinpact side skip
                             log_skip(static_cast<int>(i), card, spell_def, side_restricted, adjusted_cost_side, available_mana_side, can_pay_side);
                         }
                     }
                 }
 
-                // 3. Active Cost Reductions (Phase 4)
+                // 4. Active Cost Reductions (Phase 4)
                 for (const auto& reduction : def.cost_reductions) {
                     if (reduction.type == ReductionType::ACTIVE_PAYMENT) {
                         int max_units = CostPaymentSystem::calculate_max_units(game_state, active_player.id, reduction, card_db);
@@ -206,10 +254,6 @@ namespace dm::engine {
                                 action.slot_index = static_cast<int>(i);
                                 action.target_slot_index = units; // Use target_slot_index for payment amount
                                 action.target_player = 254; // Legacy flag for "Special/Active Payment Play"
-                                // We might want to pass WHICH reduction is used if multiple exist.
-                                // For now, assume 1 active reduction per card or take first valid.
-                                // If needed, we can use value1 = reduction_index.
-                                // But CostPaymentSystem::calculate_max_units handles the logic per reduction.
                                 actions.push_back(action);
                             }
                         }
