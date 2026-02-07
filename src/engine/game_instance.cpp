@@ -7,6 +7,7 @@
 #include "engine/systems/continuous_effect_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "engine/systems/card/effect_system.hpp" // Added for EffectSystem
+#include "engine/systems/command_system.hpp" // Added for CommandSystem
 #include "diag_win32.h"
 #include <functional>
 #include <iostream>
@@ -20,6 +21,11 @@ namespace dm::engine {
 
     GameInstance::GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db)
         : state(seed), card_db(db) {
+        std::ofstream diag("c:\\temp\\game_instance_constructor.txt", std::ios::app);
+        if (diag) {
+            diag << "GameInstance constructor called with seed=" << seed << std::endl;
+            diag.close();
+        }
         initial_seed_ = seed;
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
@@ -50,6 +56,8 @@ namespace dm::engine {
     }
 
     void GameInstance::resolve_action(const core::Action& action) {
+        // Delegate to GameLogicSystem for new CommandDef-based handling
+        
         if (!pipeline) {
             std::cerr << "FATAL: pipeline is null!" << std::endl;
             return;
@@ -224,17 +232,21 @@ namespace dm::engine {
                     if (effect_idx >= 0 && effect_idx < (int)state.pending_effects.size()) {
                         auto& pe = state.pending_effects[effect_idx];
                         
-                        // Store the chosen number in execution_context if output_value_key is specified
+                        // Store the chosen number in execution_context
+                        // Use _selected_number as the standard key for SELECT_NUMBER results
+                        pe.execution_context["_selected_number"] = chosen_number;
+                        
+                        // Also store in the output key if specified (for backward compatibility)
                         if (pe.effect_def.has_value() && !pe.effect_def->condition.str_val.empty()) {
-                            // The output key is stored in effect_def.condition.str_val (as per SelectNumberHandler)
                             std::string output_key = pe.effect_def->condition.str_val;
                             pe.execution_context[output_key] = chosen_number;
                         }
                         
-                        // Execute continuation actions with the updated context
+                        // Execute continuation commands with the updated context (New Command System)
                         if (pe.effect_def.has_value()) {
-                            for (const auto& act : pe.effect_def->actions) {
-                                EffectSystem::instance().resolve_action(state, act, pe.source_instance_id, pe.execution_context, *card_db);
+                            core::PlayerID controller = dm::engine::EffectSystem::get_controller(state, pe.source_instance_id);
+                            for (const auto& cmd : pe.effect_def->commands) {
+                                dm::engine::systems::CommandSystem::execute_command(state, cmd, pe.source_instance_id, controller, pe.execution_context);
                             }
                         }
                         
@@ -245,74 +257,23 @@ namespace dm::engine {
                 break;
             case PlayerIntent::RESOLVE_EFFECT:
                 {
-                    {
-                        std::ofstream dbg("c:\\temp\\resolve_debug.txt", std::ios::app);
-                        if (dbg) {
-                            dbg << "Inside RESOLVE_EFFECT case" << std::endl;
-                            dbg.flush();
-                            dbg.close();
-                        }
-                    }
-                    
-                    int effect_idx = action.slot_index;
-                    
-                    {
-                        std::ofstream dbg("c:\\temp\\resolve_debug.txt", std::ios::app);
-                        if (dbg) {
-                            dbg << "effect_idx=" << effect_idx << " pending_effects.size()=" << state.pending_effects.size() << std::endl;
-                            dbg.flush();
-                            dbg.close();
-                        }
-                    }
-                    
-                    if (effect_idx >= 0 && effect_idx < (int)state.pending_effects.size()) {
-                        auto& pe = state.pending_effects[effect_idx];
-                        
-                        {
-                            std::ofstream dbg("c:\\temp\\resolve_debug.txt", std::ios::app);
-                            if (dbg) {
-                                dbg << "has_effect_def=" << (pe.effect_def.has_value() ? "yes" : "no") << std::endl;
-                                dbg.flush();
-                                dbg.close();
-                            }
-                        }
-                        
-                        if (pe.effect_def.has_value()) {
-                            // Resolve the entire effect (actions + commands) using the EffectSystem
-                            // so that commands compiled into the pipeline are executed as expected.
-                            try {
-                                EffectSystem::instance().resolve_effect_with_context(state, pe.effect_def.value(), pe.source_instance_id, pe.execution_context, *card_db);
-                            } catch (...) {
-                                // Fallback: if full effect resolution fails, try resolving individual actions
-                                for (const auto& act : pe.effect_def->actions) {
-                                    try {
-                                        EffectSystem::instance().resolve_action(state, act, pe.source_instance_id, pe.execution_context, *card_db);
-                                    } catch (...) {
-                                        // swallow to avoid leaving pending effect in inconsistent state
-                                    }
-                                }
-                            }
-                        }
-                        
-                        state.pending_effects.erase(state.pending_effects.begin() + effect_idx);
-                        
-                        {
-                            std::ofstream dbg("c:\\temp\\resolve_debug.txt", std::ios::app);
-                            if (dbg) {
-                                dbg << "Erased, new size=" << state.pending_effects.size() << std::endl;
-                                dbg.flush();
-                                dbg.close();
-                            }
-                        }
-                    } else {
-                        std::ofstream dbg("c:\\temp\\resolve_debug.txt", std::ios::app);
-                        if (dbg) {
-                            dbg << "Invalid effect_idx" << std::endl;
-                            dbg.flush();
-                            dbg.close();
-                        }
+                    // CRITICAL DIAGNOSTIC - ABSOLUTE PATH TEST
+                    std::ofstream test_log("C:\\temp\\CRITICAL_RESOLVE_EFFECT_TEST.txt", std::ios::app);
+                    if (test_log) {
+                        test_log << "==== RESOLVE_EFFECT CASE EXECUTED ====\n";
+                        test_log << "slot_index=" << action.slot_index << "\n";
+                        test_log << "pending_effects=" << state.pending_effects.size() << "\n";
+                        test_log.flush();
+                        test_log.close();
                     }
                 }
+                // Process via dispatch_action (implemented in game_logic_system.cpp)
+                systems::GameLogicSystem::dispatch_action(*pipeline, state, action, *card_db);
+                systems::ContinuousEffectSystem::recalculate(state, *card_db);
+                // Execute any instructions enqueued onto the pipeline during dispatch
+                try {
+                    if (pipeline) pipeline->execute(nullptr, state, *card_db);
+                } catch (...) {}
                 return;
             case PlayerIntent::DECLARE_PLAY:
                 // Process via dispatch_action (implemented in game_logic_system.cpp)
@@ -325,7 +286,7 @@ namespace dm::engine {
 
                 return;
             default:
-                // Fallback for atomic actions (PAY_COST, RESOLVE_PLAY) or legacy
+                // All other actions go through GameLogicSystem (atomic actions: PAY_COST, RESOLVE_PLAY, etc)
                 systems::GameLogicSystem::dispatch_action(*pipeline, state, action, *card_db);
                 systems::ContinuousEffectSystem::recalculate(state, *card_db);
                 return;

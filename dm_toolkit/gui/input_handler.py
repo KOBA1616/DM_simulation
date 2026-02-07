@@ -64,8 +64,7 @@ class GameInputHandler:
         if len(relevant_cmds) > 1:
             items = []
             for cmd in relevant_cmds:
-                d = cmd.to_dict()
-                desc = describe_command(d, self.gs, self.card_db)
+                desc = describe_command(cmd, self.gs, self.card_db)
                 items.append({'description': desc, 'command': cmd})
 
             options = [item['description'] for item in items]
@@ -178,6 +177,15 @@ class GameInputHandler:
         self.session.resume_from_input(targets)
 
     def on_resolve_effect_from_stack(self, index: int) -> None:
+        """Resolve a pending effect by its vector index.
+        
+        Args:
+            index: Vector index in the pending_effects array
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"[InputHandler] on_resolve_effect_from_stack called with index {index}")
+        
         from dm_toolkit.commands import generate_legal_commands
 
         cmds = generate_legal_commands(self.gs, self.card_db)
@@ -188,12 +196,19 @@ class GameInputHandler:
             if d.get('type') == 'RESOLVE_EFFECT':
                 resolve_cmds.append((c, d))
 
+        logger.debug(f"[InputHandler] Found {len(resolve_cmds)} RESOLVE_EFFECT commands")
         target_cmd = None
         for c, d in resolve_cmds:
+            logger.debug(f"[InputHandler] Checking RESOLVE_EFFECT with slot_index {d.get('slot_index')}")
             if d.get('slot_index') == index:
                 target_cmd = c
+                logger.debug(f"[InputHandler] Found matching RESOLVE_EFFECT command")
                 break
         if target_cmd:
+            logger.debug(f"[InputHandler] Executing RESOLVE_EFFECT command")
             self.session.execute_action(target_cmd)
         elif len(resolve_cmds) == 1:
+            logger.debug(f"[InputHandler] Only one RESOLVE_EFFECT, executing it")
             self.session.execute_action(resolve_cmds[0][0])
+        else:
+            logger.warning(f"[InputHandler] No matching RESOLVE_EFFECT command found for index {index}")

@@ -327,6 +327,14 @@ class GameWindow(QMainWindow):
         return None
 
     def on_resolve_effect_from_stack(self, index: int) -> None:
+        """Handle pending effect resolution from stack view.
+        
+        Args:
+            index: Vector index in the pending_effects array (from stack_view)
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"[AppWindow] on_resolve_effect_from_stack called with index {index}")
         self.input_handler.on_resolve_effect_from_stack(index)
 
     def handle_user_input_request(self) -> None:
@@ -337,12 +345,16 @@ class GameWindow(QMainWindow):
         if self.gs is None:
             return
 
+        import logging
+        logger = logging.getLogger(__name__)
+        
         # 1. Update Game Status
         if hasattr(self, 'game_status_widget'):
             self.game_status_widget.update_state(self.gs)
         
         # 2. Update Tools
         if hasattr(self, 'stack_view'):
+            logger.debug("[AppWindow] Calling stack_view.update_state")
             self.stack_view.update_state(self.gs, self.card_db)
         if hasattr(self, 'effect_debugger'):
             self.effect_debugger.update_state(self.gs, self.card_db)

@@ -35,7 +35,8 @@ class GameSessionSimplified:
                  callback_update_ui: Optional[Callable[[], None]] = None,
                  callback_log: Optional[Callable[[str], None]] = None,
                  callback_input_request: Optional[Callable[[], None]] = None,
-                 callback_action_executed: Optional[Callable[[Any], None]] = None):
+                 callback_action_executed: Optional[Callable[[Any], None]] = None,
+                 select_number_mode: str = 'heuristic'):
         self.callback_update_ui = callback_update_ui or (lambda: None)
         self.callback_log = callback_log or (lambda m: None)
         self.callback_input_request = callback_input_request or (lambda: None)
@@ -46,6 +47,17 @@ class GameSessionSimplified:
         self.is_processing = False
         self.card_db: CardDB = {}
         self.gs: Optional[GameState] = None
+        
+        # SELECT_NUMBER evaluation mode: 'heuristic', 'evaluator', 'mcts'
+        # Can be overridden by DM_SELECT_NUMBER_MODE environment variable
+        env_mode = os.getenv('DM_SELECT_NUMBER_MODE', '').lower()
+        if env_mode in ['heuristic', 'evaluator', 'mcts']:
+            self.select_number_mode = env_mode
+        else:
+            self.select_number_mode = select_number_mode
+        
+        self.evaluator = None
+        self.mcts = None
 
     def initialize_game(self, card_db: CardDB, seed: int = 42) -> None:
         """Initialize game with C++ engine."""
@@ -53,6 +65,26 @@ class GameSessionSimplified:
         if not dm_ai_module:
             self.callback_log("Error: dm_ai_module not available")
             return
+        
+        # Log selected mode
+        self.callback_log(f"SELECT_NUMBER AI mode: {self.select_number_mode}")
+        
+        # Initialize evaluators if needed
+        if self.select_number_mode == 'evaluator' and not self.evaluator:
+            try:
+                self.evaluator = dm_ai_module.HeuristicEvaluator(card_db)
+                self.callback_log("HeuristicEvaluator initialized")
+            except Exception as e:
+                self.callback_log(f"Failed to init evaluator: {e}, fallback to heuristic")
+                self.select_number_mode = 'heuristic'
+        
+        if self.select_number_mode == 'mcts' and not self.mcts:
+            try:
+                self.mcts = dm_ai_module.MCTS(card_db, 1.4, 0.3, 0.25, 1, 0.0)
+                self.callback_log("MCTS initialized for SELECT_NUMBER evaluation")
+            except Exception as e:
+                self.callback_log(f"Failed to init MCTS: {e}, fallback to heuristic")
+                self.select_number_mode = 'heuristic'
 
         self.gs = dm_ai_module.GameState(seed)
         self.gs.setup_test_duel()
@@ -229,6 +261,23 @@ class GameSessionSimplified:
 
     def _select_ai_action(self, cmds: List[Any]) -> Any:
         """Select best action for AI player. Prefer non-PASS, non-NONE actions."""
+        # Handle SELECT_NUMBER: choose optimal value based on game state
+        for cmd in cmds:
+            try:
+                d = cmd.to_dict()
+                cmd_type = d.get('type')
+                
+                # Auto-select for SELECT_NUMBER with heuristic evaluation
+                if cmd_type == 'SELECT_NUMBER':
+                    max_val = d.get('slot_index', 1)
+                    best_choice = self._evaluate_select_number_options(max_val)
+                    cmd.target_instance_id = best_choice
+                    self.callback_log(f"AI [{self.select_number_mode}] selected {best_choice}/{max_val} for SELECT_NUMBER")
+                    return cmd
+            except Exception:
+                pass
+        
+        # Normal action selection
         for cmd in cmds:
             try:
                 d = cmd.to_dict()
@@ -244,6 +293,169 @@ class GameSessionSimplified:
         
         # If only PASS available, return first command
         return cmds[0] if cmds else None
+    
+    def _evaluate_select_number_options(self, max_val: int) -> int:
+        """Evaluate SELECT_NUMBER options and return the best choice.
+        
+        Uses different evaluation strategies based on select_number_mode:
+        - 'heuristic': Fast game state heuristics
+        - 'evaluator': HeuristicEvaluator scoring
+        - 'mcts': Monte Carlo Tree Search (future)
+        """
+        if not self.gs:
+            return max_val
+        
+        if self.select_number_mode == 'evaluator' and self.evaluator:
+            return self._evaluate_with_evaluator(max_val)
+        elif self.select_number_mode == 'mcts' and self.mcts:
+            return self._evaluate_with_mcts(max_val)
+        else:
+            return self._evaluate_with_heuristic(max_val)
+    
+    def _evaluate_with_heuristic(self, max_val: int) -> int:
+        """Fast heuristic evaluation based on game state."""
+        try:
+            active_pid = EngineCompat.get_active_player_id(self.gs)
+            player = self.gs.players[active_pid]
+            opponent = self.gs.players[1 - active_pid]
+            
+            # Get game state metrics
+            hand_size = len(player.hand)
+            deck_size = len(player.deck)
+            mana_size = len(player.mana_zone)
+            battle_size = len(player.battle_zone)
+            opp_battle_size = len(opponent.battle_zone)
+            
+            # Deck-out safety: leave at least 5 cards
+            safe_draw = min(max_val, max(0, deck_size - 5))
+            
+            # Critical situations
+            if deck_size <= 5:
+                return 0  # Avoid deck-out
+            
+            # Hand management
+            if hand_size >= 7:
+                return min(1, safe_draw)  # Avoid hand flood
+            
+            # Game phase detection
+            if mana_size <= 3:
+                # Early game: Prioritize resources
+                return safe_draw
+            elif battle_size == 0 and hand_size <= 3:
+                # Need board presence
+                return safe_draw
+            elif opp_battle_size >= 3 and battle_size <= 1:
+                # Behind on board: need answers
+                return min(safe_draw, max(2, int(max_val * 0.7)))
+            else:
+                # Mid-game balance: ~60% of max
+                return min(max(1, int(max_val * 0.6)), safe_draw)
+                
+        except Exception:
+            return max(1, max_val // 2)
+    
+    def _evaluate_with_evaluator(self, max_val: int) -> int:
+        """Evaluate options using HeuristicEvaluator."""
+        try:
+            active_pid = EngineCompat.get_active_player_id(self.gs)
+            
+            # Evaluate current state
+            states = [self.gs]
+            _, values = self.evaluator.evaluate(states)
+            current_value = values[0] if values else 0.0
+            
+            # Use evaluator's assessment to inform decision
+            # Higher value = stronger position = can afford conservative play
+            # Lower value = weaker position = need aggressive draws
+            
+            player = self.gs.players[active_pid]
+            deck_size = len(player.deck)
+            hand_size = len(player.hand)
+            
+            safe_draw = min(max_val, max(0, deck_size - 5))
+            
+            if current_value > 0.3:
+                # Strong position: conservative
+                if hand_size >= 5:
+                    return min(1, safe_draw)
+                else:
+                    return min(max(1, int(max_val * 0.5)), safe_draw)
+            elif current_value < -0.3:
+                # Weak position: aggressive
+                return safe_draw
+            else:
+                # Balanced: moderate
+                return min(max(1, int(max_val * 0.6)), safe_draw)
+                
+        except Exception as e:
+            self.callback_log(f"Evaluator error: {e}, fallback to heuristic")
+            return self._evaluate_with_heuristic(max_val)
+    
+    def _evaluate_with_mcts(self, max_val: int) -> int:
+        """Evaluate options using lightweight simulation.
+        
+        Since full MCTS requires game state cloning, we use a hybrid approach:
+        1. Heuristic Agent to predict likely actions after each choice
+        2. Evaluator to score the resulting positions
+        3. Choose the option with best expected value
+        """
+        try:
+            if not self.evaluator:
+                self.evaluator = dm_ai_module.HeuristicEvaluator(self.card_db)
+            
+            active_pid = EngineCompat.get_active_player_id(self.gs)
+            player = self.gs.players[active_pid]
+            deck_size = len(player.deck)
+            
+            # Safety bounds
+            safe_draw = min(max_val, max(0, deck_size - 5))
+            
+            # Simulate depth-1 evaluation for each choice
+            best_choice = 0
+            best_score = float('-inf')
+            
+            # Try a few key options instead of all (for performance)
+            options_to_try = [0, max(1, max_val // 4), max(1, max_val // 2), 
+                             max(1, int(max_val * 0.75)), safe_draw]
+            options_to_try = sorted(set(o for o in options_to_try if 0 <= o <= safe_draw))
+            
+            for choice in options_to_try:
+                # Estimate value after drawing 'choice' cards
+                # More cards = more hand quality but less deck
+                # Score based on hand advantage vs deck risk
+                
+                projected_hand = len(player.hand) + choice
+                projected_deck = deck_size - choice
+                
+                # Scoring factors
+                hand_quality = min(projected_hand / 7.0, 1.0)  # Normalized to [0,1]
+                deck_safety = projected_deck / max(1, deck_size)  # Remaining deck ratio
+                
+                # Penalty for over-drawing
+                overdraw_penalty = max(0, projected_hand - 7) * 0.2
+                
+                # Penalty for deck danger
+                if projected_deck < 5:
+                    deck_penalty = (5 - projected_deck) * 0.5
+                else:
+                    deck_penalty = 0
+                
+                # Combined score
+                score = hand_quality + deck_safety - overdraw_penalty - deck_penalty
+                
+                # Bonus for moderate draws (avoid extremes)
+                if 0.3 <= choice / max(1, max_val) <= 0.7:
+                    score += 0.1
+                
+                if score > best_score:
+                    best_score = score
+                    best_choice = choice
+            
+            self.callback_log(f\"Simulation selected {best_choice}/{safe_draw} (score={best_score:.2f})\")\n            return best_choice
+            
+        except Exception as e:
+            self.callback_log(f\"MCTS simulation error: {e}, fallback to heuristic\")
+            return self._evaluate_with_heuristic(max_val)
 
     def _build_default_deck(self) -> List[int]:
         """Build a default deck from card_db."""

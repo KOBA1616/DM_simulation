@@ -246,7 +246,13 @@ class GameSession:
 
         try:
             # Execute command using appropriate C++ command class
-            if cmd_dict.get('type') == 'MANA_CHARGE' and dm_ai_module and hasattr(dm_ai_module, 'ManaChargeCommand'):
+            if cmd_dict.get('type') == 'RESOLVE_EFFECT' and dm_ai_module and hasattr(dm_ai_module, 'ResolveEffectCommand'):
+                effect_index = int(cmd_dict.get('effect_index', 0))
+                cpp_cmd = dm_ai_module.ResolveEffectCommand(effect_index)
+                self.gs.execute_command(cpp_cmd)
+                self.callback_log(f"P{active_pid}: RESOLVE_EFFECT (index={effect_index})")
+                
+            elif cmd_dict.get('type') == 'MANA_CHARGE' and dm_ai_module and hasattr(dm_ai_module, 'ManaChargeCommand'):
                 instance_id = int(cmd_dict['instance_id'])
                 cpp_cmd = dm_ai_module.ManaChargeCommand(instance_id)
                 self.gs.execute_command(cpp_cmd)
@@ -292,19 +298,37 @@ class GameSession:
         
         try:
             active_pid = EngineCompat.get_active_player_id(self.gs)
-            phase = self.gs.get_phase() if hasattr(self.gs, 'get_phase') else 'UNKNOWN'
-            self.callback_log(f"[DEBUG] Calling fast_forward: P{active_pid} phase={phase}")
+            try:
+                phase = self.gs.current_phase
+                phase_name = str(phase).split('.')[-1] if hasattr(phase, '__class__') else str(phase)
+            except:
+                phase_name = 'UNKNOWN'
+            self.callback_log(f"[DEBUG] Calling fast_forward: P{active_pid} phase={phase_name}")
             dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
-            new_phase = self.gs.get_phase() if hasattr(self.gs, 'get_phase') else 'UNKNOWN'
-            self.callback_log(f"[DEBUG] fast_forward completed: phase={new_phase}")
+            try:
+                new_phase = self.gs.current_phase
+                new_phase_name = str(new_phase).split('.')[-1] if hasattr(new_phase, '__class__') else str(new_phase)
+            except:
+                new_phase_name = 'UNKNOWN'
+            self.callback_log(f"[DEBUG] fast_forward completed: phase={new_phase_name}")
         except Exception as e:
             self.callback_log(f"ERROR executing fast_forward: {e}")
             import traceback
             self.callback_log(traceback.format_exc())
 
     def _select_ai_action(self, cmds: List[Any]) -> Any:
-        """Select best action for AI player. Priority: PLAY > MANA_CHARGE > others > PASS."""
-        # First pass: look for PLAY_FROM_ZONE (highest priority)
+        """Select best action for AI player. Priority: RESOLVE_EFFECT > PLAY > MANA_CHARGE > others > PASS."""
+        # Highest priority: RESOLVE_EFFECT (must be resolved before other actions)
+        for cmd in cmds:
+            try:
+                d = cmd.to_dict()
+                cmd_type = d.get('type')
+                if cmd_type == 'RESOLVE_EFFECT':
+                    return cmd
+            except Exception:
+                pass
+        
+        # First pass: look for PLAY_FROM_ZONE (high priority)
         for cmd in cmds:
             try:
                 d = cmd.to_dict()

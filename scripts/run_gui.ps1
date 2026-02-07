@@ -117,6 +117,12 @@ if (-not $env:DM_LOG_CONSOLE_STDERR) { $env:DM_LOG_CONSOLE_STDERR = '1' }
 # Default sensible per-logger overrides for noisy subsystems
 if (-not $env:DM_LOGGER_LEVELS) { $env:DM_LOGGER_LEVELS = 'dm_ai_module=WARNING,EngineCompat=WARNING,dm_toolkit=WARNING' }
 
+# AI Configuration
+# - DM_SELECT_NUMBER_MODE: How AI chooses for SELECT_NUMBER effects (draw cards, etc.)
+#   Options: 'heuristic' (fast, game state analysis), 'evaluator' (HeuristicEvaluator),
+#            'mcts' (simulation-based, slower but better)
+if (-not $env:DM_SELECT_NUMBER_MODE) { $env:DM_SELECT_NUMBER_MODE = 'evaluator' }
+
 
 Write-Host "Starting GUI..."
 & $pythonExe "$projectRoot/dm_toolkit/gui/app.py"

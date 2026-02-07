@@ -2,6 +2,9 @@
 from typing import Any
 from ..i18n import tr
 from .card_helpers import get_card_name_by_instance
+import logging
+
+logger = logging.getLogger(__name__)
 
 m: Any = None
 try:
@@ -14,54 +17,66 @@ def describe_command(cmd: Any, game_state: Any, card_db: Any) -> str:
     if not m:
         return "GameCommand（ネイティブモジュール未ロード）"
 
-    cmd_type = cmd.get_type()
-
-    if cmd_type == m.CommandType.TRANSITION:
-        # TransitionCommand
-        c = cmd
-        name = get_card_name_by_instance(game_state, card_db, c.card_instance_id)
-        return f"[{tr('TRANSITION')}] {name} (P{c.owner_id}): {tr(c.from_zone)} -> {tr(c.to_zone)}"
-
-    elif cmd_type == m.CommandType.MUTATE:
-        # MutateCommand
-        c = cmd
-        name = get_card_name_by_instance(game_state, card_db, c.target_instance_id)
-        mutation = tr(c.mutation_type)
-        val = ""
-        if c.mutation_type == m.MutationType.POWER_MOD:
-            val = f"{c.int_value:+}"
-        elif c.mutation_type == m.MutationType.ADD_KEYWORD:
-            val = c.str_value
-
-        return f"[{tr('MUTATE')}] {name}: {mutation} {val}".strip()
-
-    elif cmd_type == m.CommandType.FLOW:
-        # FlowCommand
-        c = cmd
-        flow = tr(c.flow_type)
-        val = c.new_value
-        if c.flow_type == m.FlowType.PHASE_CHANGE:
-            # Cast int to Phase enum if possible
-            try:
-                val = tr(m.Phase(c.new_value))
-            except:
-                pass
-        return f"[{tr('FLOW')}] {flow}: {val}"
-
-    elif cmd_type == m.CommandType.QUERY:
-        c = cmd
-        return f"[{tr('QUERY')}] {tr(c.query_type)}"
-
-    elif cmd_type == m.CommandType.DECIDE:
-        c = cmd
-        return f"[{tr('DECIDE')}] 選択肢: {c.selected_option_index}, 対象数: {len(c.selected_indices)}"
-
-    elif cmd_type == m.CommandType.STAT:
-        c = cmd
-        return f"[{tr('STAT')}] {tr(c.stat)} += {c.amount}"
-
-    elif cmd_type == m.CommandType.GAME_RESULT:
-        c = cmd
-        return f"[{tr('GAME_RESULT')}] {tr(c.result)}"
-
-    return f"未対応コマンド: {cmd_type}"
+    # Get command type from class name
+    cmd_type = type(cmd).__name__
+    
+    # Handle each command type based on class name
+    if cmd_type == 'TransitionCommand':
+        try:
+            card_instance_id = getattr(cmd, 'card_instance_id', None)
+            owner_id = getattr(cmd, 'owner_id', '?')
+            from_zone = getattr(cmd, 'from_zone', '?')
+            to_zone = getattr(cmd, 'to_zone', '?')
+            name = get_card_name_by_instance(game_state, card_db, card_instance_id)
+            return f"[{tr('TRANSITION')}] {name} (P{owner_id}): {tr(from_zone)} -> {tr(to_zone)}"
+        except Exception as e:
+            return f"[{tr('TRANSITION')}]"
+    
+    elif cmd_type == 'MutateCommand':
+        try:
+            target_instance_id = getattr(cmd, 'target_instance_id', None)
+            mutation_type = getattr(cmd, 'mutation_type', '?')
+            name = get_card_name_by_instance(game_state, card_db, target_instance_id)
+            return f"[{tr('MUTATE')}] {name}: {tr(mutation_type)}"
+        except Exception:
+            return f"[{tr('MUTATE')}]"
+    
+    elif cmd_type == 'FlowCommand':
+        try:
+            flow_type = getattr(cmd, 'flow_type', '?')
+            return f"[{tr('FLOW')}] {tr(flow_type)}"
+        except Exception:
+            return f"[{tr('FLOW')}]"
+    
+    elif cmd_type == 'PlayCardCommand':
+        try:
+            card_instance_id = getattr(cmd, 'card_instance_id', None)
+            name = get_card_name_by_instance(game_state, card_db, card_instance_id) or "Card"
+            return f"[{tr('PLAY_CARD')}] {name}"
+        except Exception:
+            return f"[{tr('PLAY_CARD')}]"
+    
+    elif cmd_type == 'ManaChargeCommand':
+        return f"[{tr('MANA_CHARGE')}]"
+    
+    elif cmd_type == 'PassCommand':
+        return f"[{tr('PASS')}]"
+    
+    elif cmd_type == 'QueryCommand':
+        try:
+            query_type = getattr(cmd, 'query_type', '?')
+            return f"[{tr('QUERY')}] {tr(query_type)}"
+        except Exception:
+            return f"[{tr('QUERY')}]"
+    
+    elif cmd_type == 'ResolveEffectCommand':
+        try:
+            slot_index = getattr(cmd, 'slot_index', '?')
+            return f"[{tr('RESOLVE_EFFECT')}] #{slot_index}"
+        except Exception:
+            return f"[{tr('RESOLVE_EFFECT')}]"
+    
+    elif cmd_type == 'DecideCommand':
+        return f"[{tr('DECIDE')}]"
+    
+    return f"{cmd_type}"

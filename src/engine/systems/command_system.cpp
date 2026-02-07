@@ -8,6 +8,9 @@
 #include <iostream>
 #include <algorithm>
 #include <random>
+#include <fstream>
+#include <filesystem>
+#include <set>
 
 namespace dm::engine::systems {
 
@@ -217,6 +220,24 @@ namespace dm::engine::systems {
                  if (!cmd.output_value_key.empty()) {
                      execution_context[cmd.output_value_key] = count;
                  }
+            } else if (query_type == "MANA_CIVILIZATION_COUNT") {
+                 // Count distinct civilizations in player's mana zone
+                 const auto& card_db = CardRegistry::get_all_definitions();
+                 std::set<core::Civilization> civs_in_mana;
+                 
+                 for (const auto& card : state.players[player_id].mana_zone) {
+                     auto def_it = card_db.find(card.card_id);
+                     if (def_it != card_db.end()) {
+                         for (const auto& civ : def_it->second.civilizations) {
+                             civs_in_mana.insert(civ);
+                         }
+                     }
+                 }
+                 
+                 int civ_count = static_cast<int>(civs_in_mana.size());
+                 if (!cmd.output_value_key.empty()) {
+                     execution_context[cmd.output_value_key] = civ_count;
+                 }
             } else {
                 std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
 
@@ -275,6 +296,58 @@ namespace dm::engine::systems {
 
         switch (cmd.type) {
             case core::CommandType::DRAW_CARD: {
+                // Handle optional + up_to: Create pending effect for player choice
+                if (cmd.optional && count > 0) {
+                    // Create a pending effect for SELECT_NUMBER
+                    core::PendingEffect pending(core::EffectType::SELECT_NUMBER, source_instance_id, player_id);
+                    
+                    // Set num_targets_needed for PendingEffectStrategy to generate actions
+                    pending.num_targets_needed = count;  // max value player can select
+                    
+                    // Store min/max in execution_context
+                    pending.execution_context = execution_context;
+                    pending.execution_context["_min_select"] = 0; // optional means can choose 0
+                    pending.execution_context["_max_select"] = count;
+                    
+                    // Create continuation effect with command to draw selected number
+                    core::EffectDef continuation;
+                    continuation.trigger = core::TriggerType::NONE;
+                    
+                    core::CommandDef draw_cmd;
+                    draw_cmd.type = core::CommandType::DRAW_CARD;
+                    draw_cmd.target_group = core::TargetScope::PLAYER_SELF;
+                    draw_cmd.amount = 0; // Will be set by input_value_key
+                    draw_cmd.input_value_key = "_selected_number";
+                    if (!cmd.output_value_key.empty()) {
+                        draw_cmd.output_value_key = cmd.output_value_key;
+                    }
+                    continuation.commands.push_back(draw_cmd);
+                    
+                    pending.effect_def = continuation;
+                    
+                    // Store output key for later retrieval
+                    if (!cmd.output_value_key.empty()) {
+                        pending.effect_def->condition.str_val = cmd.output_value_key;
+                    }
+                    
+                    state.pending_effects.push_back(pending);
+                    std::cerr << "[CommandSystem] DRAW_CARD optional: Created SELECT_NUMBER pending effect (0-" << count << ")" << std::endl;
+                    
+                    // DEBUG: Log to file
+                    try {
+                        std::filesystem::create_directories("logs");
+                        std::ofstream ofs("logs/select_number_debug.txt", std::ios::app);
+                        if (ofs) {
+                            ofs << "[CREATE_PENDING] type=SELECT_NUMBER controller=" << static_cast<int>(player_id)
+                                << " num_targets_needed=" << count
+                                << " src_iid=" << source_instance_id << "\n";
+                        }
+                    } catch(...) {}
+                    
+                    return; // Don't draw now, wait for player input
+                }
+                
+                // Normal draw (non-optional or count determined by input)
                 int drawn = 0;
                 for (int i = 0; i < count; ++i) {
                      const auto& deck = state.players[player_id].deck;

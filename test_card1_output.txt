@@ -1,0 +1,5 @@
+The requested API version [20] is not available, only API versions [1, 17] are supported in this build. Current ORT Version is: 1.17.1
+Traceback (most recent call last):
+  File "C:\Users\ichirou\DM_simulation\test_card1_play.py", line 7, in <module>
+    from dm_toolkit.engine import game_engine, compat
+ImportError: cannot import name 'game_engine' from 'dm_toolkit.engine' (unknown location)

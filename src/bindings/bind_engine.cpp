@@ -281,39 +281,10 @@ void bind_engine(py::module& m) {
     // Alias for backward compatibility
     m.attr("ActionGenerator") = m.attr("IntentGenerator");
 
-    py::class_<dm::engine::EffectSystem, std::unique_ptr<dm::engine::EffectSystem, py::nodelete>>(m, "EffectSystem")
-        .def_static("instance", [](){ return &dm::engine::EffectSystem::instance(); }, py::return_value_policy::reference)
-        .def_static("compile_action", [](GameState& state, const ActionDef& action, int source_id, std::map<CardID, CardDefinition>& db, py::object py_ctx) {
-            try {
-                std::vector<Instruction> instructions;
-                std::map<std::string, int> execution_context;
-                // Note: py_ctx extraction logic deferred/omitted as in original bindings.cpp
-                dm::engine::EffectSystem::instance().compile_action(state, action, source_id, execution_context, db, instructions);
-                return instructions;
-            } catch (const py::error_already_set& e) {
-                throw;
-            } catch (const std::exception& e) {
-                throw std::runtime_error("Error in EffectSystem.compile_action: " + std::string(e.what()));
-            } catch (...) {
-                throw std::runtime_error("Unknown error in EffectSystem.compile_action");
-            }
-        });
-
     auto effect_resolver = py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver");
     effect_resolver
         .def_static("get_breaker_count", [](GameState& state, const CardInstance& card, const std::map<CardID, CardDefinition>& db) {
             return dm::engine::systems::GameLogicSystem::get_breaker_count(state, card, db);
-        })
-        .def_static("resolve_action", [](GameState& state, const Action& action, const std::map<CardID, CardDefinition>& db){
-            try {
-                dm::engine::systems::GameLogicSystem::resolve_action(state, action, db);
-            } catch (const py::error_already_set& e) {
-                throw;
-            } catch (const std::exception& e) {
-                throw std::runtime_error("Error in EffectResolver.resolve_action: " + std::string(e.what()));
-            } catch (...) {
-                throw std::runtime_error("Unknown error in EffectResolver.resolve_action");
-            }
         })
         .def_static("resume", [](GameState& state, const std::map<CardID, CardDefinition>& db, py::object input_val) {
              try {

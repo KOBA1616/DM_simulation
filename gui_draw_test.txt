@@ -1,0 +1,38 @@
+C:\Users\ichirou\DM_simulation/dm_toolkit/gui/app.py:405: DeprecationWarning: Passing Action-like objects to unified execution is deprecated — attach a 'command' dict or use ensure_executable_command(map) to migrate.
+  try: d = cmd.to_dict()
+[DIAG PUSH] C:\Users\ichirou\DM_simulation\src\engine\systems\game_logic_system.cpp:852 before_size=0 parent_idx=-1 parent_pc=-1 inst={"target":30,"to":"BATTLE"}
+[DIAG PUSH] C:\Users\ichirou\DM_simulation\src\engine\systems\game_logic_system.cpp:855 after_size=1
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+[PENDING_ACTIONS] count=2 10 0
+Creating QApplication...
+Creating GameWindow...
+GameWindow created successfully!
+Window shown, entering event loop...

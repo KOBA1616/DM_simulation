@@ -92,34 +92,24 @@ try:
         after_grave = len(player.graveyard)
         after_stack = len(player.stack)
         print(f"  After:  Hand={after_hand}, Battle={after_battle}, Grave={after_grave}, Stack={after_stack}")
-                
-                # 結果判定
-                if after_hand < before_hand and (after_battle > before_battle or after_grave > before_grave):
-                    print("\n✓✓ SUCCESS: Card was played correctly! ✓✓")
-                    if after_battle > before_battle:
-                        print("  → Creature entered battle zone")
-                    if after_grave > before_grave:
-                        print("  → Spell was cast to graveyard")
-                elif after_stack > before_stack:
-                    print("\n⚠ PARTIAL: Card is on stack (old behavior - needs manual PAY_COST/RESOLVE)")
-                else:
-                    print("\n⚠ WARNING: Unexpected state change")
-                    print(f"  Hand: {before_hand} → {after_hand}")
-                    print(f"  Battle: {before_battle} → {after_battle}")
-                    print(f"  Grave: {before_grave} → {after_grave}")
-                    print(f"  Stack: {before_stack} → {after_stack}")
-            else:
-                print("\n⚠ No PLAY_CARD actions in MAIN phase")
-            break
         
-        # PASSまたは最初のアクションを実行
-        action = actions[0]
-        game.resolve_action(action)
-        state = game.state
-    
+        # 結果判定
+        if after_hand < before_hand and (after_battle > before_battle or after_grave > before_grave):
+            print("\n✓✓ SUCCESS: Card was played correctly! ✓✓")
+            if after_battle > before_battle:
+                print("  → Creature entered battle zone")
+            if after_grave > before_grave:
+                print("  → Spell was cast to graveyard")
+        elif after_stack > before_stack:
+            print("\n⚠ PARTIAL: Card is on stack (old behavior - needs manual PAY_COST/RESOLVE)")
+        else:
+            print("\n⚠ WARNING: Unexpected state change")
+            print(f"  Hand: {before_hand} → {after_hand}")
+            print(f"  Battle: {before_battle} → {after_battle}")
+            print(f"  Grave: {before_grave} → {after_grave}")
+            print(f"  Stack: {before_stack} → {after_stack}")
     else:
-        print(f"\n✗ Could not reach MAIN phase in {max_steps} steps")
-        print(f"  Final phase: {int(state.current_phase)}")
+        print("\n⚠ No PLAY_CARD actions in MAIN phase")
     
 except Exception as e:
     print(f"\n✗✗ ERROR: {e}")

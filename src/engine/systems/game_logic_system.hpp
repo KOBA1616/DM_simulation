@@ -30,6 +30,7 @@ namespace dm::engine::systems {
         static void handle_play_card(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_pay_cost(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_resolve_play(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
+        static void handle_resolve_effect(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_attack(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_block(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);
         static void handle_resolve_battle(PipelineExecutor& pipeline, core::GameState& state, const core::Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db);

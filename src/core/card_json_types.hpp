@@ -273,6 +273,7 @@ namespace dm::core {
         std::string str_val;
         std::string value;
         bool optional = false;
+        bool up_to = false;  // Added: Allows player to choose 0 to N
         std::string target_player;
         std::string source_zone;
         std::string destination_zone;

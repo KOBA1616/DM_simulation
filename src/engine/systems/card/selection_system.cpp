@@ -116,19 +116,4 @@ namespace dm::engine {
         return {};
     }
 
-    void SelectionSystem::delegate_selection(const ResolutionContext& ctx) {
-        if (!ctx.interrupted) return;
-
-        dm::core::EffectDef ed;
-        ed.trigger = dm::core::TriggerType::NONE;
-        ed.condition = dm::core::ConditionDef{"NONE", 0, "", "", "", std::nullopt};
-        ed.actions = { ctx.action };
-        if (ctx.remaining_actions) {
-            ed.actions.insert(ed.actions.end(), ctx.remaining_actions->begin(), ctx.remaining_actions->end());
-        }
-
-        select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
-        *ctx.interrupted = true;
-    }
-
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/systems/card/target_utils.hpp"
@@ -88,6 +89,25 @@ namespace dm::engine {
             } else {
                 count_literal = 1;
             }
+
+            // Handle optional + up_to: Generate SELECT_NUMBER input for player choice
+            std::cerr << "[DrawHandler] optional=" << ctx.action.optional << ", count_var='" << count_var << "', up_to=" << ctx.action.up_to << std::endl;
+            if (ctx.action.optional && !count_var.empty()) {
+                std::cerr << "[DrawHandler] Generating WAIT_INPUT for SELECT_NUMBER" << std::endl;
+                // Generate WAIT_INPUT instruction for SELECT_NUMBER
+                core::Instruction input_inst(core::InstructionOp::WAIT_INPUT);
+                input_inst.args["query_type"] = "SELECT_NUMBER";
+                input_inst.args["min"] = 0;
+                input_inst.args["max"] = "$" + count_var;  // Max is the variable value
+                std::string selected_var = "$selected_draw_count_" + count_var;
+                input_inst.args["out"] = selected_var;
+                ctx.instruction_buffer->push_back(input_inst);
+                std::cerr << "[DrawHandler] WAIT_INPUT added to buffer. out=" << selected_var << std::endl;
+                
+                // Update count_var to use the selected value
+                count_var = selected_var.substr(1);  // Remove $ prefix
+            }
+            std::cerr << "[DrawHandler] After optional check: count_var='" << count_var << "', count_literal=" << count_literal << std::endl;
 
             if (count_var.empty()) {
                 // Literal count: Unroll

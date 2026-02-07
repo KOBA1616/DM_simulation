@@ -1000,14 +1000,23 @@ namespace dm::engine::systems {
     }
 
     void PipelineExecutor::handle_wait_input(const Instruction& inst, GameState& state) {
-        if (inst.args.is_null()) return;
+        std::cerr << "[PipelineExecutor::handle_wait_input] Called" << std::endl;
+        if (inst.args.is_null()) {
+            std::cerr << "[PipelineExecutor::handle_wait_input] args is null, returning" << std::endl;
+            return;
+        }
 
         std::string out_key = inst.args.value("out", "$input");
+        std::cerr << "[PipelineExecutor::handle_wait_input] out_key=" << out_key << std::endl;
 
         // If we already have the value (via resume), don't pause again
-        if (context.count(out_key)) return;
+        if (context.count(out_key)) {
+            std::cerr << "[PipelineExecutor::handle_wait_input] Already have value in context, returning" << std::endl;
+            return;
+        }
 
         std::string query_type = inst.args.value("query_type", "NONE");
+        std::cerr << "[PipelineExecutor::handle_wait_input] query_type=" << query_type << std::endl;
         std::vector<std::string> options;
         if (inst.args.contains("options")) {
             for (const auto& opt : inst.args["options"]) {
@@ -1018,11 +1027,25 @@ namespace dm::engine::systems {
         execution_paused = true;
         waiting_for_key = out_key;
         state.waiting_for_user_input = true;
+        std::cerr << "[PipelineExecutor::handle_wait_input] Setting execution_paused=true, waiting_for_user_input=true" << std::endl;
 
-        // Setup pending query
+        // Setup pending query with min/max for SELECT_NUMBER
+        nlohmann::json params;
+        if (inst.args.contains("min")) {
+            int min_val = resolve_int(inst.args["min"]);
+            params["min"] = min_val;
+            std::cerr << "[PipelineExecutor::handle_wait_input] min=" << min_val << std::endl;
+        }
+        if (inst.args.contains("max")) {
+            int max_val = resolve_int(inst.args["max"]);
+            params["max"] = max_val;
+            std::cerr << "[PipelineExecutor::handle_wait_input] max=" << max_val << std::endl;
+        }
+
         state.pending_query = GameState::QueryContext{
-            0, query_type, {}, {}, options
+            0, query_type, {}, params, options
         };
+        std::cerr << "[PipelineExecutor::handle_wait_input] pending_query set: query_type=" << state.pending_query.query_type << std::endl;
     }
 
     bool PipelineExecutor::check_condition(const nlohmann::json& cond, GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db) {

@@ -1,0 +1,2 @@
+C:\Users\ichirou\DM_simulation/dm_toolkit/gui/app.py:405: DeprecationWarning: Passing Action-like objects to unified execution is deprecated — attach a 'command' dict or use ensure_executable_command(map) to migrate.
+  try: d = cmd.to_dict()

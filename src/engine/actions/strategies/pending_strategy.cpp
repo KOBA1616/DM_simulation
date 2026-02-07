@@ -77,6 +77,18 @@ namespace dm::engine {
 
         for (size_t i = 0; i < game_state.pending_effects.size(); ++i) {
             const auto& eff = game_state.pending_effects[i];
+            
+            // DEBUG: Log filtering
+            try {
+                std::ofstream ofs("logs/pending_filter_debug.txt", std::ios::app);
+                if (ofs) {
+                    ofs << "[FILTER] idx=" << i << " type=" << static_cast<int>(eff.type)
+                        << " controller=" << static_cast<int>(eff.controller)
+                        << " decision_maker=" << static_cast<int>(decision_maker)
+                        << " match=" << (eff.controller == decision_maker ? 1 : 0) << "\n";
+                }
+            } catch(...) {}
+            
             if (eff.controller != decision_maker) continue;
 
             bool is_spell = false;
@@ -463,6 +475,16 @@ namespace dm::engine {
                      // It sets num_targets_needed = max.
                 }
 
+                // DEBUG: Log SELECT_NUMBER action generation
+                try {
+                    std::filesystem::create_directories("logs");
+                    std::ofstream ofs("logs/select_number_actions.txt", std::ios::app);
+                    if (ofs) {
+                        ofs << "[GEN_ACTIONS] idx=" << i << " min=" << min_val
+                            << " max=" << eff.num_targets_needed << " creating_actions...\\n";
+                    }
+                } catch(...) {}
+
                 for (int val = min_val; val <= eff.num_targets_needed; ++val) {
                     Action select;
                     select.type = PlayerIntent::SELECT_NUMBER;
@@ -470,6 +492,14 @@ namespace dm::engine {
                     select.target_instance_id = val; // The chosen number (stored in target_instance_id)
                     actions.push_back(select);
                 }
+                
+                // DEBUG: Complete log
+                try {
+                    std::ofstream ofs("logs/select_number_actions.txt", std::ios::app);
+                    if (ofs) {
+                        ofs << "[GEN_ACTIONS] created " << actions.size() << " actions\\n";
+                    }
+                } catch(...) {}
             }
             else if (eff.num_targets_needed > (int)eff.target_instance_ids.size()) {
                  if (actions.empty()) {

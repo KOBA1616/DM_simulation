@@ -52,6 +52,10 @@ namespace dm::engine::systems {
     }
 
     void GameLogicSystem::dispatch_action(PipelineExecutor& pipeline, core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db) {
+        std::cerr << "\n=== dispatch_action called ===" << std::endl;
+        std::cerr << "Action type: " << static_cast<int>(action.type) << std::endl;
+        std::cerr << "Action slot_index: " << action.slot_index << std::endl;
+        
         try {
             std::ofstream diag("logs/crash_diag.txt", std::ios::app);
             if (diag) {
@@ -473,12 +477,29 @@ namespace dm::engine::systems {
                 handle_use_ability(pipeline, state, inst, card_db);
                 break;
             }
+            case PlayerIntent::RESOLVE_EFFECT:
+            {
+                nlohmann::json args;
+                args["slot_index"] = action.slot_index;
+                Instruction inst(InstructionOp::GAME_ACTION, args);
+                inst.args["type"] = "RESOLVE_EFFECT";
+                handle_resolve_effect(pipeline, state, inst, card_db);
+                break;
+            }
             // ...
             default: break;
         }
     }
 
     void GameLogicSystem::resolve_action_oneshot(core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db) {
+        // DIAGNOSTIC: Check if this is being called
+        std::cerr << "\n\n### GAME_LOGIC_SYSTEM::resolve_action_oneshot CALLED ###" << std::endl;
+        std::cerr << "### Action type: " << (int)action.type << std::endl;
+        std::cerr << "### Slot index: " << action.slot_index << std::endl;
+        std::cout << "\n\n### GAME_LOGIC_SYSTEM::resolve_action_oneshot CALLED ###" << std::endl;
+        std::cout << "### Action type: " << (int)action.type << std::endl;
+        std::cout << "### Slot index: " << action.slot_index << std::endl;
+        
         PipelineExecutor pipeline;
         dispatch_action(pipeline, state, action, card_db);
         pipeline.execute(nullptr, state, card_db); // Run the pipeline
@@ -781,7 +802,7 @@ namespace dm::engine::systems {
                  if (eff.trigger != TriggerType::NONE && eff.trigger != TriggerType::PASSIVE_CONST) {
                      continue;  // Will be handled by CHECK_SPELL_CAST_TRIGGERS
                  }
-                 EffectSystem::instance().compile_effect(state, eff, instance_id, ctx, card_db, compiled_effects);
+                 // Note: compile_effect has been removed, effects are processed via CommandSystem
             }
 
             // Check Triggers (ON_CAST_SPELL) - Same pattern as creatures
@@ -856,6 +877,49 @@ namespace dm::engine::systems {
                  // Removed manual pc++ - pipeline_executor handles this automatically
              }
         }
+    }
+
+    void GameLogicSystem::handle_resolve_effect(PipelineExecutor& exec, GameState& state, const Instruction& inst,
+                                                const std::map<core::CardID, core::CardDefinition>& card_db) {
+        try { std::ofstream d("logs/crash_diag.txt", std::ios::app); if(d){ d<<"handle_resolve_effect entry args="<<inst.args.dump()<<"\n"; d.flush(); d.close(); } } catch(...) {}
+        
+        // Get effect index from instruction arguments (slot_index)
+        int effect_idx = exec.resolve_int(inst.args.value("slot_index", 0));
+        
+        std::cerr << "\n=== handle_resolve_effect called ===" << std::endl;
+        std::cerr << "Effect index: " << effect_idx << std::endl;
+        std::cerr << "Pending effects count: " << state.pending_effects.size() << std::endl;
+        
+        // Validate effect index
+        if (effect_idx < 0 || effect_idx >= (int)state.pending_effects.size()) {
+            std::cerr << "ERROR: Invalid effect index: " << effect_idx << std::endl;
+            return;
+        }
+        
+        // Get the pending effect
+        auto& pending_effect = state.pending_effects[effect_idx];
+        
+        std::cerr << "Source instance: " << pending_effect.source_instance_id << std::endl;
+        std::cerr << "Has effect_def: " << (pending_effect.effect_def.has_value() ? "YES" : "NO") << std::endl;
+        
+        // If effect_def is present, resolve the effect
+        if (pending_effect.effect_def.has_value()) {
+            std::cerr << "Resolving effect..." << std::endl;
+            EffectSystem::instance().resolve_effect_with_context(
+                state,
+                pending_effect.effect_def.value(),
+                pending_effect.source_instance_id,
+                pending_effect.execution_context,
+                card_db
+            );
+            
+            std::cerr << "Effect resolved" << std::endl;
+        }
+        
+        // Remove the resolved effect from pending list
+        state.pending_effects.erase(state.pending_effects.begin() + effect_idx);
+        std::cerr << "Removed effect from pending list, new count: " << state.pending_effects.size() << std::endl;
+        std::cerr << "=== handle_resolve_effect complete ===" << std::endl << std::endl;
     }
 
     void GameLogicSystem::handle_attack(PipelineExecutor& exec, GameState& state, const Instruction& inst,
@@ -1059,7 +1123,8 @@ namespace dm::engine::systems {
              if (!effects.empty()) {
                  std::map<std::string, int> ctx;
                  for (const auto& eff : effects) {
-                     EffectSystem::instance().compile_effect(state, eff, source_id, ctx, card_db, generated);
+                     // Note: compile_effect has been removed, effects are processed via CommandSystem
+                     EffectSystem::instance().resolve_effect_with_context(state, eff, source_id, ctx, card_db);
                  }
              }
         }

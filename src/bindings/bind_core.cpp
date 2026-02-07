@@ -443,6 +443,7 @@ void bind_core(py::module& m) {
         .def_readwrite("value2", &ActionDef::value2)
         .def_readwrite("str_val", &ActionDef::str_val)
         .def_readwrite("optional", &ActionDef::optional)
+        .def_readwrite("up_to", &ActionDef::up_to)
         .def_readwrite("filter", &ActionDef::filter)
         .def_readwrite("target_player", &ActionDef::target_player)
         .def_readwrite("source_zone", &ActionDef::source_zone)

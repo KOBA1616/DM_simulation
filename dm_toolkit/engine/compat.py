@@ -968,6 +968,7 @@ class EngineCompat:
                     _assign_if_exists(cmd_def, 'amount', int(cmd_dict.get('amount', 0)))
                     _assign_if_exists(cmd_def, 'str_param', str(cmd_dict.get('str_param', '')))
                     _assign_if_exists(cmd_def, 'optional', bool(cmd_dict.get('optional', False)))
+                    _assign_if_exists(cmd_def, 'up_to', bool(cmd_dict.get('up_to', False)))
 
                     # Populate instance id from several possible keys
                     for key in ('instance_id', 'source_instance_id', 'source_id', 'source'):
