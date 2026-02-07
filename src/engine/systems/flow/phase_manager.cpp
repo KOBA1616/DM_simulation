@@ -356,6 +356,17 @@ namespace dm::engine {
 
         Phase next_p = game_state.current_phase; // Default same
 
+        // DEBUG: Log phase transition
+        try {
+            std::ofstream log("logs/phase_transition_debug.txt", std::ios::app);
+            if (log) {
+                log << "[next_phase] Called: current=" << static_cast<int>(game_state.current_phase)
+                    << " turn=" << game_state.turn_number
+                    << " active_player=" << static_cast<int>(game_state.active_player_id) << "\n";
+                log.flush();
+            }
+        } catch(...) {}
+
         // Determine next phase
         switch (game_state.current_phase) {
             case Phase::START_OF_TURN:
@@ -446,6 +457,15 @@ namespace dm::engine {
                 }
                 break;
         }
+
+        // DEBUG: Log determined next phase
+        try {
+            std::ofstream log("logs/phase_transition_debug.txt", std::ios::app);
+            if (log) {
+                log << "[next_phase] Determined next=" << static_cast<int>(next_p) << "\n";
+                log.flush();
+            }
+        } catch(...) {}
 
         // Execute Phase Change Command
         if (next_p != game_state.current_phase) {

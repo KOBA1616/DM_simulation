@@ -218,13 +218,11 @@ namespace dm::engine {
             }
         }
 
-        // Only add PASS if there are actual playable actions
-        // If no actions (can't play any cards), return empty to trigger auto-advance
-        if (!actions.empty()) {
-            Action pass;
-            pass.type = PlayerIntent::PASS;
-            actions.push_back(pass);
-        }
+        // Generate PASS action - player can always pass main phase
+        // This is MANDATORY even if no cards can be played
+        Action pass_action;
+        pass_action.type = PlayerIntent::PASS;
+        actions.push_back(pass_action);
 
         return actions;
     }
@@ -290,13 +288,11 @@ namespace dm::engine {
             }
         }
 
-        // Only add PASS if there are actual attack actions
-        // If no attacks possible, return empty to trigger auto-advance
-        if (!actions.empty()) {
-            Action pass;
-            pass.type = PlayerIntent::PASS;
-            actions.push_back(pass);
-        }
+        // Always add PASS as an option, whether or not there are attack actions
+        // This ensures the player can pass their attack phase even if creatures can't attack
+        Action pass;
+        pass.type = PlayerIntent::PASS;
+        actions.push_back(pass);
 
         return actions;
     }
@@ -326,13 +322,12 @@ namespace dm::engine {
                 }
             }
         }
-        // Only add PASS if there are actual block actions
-        // If no blocks possible, return empty to trigger auto-advance
-        if (!actions.empty()) {
-            Action pass;
-            pass.type = PlayerIntent::PASS;
-            actions.push_back(pass);
-        }
+        // Always add PASS as an option, whether or not there are block actions
+        // This ensures the player can pass their block phase even if they can't block
+        Action pass;
+        pass.type = PlayerIntent::PASS;
+        actions.push_back(pass);
+
         return actions;
     }
 

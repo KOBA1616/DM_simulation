@@ -627,6 +627,7 @@ void bind_core(py::module& m) {
         .def_readwrite("sum_win_contribution", &dm::core::CardStats::sum_win_contribution);
 
     py::class_<Player>(m, "Player")
+        .def_readwrite("id", &Player::id)
         .def_readwrite("hand", &Player::hand)
         .def_readwrite("mana_zone", &Player::mana_zone)
         .def_readwrite("battle_zone", &Player::battle_zone)

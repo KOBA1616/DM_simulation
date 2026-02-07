@@ -89,7 +89,9 @@ namespace dm::engine::systems {
                 // Step 2: PAY_COST - Auto tap mana
                 if (auto* c = state.get_card_instance(iid)) {
                     if (card_db.count(c->card_id)) {
-                        const auto& def = card_db.at(c->card_id);
+                        const auto& base_def = card_db.at(c->card_id);
+                        // Twinpact: Use spell_side if flag is set
+                        const auto& def = (action.is_spell_side && base_def.spell_side) ? *base_def.spell_side : base_def;
                         
                         bool payment_success = ManaSystem::auto_tap_mana(state, state.players[state.active_player_id], def, card_db);
                         
@@ -101,6 +103,7 @@ namespace dm::engine::systems {
                             // Step 3: RESOLVE_PLAY - Execute resolution
                             nlohmann::json resolve_args;
                             resolve_args["card"] = iid;
+                            resolve_args["is_spell_side"] = action.is_spell_side;
                             Instruction resolve_inst(InstructionOp::GAME_ACTION, resolve_args);
                             resolve_inst.args["type"] = "RESOLVE_PLAY";
                             handle_resolve_play(pipeline, state, resolve_inst, card_db);
@@ -174,11 +177,12 @@ namespace dm::engine::systems {
                 try {
                     std::ofstream log("logs/declare_play_debug.txt", std::ios::app);
                     if (log) {
-                        log << "DECLARE_PLAY (with lifecycle): instance_id=" << iid;
+                        log << "DECLARE_PLAY (with lifecycle): instance_id=" << iid << " is_spell_side=" << action.is_spell_side;
                         if (auto* c = state.get_card_instance(iid)) {
                             log << " card_id=" << c->card_id;
                             if (card_db.count(c->card_id)) {
-                                const auto& def = card_db.at(c->card_id);
+                                const auto& base_def = card_db.at(c->card_id);
+                                const auto& def = (action.is_spell_side && base_def.spell_side) ? *base_def.spell_side : base_def;
                                 log << " cost=" << def.cost << " type=" << static_cast<int>(def.type);
                                 int adj_cost = ManaSystem::get_adjusted_cost(state, state.players[state.active_player_id], def);
                                 log << " adjusted_cost=" << adj_cost;
@@ -198,7 +202,8 @@ namespace dm::engine::systems {
                 // Step 2: PAY_COST - Auto tap mana
                 if (auto* c = state.get_card_instance(iid)) {
                     if (card_db.count(c->card_id)) {
-                        const auto& def = card_db.at(c->card_id);
+                        const auto& base_def = card_db.at(c->card_id);
+                        const auto& def = (action.is_spell_side && base_def.spell_side) ? *base_def.spell_side : base_def;
                         
                         bool payment_success = ManaSystem::auto_tap_mana(state, state.players[state.active_player_id], def, card_db);
                         
@@ -220,6 +225,7 @@ namespace dm::engine::systems {
                             // Step 3: RESOLVE_PLAY - Execute resolution with effect processing
                             nlohmann::json resolve_args;
                             resolve_args["card"] = iid;
+                            resolve_args["is_spell_side"] = action.is_spell_side;
                             Instruction resolve_inst(InstructionOp::GAME_ACTION, resolve_args);
                             resolve_inst.args["type"] = "RESOLVE_PLAY";
                             handle_resolve_play(pipeline, state, resolve_inst, card_db);
@@ -779,13 +785,14 @@ namespace dm::engine::systems {
              else if (origin == Zone::SHIELD) origin_str = "SHIELD_ZONE";
         }
 
-        if (card_db.count(card->card_id)) {
-            const auto& def = card_db.at(card->card_id);
-            if (RestrictionSystem::instance().is_play_forbidden(state, *card, def, origin_str, card_db)) return;
-        }
-
         if (!card_db.count(card->card_id)) return;
-        const auto& def = card_db.at(card->card_id);
+        
+        // Twinpact: Use spell_side if flag is set
+        bool is_spell_side = exec.resolve_int(inst.args.value("is_spell_side", 0)) != 0;
+        const auto& base_def = card_db.at(card->card_id);
+        const auto& def = (is_spell_side && base_def.spell_side) ? *base_def.spell_side : base_def;
+        
+        if (RestrictionSystem::instance().is_play_forbidden(state, *card, def, origin_str, card_db)) return;
 
         // Record Stats
         state.on_card_play(card->card_id, state.turn_number, false, 0, card->owner);
