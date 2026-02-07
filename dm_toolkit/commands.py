@@ -21,11 +21,18 @@ def _call_native_action_generator(state: Any, card_db: Any) -> List[Any]:
     except Exception:
         return []
 
+    # Convert Python dict to C++ CardDatabase if needed
+    try:
+        from dm_toolkit.engine.compat import EngineCompat
+        native_db = EngineCompat._resolve_db(card_db)
+    except Exception:
+        native_db = card_db  # Fallback to original if conversion fails
+
     # 1) Prefer a top-level generate_commands (command-first) if present
     try:
         if hasattr(dm_ai_module, 'generate_commands'):
             try:
-                return dm_ai_module.generate_commands(state, card_db) or []
+                return dm_ai_module.generate_commands(state, native_db) or []
             except Exception:
                 pass
     except Exception:
@@ -39,7 +46,7 @@ def _call_native_action_generator(state: Any, card_db: Any) -> List[Any]:
     try:
         if hasattr(AG, 'generate_legal_actions'):
             try:
-                return AG.generate_legal_actions(state, card_db) or []
+                return AG.generate_legal_actions(state, native_db) or []
             except Exception:
                 pass
     except Exception:
@@ -49,7 +56,7 @@ def _call_native_action_generator(state: Any, card_db: Any) -> List[Any]:
     try:
         if hasattr(AG, 'generate_legal_commands'):
             try:
-                return AG.generate_legal_commands(state, card_db) or []
+                return AG.generate_legal_commands(state, native_db) or []
             except Exception:
                 pass
     except Exception:
@@ -390,423 +397,33 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
             print(f"Warning: generate_legal_actions raised: {e}")
             pass
 
-        # Reset per-turn tracking when a new start-of-turn phase is observed
-        try:
-            sid = id(state)
-            pid = getattr(state, 'active_player_id', 0)
-            cur_phase = getattr(state, 'current_phase', None)
-            pstr = ''
-            if cur_phase is not None:
-                pstr = getattr(cur_phase, 'name', str(cur_phase))
-            # Treat phases that end with START_OF_TURN as the reset point
-            # NOTE: Mana charge tracking fully delegated to C++ side.
-            # C++ PhaseManager resets turn_stats.mana_charged_this_turn in start_turn().
-            # C++ ActionGenerator checks the flag when generating MANA_CHARGE actions.
-        except Exception:
-            pass
-
-        # If the engine returned no actions, provide a conservative Python-side
-        # fallback so the UI / AI can continue progressing while we debug
-        # the native ActionGenerator implementation.
-        # If engine returned nothing, or only a PASS (native may return PASS in
-        # a start-of-turn subphase), provide a conservative Python-side
-        # fallback so the UI / AI can continue progressing while we debug
-        # the native ActionGenerator implementation.
-        pass_only = False
-        try:
-            if actions and len(actions) == 1:
-                # Detect PASS-only by inspecting normalized command when available
-                if normalized_cmds and len(normalized_cmds) >= 1 and isinstance(normalized_cmds[0], dict):
-                    t = normalized_cmds[0].get('type') or normalized_cmds[0].get('legacy_original_type')
-                    if isinstance(t, str) and t.upper() == 'PASS':
-                        pass_only = True
-                else:
-                    a = actions[0]
-                    tname = getattr(a, 'type', None)
-                    # For native objects the type may be an Enum; compare by name/str
-                    if tname is not None and (str(tname).endswith('PASS') or getattr(tname, 'name', '') == 'PASS'):
-                        pass_only = True
-        except Exception:
-            pass
-
-        if not actions or pass_only:
+        # If C++ returned no actions, call fast_forward to progress game
+        # This handles phases like START_OF_TURN, DRAW that have no player actions
+        # If C++ engine returns no actions (auto-phases like START_OF_TURN, DRAW),
+        # fast-forward to next decision point
+        if not actions:
             try:
-                # Defensive fallback: if the engine returned no meaningful
-                # actions, attempt to advance the phase(s) a small number
-                # of times via the PhaseManager so native generator has a
-                # chance to produce phase-appropriate actions.
-                try:
-                    if hasattr(dm_ai_module, 'PhaseManager'):
-                        # Prefer fast_forward if available (advances until
-                        # actions are present or game over); otherwise step
-                        # a small number of phases.
-                        if hasattr(dm_ai_module.PhaseManager, 'fast_forward'):
-                            try:
-                                dm_ai_module.PhaseManager.fast_forward(state, card_db)
-                                # Re-query actions after fast_forward
-                                actions = _call_native_action_generator(state, card_db) or []
-                            except Exception:
-                                # If fast_forward fails for any reason, fall back
-                                # to stepping phases a couple times.
-                                for _ in range(2):
-                                    try:
-                                        dm_ai_module.PhaseManager.next_phase(state, card_db)
-                                        actions = _call_native_action_generator(state, card_db) or []
-                                        if actions:
-                                            break
-                                    except Exception:
-                                        pass
-                        else:
-                            for _ in range(2):
-                                try:
-                                    dm_ai_module.PhaseManager.next_phase(state, card_db)
-                                    actions = _call_native_action_generator(state, card_db) or []
-                                    if actions:
-                                        break
-                                except Exception:
-                                    pass
-                except Exception:
-                    pass
-                from dm_ai_module import Action, ActionType
-
-                pid = getattr(state, 'active_player_id', 0)
-                player = state.players[pid]
-
-                # PASS is always legal
-                pass_act = Action()
-                pass_act.type = ActionType.PASS
-                actions.append(pass_act)
-
-                # Mana charge actions (allow charging any card in hand).
-                # NOTE: C++ side now checks turn_stats.mana_charged_this_turn in
-                # ActionGenerator.generate_legal_actions(), so this fallback should
-                # ideally check the same flag for consistency. For now, we generate
-                # all possible mana charges and let C++ filter if needed.
-                try:
-                    for c in list(getattr(player, 'hand', [])):
-                        act = Action()
-                        act.type = ActionType.MANA_CHARGE
-                        act.card_id = getattr(c, 'card_id', c)
-                        act.source_instance_id = getattr(c, 'instance_id', -1)
-                        actions.append(act)
-                except Exception:
-                    pass
-
-                # Playable cards heuristics: if enough untapped mana, propose PLAY_CARD
-                try:
-                    usable_mana = sum(1 for m in getattr(player, 'mana_zone', []) if not getattr(m, 'is_tapped', False))
-                    for c in list(getattr(player, 'hand', [])):
-                        cid = getattr(c, 'card_id', c)
-                        # Robust card_db lookup (try multiple interfaces/keys)
-                        cost = 9999
-                        cdef = None
-                        try:
-                            if card_db is None:
-                                cdef = None
-                            elif hasattr(card_db, 'get_card'):
-                                try:
-                                    cdef = card_db.get_card(cid)
-                                except Exception:
-                                    # Some implementations may expect int keys
-                                    cdef = card_db.get_card(int(cid)) if isinstance(cid, str) and cid.isdigit() else None
-                            elif isinstance(card_db, dict):
-                                # try int and str keys
-                                try:
-                                    cdef = cast(Dict[Any, Any], card_db).get(cid)
-                                except Exception:
-                                    cdef = None
-                                if cdef is None:
-                                    cdef = cast(Dict[Any, Any], card_db).get(str(cid)) if isinstance(cid, (int, str)) else None
-                                if cdef is None and isinstance(cid, str) and cid.isdigit():
-                                    cdef = cast(Dict[Any, Any], card_db).get(int(cid))
-                            elif hasattr(card_db, 'cards'):
-                                try:
-                                    cards_attr = getattr(card_db, 'cards')
-                                    if isinstance(cards_attr, dict):
-                                        cdef = cards_attr.get(cid) or cards_attr.get(str(cid))
-                                except Exception:
-                                    cdef = None
-                            else:
-                                cdef = None
-                            # Support multiple card_def formats: dicts (from Python
-                            # CardDB) and native/card objects exposed by bindings.
-                            try:
-                                c_cost = None
-                                if cdef is None:
-                                    c_cost = None
-                                elif isinstance(cdef, dict):
-                                    c_cost = cdef.get('cost')
-                                else:
-                                    # Try attribute access (native objects)
-                                    try:
-                                        c_cost = getattr(cdef, 'cost', None)
-                                    except Exception:
-                                        c_cost = None
-                                    # Try dictionary-like get method
-                                    if c_cost is None:
-                                        try:
-                                            getm = getattr(cdef, 'get', None)
-                                            if callable(getm):
-                                                c_cost = getm('cost', None)
-                                        except Exception:
-                                            pass
-                                if c_cost is not None:
-                                    try:
-                                        cost = int(c_cost)
-                                    except Exception:
-                                        pass
-                            except Exception:
-                                cdef = None
-                                cost = 9999
-                        except Exception:
-                            cdef = None
-                            cost = 9999
-
-                        # Debug lookup result
-                        try:
-                            logger.debug(f"Debug play_lookup -> pid={pid}, card_id={cid}, cdef_present={bool(cdef)}, assumed_cost={cost}")
-                        except Exception:
-                            pass
-
-                        if cost <= usable_mana:
-                            act = Action()
-                            act.type = ActionType.PLAY_CARD
-                            act.card_id = cid
-                            act.source_instance_id = getattr(c, 'instance_id', -1)
-                            actions.append(act)
-                            try:
-                                logger.debug(f"Debug play_heuristic1 -> pid={pid}, usable_mana={usable_mana}, card_id={cid}, cdef_present={bool(cdef)}, cost={cost}")
-                            except Exception:
-                                pass
-                except Exception:
-                    pass
+                if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'fast_forward'):
+                    # Convert Python dict to C++ CardDatabase if needed
+                    from dm_toolkit.engine.compat import EngineCompat
+                    native_db = EngineCompat._resolve_db(card_db)
+                    dm_ai_module.PhaseManager.fast_forward(state, native_db)
+                    # Re-query actions after fast_forward
+                    actions = _call_native_action_generator(state, card_db) or []
             except Exception:
-                # If we cannot construct fallback actions, keep actions empty
-                pass
-
-            # If native generator did not include any PLAY_CARD actions, attempt
-            # to add PLAY_CARD candidates using the same heuristic we use in the
-            # pure-Python ActionGenerator. This covers cases where the native
-            # generator omits play options due to mismatched card_db formats or
-            # other minor interoperability issues.
-            try:
-                # Only propose play candidates when we're in the Main phase
-                cur_phase = getattr(state, 'current_phase', None)
-                p_name = getattr(cur_phase, 'name', None) or str(cur_phase)
-                in_main_phase = False
-                try:
-                    if isinstance(p_name, str) and 'MAIN' in p_name.upper():
-                        in_main_phase = True
-                    elif isinstance(cur_phase, int) and int(cur_phase) == 3:
-                        in_main_phase = True
-                except Exception:
-                    in_main_phase = False
-
-                # If normalized detection found a play, skip heuristic
-                if not ('has_play_native' in locals() and has_play_native) and in_main_phase:
-                    has_play = False
-                    for a in list(actions):
-                        try:
-                            t = getattr(a, 'type', None)
-                            tname = getattr(t, 'name', str(t)) if t is not None else str(t)
-                            tn = str(tname).upper()
-                            # Consider many aliases: DECLARE_PLAY / PLAY_CARD / CAST_SPELL etc.
-                            if ('PLAY' in tn or 'DECLARE' in tn or 'CAST' in tn) and 'PASS' not in tn:
-                                has_play = True
-                                break
-                        except Exception:
-                            continue
-                    if not has_play:
-                        from dm_ai_module import Action, ActionType
-                        pid = getattr(state, 'active_player_id', 0)
-                        player = state.players[pid]
-                        usable_mana = sum(1 for m in getattr(player, 'mana_zone', []) if not getattr(m, 'is_tapped', False))
-                        for c in list(getattr(player, 'hand', [])):
-                            cid = getattr(c, 'card_id', c)
-                            cost = 9999
-                            try:
-                                if isinstance(card_db, dict):
-                                    cdef = cast(Dict[Any, Any], card_db).get(cid) or cast(Dict[Any, Any], card_db).get(str(cid))
-                                elif hasattr(card_db, 'get_card'):
-                                    cdef = card_db.get_card(cid)
-                                else:
-                                    cdef = None
-                                # Similar robust lookup for second heuristic.
-                                try:
-                                    c_cost = None
-                                    if cdef is None:
-                                        c_cost = None
-                                    elif isinstance(cdef, dict):
-                                        c_cost = cdef.get('cost')
-                                    else:
-                                        try:
-                                            c_cost = getattr(cdef, 'cost', None)
-                                        except Exception:
-                                            c_cost = None
-                                        if c_cost is None:
-                                            try:
-                                                getm = getattr(cdef, 'get', None)
-                                                if callable(getm):
-                                                    c_cost = getm('cost', None)
-                                            except Exception:
-                                                pass
-                                    if c_cost is not None:
-                                        try:
-                                            cost = int(c_cost)
-                                        except Exception:
-                                            cost = 9999
-                                except Exception:
-                                    cost = 9999
-                            except Exception:
-                                cost = 9999
-                            if cost <= usable_mana:
-                                act = Action()
-                                act.type = ActionType.PLAY_CARD
-                                act.card_id = cid
-                                act.source_instance_id = getattr(c, 'instance_id', -1)
-                                actions.append(act)
-                                try:
-                                    logger.debug(f"Debug play_heuristic2 -> pid={pid}, usable_mana={usable_mana}, card_id={cid}, cdef_present={bool(cdef)}, cost={cost}")
-                                except Exception:
-                                    pass
-            except Exception:
-                pass
-
-        # Filter out MANA_CHARGE actions after they have been performed this
-        # turn (based on the runtime tracker). We only present a single
-        # candidate MANA_CHARGE to the UI/AI when possible to avoid
-        # multi-charge loops; the executed wrapper marks the tracker so
-        # subsequent generations will omit further MANA_CHARGE options.
-        # If native generator returned actions but no PLAY_CARD candidates,
-        # attempt to add PLAY_CARD candidates via the same robust heuristic
-        # used in the fallback path. This handles cases where the native
-        # generator interoperates poorly with the Python-side `card_db`.
-        try:
-            # Detect explicit play-like actions in native results
-            native_has_play = False
-            try:
-                for a in list(actions):
-                    try:
-                        t = getattr(a, 'type', None)
-                        tname = getattr(t, 'name', None) or str(t)
-                        if tname is None:
-                            continue
-                        tn = str(tname).upper()
-                        if ('PLAY' in tn or 'DECLARE' in tn or 'CAST' in tn) and 'PASS' not in tn:
-                            native_has_play = True
-                            break
-                    except Exception:
-                        continue
-            except Exception:
-                native_has_play = False
-
-            # Respect earlier normalized detection if available
-            overall_has_play = native_has_play or (('has_play_native' in locals() and has_play_native))
-
-            # Only add heuristic plays when none are present and we're in Main
-            cur_phase = getattr(state, 'current_phase', None)
-            p_name = getattr(cur_phase, 'name', None) or str(cur_phase)
-            in_main_phase = False
-            try:
-                if isinstance(p_name, str) and 'MAIN' in p_name.upper():
-                    in_main_phase = True
-                elif isinstance(cur_phase, int) and int(cur_phase) == 3:
-                    in_main_phase = True
-            except Exception:
-                in_main_phase = False
-
-            if not overall_has_play and in_main_phase:
-                try:
-                    from dm_ai_module import Action, ActionType
-                    pid = getattr(state, 'active_player_id', 0)
-                    player = state.players[pid]
-                    usable_mana = sum(1 for m in getattr(player, 'mana_zone', []) if not getattr(m, 'is_tapped', False))
-                    for c in list(getattr(player, 'hand', [])):
-                        cid = getattr(c, 'card_id', c)
-                        cost = 9999
-                        cdef = None
-                        try:
-                            if card_db is None:
-                                cdef = None
-                            elif hasattr(card_db, 'get_card'):
-                                try:
-                                    cdef = card_db.get_card(cid)
-                                except Exception:
-                                    cdef = card_db.get_card(int(cid)) if isinstance(cid, str) and cid.isdigit() else None
-                            elif isinstance(card_db, dict):
-                                try:
-                                    cdef = cast(Dict[Any, Any], card_db).get(cid)
-                                except Exception:
-                                    cdef = None
-                                if cdef is None:
-                                    cdef = cast(Dict[Any, Any], card_db).get(str(cid)) if isinstance(cid, (int, str)) else None
-                                if cdef is None and isinstance(cid, str) and cid.isdigit():
-                                    cdef = cast(Dict[Any, Any], card_db).get(int(cid))
-                            elif hasattr(card_db, 'cards'):
-                                try:
-                                    cards_attr = getattr(card_db, 'cards')
-                                    if isinstance(cards_attr, dict):
-                                        cdef = cards_attr.get(cid) or cards_attr.get(str(cid))
-                                except Exception:
-                                    cdef = None
-                            else:
-                                cdef = None
-
-                            # Extract cost from multiple possible shapes
-                            c_cost = None
-                            if cdef is None:
-                                c_cost = None
-                            elif isinstance(cdef, dict):
-                                c_cost = cdef.get('cost')
-                            else:
-                                try:
-                                    c_cost = getattr(cdef, 'cost', None)
-                                except Exception:
-                                    c_cost = None
-                                if c_cost is None:
-                                    try:
-                                        getm = getattr(cdef, 'get', None)
-                                        if callable(getm):
-                                            c_cost = getm('cost', None)
-                                    except Exception:
-                                        pass
-                            if c_cost is not None:
-                                try:
-                                    cost = int(c_cost)
-                                except Exception:
-                                    cost = 9999
-                        except Exception:
-                            cost = 9999
-
-                        if cost <= usable_mana:
-                            act = Action()
-                            act.type = ActionType.PLAY_CARD
-                            act.card_id = cid
-                            act.source_instance_id = getattr(c, 'instance_id', -1)
-                            actions.append(act)
-                            try:
-                                logger.debug(f"Debug added_play_candidate -> pid={pid}, card_id={cid}, cost={cost}, usable_mana={usable_mana}, cdef_present={bool(cdef)}")
-                            except Exception:
-                                pass
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        filtered = []
-        try:
-            # NOTE: Mana charge filtering now handled by C++ ActionGenerator.
-            # Python fallback no longer needs to filter duplicate mana charges.
-            filtered = actions
-        except Exception:
-            filtered = actions
-
+                pass  # Silent fallback - if fast_forward fails, return empty actions
+        
+        # Trust C++ engine completely - wrap actions for GUI execution
         cmds = []
-        for a in filtered:
+        for a in actions:
             w = wrap_action(a)
             if w is not None:
                 cmds.append(w)
         return cmds
-    except Exception:
+    except Exception as e:
+        print(f"generate_legal_commands failed: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 

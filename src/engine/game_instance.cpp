@@ -1,5 +1,6 @@
 #include "game_instance.hpp"
 #include "systems/flow/phase_manager.hpp"
+#include "engine/actions/intent_generator.hpp"
 #include "engine/game_command/game_command.hpp"
 #include "engine/game_command/action_commands.hpp" // Added
 #include "engine/game_command/commands.hpp" // Added for DeclareReactionCommand
@@ -53,6 +54,128 @@ namespace dm::engine {
         if (card_db) {
             PhaseManager::start_game(state, *card_db);
         }
+    }
+
+    bool GameInstance::step() {
+        // Check if game is over
+        if (state.game_over) {
+            std::cout << "[step] Game is over, returning false\n";
+            return false;
+        }
+
+        // Generate legal actions
+        auto actions = IntentGenerator::generate_legal_actions(state, *card_db);
+        std::cout << "[step] Generated " << actions.size() << " actions at Turn " << state.turn_number 
+                  << ", Phase " << static_cast<int>(state.current_phase) << ", Player " << state.active_player_id << "\n";
+        
+        // Log action types (first 5)
+        for (size_t i = 0; i < std::min(size_t(5), actions.size()); ++i) {
+            std::cout << "  Action " << i << ": type=" << static_cast<int>(actions[i].type) << "\n";
+        }
+        if (actions.size() > 5) {
+            std::cout << "  ... and " << (actions.size() - 5) << " more\n";
+        }
+
+        if (actions.empty()) {
+            std::cout << "[step] No actions, calling fast_forward...\n";
+            // No actions available - call fast_forward to progress to next decision point
+            PhaseManager::fast_forward(state, *card_db);
+            std::cout << "[step] After fast_forward: Turn " << state.turn_number 
+                      << ", Phase " << static_cast<int>(state.current_phase) << "\n";
+            
+            // Check if we're stuck (still no actions after fast_forward)
+            actions = IntentGenerator::generate_legal_actions(state, *card_db);
+            std::cout << "[step] After fast_forward, re-generated " << actions.size() << " actions at Turn " 
+                      << state.turn_number << ", Phase " << static_cast<int>(state.current_phase) 
+                      << ", Player " << state.active_player_id << "\n";
+            
+            // Log action types (first 5)
+            for (size_t i = 0; i < std::min(size_t(5), actions.size()); ++i) {
+                std::cout << "  Action " << i << ": type=" << static_cast<int>(actions[i].type) << "\n";
+            }
+            if (actions.size() > 5) {
+                std::cout << "  ... and " << (actions.size() - 5) << " more\n";
+            }
+            
+            if (actions.empty()) {
+                std::cout << "[step] Still no actions after fast_forward, game stuck\n";
+                // Game might be over or stuck
+                return false;
+            }
+        }
+
+        // Select first viable action (simple AI strategy)
+        // Priority: RESOLVE_EFFECT > PLAY_CARD > ATTACK > MANA_CHARGE > others > PASS
+        const core::Action* selected = nullptr;
+        
+        // Priority 1: RESOLVE_EFFECT (must complete pending effects)
+        for (const auto& a : actions) {
+            if (a.type == core::PlayerIntent::RESOLVE_EFFECT) {
+                selected = &a;
+                std::cout << "[step] Selected RESOLVE_EFFECT (priority 1)\n";
+                break;
+            }
+        }
+        
+        // Priority 2: PLAY_CARD (play cards from hand)
+        if (!selected) {
+            for (const auto& a : actions) {
+                if (a.type == core::PlayerIntent::PLAY_CARD || a.type == core::PlayerIntent::PLAY_CARD_INTERNAL) {
+                    selected = &a;
+                    std::cout << "[step] Selected PLAY_CARD (priority 2)\n";
+                    break;
+                }
+            }
+        }
+        
+        // Priority 3: ATTACK
+        if (!selected) {
+            for (const auto& a : actions) {
+                if (a.type == core::PlayerIntent::ATTACK_PLAYER || a.type == core::PlayerIntent::ATTACK_CREATURE) {
+                    selected = &a;
+                    std::cout << "[step] Selected ATTACK (priority 3)\n";
+                    break;
+                }
+            }
+        }
+        
+        // Priority 4: MANA_CHARGE (in MANA phase)
+        if (!selected) {
+            for (const auto& a : actions) {
+                if (a.type == core::PlayerIntent::MANA_CHARGE) {
+                    selected = &a;
+                    std::cout << "[step] Selected MANA_CHARGE (priority 4)\n";
+                    break;
+                }
+            }
+        }
+        
+        // Priority 5: Any other action (except PASS)
+        if (!selected) {
+            for (const auto& a : actions) {
+                if (a.type != core::PlayerIntent::PASS) {
+                    selected = &a;
+                    std::cout << "[step] Selected other action (priority 5), type=" << static_cast<int>(a.type) << "\n";
+                    break;
+                }
+            }
+        }
+        
+        // Priority 6: PASS (last resort - exit phase)
+        if (!selected && !actions.empty()) {
+            selected = &actions[0];
+            std::cout << "[step] Selected PASS (priority 6) - exiting phase\n";
+        }
+
+        // Execute selected action
+        if (selected) {
+            std::cout << "[step] Executing action type " << static_cast<int>(selected->type) << "\n";
+            resolve_action(*selected);
+            return true;
+        }
+
+        std::cout << "[step] No action selected, returning false\n";
+        return false;
     }
 
     void GameInstance::resolve_action(const core::Action& action) {

@@ -29,7 +29,8 @@ except ImportError:
 class GameSession:
     """Simplified game session that leverages C++ engine for game progression."""
     
-    DEFAULT_DECK: List[int] = []
+    # Default deck: 40 cards (ID 1-10, 4 copies each)
+    DEFAULT_DECK: List[int] = [1,2,3,4,5,6,7,8,9,10]*4
 
     def __init__(self,
                  callback_update_ui: Optional[Callable[[], None]] = None,
@@ -45,17 +46,44 @@ class GameSession:
         self.is_running = False
         self.is_processing = False
         self.card_db: CardDB = {}
-        self.native_card_db = None  # Native C++ CardDatabase for PhaseManager
-        self.gs: Optional[GameState] = None
+        self.native_card_db = None  # Native C++ CardDatabase
+        self.game_instance = None  # C++ GameInstance
+        self.gs: Optional[GameState] = None  # Alias to game_instance.state for compatibility
+        self._no_action_count = 0  # Track consecutive steps with no actions
 
-    def initialize_game(self, card_db: CardDB, seed: int = 42) -> None:
-        """Initialize game with C++ engine."""
-        self.card_db = card_db
+    def initialize_game(self, card_db: Optional[CardDB] = None, seed: int = 42) -> None:
+        """Initialize game with C++ engine.
+        
+        Args:
+            card_db: Optional Python dict card database (for backward compatibility, not used)
+            seed: Random seed for game
+        """
         if not dm_ai_module:
             self.callback_log("Error: dm_ai_module not available")
             return
 
-        self.gs = dm_ai_module.GameState(seed)
+        # Load native CardDatabase (always use C++ database)
+        if self.native_card_db is None:
+            if hasattr(dm_ai_module, 'JsonLoader'):
+                try:
+                    self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+                    self.callback_log("Loaded native CardDatabase via JsonLoader")
+                except Exception as e:
+                    self.callback_log(f"ERROR: JsonLoader failed - {e}")
+                    return
+            else:
+                self.callback_log("ERROR: JsonLoader not available")
+                return
+        
+        # Set card_db to native_card_db for compatibility (commands.py expects card_db)
+        self.card_db = self.native_card_db
+        
+        # Reset no-action counter
+        self._no_action_count = 0
+        
+        # Create GameInstance (replaces GameState)
+        self.game_instance = dm_ai_module.GameInstance(seed, self.native_card_db)
+        self.gs = self.game_instance.state  # Alias for compatibility
         self.gs.setup_test_duel()
 
         # Set decks
@@ -66,24 +94,13 @@ class GameSession:
 
         # Start game via C++ PhaseManager
         try:
-            # Load native CardDatabase if not already loaded
-            if self.native_card_db is None:
-                if hasattr(dm_ai_module, 'JsonLoader'):
-                    try:
-                        self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
-                        self.callback_log("Loaded native CardDatabase via JsonLoader")
-                    except Exception as e:
-                        self.callback_log(f"ERROR: JsonLoader failed - {e}")
-                        self.callback_log("Cannot proceed without native CardDatabase")
-                        return
-                else:
-                    self.callback_log("ERROR: JsonLoader not available in dm_ai_module")
-                    return
-
             dm_ai_module.PhaseManager.start_game(self.gs, self.native_card_db)
-            self.callback_log("Game initialized via C++ PhaseManager.start_game")
+            dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
+            self.callback_log("ゲームリセット")
         except Exception as e:
-            self.callback_log(f"start_game failed: {e}")
+            self.callback_log(f"start_game/fast_forward failed: {e}")
+            import traceback
+            traceback.print_exc()
 
         self.callback_update_ui()
 
@@ -92,8 +109,31 @@ class GameSession:
         if not dm_ai_module:
             return
 
+        # Load native CardDatabase if not already loaded
+        if self.native_card_db is None:
+            if hasattr(dm_ai_module, 'JsonLoader'):
+                try:
+                    self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+                    self.callback_log("Loaded native CardDatabase via JsonLoader")
+                except Exception as e:
+                    self.callback_log(f"ERROR: JsonLoader failed - {e}")
+                    self.callback_log("Cannot proceed without native CardDatabase")
+                    return
+            else:
+                self.callback_log("ERROR: JsonLoader not available in dm_ai_module")
+                return
+        
+        # Set card_db to native_card_db for compatibility
+        self.card_db = self.native_card_db
+
+        # Reset no-action counter
+        self._no_action_count = 0
+
         seed = random.randint(0, 100000)
-        self.gs = dm_ai_module.GameState(seed)
+        
+        # Create GameInstance (not just GameState)
+        self.game_instance = dm_ai_module.GameInstance(seed, self.native_card_db)
+        self.gs = self.game_instance.state  # Alias for compatibility
         self.gs.setup_test_duel()
 
         deck0 = p0_deck if p0_deck else list(self.DEFAULT_DECK)
@@ -108,46 +148,10 @@ class GameSession:
         self.gs.set_deck(0, deck0)
         self.gs.set_deck(1, deck1)
 
-        # Debug: check deck sizes after set
-        try:
-            p0_deck_size = len(self.gs.players[0].deck)
-            p1_deck_size = len(self.gs.players[1].deck)
-            self.callback_log(f"P0 deck size (post-set): {p0_deck_size}")
-            self.callback_log(f"P1 deck size (post-set): {p1_deck_size}")
-        except Exception as e:
-            self.callback_log(f"Failed to check deck sizes: {e}")
-
         # Start game via C++ PhaseManager
         try:
-            # Load native CardDatabase if not already loaded
-            if self.native_card_db is None:
-                if hasattr(dm_ai_module, 'JsonLoader'):
-                    try:
-                        self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
-                        self.callback_log("Loaded native CardDatabase via JsonLoader")
-                    except Exception as e:
-                        self.callback_log(f"ERROR: JsonLoader failed - {e}")
-                        self.callback_log("Cannot proceed without native CardDatabase")
-                        return
-                else:
-                    self.callback_log("ERROR: JsonLoader not available in dm_ai_module")
-                    return
-
             dm_ai_module.PhaseManager.start_game(self.gs, self.native_card_db)
-            
-            # Debug: check state after start_game
-            try:
-                p0_hand = len(self.gs.players[0].hand)
-                p0_shields = len(self.gs.players[0].shield_zone)
-                p0_deck = len(self.gs.players[0].deck)
-                p1_hand = len(self.gs.players[1].hand)
-                p1_shields = len(self.gs.players[1].shield_zone)
-                p1_deck = len(self.gs.players[1].deck)
-                self.callback_log(f"After start_game - P0 deck:{p0_deck}, hand:{p0_hand}, shields:{p0_shields}")
-                self.callback_log(f"After start_game - P1 deck:{p1_deck}, hand:{p1_hand}, shields:{p1_shields}")
-            except Exception as e:
-                self.callback_log(f"Failed to check post-start_game state: {e}")
-
+            dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
         except Exception as e:
             self.callback_log(f"start_game failed: {e}")
 
@@ -160,15 +164,17 @@ class GameSession:
 
     def step_game(self):
         """
-        Main game loop - simplified to delegate to C++ engine.
+        Main game loop - FULLY delegated to C++ engine.
         
-        Flow:
-        1. Check if game is over
-        2. Get legal commands from C++ engine
-        3. If human player: show options and wait for input
-        4. If AI player: let C++ fast_forward handle it automatically
+        Simply calls game_instance.step() which handles:
+        - Action generation
+        - AI selection (first viable action)
+        - Action execution
+        - State progression (fast_forward when needed)
+        
+        All game logic is in C++. Python only handles UI updates.
         """
-        if self.is_processing or not self.gs:
+        if self.is_processing or not self.gs or not self.game_instance:
             return
 
         self.is_processing = True
@@ -176,46 +182,50 @@ class GameSession:
             # Check for user input wait state
             if self._check_and_handle_input_wait():
                 return
-            # Check game over
+            
+            # Check game over  
             if self.is_game_over():
                 self.callback_log("Game Over")
                 self.callback_update_ui()
                 return
 
+            # Human players: need to check if it's their turn and wait for input
             active_pid = EngineCompat.get_active_player_id(self.gs)
             is_human = (self.player_modes.get(active_pid) == 'Human')
-
-            # Get legal commands from C++ engine
-            from dm_toolkit.commands import generate_legal_commands
-            cmds = generate_legal_commands(self.gs, self.card_db)
-
-            # DEBUG: Log available commands
-            if cmds:
-                cmd_types = [cmd.to_dict().get('type', 'UNKNOWN') for cmd in cmds[:5]]  # First 5
-                self.callback_log(f"[DEBUG] P{active_pid} has {len(cmds)} commands: {cmd_types}")
-            else:
-                self.callback_log(f"[DEBUG] P{active_pid} has no commands - will fast_forward")
-
-            if not cmds:
-                # No commands - let C++ fast_forward progress the game
-                self._fast_forward()
-                self.callback_update_ui()
-                return
-
+            
             if is_human:
+                # For human players, we still need to generate actions and wait
+                # C++ step() is for AI only
+                from dm_toolkit.commands import generate_legal_commands
+                cmds = generate_legal_commands(self.gs, self.card_db)
+                
+                if not cmds:
+                    # No actions - progress automatically
+                    self._fast_forward()
+                    self.callback_update_ui()
+                    return
+                
                 # Human player - wait for input
-                # UI will call execute_action() when user selects an action
                 self.callback_update_ui()
                 return
 
-            # AI player - select and execute action
-            best_cmd = self._select_ai_action(cmds)
-            if best_cmd:
-                self.execute_action(best_cmd)
-                # After AI action, fast_forward to next decision point
-                # This ensures phase progression (e.g., after MANA_CHARGE, move to main phase)
-                self._fast_forward()
-                self.callback_update_ui()
+            # AI player - use C++ step() for complete automation
+            success = self.game_instance.step()
+            
+            if not success:
+                # Game might be over or stuck
+                self._no_action_count += 1
+                if self._no_action_count > 20:
+                    self.callback_log(f"ERROR: C++ step() failed {self._no_action_count} times. Stopping.")
+                    self.is_running = False
+                else:
+                    # Try fast_forward as fallback
+                    self._fast_forward()
+            else:
+                # Reset counter on success
+                self._no_action_count = 0
+            
+            self.callback_update_ui()
 
         finally:
             self.is_processing = False
@@ -245,33 +255,27 @@ class GameSession:
         is_human = (self.player_modes.get(active_pid) == 'Human')
 
         try:
-            # Execute command using appropriate C++ command class
-            if cmd_dict.get('type') == 'RESOLVE_EFFECT' and dm_ai_module and hasattr(dm_ai_module, 'ResolveEffectCommand'):
-                effect_index = int(cmd_dict.get('effect_index', 0))
-                cpp_cmd = dm_ai_module.ResolveEffectCommand(effect_index)
-                self.gs.execute_command(cpp_cmd)
-                self.callback_log(f"P{active_pid}: RESOLVE_EFFECT (index={effect_index})")
+            # Prefer executing native C++ Action objects directly to keep all game logic in C++
+            if hasattr(raw_action, '_action') and raw_action._action is not None and dm_ai_module:
+                # Direct C++ Action execution - all logic handled by C++ GameInstance.resolve_action()
+                action = raw_action._action
                 
-            elif cmd_dict.get('type') == 'MANA_CHARGE' and dm_ai_module and hasattr(dm_ai_module, 'ManaChargeCommand'):
-                instance_id = int(cmd_dict['instance_id'])
-                cpp_cmd = dm_ai_module.ManaChargeCommand(instance_id)
-                self.gs.execute_command(cpp_cmd)
-                self.callback_log(f"P{active_pid}: MANA_CHARGE")
-                
-            elif (cmd_dict.get('type') == 'PLAY_FROM_ZONE' or cmd_dict.get('legacy_original_type') == 'DECLARE_PLAY') and \
-                 dm_ai_module and hasattr(dm_ai_module, 'PlayCardCommand'):
-                instance_id = int(cmd_dict.get('instance_id') or cmd_dict.get('source_instance_id', -1))
-                cpp_cmd = dm_ai_module.PlayCardCommand(instance_id)
-                self.gs.execute_command(cpp_cmd)
-                self.callback_log(f"P{active_pid}: PLAY_CARD")
-                
-            elif cmd_dict.get('type') == 'PASS' and dm_ai_module and hasattr(dm_ai_module, 'PassCommand'):
-                cpp_cmd = dm_ai_module.PassCommand()
-                self.gs.execute_command(cpp_cmd)
-                self.callback_log(f"P{active_pid}: PASS")
+                try:
+                    self.game_instance.resolve_action(action)
+                    # IMPORTANT: Re-sync gs after C++ modifies GameInstance
+                    # This ensures Python sees the latest state
+                    self.gs = self.game_instance.state
+                except Exception as e:
+                    self.callback_log(f"ERROR: resolve_action failed: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    return
+                # Log action type for UI feedback
+                action_type_name = str(action.type).split('.')[-1] if hasattr(action.type, 'name') else str(action.type)
+                self.callback_log(f"P{active_pid}: {action_type_name}")
                 
             else:
-                # Fallback to EngineCompat
+                # Fallback: Execute as command dict (for commands without native Action)
                 EngineCompat.ExecuteCommand(self.gs, cmd_dict, self.card_db)
                 cmd_type = cmd_dict.get('type', 'UNKNOWN')
                 self.callback_log(f"P{active_pid}: {cmd_type}")
@@ -297,27 +301,24 @@ class GameSession:
             return
         
         try:
-            active_pid = EngineCompat.get_active_player_id(self.gs)
-            try:
-                phase = self.gs.current_phase
-                phase_name = str(phase).split('.')[-1] if hasattr(phase, '__class__') else str(phase)
-            except:
-                phase_name = 'UNKNOWN'
-            self.callback_log(f"[DEBUG] Calling fast_forward: P{active_pid} phase={phase_name}")
             dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
-            try:
-                new_phase = self.gs.current_phase
-                new_phase_name = str(new_phase).split('.')[-1] if hasattr(new_phase, '__class__') else str(new_phase)
-            except:
-                new_phase_name = 'UNKNOWN'
-            self.callback_log(f"[DEBUG] fast_forward completed: phase={new_phase_name}")
+            # Re-sync gs after C++ modifies state
+            if self.game_instance:
+                self.gs = self.game_instance.state
         except Exception as e:
             self.callback_log(f"ERROR executing fast_forward: {e}")
             import traceback
             self.callback_log(traceback.format_exc())
 
     def _select_ai_action(self, cmds: List[Any]) -> Any:
-        """Select best action for AI player. Priority: RESOLVE_EFFECT > PLAY > MANA_CHARGE > others > PASS."""
+        """Select best action for AI player. Priority: RESOLVE_EFFECT > PLAY > others > PASS.
+        
+        Simple AI that prioritizes:
+        1. Effect resolution (must complete)
+        2. Playing cards from hand
+        3. Any other action
+        4. PASS (to advance turn)
+        """
         # Highest priority: RESOLVE_EFFECT (must be resolved before other actions)
         for cmd in cmds:
             try:
@@ -328,7 +329,7 @@ class GameSession:
             except Exception:
                 pass
         
-        # First pass: look for PLAY_FROM_ZONE (high priority)
+        # Second pass: look for PLAY_FROM_ZONE (playing cards)
         for cmd in cmds:
             try:
                 d = cmd.to_dict()
@@ -338,17 +339,7 @@ class GameSession:
             except Exception:
                 pass
         
-        # Second pass: look for MANA_CHARGE
-        for cmd in cmds:
-            try:
-                d = cmd.to_dict()
-                cmd_type = d.get('type')
-                if cmd_type == 'MANA_CHARGE':
-                    return cmd
-            except Exception:
-                pass
-        
-        # Third pass: any non-PASS, non-NONE action
+        # Third pass: any non-PASS, non-NONE action (including MANA_CHARGE, ATTACK, etc)
         for cmd in cmds:
             try:
                 d = cmd.to_dict()

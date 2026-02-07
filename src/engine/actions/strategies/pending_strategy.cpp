@@ -112,6 +112,20 @@ namespace dm::engine {
         // to the decision maker. Basic heuristic: SPELLS > BREAK_SHIELD > RESOLVE_BATTLE > INTERNAL_PLAY > OTHERS
         std::vector<size_t> active_indices = (!spell_indices.empty()) ? spell_indices : other_indices;
 
+        // DEBUG: Log active_indices selection
+        try {
+            std::ofstream ofs("logs/active_indices_debug.txt", std::ios::app);
+            if (ofs) {
+                ofs << "[ACTIVE_INDICES] spell_count=" << spell_indices.size()
+                    << " other_count=" << other_indices.size()
+                    << " active_count=" << active_indices.size() << "\n";
+                for (size_t idx : active_indices) {
+                    const auto& e = game_state.pending_effects[idx];
+                    ofs << "  active_idx=" << idx << " type=" << static_cast<int>(e.type) << "\n";
+                }
+            }
+        } catch(...) {}
+
         auto score_for = [&](const PendingEffect& e) -> int {
             int score = 0;
             if (e.type == EffectType::SHIELD_TRIGGER) score += 1000;
@@ -135,6 +149,15 @@ namespace dm::engine {
 
             // PRIORITY: Handle TRIGGER_ABILITY first (ON_PLAY, ON_ATTACK, etc.)
             if (eff.type == EffectType::TRIGGER_ABILITY) {
+                // DEBUG: Log TRIGGER_ABILITY processing
+                try {
+                    std::ofstream ofs("logs/trigger_ability_debug.txt", std::ios::app);
+                    if (ofs) {
+                        ofs << "[TRIGGER_ABILITY_FOUND] idx=" << i << " src=" << eff.source_instance_id
+                            << " creating RESOLVE_EFFECT and PASS actions\n";
+                    }
+                } catch(...) {}
+                
                 Action resolve;
                 resolve.type = PlayerIntent::RESOLVE_EFFECT;
                 resolve.slot_index = static_cast<int>(i);

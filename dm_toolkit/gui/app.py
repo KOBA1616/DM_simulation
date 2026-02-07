@@ -85,6 +85,11 @@ class GameWindow(QMainWindow):
         self.timer.timeout.connect(self.session.step_phase)
         # Note: Session manages 'is_processing', App manages 'is_running' for timer
         self.is_running: bool = False
+        
+        # Auto-start timer for AI vs AI games
+        if all(mode == 'AI' for mode in self.session.player_modes.values()):
+            self.is_running = True
+            self.timer.start(500)
 
         # Initialize Layout using Builder
         self.layout_builder = LayoutBuilder(self)

@@ -45,6 +45,10 @@ namespace dm::engine {
         // Core API
         void start_game();
         void resolve_action(const core::Action& action);
+        
+        // Auto-step: generate actions, select first viable action, execute, and progress
+        // Returns true if an action was executed, false if game is over or stuck
+        bool step();
 
         void undo();
         void initialize_card_stats(int deck_size);

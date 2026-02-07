@@ -1169,6 +1169,7 @@
     "static_abilities": [],
     "reaction_abilities": [],
     "ai_importance_score": 0,
+    "evolution_condition": "",
     "is_key_card": false
   },
   {

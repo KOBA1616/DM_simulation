@@ -54,15 +54,29 @@ namespace dm::engine {
             }
 
             if (j.is_array()) {
+                int card_index = 0;
                 for (const auto& item : j) {
-                    dm::core::CardData card = item.get<dm::core::CardData>();
-                    // Backward compatibility: allow single "civilization" field
-                    if (card.civilizations.empty() && item.contains("civilization")) {
-                        // Use automatic enum conversion via JSON library
-                        card.civilizations.push_back(item.at("civilization").get<Civilization>());
+                    try {
+                        dm::core::CardData card = item.get<dm::core::CardData>();
+                        // Backward compatibility: allow single "civilization" field
+                        if (card.civilizations.empty() && item.contains("civilization")) {
+                            // Use automatic enum conversion via JSON library
+                            card.civilizations.push_back(item.at("civilization").get<Civilization>());
+                        }
+                        cards[card.id] = card;
+                        (*new_defs)[static_cast<CardID>(card.id)] = convert_to_def(card);
+                    } catch (const std::exception& e) {
+                        std::cerr << "Error parsing card at index " << card_index 
+                                  << ": " << e.what() << std::endl;
+                        if (item.contains("id")) {
+                            std::cerr << "  Card ID: " << item.at("id") << std::endl;
+                        }
+                        if (item.contains("name")) {
+                            std::cerr << "  Card name: " << item.at("name") << std::endl;
+                        }
+                        throw; // Re-throw to trigger outer catch
                     }
-                    cards[card.id] = card;
-                    (*new_defs)[static_cast<CardID>(card.id)] = convert_to_def(card);
+                    card_index++;
                 }
             } else {
                 // Single object

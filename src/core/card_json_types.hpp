@@ -254,6 +254,7 @@ namespace dm::core {
         std::string stat_key;
         std::string op;
         std::optional<FilterDef> filter;
+        nlohmann::json extra_fields = nlohmann::json::object();  // Added: to handle unknown JSON fields
     };
 
     struct ModifierDef {
@@ -548,7 +549,7 @@ namespace dm::core {
     })
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, exact_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, selection_mode, selection_sort_key, power_max_ref, cost_ref, and_conditions)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter, extra_fields)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, input_value_usage, output_value_key, inverse_target, condition, options, cast_spell_side)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, input_value_usage, output_value_key)
@@ -645,11 +646,23 @@ namespace dm::core {
         }
 
         if (j.contains("evolution_condition")) {
-             j.at("evolution_condition").get_to(c.evolution_condition);
+             auto& evo_cond = j.at("evolution_condition");
+             // Handle empty string as no evolution condition
+             if (evo_cond.is_string() && evo_cond.get<std::string>().empty()) {
+                 c.evolution_condition = std::nullopt;
+             } else {
+                 evo_cond.get_to(c.evolution_condition);
+             }
         }
 
         if (j.contains("revolution_change_condition")) {
-             j.at("revolution_change_condition").get_to(c.revolution_change_condition);
+             auto& rev_cond = j.at("revolution_change_condition");
+             // Handle empty string as no revolution change condition
+             if (rev_cond.is_string() && rev_cond.get<std::string>().empty()) {
+                 c.revolution_change_condition = std::nullopt;
+             } else {
+                 rev_cond.get_to(c.revolution_change_condition);
+             }
         }
 
         if (j.contains("keywords")) j.at("keywords").get_to(c.keywords);

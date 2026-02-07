@@ -355,6 +355,7 @@ void bind_engine(py::module& m) {
         .def_property_readonly("state", [](GameInstance &g) -> core::GameState& { return g.state; }, py::return_value_policy::reference_internal)
         .def("start_game", &GameInstance::start_game)
         .def("resolve_action", &GameInstance::resolve_action)
+        .def("step", &GameInstance::step, "Execute one game step: generate actions, select and execute first viable action, progress game state")
         .def("execute_command", [&m](GameInstance& gi, py::object obj) {
             try {
                 // Prefer to dispatch via pipeline if available

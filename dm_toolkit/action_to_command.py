@@ -265,7 +265,7 @@ def map_action(action_data: Any) -> Dict[str, Any]:
     raw_type = act_data.get('type', 'NONE')
     act_type = str(raw_type).upper()
     if hasattr(raw_type, 'name'):
-        act_type = raw_type.name.upper()
+        act_type = raw_type.name.upper()    
 
     cmd = {
         "type": "NONE",
@@ -794,7 +794,11 @@ def _handle_engine_execution(act_type: str, act: Dict[str, Any], cmd: Dict[str, 
         if 'winner_id' in act: cmd['winner_instance'] = act['winner_id']
     elif act_type == "RESOLVE_EFFECT":
         cmd['type'] = "RESOLVE_EFFECT"
-        if 'effect_id' in act: cmd['effect_id'] = act['effect_id']
+        # C++ uses slot_index to store effect index for RESOLVE_EFFECT actions
+        if 'slot_index' in act:
+            cmd['effect_index'] = act['slot_index']
+        if 'effect_id' in act:
+            cmd['effect_id'] = act['effect_id']
     elif act_type == "USE_SHIELD_TRIGGER":
         cmd['type'] = "USE_SHIELD_TRIGGER"
         cmd['instance_id'] = _get_any(act, ['card_id', 'source_instance_id'])

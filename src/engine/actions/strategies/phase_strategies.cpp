@@ -53,15 +53,19 @@ namespace dm::engine {
             pass.type = PlayerIntent::PASS;
             actions.push_back(pass);
         } else {
-            // DEBUG: Log why we're skipping
+            // Already charged this turn - only PASS is available
+            // CRITICAL: Must return PASS action to exit MANA phase
             try {
                 std::ofstream ofs("logs/mana_phase_debug.txt", std::ios::app);
                 if (ofs) {
-                    ofs << "[ManaPhaseStrategy] SKIPPED: already charged this turn\n";
+                    ofs << "[ManaPhaseStrategy] Already charged - returning PASS only\n";
                 }
             } catch(...) {}
+            
+            Action pass;
+            pass.type = PlayerIntent::PASS;
+            actions.push_back(pass);
         }
-        // If already charged this turn, return empty (auto-advance to MAIN phase)
 
         return actions;
     }
