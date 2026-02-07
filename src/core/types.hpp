@@ -109,6 +109,12 @@ namespace dm::core {
         DRAW
     };
 
+    // Player control mode (human or AI)
+    enum class PlayerMode : uint8_t {
+        AI = 0,
+        HUMAN = 1
+    };
+
     // Resolve Type for Pending Effects
     enum class ResolveType : uint8_t {
         NONE,

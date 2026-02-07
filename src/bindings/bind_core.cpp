@@ -138,6 +138,11 @@ void bind_core(py::module& m) {
         .value("DRAW", GameResult::DRAW)
         .export_values();
 
+    py::enum_<PlayerMode>(m, "PlayerMode")
+        .value("AI", PlayerMode::AI)
+        .value("HUMAN", PlayerMode::HUMAN)
+        .export_values();
+
     py::enum_<TargetScope>(m, "TargetScope")
         .value("TARGET_SELECT", TargetScope::TARGET_SELECT)
         .value("NONE", TargetScope::NONE)
@@ -688,6 +693,8 @@ void bind_core(py::module& m) {
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_readwrite("current_phase", &GameState::current_phase)
         .def_readwrite("players", &GameState::players)
+        .def_readwrite("player_modes", &GameState::player_modes)
+        .def("is_human_player", &GameState::is_human_player)
         .def_readwrite("game_over", &GameState::game_over)
         .def_readwrite("winner", &GameState::winner)
         .def_readwrite("active_modifiers", &GameState::active_modifiers)

@@ -316,7 +316,7 @@ def _create_races_widget(parent, schema, cb):
     return widget
 
 def _create_type_select_widget(parent, schema, cb):
-    widget = QComboBox(parent)
+    widget = SelectComboWidget(parent)
     for t in CARD_TYPES:
         widget.addItem(t, t)
     widget.currentIndexChanged.connect(lambda: cb())
@@ -353,7 +353,7 @@ def _create_select_widget(parent, schema, cb):
 
 def _create_enum_widget(parent, schema, cb):
     """Dynamically loads an Enum and populates a ComboBox."""
-    widget = QComboBox(parent)
+    widget = SelectComboWidget(parent)
     source = schema.enum_source
     if source:
         try:

@@ -87,7 +87,8 @@ class GameWindow(QMainWindow):
         self.is_running: bool = False
         
         # Auto-start timer for AI vs AI games
-        if all(mode == 'AI' for mode in self.session.player_modes.values()):
+        # Check if both players are AI using C++ GameState
+        if self.session.gs and not any(self.session.gs.is_human_player(pid) for pid in [0, 1]):
             self.is_running = True
             self.timer.start(500)
 

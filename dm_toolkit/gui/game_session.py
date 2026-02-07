@@ -42,7 +42,10 @@ class GameSession:
         self.callback_input_request = callback_input_request or (lambda: None)
         self.callback_action_executed = callback_action_executed or (lambda a: None)
 
+        # NOTE: player_modes is now managed in C++ GameState.player_modes
+        # This is kept for backward compatibility only
         self.player_modes: Dict[int, str] = {0: 'AI', 1: 'AI'}
+        
         self.is_running = False
         self.is_processing = False
         self.card_db: CardDB = {}
@@ -191,7 +194,7 @@ class GameSession:
 
             # Human players: need to check if it's their turn and wait for input
             active_pid = EngineCompat.get_active_player_id(self.gs)
-            is_human = (self.player_modes.get(active_pid) == 'Human')
+            is_human = self.gs.is_human_player(active_pid)
             
             if is_human:
                 # For human players, we still need to generate actions and wait
@@ -310,51 +313,6 @@ class GameSession:
             import traceback
             self.callback_log(traceback.format_exc())
 
-    def _select_ai_action(self, cmds: List[Any]) -> Any:
-        """Select best action for AI player. Priority: RESOLVE_EFFECT > PLAY > others > PASS.
-        
-        Simple AI that prioritizes:
-        1. Effect resolution (must complete)
-        2. Playing cards from hand
-        3. Any other action
-        4. PASS (to advance turn)
-        """
-        # Highest priority: RESOLVE_EFFECT (must be resolved before other actions)
-        for cmd in cmds:
-            try:
-                d = cmd.to_dict()
-                cmd_type = d.get('type')
-                if cmd_type == 'RESOLVE_EFFECT':
-                    return cmd
-            except Exception:
-                pass
-        
-        # Second pass: look for PLAY_FROM_ZONE (playing cards)
-        for cmd in cmds:
-            try:
-                d = cmd.to_dict()
-                cmd_type = d.get('type')
-                if cmd_type == 'PLAY_FROM_ZONE':
-                    return cmd
-            except Exception:
-                pass
-        
-        # Third pass: any non-PASS, non-NONE action (including MANA_CHARGE, ATTACK, etc)
-        for cmd in cmds:
-            try:
-                d = cmd.to_dict()
-                cmd_type = d.get('type')
-                # Skip NONE type with legacy_warning (e.g., PAY_COST)
-                if cmd_type == 'NONE' and d.get('legacy_warning'):
-                    continue
-                if cmd_type != 'PASS':
-                    return cmd
-            except Exception:
-                pass
-        
-        # If only PASS available, return first command
-        return cmds[0] if cmds else None
-
     def _build_default_deck(self) -> List[int]:
         """Build a default deck from card_db (40 cards)."""
         if not self.card_db:
@@ -400,7 +358,20 @@ class GameSession:
         return self.gs.game_over if self.gs else False
 
     def set_player_mode(self, player_id: int, mode: str):
-        """Set player mode: 'Human' or 'AI'."""
+        """Set player mode: 'Human' or 'AI'.
+        
+        Args:
+            player_id: Player ID (0 or 1)
+            mode: 'Human' or 'AI'
+        """
+        # Update C++ GameState
+        if self.gs:
+            if mode == 'Human':
+                self.gs.player_modes[player_id] = dm_ai_module.PlayerMode.HUMAN
+            else:
+                self.gs.player_modes[player_id] = dm_ai_module.PlayerMode.AI
+        
+        # Update local dict for backward compatibility
         self.player_modes[player_id] = mode
         self.callback_log(f"P{player_id} mode set to: {mode}")
 

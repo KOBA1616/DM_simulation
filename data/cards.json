@@ -985,13 +985,13 @@
     "uid": "1a8347ad-a36f-46d2-8c2d-ac7a45d5d616",
     "id": 10,
     "name": "瞬閃と疾駆と双撃の決断",
-    "type": "CREATURE",
+    "type": "SPELL",
     "civilizations": [
       "FIRE"
     ],
     "races": [],
     "cost": 3,
-    "power": 1000,
+    "power": 0,
     "keywords": {},
     "effects": [
       {
@@ -1059,6 +1059,7 @@
     "static_abilities": [],
     "reaction_abilities": [],
     "ai_importance_score": 0,
+    "evolution_condition": "",
     "is_key_card": false
   },
   {
@@ -1123,13 +1124,13 @@
     "uid": "ed2d3208-24a2-4a18-a0ff-415f02c12b93",
     "id": 12,
     "name": "ストリーミング・シェイパー",
-    "type": "CREATURE",
+    "type": "SPELL",
     "civilizations": [
       "WATER"
     ],
     "races": [],
     "cost": 3,
-    "power": 1000,
+    "power": 0,
     "keywords": {},
     "effects": [
       {
@@ -1210,14 +1211,14 @@
     "uid": "89bad5a9-0371-4d51-884f-d59898349123",
     "id": 14,
     "name": "精霊王の聖典",
-    "type": "CREATURE",
+    "type": "SPELL",
     "civilizations": [
       "WATER",
       "LIGHT"
     ],
     "races": [],
     "cost": 4,
-    "power": 1000,
+    "power": 0,
     "keywords": {
       "shield_trigger": true
     },
@@ -1308,6 +1309,7 @@
     "static_abilities": [],
     "reaction_abilities": [],
     "ai_importance_score": 0,
+    "evolution_condition": "",
     "is_key_card": false
   }
 ]

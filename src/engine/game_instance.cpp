@@ -1,6 +1,7 @@
 #include "game_instance.hpp"
 #include "systems/flow/phase_manager.hpp"
 #include "engine/actions/intent_generator.hpp"
+#include "engine/ai/simple_ai.hpp" // Added for SimpleAI
 #include "engine/game_command/game_command.hpp"
 #include "engine/game_command/action_commands.hpp" // Added
 #include "engine/game_command/commands.hpp" // Added for DeclareReactionCommand
@@ -63,6 +64,13 @@ namespace dm::engine {
             return false;
         }
 
+        // Check if current player is human - skip auto-step
+        PlayerID active_pid = state.active_player_id;
+        if (state.is_human_player(active_pid)) {
+            std::cout << "[step] Human player turn (P" << (int)active_pid << "), returning false\n";
+            return false;
+        }
+
         // Generate legal actions
         auto actions = IntentGenerator::generate_legal_actions(state, *card_db);
         std::cout << "[step] Generated " << actions.size() << " actions at Turn " << state.turn_number 
@@ -104,73 +112,13 @@ namespace dm::engine {
             }
         }
 
-        // Select first viable action (simple AI strategy)
-        // Priority: RESOLVE_EFFECT > PLAY_CARD > ATTACK > MANA_CHARGE > others > PASS
-        const core::Action* selected = nullptr;
+        // Use SimpleAI to select action based on priority
+        auto selected_idx = ai::SimpleAI::select_action(actions, state);
         
-        // Priority 1: RESOLVE_EFFECT (must complete pending effects)
-        for (const auto& a : actions) {
-            if (a.type == core::PlayerIntent::RESOLVE_EFFECT) {
-                selected = &a;
-                std::cout << "[step] Selected RESOLVE_EFFECT (priority 1)\n";
-                break;
-            }
-        }
-        
-        // Priority 2: PLAY_CARD (play cards from hand)
-        if (!selected) {
-            for (const auto& a : actions) {
-                if (a.type == core::PlayerIntent::PLAY_CARD || a.type == core::PlayerIntent::PLAY_CARD_INTERNAL) {
-                    selected = &a;
-                    std::cout << "[step] Selected PLAY_CARD (priority 2)\n";
-                    break;
-                }
-            }
-        }
-        
-        // Priority 3: ATTACK
-        if (!selected) {
-            for (const auto& a : actions) {
-                if (a.type == core::PlayerIntent::ATTACK_PLAYER || a.type == core::PlayerIntent::ATTACK_CREATURE) {
-                    selected = &a;
-                    std::cout << "[step] Selected ATTACK (priority 3)\n";
-                    break;
-                }
-            }
-        }
-        
-        // Priority 4: MANA_CHARGE (in MANA phase)
-        if (!selected) {
-            for (const auto& a : actions) {
-                if (a.type == core::PlayerIntent::MANA_CHARGE) {
-                    selected = &a;
-                    std::cout << "[step] Selected MANA_CHARGE (priority 4)\n";
-                    break;
-                }
-            }
-        }
-        
-        // Priority 5: Any other action (except PASS)
-        if (!selected) {
-            for (const auto& a : actions) {
-                if (a.type != core::PlayerIntent::PASS) {
-                    selected = &a;
-                    std::cout << "[step] Selected other action (priority 5), type=" << static_cast<int>(a.type) << "\n";
-                    break;
-                }
-            }
-        }
-        
-        // Priority 6: PASS (last resort - exit phase)
-        if (!selected && !actions.empty()) {
-            selected = &actions[0];
-            std::cout << "[step] Selected PASS (priority 6) - exiting phase\n";
-        }
-
-        // Execute selected action
-        if (selected) {
-            std::cout << "[step] Executing action type " << static_cast<int>(selected->type) << "\n";
-            resolve_action(*selected);
+        if (selected_idx.has_value()) {
+            const auto& selected = actions[*selected_idx];
+            std::cout << "[step] Executing action type " << static_cast<int>(selected.type) << "\n";
+            resolve_action(selected);
             return true;
         }
 

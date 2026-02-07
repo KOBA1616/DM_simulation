@@ -173,6 +173,7 @@ set(SRC_ENGINE
     src/engine/actions/strategies/pending_strategy.cpp
     src/engine/actions/strategies/stack_strategy.cpp
     src/engine/actions/strategies/phase_strategies.cpp
+    src/engine/ai/simple_ai.cpp # AI selection logic
     src/engine/systems/flow/phase_manager.cpp
     src/engine/systems/mana/mana_system.cpp
     src/engine/systems/breaker/breaker_system.cpp # Added

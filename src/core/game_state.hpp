@@ -72,6 +72,9 @@ namespace dm::core {
         Phase current_phase = Phase::START_OF_TURN;
         std::vector<Player> players;
 
+        // Player control modes (AI or Human)
+        std::array<PlayerMode, 2> player_modes{PlayerMode::AI, PlayerMode::AI};
+
         bool game_over = false;
         GameResult winner = GameResult::NONE;
         
@@ -190,6 +193,11 @@ namespace dm::core {
         // Stats access helpers
         CardStats get_card_stats(CardID cid) const;
         CardStats& get_mutable_card_stats(CardID cid);
+
+        // Player mode helpers
+        bool is_human_player(PlayerID pid) const {
+            return pid < player_modes.size() && player_modes[pid] == PlayerMode::HUMAN;
+        }
 
     private:
         std::vector<size_t> move_start_indices;

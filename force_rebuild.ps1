@@ -5,7 +5,12 @@ Write-Host "=== Forcing source file timestamps update ===" -ForegroundColor Cyan
 $files = @(
     "src\engine\game_instance.cpp",
     "src\engine\game_instance.hpp",
-    "src\engine\actions\strategies\phase_strategies.cpp"
+    "src\engine\actions\strategies\phase_strategies.cpp",
+    "src\engine\ai\simple_ai.cpp",
+    "src\engine\ai\simple_ai.hpp",
+    "src\bindings\bind_core.cpp",
+    "src\core\game_state.cpp",
+    "src\core\game_state.hpp"
 )
 
 foreach ($file in $files) {
@@ -45,7 +50,36 @@ if (Test-Path "bin\Release\dm_ai_module.cp312-win_amd64.pyd") {
     
     # Test
     Write-Host "`n=== Quick test ===" -ForegroundColor Cyan
-    python -c "import dm_ai_module; print('Module version check:', dm_ai_module.__file__)" 2>&1 | Select-Object -Last 5
+    $testResult = python -c @"
+import dm_ai_module
+print('✓ Module imported')
+gs = dm_ai_module.GameState(42)
+print('✓ GameState created')
+# Test Phase 2: is_human_player
+try:
+    result = gs.is_human_player(0)
+    print('✓ Phase 2: is_human_player() working')
+except AttributeError:
+    print('✗ Phase 2: is_human_player() missing')
+# Test Phase 1.1: SimpleAI with GameState
+gs.setup_test_duel()
+deck = list(range(1,11))*4
+gs.set_deck(0, deck)
+gs.set_deck(1, deck)
+card_db = dm_ai_module.JsonLoader.load_cards('data/cards.json')
+dm_ai_module.PhaseManager.start_game(gs, card_db)
+dm_ai_module.PhaseManager.fast_forward(gs, card_db)
+actions = dm_ai_module.IntentGenerator.generate_legal_actions(gs, card_db)
+if len(actions) > 0:
+    ai = dm_ai_module.SimpleAI()
+    try:
+        idx = ai.select_action(actions, gs)
+        print('✓ Phase 1.1: SimpleAI.select_action(actions, gs) working')
+    except:
+        print('✗ Phase 1.1: SimpleAI signature issue')
+print('All tests passed!')
+"@ 2>&1
+    Write-Host $testResult
 } else {
     Write-Host "FAILED - .pyd file not found" -ForegroundColor Red
 }
