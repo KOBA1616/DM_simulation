@@ -131,7 +131,11 @@ namespace dm::engine {
                 }
 
                 // 1. Standard Play (Creature side if Twinpact)
-                {
+                bool is_evolution = def.keywords.evolution || def.type == CardType::EVOLUTION_CREATURE;
+                bool is_neo = def.keywords.neo;
+
+                // Normal Play (Non-Evo or NEO)
+                if (!is_evolution || is_neo) {
                     int adjusted_cost = ManaSystem::get_adjusted_cost(game_state, active_player, def);
                     int available_mana = ManaSystem::get_usable_mana_count(game_state, active_player.id, def.civilizations, card_db);
                     bool can_pay = ManaSystem::can_pay_cost(game_state, active_player, def, card_db);
@@ -145,6 +149,56 @@ namespace dm::engine {
                         actions.push_back(action);
                     } else {
                         log_skip(static_cast<int>(i), card, def, spell_restricted, adjusted_cost, available_mana, can_pay);
+                    }
+                }
+
+                // 1.5 Evolution Play
+                if (is_evolution || is_neo) {
+                    if (ManaSystem::can_pay_cost(game_state, active_player, def, card_db)) {
+                        // Iterate battle zone for sources
+                        for (const auto& source : active_player.battle_zone) {
+                            if (!card_db.count(source.card_id)) continue;
+                            const auto& source_def = card_db.at(source.card_id);
+                            bool valid_evo = false;
+
+                            if (def.evolution_condition.has_value()) {
+                                if (TargetUtils::is_valid_target(source, source_def, *def.evolution_condition, game_state, active_player.id, active_player.id, false)) {
+                                    valid_evo = true;
+                                }
+                            } else {
+                                // Race Match
+                                for (const auto& r : def.races) {
+                                    if (TargetUtils::CardProperties<CardDefinition>::has_race(source_def, r)) {
+                                        valid_evo = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (valid_evo) {
+                                // Check Global Prohibitions (Lock Effects)
+                                bool prohibited = false;
+                                for (const auto& eff : game_state.passive_effects) {
+                                    if (eff.type == PassiveType::CANNOT_SUMMON && (def.type == CardType::CREATURE || def.type == CardType::EVOLUTION_CREATURE)) {
+                                         if (TargetUtils::is_valid_target(card, def, eff.target_filter, game_state, eff.controller, active_player.id, true)) {
+                                             prohibited = true;
+                                             break;
+                                         }
+                                    }
+                                }
+
+                                if (!prohibited) {
+                                    Action action;
+                                    action.type = PlayerIntent::DECLARE_PLAY;
+                                    action.card_id = card.card_id;
+                                    action.source_instance_id = card.instance_id;
+                                    action.target_instance_id = source.instance_id; // Evolution Source
+                                    action.target_player = active_player.id;
+                                    action.slot_index = static_cast<int>(i);
+                                    actions.push_back(action);
+                                }
+                            }
+                        }
                     }
                 }
 

@@ -300,6 +300,54 @@ class CommandType(IntEnum):
     TRANSITION = 3
     ATTACK = 4
     PASS = 5
+    # Extended commands matching C++
+    MUTATE = 6
+    FLOW = 7
+    QUERY = 8
+    DRAW_CARD = 9
+    DISCARD = 10
+    DESTROY = 11
+    BOOST_MANA = 12
+    TAP = 13
+    UNTAP = 14
+    POWER_MOD = 15
+    ADD_KEYWORD = 16
+    RETURN_TO_HAND = 17
+    BREAK_SHIELD = 18
+    SEARCH_DECK = 19
+    SHIELD_TRIGGER = 20
+    MOVE_CARD = 21
+    ADD_MANA = 22
+    SEND_TO_MANA = 23
+    PLAYER_MANA_CHARGE = 24
+    SEARCH_DECK_BOTTOM = 25
+    ADD_SHIELD = 26
+    SEND_TO_DECK_BOTTOM = 27
+    ATTACK_PLAYER = 28
+    ATTACK_CREATURE = 29
+    BLOCK = 30
+    RESOLVE_BATTLE = 31
+    RESOLVE_PLAY = 32
+    RESOLVE_EFFECT = 33
+    SHUFFLE_DECK = 34
+    LOOK_AND_ADD = 35
+    MEKRAID = 36
+    REVEAL_CARDS = 37
+    CAST_SPELL = 38
+    SUMMON_TOKEN = 39
+    SHIELD_BURN = 40
+    SELECT_NUMBER = 41
+    CHOICE = 42
+    LOOK_TO_BUFFER = 43
+    REVEAL_TO_BUFFER = 44
+    SELECT_FROM_BUFFER = 45
+    PLAY_FROM_BUFFER = 46
+    MOVE_BUFFER_TO_ZONE = 47
+    FRIEND_BURST = 48
+    REGISTER_DELAYED_EFFECT = 49
+    IF = 50
+    IF_ELSE = 51
+    ELSE = 52
 
 
 class CommandSystem:
@@ -387,6 +435,10 @@ class GameState:
         self.game_over = False
         self.winner = -1
         self.command_history: List[Any] = []
+
+    @property
+    def command_system(self):
+        return CommandSystem
 
     def add_card_to_hand(self, player: int, card_id: int, instance_id: Optional[int] = None, count: int = 1):
         """
@@ -724,6 +776,10 @@ if 'Zone' not in globals():
         BATTLE = 3
         GRAVEYARD = 4
         SHIELD = 5
+        HYPER_SPATIAL = 6
+        GR_DECK = 7
+        STACK = 8
+        BUFFER = 9
 
 if 'DevTools' not in globals():
     class DevTools:
