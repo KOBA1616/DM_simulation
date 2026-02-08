@@ -18,6 +18,10 @@ class Phase(IntEnum):
     ATTACK = 4
     END = 5
 
+class PlayerMode(IntEnum):
+	AI = 0
+	HUMAN = 1
+
 class ActionType(IntEnum):
     PLAY_CARD = 1
     ATTACK_PLAYER = 2
@@ -115,7 +119,10 @@ class GameState:
 	players: List[Player]
 	current_phase: Phase
 	winner: Any
+	player_modes: List[PlayerMode]
 	def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+	def setup_test_duel(self) -> None: ...
+	def is_human_player(self, player_id: int) -> bool: ...
 	def add_card_to_deck(self, player_id: int, card_id: int, instance_id: int) -> None: ...
 	def set_deck(self, player_id: int, deck: List[int]) -> None: ...
 	def initialize_card_stats(self, *args: Any, **kwargs: Any) -> None: ...

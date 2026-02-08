@@ -344,6 +344,11 @@ class Phase(IntEnum):
     END = 5
 
 
+class PlayerMode(IntEnum):
+    AI = 0
+    HUMAN = 1
+
+
 class Action:
     def __init__(self):
         self.type = ActionType.NONE
@@ -387,6 +392,35 @@ class GameState:
         self.game_over = False
         self.winner = -1
         self.command_history: List[Any] = []
+        # Initialize player_modes: both AI by default
+        self.player_modes = [PlayerMode.AI, PlayerMode.AI]
+
+    def setup_test_duel(self):
+        """Initialize game state for test duels."""
+        # Ensure we have 2 players
+        self.players = [Player(0), Player(1)]
+        
+        # Clear all zones
+        for p in self.players:
+            p.hand.clear()
+            p.mana_zone.clear()
+            p.battle_zone.clear()
+            p.shield_zone.clear()
+            p.graveyard.clear()
+            p.deck.clear()
+        
+        # Reset game state
+        self.turn_number = 1
+        self.active_player_id = 0
+        self.current_phase = Phase.MANA
+        self.game_over = False
+        self.winner = -1
+
+    def is_human_player(self, player_id: int) -> bool:
+        """Check if a player is human."""
+        if 0 <= player_id < len(self.player_modes):
+            return self.player_modes[player_id] == PlayerMode.HUMAN
+        return False
 
     def add_card_to_hand(self, player: int, card_id: int, instance_id: Optional[int] = None, count: int = 1):
         """
@@ -497,6 +531,46 @@ class GameInstance:
             pid = getattr(self.state, 'active_player_id', 0)
             cid = getattr(action, 'card_id', None)
             self.state.players[pid].mana_zone.append(CardStub(cid if cid is not None else 0))
+
+    def step(self) -> bool:
+        """
+        Execute one step of game progression.
+        
+        Returns:
+            bool: True if successful, False if game is over or no actions available
+        """
+        # Check game over
+        if getattr(self.state, 'game_over', False):
+            return False
+        
+        # Generate legal actions
+        try:
+            actions = ActionGenerator.generate_legal_actions(self.state, self.card_db)
+        except Exception:
+            actions = []
+        
+        if not actions:
+            return False
+        
+        # Execute the first available action (AI chooses first legal action)
+        try:
+            action = actions[0]
+            self.execute_action(action)
+            return True
+        except Exception:
+            return False
+
+    def resolve_action(self, action: Any) -> None:
+        """
+        Resolve/execute a specific action.
+        
+        Args:
+            action: The action to execute
+        """
+        try:
+            self.execute_action(action)
+        except Exception:
+            pass
 
 
 class ActionEncoder:
