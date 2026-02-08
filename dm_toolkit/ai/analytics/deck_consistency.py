@@ -1,5 +1,5 @@
 import dm_ai_module
-from dm_toolkit import commands
+from dm_toolkit import commands_v2 as commands
 import random
 import logging
 from typing import Any, List, cast, Dict

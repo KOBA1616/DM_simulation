@@ -164,8 +164,8 @@ class GameSessionSimplified:
             is_human = (self.player_modes.get(active_pid) == 'Human')
 
             # Get legal commands from C++ engine
-            from dm_toolkit.commands import generate_legal_commands
-            cmds = generate_legal_commands(self.gs, self.card_db)
+            from dm_toolkit import commands_v2
+            cmds = commands_v2.generate_legal_commands(self.gs, self.card_db)
 
             if not cmds:
                 # No commands - let C++ fast_forward progress the game
@@ -473,8 +473,8 @@ class GameSessionSimplified:
         """Get legal commands from C++ engine."""
         if not self.gs:
             return []
-        from dm_toolkit.commands import generate_legal_commands
-        return generate_legal_commands(self.gs, self.card_db)
+        from dm_toolkit import commands_v2
+        return commands_v2.generate_legal_commands(self.gs, self.card_db)
 
     def is_game_over(self) -> bool:
         """Check if game is over."""

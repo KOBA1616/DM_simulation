@@ -2,7 +2,9 @@ import random
 import time
 import argparse
 from dm_toolkit.gui.headless import create_session
-from dm_toolkit.commands import generate_legal_commands
+from dm_toolkit import commands_v2
+# Prefer command-first wrapper
+generate_legal_commands = commands_v2.generate_legal_commands
 import dm_ai_module
 
 

@@ -14,6 +14,7 @@
 #include "engine/game_command/commands.hpp"
 #include "engine/game_command/action_commands.hpp"
 #include "engine/utils/dev_tools.hpp"
+#include "bindings/bind_command_generator.hpp"
 #include <pybind11/stl.h>
 #include <fstream>
 
@@ -436,4 +437,6 @@ void bind_engine(py::module& m) {
         .def_static("next_phase", &PhaseManager::next_phase)
         .def_static("fast_forward", &PhaseManager::fast_forward)
         .def_static("check_game_over", &PhaseManager::check_game_over);
+    // Bind the new CommandGenerator helper (Phase1 bridge)
+    try { bind_command_generator(m); } catch(...) {}
 }

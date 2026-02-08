@@ -44,7 +44,10 @@ for step_num in range(max_steps):
         if len(gs.players[0].battle_zone) > 0:
             print(f"  >>> IDEAL CONDITION: ATTACK phase with {len(gs.players[0].battle_zone)} creature(s) in active player BZ!")
             # Generate actions to see if attacks are possible
-            from dm_toolkit.commands import generate_legal_commands
+            from dm_toolkit import commands_v2
+
+            # Prefer command-first wrapper
+            generate_legal_commands = commands_v2.generate_legal_commands
             cmds = generate_legal_commands(gs, session.card_db)
             print(f"  >>> Generated {len(cmds)} actions:")
             for i, cmd in enumerate(cmds[:5]):

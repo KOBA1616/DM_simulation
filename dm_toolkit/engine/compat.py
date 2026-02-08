@@ -851,8 +851,8 @@ class EngineCompat:
         EngineCompat._check_module()
         assert dm_ai_module is not None
         real_db = EngineCompat._resolve_db(card_db)
-        from dm_toolkit.commands import generate_legal_commands
-        return generate_legal_commands(state, real_db)
+        from dm_toolkit import commands_v2 as commands
+        return commands.generate_legal_commands(state, real_db)
 
     @staticmethod
     def ExecuteCommand(state: GameState, cmd: Any, card_db: Optional[Any] = None) -> None:

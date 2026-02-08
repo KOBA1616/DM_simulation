@@ -3,7 +3,10 @@ import sys
 sys.path.insert(0, '.')
 
 import dm_ai_module
-from dm_toolkit.commands import generate_legal_commands
+from dm_toolkit import commands_v2
+
+# Prefer the v2 command-first wrapper
+generate_legal_commands = commands_v2.generate_legal_commands
 
 # Setup game state
 gs = dm_ai_module.GameState(42)

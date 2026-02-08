@@ -66,7 +66,8 @@ def list_legal(sess: Any):
     if not getattr(sess, 'gs', None):
         print("no game state")
         return
-    from dm_toolkit.commands import generate_legal_commands
+    from dm_toolkit import commands_v2
+    generate_legal_commands = commands_v2.generate_legal_commands
     try:
         cmds = generate_legal_commands(sess.gs, sess.card_db)
     except Exception as e:

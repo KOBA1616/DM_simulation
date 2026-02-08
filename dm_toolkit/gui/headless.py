@@ -303,9 +303,9 @@ def find_legal_commands_for_instance(sess: GameSession, instance_id: int) -> Lis
     """Return legal command objects that reference the given instance id."""
     if not sess.gs:
         return []
-    from dm_toolkit.commands import generate_legal_commands
+        from dm_toolkit import commands_v2
     try:
-        cmds = generate_legal_commands(sess.gs, sess.card_db)
+            cmds = commands_v2.generate_legal_commands(sess.gs, sess.card_db)
     except Exception:
         return []
     out = []

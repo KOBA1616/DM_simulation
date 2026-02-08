@@ -2,7 +2,10 @@ import sys
 sys.path.insert(0, '.')
 
 import dm_ai_module
-from dm_toolkit.commands import generate_legal_commands
+from dm_toolkit import commands_v2
+
+# Use command-first wrapper
+generate_legal_commands = commands_v2.generate_legal_commands
 
 # 簡単なゲーム状態でgenerate_legal_commandsをテスト
 gs = dm_ai_module.GameState(42)

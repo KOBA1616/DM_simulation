@@ -45,7 +45,8 @@ if __name__ == '__main__':
     p.battle_zone.append(cre)
 
     # Prefer command-first generator (compat wrapper)
-    from dm_toolkit.commands import generate_legal_commands
+    from dm_toolkit import commands_v2
+    generate_legal_commands = commands_v2.generate_legal_commands
     cmds = generate_legal_commands(gs, card_db)
     print('Wrapped cmds count:', len(cmds))
     for i, c in enumerate(cmds[:20]):

@@ -38,7 +38,9 @@ if native_p:
     os.environ['PYTHONPATH'] = pyd_dir + os.pathsep + cur_pp if cur_pp else pyd_dir
 
 from dm_toolkit.gui.headless import create_session
-from dm_toolkit.commands import generate_legal_commands
+from dm_toolkit import commands_v2
+# Prefer command-first wrapper
+generate_legal_commands = commands_v2.generate_legal_commands
 
 # module logger; use manager's `get_logger` so it inherits configured handlers
 logger = get_logger('selfplay_long')

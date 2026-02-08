@@ -34,7 +34,8 @@ class TestActionGenerator(unittest.TestCase):
         self.state.active_player_id = 0
 
         # Prefer command-first generator
-        from dm_toolkit.commands import generate_legal_commands
+        from dm_toolkit import commands_v2
+        generate_legal_commands = commands_v2.generate_legal_commands
         cmds = generate_legal_commands(self.state, self.card_db)
 
         def _tname(x):
@@ -70,7 +71,8 @@ class TestActionGenerator(unittest.TestCase):
         for m in self.state.players[0].mana_zone:
             m.is_tapped = False
 
-        from dm_toolkit.commands import generate_legal_commands
+        from dm_toolkit import commands_v2
+        generate_legal_commands = commands_v2.generate_legal_commands
         cmds = generate_legal_commands(self.state, self.card_db)
 
         def _t(x):
@@ -108,7 +110,8 @@ class TestActionGenerator(unittest.TestCase):
         # Add tapped creature
         c3 = self.state.add_test_card_to_battle(0, 1, 102, tapped=True, sick=False)
 
-        from dm_toolkit.commands import generate_legal_commands
+        from dm_toolkit import commands_v2
+        generate_legal_commands = commands_v2.generate_legal_commands
         cmds = generate_legal_commands(self.state, self.card_db)
 
         attack_actions = []
@@ -136,7 +139,8 @@ class TestActionGenerator(unittest.TestCase):
         # Add pending effect
         self.state.pending_effects.append("DUMMY_EFFECT")
 
-        from dm_toolkit.commands import generate_legal_commands
+        from dm_toolkit import commands_v2
+        generate_legal_commands = commands_v2.generate_legal_commands
         cmds = generate_legal_commands(self.state, self.card_db)
 
         self.assertEqual(len(cmds), 1)

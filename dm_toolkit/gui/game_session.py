@@ -19,6 +19,9 @@ from dm_toolkit.dm_types import GameState, CardDB
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.unified_execution import ensure_executable_command
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit import commands_v2
+# Prefer v2 command-first wrapper
+_generate_legal_commands = commands_v2.generate_legal_commands
 
 try:
     import dm_ai_module
@@ -199,8 +202,7 @@ class GameSession:
             if is_human:
                 # For human players, we still need to generate actions and wait
                 # C++ step() is for AI only
-                from dm_toolkit.commands import generate_legal_commands
-                cmds = generate_legal_commands(self.gs, self.card_db)
+                cmds = _generate_legal_commands(self.gs, self.card_db)
                 
                 if not cmds:
                     # No actions - progress automatically
@@ -350,8 +352,7 @@ class GameSession:
         """Get legal commands from C++ engine."""
         if not self.gs:
             return []
-        from dm_toolkit.commands import generate_legal_commands
-        return generate_legal_commands(self.gs, self.card_db)
+        return _generate_legal_commands(self.gs, self.card_db)
 
     def is_game_over(self) -> bool:
         """Check if game is over."""

@@ -3,7 +3,10 @@
 
 import dm_ai_module
 from dm_toolkit.action_to_command import map_action
-from dm_toolkit.commands import generate_legal_commands
+from dm_toolkit import commands_v2
+
+# Prefer command-first wrapper
+generate_legal_commands = commands_v2.generate_legal_commands
 
 # Initialize game
 print("Initializing game...")

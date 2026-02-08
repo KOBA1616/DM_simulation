@@ -7,10 +7,15 @@ from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.command_describer import describe_command
 from dm_toolkit.gui.dialogs.selection_dialog import CardSelectionDialog
 
+from dm_toolkit import commands_v2
+# Prefer the v2 command-first wrapper
+generate_legal_commands = commands_v2.generate_legal_commands
+
 if TYPE_CHECKING:
     from dm_toolkit.gui.app import GameWindow
     from dm_toolkit.gui.game_session import GameSession
     from dm_toolkit.dm_types import GameState, CardDB
+
 
 class GameInputHandler:
     def __init__(self, window: 'GameWindow', session: 'GameSession'):
@@ -31,35 +36,37 @@ class GameInputHandler:
         return self.window.card_db
 
     def on_card_clicked(self, card_id: int, instance_id: int) -> None:
-        if EngineCompat.get_active_player_id(self.gs) != 0 or not self.window.control_panel.is_p0_human(): return
+        if EngineCompat.get_active_player_id(self.gs) != 0 or not self.window.control_panel.is_p0_human():
+            return
 
         if EngineCompat.is_waiting_for_user_input(self.gs):
-             pending = EngineCompat.get_pending_query(self.gs)
-             if pending.query_type == "SELECT_TARGET":
-                 valid_targets = pending.valid_targets
-                 if instance_id in valid_targets:
-                     if instance_id in self.selected_targets:
-                         self.selected_targets.remove(instance_id)
-                     else:
-                         query_max = pending.params.get('max', 99)
-                         if len(self.selected_targets) < query_max:
-                             self.selected_targets.append(instance_id)
-                         else:
-                             return
-                     self.window.update_ui()
-             return
-
-        from dm_toolkit.commands import generate_legal_commands
+            pending = EngineCompat.get_pending_query(self.gs)
+            if pending.query_type == "SELECT_TARGET":
+                valid_targets = pending.valid_targets
+                if instance_id in valid_targets:
+                    if instance_id in self.selected_targets:
+                        self.selected_targets.remove(instance_id)
+                    else:
+                        query_max = pending.params.get('max', 99)
+                        if len(self.selected_targets) < query_max:
+                            self.selected_targets.append(instance_id)
+                        else:
+                            return
+                    self.window.update_ui()
+            return
 
         cmds = generate_legal_commands(self.gs, self.card_db)
         relevant_cmds = []
         for c in cmds:
-            try: d = c.to_dict()
-            except: d = {}
+            try:
+                d = c.to_dict()
+            except Exception:
+                d = {}
             if d.get('instance_id') == instance_id or d.get('source_instance_id') == instance_id:
                 relevant_cmds.append(c)
 
-        if not relevant_cmds: return
+        if not relevant_cmds:
+            return
 
         if len(relevant_cmds) > 1:
             items = []
@@ -84,13 +91,13 @@ class GameInputHandler:
         if EngineCompat.is_waiting_for_user_input(self.gs):
             return
 
-        from dm_toolkit.commands import generate_legal_commands
-
         cmds = generate_legal_commands(self.gs, self.card_db)
         relevant_cmds = []
         for c in cmds:
-            try: d = c.to_dict()
-            except: d = {}
+            try:
+                d = c.to_dict()
+            except Exception:
+                d = {}
             if d.get('instance_id') == instance_id or d.get('source_instance_id') == instance_id:
                 relevant_cmds.append((c, d))
 
@@ -104,19 +111,23 @@ class GameInputHandler:
 
         for cmd, d in relevant_cmds:
             cmd_type = d.get('type', '')
-            if cmd_type == 'PLAY_CARD':
+            if cmd_type == 'PLAY_FROM_ZONE' or cmd_type == 'PLAY_CARD':
                 play_cmd = cmd
             elif cmd_type == 'MANA_CHARGE':
                 mana_cmd = cmd
-            elif cmd_type == 'ATTACK':
+            elif cmd_type == 'ATTACK' or cmd_type == 'ATTACK_CREATURE' or cmd_type == 'ATTACK_PLAYER':
                 attack_cmd = cmd
             elif not other_cmd:
                 other_cmd = cmd
 
-        if play_cmd: self.session.execute_action(play_cmd)
-        elif attack_cmd: self.session.execute_action(attack_cmd)
-        elif other_cmd: self.session.execute_action(other_cmd)
-        elif mana_cmd: self.session.execute_action(mana_cmd)
+        if play_cmd:
+            self.session.execute_action(play_cmd)
+        elif attack_cmd:
+            self.session.execute_action(attack_cmd)
+        elif other_cmd:
+            self.session.execute_action(other_cmd)
+        elif mana_cmd:
+            self.session.execute_action(mana_cmd)
 
     def handle_user_input_request(self) -> None:
         """Called by GameSession when input is needed."""
@@ -128,43 +139,46 @@ class GameInputHandler:
 
         query = EngineCompat.get_pending_query(self.gs)
         if query.query_type == "SELECT_OPTION":
-             options = query.options
-             item, ok = QInputDialog.getItem(self.window, tr("Select Option"), tr("Choose an option:"), options, 0, False)
-             if ok and item:
-                 idx = options.index(item)
-                 self.session.resume_from_input(idx)
+            options = query.options
+            item, ok = QInputDialog.getItem(self.window, tr("Select Option"), tr("Choose an option:"), options, 0, False)
+            if ok and item:
+                idx = options.index(item)
+                self.session.resume_from_input(idx)
         elif query.query_type == "SELECT_TARGET":
-             valid_targets = query.valid_targets
-             if not valid_targets: return
+            valid_targets = query.valid_targets
+            if not valid_targets:
+                return
 
-             # Check if targets are in buffer (temp zone)
-             first_target_id = valid_targets[0]
-             in_buffer = False
-             buffer_cards = EngineCompat.get_effect_buffer(self.gs)
-             for c in buffer_cards:
-                 if c.instance_id == first_target_id:
-                     in_buffer = True
-                     break
+            # Check if targets are in buffer (temp zone)
+            first_target_id = valid_targets[0]
+            in_buffer = False
+            buffer_cards = EngineCompat.get_effect_buffer(self.gs)
+            for c in buffer_cards:
+                if c.instance_id == first_target_id:
+                    in_buffer = True
+                    break
 
-             if in_buffer:
-                 items = []
-                 for tid in valid_targets:
-                     found = next((c for c in buffer_cards if c.instance_id == tid), None)
-                     if found: items.append(found)
-                 min_sel = query.params.get('min', 1)
-                 max_sel = query.params.get('max', 99)
-                 dialog = CardSelectionDialog(tr("Select Cards"), tr("Please select cards:"), items, min_sel, max_sel, self.window, self.card_db)
-                 if dialog.exec():
-                     indices = dialog.get_selected_indices()
-                     selected_instance_ids = [items[i].instance_id for i in indices]
-                     self.session.resume_from_input(cast(Any, selected_instance_ids))
-                 return
-             else:
-                 # Targets are on board/hand/mana, highlight them
-                 self.window.update_ui()
+            if in_buffer:
+                items = []
+                for tid in valid_targets:
+                    found = next((c for c in buffer_cards if c.instance_id == tid), None)
+                    if found:
+                        items.append(found)
+                min_sel = query.params.get('min', 1)
+                max_sel = query.params.get('max', 99)
+                dialog = CardSelectionDialog(tr("Select Cards"), tr("Please select cards:"), items, min_sel, max_sel, self.window, self.card_db)
+                if dialog.exec():
+                    indices = dialog.get_selected_indices()
+                    selected_instance_ids = [items[i].instance_id for i in indices]
+                    self.session.resume_from_input(cast(Any, selected_instance_ids))
+                return
+            else:
+                # Targets are on board/hand/mana, highlight them
+                self.window.update_ui()
 
     def confirm_selection(self) -> None:
-        if not EngineCompat.is_waiting_for_user_input(self.gs): return
+        if not EngineCompat.is_waiting_for_user_input(self.gs):
+            return
         query = EngineCompat.get_pending_query(self.gs)
         min_targets = query.params.get('min', 1)
         if len(self.selected_targets) < min_targets:
@@ -185,14 +199,14 @@ class GameInputHandler:
         import logging
         logger = logging.getLogger(__name__)
         logger.debug(f"[InputHandler] on_resolve_effect_from_stack called with index {index}")
-        
-        from dm_toolkit.commands import generate_legal_commands
 
         cmds = generate_legal_commands(self.gs, self.card_db)
         resolve_cmds = []
         for c in cmds:
-            try: d = c.to_dict()
-            except: d = {}
+            try:
+                d = c.to_dict()
+            except Exception:
+                d = {}
             if d.get('type') == 'RESOLVE_EFFECT':
                 resolve_cmds.append((c, d))
 
