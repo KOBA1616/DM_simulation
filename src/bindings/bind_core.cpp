@@ -353,6 +353,8 @@ void bind_core(py::module& m) {
     py::enum_<InstructionOp>(m, "InstructionOp")
         .value("NOOP", InstructionOp::NOOP)
         .value("IF", InstructionOp::IF)
+        .value("IF_ELSE", InstructionOp::IF_ELSE)
+        .value("ELSE", InstructionOp::ELSE)
         .value("LOOP", InstructionOp::LOOP)
         .value("REPEAT", InstructionOp::REPEAT)
         .value("SELECT", InstructionOp::SELECT)

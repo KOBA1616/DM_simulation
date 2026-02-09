@@ -217,6 +217,8 @@ namespace dm::engine::systems {
 
             if ((int)call_stack.size() > current_stack_size) {
                  if (inst.op != InstructionOp::IF &&
+                     inst.op != InstructionOp::IF_ELSE &&
+                     inst.op != InstructionOp::ELSE &&
                      inst.op != InstructionOp::LOOP &&
                      inst.op != InstructionOp::REPEAT) {
                      if (current_stack_size > 0 && current_stack_size <= (int)call_stack.size()) {
@@ -228,6 +230,8 @@ namespace dm::engine::systems {
                  // Returned.
             } else {
                  if (inst.op != InstructionOp::IF &&
+                     inst.op != InstructionOp::IF_ELSE &&
+                     inst.op != InstructionOp::ELSE &&
                      inst.op != InstructionOp::LOOP &&
                      inst.op != InstructionOp::REPEAT) {
                      // frame_idx still valid unless call_stack changed size, but we are in the branch
@@ -376,7 +380,9 @@ namespace dm::engine::systems {
             case InstructionOp::GET_STAT: handle_get_stat(inst, state, card_db); break;
             case InstructionOp::MOVE:   handle_move(inst, state); break;
             case InstructionOp::MODIFY: handle_modify(inst, state); break;
-            case InstructionOp::IF:     handle_if(inst, state, card_db); break;
+            case InstructionOp::IF:
+            case InstructionOp::IF_ELSE: handle_if(inst, state, card_db); break;
+            case InstructionOp::ELSE:    handle_block(inst); break;
             case InstructionOp::LOOP:   handle_loop(inst, state, card_db); break;
             case InstructionOp::REPEAT: handle_loop(inst, state, card_db); break;
             case InstructionOp::COUNT:
@@ -902,6 +908,12 @@ namespace dm::engine::systems {
             size_t after_size = call_stack.size();
             std::fprintf(stderr, "[DIAG PUSH] %s:%d after_size=%zu\n", __FILE__, __LINE__, after_size);
         }
+    }
+
+    void PipelineExecutor::handle_block(const Instruction& inst) {
+        auto block = std::make_shared<std::vector<Instruction>>(inst.then_block);
+        call_stack.back().pc++;
+        call_stack.push_back({block, 0, LoopContext{}});
     }
 
     void PipelineExecutor::handle_loop(const Instruction& inst, GameState& state,
