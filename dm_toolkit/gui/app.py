@@ -46,109 +46,197 @@ from dm_toolkit.gui.layout_builder import LayoutBuilder
 
 class GameWindow(QMainWindow):
     def __init__(self) -> None:
+        import traceback
         super().__init__()
-        self.setWindowTitle(tr("DM AI Simulator"))
-        self.resize(1600, 900)
-
-        # Ensure log list exists before any callbacks
-        self.log_viewer = LogViewer()
-
-        # Initialize GameSession (Logic)
-        self.session = GameSession(
-            callback_update_ui=self.update_ui,
-            callback_log=self.log_message,
-            callback_input_request=self.handle_user_input_request,
-            callback_action_executed=self.on_action_executed
-        )
-
-        # Initialize Input Handler
-        self.input_handler = GameInputHandler(self, self.session)
-
-        # Load card database using unified robust loader
-        # (Prioritizes Python dict for GUI, caches Native DB for EngineCompat wrappers)
+        # Diagnostic log file for GUI startup issues
         try:
-            self.card_db = EngineCompat.load_cards_robust("data/cards.json")
-            if isinstance(self.card_db, list):
-                self.card_db = {card['id']: card for card in self.card_db if isinstance(card, dict) and 'id' in card}
+            _log_path = os.path.join(os.getcwd(), 'gui_start.log')
         except Exception:
-            self.card_db = {}
-        
-        self.p0_deck_ids: Optional[List[int]] = None
-        self.p1_deck_ids: Optional[List[int]] = None
-        self.last_command_index: int = 0
-
-        # Initialize Game
-        self.session.initialize_game(self.card_db)
-
-        # Simulation Timer
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.session.step_phase)
-        # Note: Session manages 'is_processing', App manages 'is_running' for timer
-        self.is_running: bool = False
-        
-        # Auto-start timer for AI vs AI games
-        # Check if both players are AI using C++ GameState
-        if self.session.gs and not any(self.session.gs.is_human_player(pid) for pid in [0, 1]):
-            self.is_running = True
-            self.timer.start(500)
-
-        # Initialize Layout using Builder
-        self.layout_builder = LayoutBuilder(self)
-        self.layout_builder.build()
-        # Training status toolbar
+            _log_path = 'gui_start.log'
+        def _log_msg(m: str) -> None:
+            try:
+                with open(_log_path, 'a', encoding='utf-8') as _f:
+                    _f.write(m + '\n')
+            except Exception:
+                pass
+        _log_msg('GameWindow.__init__ start')
         try:
-            self._init_training_toolbar()
-        except Exception:
-            pass
-        self.update_ui()
-        # For test operation: auto-apply the 'standard_start' scenario if present
-        try:
-            if hasattr(self, 'scenario_tools') and getattr(self, 'scenario_tools') is not None:
-                for sc in getattr(self.scenario_tools, 'scenarios', []):
-                    if sc and sc.get('name') == 'standard_start':
-                        # Apply scenario (this will reset game and set zones accordingly)
-                        self.scenario_tools.apply_scenario(sc)
-                        self.log_viewer.log_message(tr("Applied 'standard_start' scenario on startup"))
-                        break
-        except Exception as e:
-            self.log_viewer.log_message(f"Failed to auto-apply standard scenario: {e}")
-        # Load and auto-deploy a default deck on startup (shuffle then reset)
-        try:
-            repo_root = os.path.join(os.getcwd())
-            meta_decks = os.path.join(repo_root, 'data', 'meta_decks.json')
-            if os.path.exists(meta_decks):
-                try:
-                    with open(meta_decks, 'r', encoding='utf-8') as mf:
-                        md = json.load(mf)
-                    decks = md.get('decks', []) if isinstance(md, dict) else []
-                    if decks:
-                        first = decks[0]
-                        cards = list(first.get('cards', [])) if isinstance(first, dict) else []
-                        # normalize to 40 cards (truncate or repeat as needed)
-                        if cards:
-                            d0 = cards[:40]
-                            if len(d0) < 40:
-                                # repeat sequence to fill
-                                while len(d0) < 40:
-                                    d0.extend(cards[:(40 - len(d0))])
-                            d1 = list(d0)
-                            random.shuffle(d0)
-                            random.shuffle(d1)
-                            self.p0_deck_ids = d0
-                            self.p1_deck_ids = d1
-                            self.reset_game()
-                            try:
-                                self.log_viewer.log_message(tr('Loaded default deck and deployed (shuffled) on startup'))
-                            except Exception:
-                                pass
-                except Exception as e:
+            self.setWindowTitle(tr("DM AI Simulator"))
+            self.resize(1600, 900)
+
+            # Ensure log list exists before any callbacks
+            self.log_viewer = LogViewer()
+
+            # Initialize GameSession (Logic)
+            self.session = GameSession(
+                callback_update_ui=self.update_ui,
+                callback_log=self.log_message,
+                callback_input_request=self.handle_user_input_request,
+                callback_action_executed=self.on_action_executed
+            )
+
+            # Initialize Input Handler
+            self.input_handler = GameInputHandler(self, self.session)
+
+            # Load card database using unified robust loader
+            # (Prioritizes Python dict for GUI, caches Native DB for EngineCompat wrappers)
+            try:
+                self.card_db = EngineCompat.load_cards_robust("data/cards.json")
+                if isinstance(self.card_db, list):
+                    self.card_db = {card['id']: card for card in self.card_db if isinstance(card, dict) and 'id' in card}
+            except Exception:
+                self.card_db = {}
+
+            self.p0_deck_ids: Optional[List[int]] = None
+            self.p1_deck_ids: Optional[List[int]] = None
+            self.last_command_index: int = 0
+
+            # Defer heavy Game initialization until after the window is shown
+            # to avoid blocking the Qt event loop during construction.
+            self.timer = QTimer()
+            self.timer.timeout.connect(self.session.step_phase)
+            self.is_running: bool = False
+            QTimer.singleShot(0, self._deferred_startup)
+
+            # Initialize Layout using Builder
+            self.layout_builder = LayoutBuilder(self)
+            self.layout_builder.build()
+            # Training status toolbar
+            try:
+                self._init_training_toolbar()
+            except Exception:
+                pass
+            self.update_ui()
+            # For test operation: auto-apply the 'standard_start' scenario if present
+            try:
+                if hasattr(self, 'scenario_tools') and getattr(self, 'scenario_tools') is not None:
+                    for sc in getattr(self.scenario_tools, 'scenarios', []):
+                        if sc and sc.get('name') == 'standard_start':
+                            # Apply scenario (this will reset game and set zones accordingly)
+                            self.scenario_tools.apply_scenario(sc)
+                            self.log_viewer.log_message(tr("Applied 'standard_start' scenario on startup"))
+                            break
+            except Exception as e:
+                self.log_viewer.log_message(f"Failed to auto-apply standard scenario: {e}")
+            # Load and auto-deploy a default deck on startup (shuffle then reset)
+            try:
+                repo_root = os.path.join(os.getcwd())
+                meta_decks = os.path.join(repo_root, 'data', 'meta_decks.json')
+                if os.path.exists(meta_decks):
                     try:
-                        self.log_viewer.log_message(f"Failed loading default deck: {e}")
+                        with open(meta_decks, 'r', encoding='utf-8') as mf:
+                            md = json.load(mf)
+                        decks = md.get('decks', []) if isinstance(md, dict) else []
+                        if decks:
+                            first = decks[0]
+                            cards = list(first.get('cards', [])) if isinstance(first, dict) else []
+                            # normalize to 40 cards (truncate or repeat as needed)
+                            if cards:
+                                d0 = cards[:40]
+                                if len(d0) < 40:
+                                    # repeat sequence to fill
+                                    while len(d0) < 40:
+                                        d0.extend(cards[:(40 - len(d0))])
+                                d1 = list(d0)
+                                random.shuffle(d0)
+                                random.shuffle(d1)
+                                self.p0_deck_ids = d0
+                                self.p1_deck_ids = d1
+                                self.reset_game()
+                                try:
+                                    self.log_viewer.log_message(tr('Loaded default deck and deployed (shuffled) on startup'))
+                                except Exception:
+                                    pass
+                    except Exception as e:
+                        try:
+                            self.log_viewer.log_message(f"Failed loading default deck: {e}")
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+            try:
+                self.showMaximized()
+                _log_msg('GameWindow.showMaximized called')
+            except Exception as e:
+                _log_msg(f'Error during showMaximized: {e}')
+                try:
+                    import traceback
+                    traceback.print_exc()
+                    with open(_log_path, 'a', encoding='utf-8') as _f:
+                        traceback.print_exc(file=_f)
+                except Exception:
+                    pass
+                raise
+            _log_msg('GameWindow.__init__ end')
+        except Exception as e:
+            _log_msg(f'GameWindow.__init__ failed: {e}')
+            try:
+                import traceback
+                traceback.print_exc()
+                with open(_log_path, 'a', encoding='utf-8') as _f:
+                    traceback.print_exc(file=_f)
+            except Exception:
+                pass
+            raise
+
+    def _deferred_startup(self) -> None:
+        """Run initialization that may block (C++ GameInstance creation, card loading).
+        This runs after the event loop has started so the window can appear promptly.
+        """
+        try:
+            # Initialize Game (may call into native C++ and perform I/O)
+            self.session.initialize_game(self.card_db)
+
+            # Auto-start timer for AI vs AI games (check after session initialized)
+            try:
+                if self.session.gs and not any(self.session.gs.is_human_player(pid) for pid in [0, 1]):
+                    self.is_running = True
+                    self.timer.start(500)
+            except Exception:
+                pass
+
+            # Load default deck if present (previous logic expects session initialized)
+            try:
+                repo_root = os.path.join(os.getcwd())
+                meta_decks = os.path.join(repo_root, 'data', 'meta_decks.json')
+                if os.path.exists(meta_decks):
+                    try:
+                        with open(meta_decks, 'r', encoding='utf-8') as mf:
+                            md = json.load(mf)
+                        decks = md.get('decks', []) if isinstance(md, dict) else []
+                        if decks:
+                            first = decks[0]
+                            cards = list(first.get('cards', [])) if isinstance(first, dict) else []
+                            if cards:
+                                d0 = cards[:40]
+                                if len(d0) < 40:
+                                    while len(d0) < 40:
+                                        d0.extend(cards[:(40 - len(d0))])
+                                d1 = list(d0)
+                                random.shuffle(d0)
+                                random.shuffle(d1)
+                                self.p0_deck_ids = d0
+                                self.p1_deck_ids = d1
+                                self.reset_game()
+                                try:
+                                    self.log_viewer.log_message(tr('Loaded default deck and deployed (shuffled) on startup'))
+                                except Exception:
+                                    pass
                     except Exception:
                         pass
-        except Exception:
-            pass
-        self.showMaximized()
+            except Exception:
+                pass
+
+            # Update UI after deferred initialization
+            try:
+                self.update_ui()
+            except Exception:
+                pass
+        except Exception as e:
+            try:
+                self.log_viewer.log_message(f"Deferred startup failed: {e}")
+            except Exception:
+                pass
 
     @property
     def gs(self):

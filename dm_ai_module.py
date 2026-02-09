@@ -14,6 +14,7 @@ from enum import IntEnum
 from typing import Any, List, Optional
 import copy
 import math
+import uuid
 
 # Try to load native extension if present in build output (prefer native C++ implementation)
 try:
@@ -656,6 +657,44 @@ class ActionGenerator:
 
         except Exception:
             return []
+        return out
+
+    @staticmethod
+    def generate_legal_commands(state: GameState, card_db: Any = None) -> List[Any]:
+        # Prefer native command-first binding if present
+        try:
+            gen = globals().get('generate_commands', None)
+            if callable(gen):
+                return gen(state, card_db) or []
+        except Exception:
+            pass
+
+        # Fallback: map legacy Action objects to minimal command dicts
+        actions = ActionGenerator.generate_legal_actions(state, card_db) or []
+        out: List[Any] = []
+        for a in actions:
+            try:
+                t = getattr(a, 'type', None)
+                if t == ActionType.PASS:
+                    typ = 'PASS'
+                elif t == ActionType.MANA_CHARGE:
+                    typ = 'MANA_CHARGE'
+                elif t == ActionType.PLAY_CARD:
+                    typ = 'PLAY_FROM_ZONE'
+                elif t == ActionType.ATTACK_PLAYER:
+                    typ = 'ATTACK'
+                else:
+                    typ = str(t)
+                cmd = {'type': typ, 'uid': str(uuid.uuid4())}
+                iid = getattr(a, 'instance_id', None) or getattr(a, 'source_instance_id', None)
+                if iid is not None:
+                    cmd['instance_id'] = iid
+                cid = getattr(a, 'card_id', None)
+                if cid is not None:
+                    cmd['card_id'] = cid
+                out.append(cmd)
+            except Exception:
+                continue
         return out
 
 
