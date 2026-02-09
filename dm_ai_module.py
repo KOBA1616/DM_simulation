@@ -339,12 +339,57 @@ class ActionType(IntEnum):
 
 
 class CommandType(IntEnum):
-    NONE = 0
-    PLAY_FROM_ZONE = 1
-    MANA_CHARGE = 2
-    TRANSITION = 3
-    ATTACK = 4
-    PASS = 5
+    TRANSITION = 0
+    MUTATE = 1
+    FLOW = 2
+    QUERY = 3
+    DRAW_CARD = 4
+    DISCARD = 5
+    DESTROY = 6
+    BOOST_MANA = 7
+    TAP = 8
+    UNTAP = 9
+    POWER_MOD = 10
+    ADD_KEYWORD = 11
+    RETURN_TO_HAND = 12
+    BREAK_SHIELD = 13
+    SEARCH_DECK = 14
+    SHIELD_TRIGGER = 15
+    MOVE_CARD = 16
+    ADD_MANA = 17
+    SEND_TO_MANA = 18
+    PLAYER_MANA_CHARGE = 19
+    SEARCH_DECK_BOTTOM = 20
+    ADD_SHIELD = 21
+    SEND_TO_DECK_BOTTOM = 22
+    ATTACK_PLAYER = 23
+    ATTACK_CREATURE = 24
+    BLOCK = 25
+    RESOLVE_BATTLE = 26
+    RESOLVE_PLAY = 27
+    RESOLVE_EFFECT = 28
+    SHUFFLE_DECK = 29
+    LOOK_AND_ADD = 30
+    MEKRAID = 31
+    REVEAL_CARDS = 32
+    PLAY_FROM_ZONE = 33
+    CAST_SPELL = 34
+    SUMMON_TOKEN = 35
+    SHIELD_BURN = 36
+    SELECT_NUMBER = 37
+    CHOICE = 38
+    LOOK_TO_BUFFER = 39
+    REVEAL_TO_BUFFER = 40
+    SELECT_FROM_BUFFER = 41
+    PLAY_FROM_BUFFER = 42
+    MOVE_BUFFER_TO_ZONE = 43
+    FRIEND_BURST = 44
+    REGISTER_DELAYED_EFFECT = 45
+    IF = 46
+    IF_ELSE = 47
+    ELSE = 48
+    NONE = 49
+    MANA_CHARGE = 18 # Alias to SEND_TO_MANA
 
 
 class CommandSystem:
@@ -365,7 +410,11 @@ class CommandSystem:
             # Fallback: if cmd is dict-like, try to map basic commands
             if isinstance(cmd, dict):
                 t = cmd.get('type')
-                if t in (CommandType.MANA_CHARGE, 'MANA_CHARGE'):
+                is_mana_charge = (t == 'MANA_CHARGE')
+                if isinstance(t, int) and t == CommandType.SEND_TO_MANA:
+                     is_mana_charge = True
+
+                if is_mana_charge:
                     # emulate mana charge
                     pid = getattr(state, 'active_player_id', player_id)
                     cid = cmd.get('card_id') or cmd.get('instance_id') or 0
@@ -375,6 +424,11 @@ class CommandSystem:
                     state.command_history.append(cmd)
         except Exception:
             pass
+
+class CommandSystemWrapper:
+    @staticmethod
+    def execute_command(state, cmd, source_id, player_id, ctx):
+        CommandSystem.execute_command(state, cmd, source_id, player_id, ctx)
 
 
 class CardType(IntEnum):
@@ -495,6 +549,10 @@ class GameState:
         if 0 <= player_id < len(self.player_modes):
             return self.player_modes[player_id] == PlayerMode.HUMAN
         return False
+
+    @property
+    def command_system(self):
+        return CommandSystemWrapper()
 
     def add_card_to_hand(self, player: int, card_id: int, instance_id: Optional[int] = None, count: int = 1):
         """
@@ -1124,6 +1182,10 @@ if 'Zone' not in globals():
         BATTLE = 3
         GRAVEYARD = 4
         SHIELD = 5
+        HYPER_SPATIAL = 6
+        GR_DECK = 7
+        STACK = 8
+        BUFFER = 9
 
 if 'DevTools' not in globals():
     class DevTools:
