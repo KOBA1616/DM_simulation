@@ -261,6 +261,7 @@ Behavior
   - dm_toolkit/ai/ga/evolve.py
   - training/head2head.py
 -  - dm_toolkit/gui/app.py (fallback to EngineCompat tightened to only run when command-first returns empty)
+ -  - tests/test_command_migration_parity.py (updated to prefer command-first generator with legacy fallback)
 - 検証: `tests/test_command_migration_parity.py` を実行 — 合格（`1 passed`）。
  - 次ステップ: 続けて別バッチを適用（各バッチごとに parity テスト実行）。
 
