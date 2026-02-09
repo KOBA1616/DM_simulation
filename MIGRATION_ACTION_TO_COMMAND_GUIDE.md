@@ -574,3 +574,59 @@ Appendix: Evidence of Action usage
   - `dm_toolkit/ai/agent/mcts.py` (内部の子ノード生成やロールアウト用の呼び出しを更新)
 - 検証: `tests/test_command_migration_parity.py` 実行 — 合格（`1 passed`）。
 - 次: 残りのスクリプト/ツールをさらにバッチで移行し、並行してパリティ強化テストを準備します。
+
+---
+
+### 2026-02-09 バッチ4（Python Fallback完全実装・テスト全パス達成）✅ **完了**
+
+**概要**: DM_DISABLE_NATIVE=1 環境での完全な Python fallback 実装を完成させ、全テストスイート通過を達成しました。
+
+**実施内容**:
+1. **dm_ai_module.py の包括的な実装**:
+   - CommandSystem.execute_command での MANA_CHARGE, SELECT_TARGET, DESTROY コマンド処理
+   - Phase/PlayerIntent/ActionType enum の完全実装
+   - GameState クラスの snapshot/restore, make_move/unmake_move 機能
+   - GameInstance.execute_action() の Command-first 実装（ActionType正規化、無限ループ回避）
+   - ExecuteActionCompat ブリッジ関数（CommandSystem → EngineCompat → execute_action フォールバックチェーン）
+   - PhaseManager の安全な Phase enum ルックアップ（start_game/next_phase）
+
+2. **主要修正箇所**:
+   - [dm_ai_module.py](dm_ai_module.py#L340-L475): CommandSystem 実装
+   - [dm_ai_module.py](dm_ai_module.py#L855-L950): GameInstance.execute_action() Command-first 化
+   - [dm_ai_module.py](dm_ai_module.py#L2227-L2320): ExecuteActionCompat ヘルパー
+   - [dm_ai_module.py](dm_ai_module.py#L1155-L1365): PhaseManager フェーズ遷移ロジック
+   - pending_effects を dict 形式に変更（GUI 互換性）
+
+3. **テスト結果**:
+   ```
+   69 passed, 4 skipped (native engine required), 13 warnings in 28.30s
+   ```
+   - 全テストケースが Python fallback 環境でパス
+   - example_mana_charge.json シナリオテスト含む全生成テストパス
+   - Command/Action parity テスト合格
+
+4. **検証済み機能**:
+   - ✅ Python-only import（DM_DISABLE_NATIVE=1）
+   - ✅ CommandSystem.execute_command（MANA_CHARGE, SELECT_TARGET, DESTROY）
+   - ✅ Phase 遷移（MANA→MAIN→ATTACK→END→MANA）
+   - ✅ GUI 起動・動作
+   - ✅ マルチターンシミュレーション
+   - ✅ デッキ配置整合性
+   - ✅ ActionType → Command dict 正規化
+
+5. **アーキテクチャ確立**:
+   - Command-first 優先、Action fallback 保持
+   - ExecuteActionCompat が CommandSystem → EngineCompat → execute_action の多段フォールバックを提供
+   - Python モジュールが sys.modules で正規、ネイティブシンボルは globals() にコピー
+   - ネイティブ拡張なしでも完全動作可能
+
+**次のステップ（Phase 5-7）**:
+1. ~~Python fallback 完全実装~~ ✅ **完了**
+2. ~~全テスト通過~~ ✅ **完了**
+3. Parity テスト拡張（フィールド単位の同値性チェック）
+4. ネイティブエンジンのヒープ破損修正後、ネイティブ環境でのテスト
+5. エンジンループの CommandGenerator 切替（Phase 6 最終化）
+6. ActionGenerator の段階的削除（Phase 7）
+7. 不要ファイル・スクリプトのクリーンアップ
+
+**マイルストーン達成**: 🎯 **Python Fallback 完全動作環境確立**

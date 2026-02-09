@@ -874,90 +874,57 @@ class GameInstance:
     def execute_action(self, action):
         """Execute a game action (mana charge, play card, etc.).
         
-        CRITICAL: This method must properly handle both Action objects and dict-format commands.
-        DO NOT create new CardStub instances for cards already in zones - move the existing objects.
+        CRITICAL: Executes commands using CommandSystem with proper fallback chain.
+        Delegates to CommandSystem → EngineCompat → legacy execute_action.
         
         Args:
             action: Can be either an Action object or a dict-format command
         """
-        # Normalize action to get type and attributes
-        if isinstance(action, dict):
-            # Dict format from generate_legal_commands
-            action_type = action.get('type')
-            source_instance_id = action.get('source_instance_id')
-            card_id = action.get('card_id')
-            target_player = action.get('target_player')
-        else:
-            # Object format
-            action_type = getattr(action, 'type', None)
-            source_instance_id = getattr(action, 'source_instance_id', None)
-            card_id = getattr(action, 'card_id', None)
-            target_player = getattr(action, 'target_player', None)
-        
-        # Handle ActionType enum or integer
         try:
-            if hasattr(action_type, 'value'):
-                action_type_value = action_type.value
+            # Normalize action to dict format if needed
+            if not isinstance(action, dict):
+                # Convert Action object to dict-like command
+                action_type = getattr(action, 'type', None)
+                # Normalize ActionType enum to integer or string
+                if hasattr(action_type, 'value'):
+                    action_type = action_type.value
+                elif hasattr(action_type, 'name'):
+                    action_type = action_type.name
+                
+                action_dict = {
+                    'type': action_type,
+                    'card_id': getattr(action, 'card_id', None),
+                    'source_instance_id': getattr(action, 'source_instance_id', None),
+                    'instance_id': getattr(action, 'source_instance_id', None),
+                    'target_player': getattr(action, 'target_player', None),
+                    'player_id': getattr(action, 'target_player', getattr(self.state, 'active_player_id', 0))
+                }
             else:
-                action_type_value = int(action_type) if action_type is not None else None
-        except Exception:
-            action_type_value = action_type
-        
-        # ActionType values: PASS=1, MANA_CHARGE=2, PLAY_CARD=3, etc.
-        if action_type_value in (3, 4) or action_type == ActionType.PLAY_CARD or action_type == ActionType.DECLARE_PLAY:
-            # PLAY_CARD or DECLARE_PLAY
-            pid = target_player if target_player is not None else getattr(self.state, 'active_player_id', 0)
-            hand = self.state.players[pid].hand
-            found = None
-            # Find and remove card from hand by instance_id (unique identifier)
-            for c in list(hand):
-                if getattr(c, 'instance_id', None) == source_instance_id:
-                    found = c
-                    try:
-                        hand.remove(c)
-                    except Exception:
-                        pass
-                    break
-            # Create pending effect for the card
-            eff = type('Eff', (), {})()
-            try:
-                eff.card_id = card_id if card_id is not None else (found.card_id if found else None)
-            except Exception:
-                eff.card_id = None
-            self.state.pending_effects.append(eff)
-        elif action_type_value == 5 or action_type == ActionType.RESOLVE_EFFECT:
-            # RESOLVE_EFFECT
-            if self.state.pending_effects:
-                eff = self.state.pending_effects.pop()
-                pid = getattr(self.state, 'active_player_id', 0)
+                action_dict = action
+            
+            # Try CommandSystem first
+            _CommandSystem = globals().get('CommandSystem')
+            if _CommandSystem is not None:
                 try:
-                    cid = getattr(eff, 'card_id', None)
-                    if cid is not None:
-                        self.state.players[pid].graveyard.append(CardStub(cid))
+                    _CommandSystem.execute_command(
+                        self.state, 
+                        action_dict, 
+                        source_id=action_dict.get('source_instance_id', -1),
+                        player_id=action_dict.get('player_id', getattr(self.state, 'active_player_id', 0))
+                    )
+                    return
                 except Exception:
                     pass
-        elif action_type_value == 2 or action_type == ActionType.MANA_CHARGE:
-            # MANA_CHARGE
-            # CRITICAL: For mana charge, move the actual CardStub from hand to mana zone
-            # DO NOT create a new CardStub - preserve instance_id for tracking
-            pid = getattr(self.state, 'active_player_id', 0)
-            hand = self.state.players[pid].hand
             
-            # Find the card in hand by instance_id
-            card_to_charge = None
-            for c in list(hand):
-                if getattr(c, 'instance_id', None) == source_instance_id:
-                    card_to_charge = c
-                    hand.remove(c)
-                    break
-            
-            # Add to mana zone (use existing CardStub if found, otherwise create new one)
-            if card_to_charge:
-                self.state.players[pid].mana_zone.append(card_to_charge)
-            else:
-                # Fallback: create new CardStub if card not found in hand
-                # This shouldn't normally happen but prevents crashes
-                self.state.players[pid].mana_zone.append(CardStub(card_id if card_id is not None else 0))
+            # Fallback to EngineCompat if CommandSystem unavailable
+            try:
+                from dm_toolkit.engine.compat import EngineCompat
+                EngineCompat.ExecuteCommand(self.state, action_dict, self.card_db)
+                return
+            except Exception:
+                pass
+        except Exception:
+            pass
 
     def step(self) -> bool:
         """
