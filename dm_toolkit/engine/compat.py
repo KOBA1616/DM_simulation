@@ -876,6 +876,20 @@ class EngineCompat:
         # 1. Try C++ CommandSystem if it's a wrapped Command with `to_dict`
         # and has a valid type for the engine.
         if cmd_dict:
+            # Fast-path: if CommandSystem is available on the shim, call it
+            # directly with the dict to allow Python-side CommandSystem stubs
+            # to execute without going through the full mapping logic.
+            try:
+                if dm_ai_module is not None and hasattr(dm_ai_module, 'CommandSystem') and hasattr(dm_ai_module.CommandSystem, 'execute_command'):
+                    try:
+                        src = cmd_dict.get('instance_id', cmd_dict.get('source_instance_id', -1))
+                        pid = cmd_dict.get('player_id', getattr(state, 'active_player_id', 0))
+                        dm_ai_module.CommandSystem.execute_command(state, cmd_dict, src, pid, {})
+                        return
+                    except Exception:
+                        pass
+            except Exception:
+                pass
             try:
                 logger.debug('EngineCompat: cmd_dict detected: %s', cmd_dict)
                 type_val = cmd_dict.get('type')

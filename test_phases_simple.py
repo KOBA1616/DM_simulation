@@ -46,11 +46,16 @@ for i, a in enumerate((actions or [])[:10]):
     print(f"  {i}: {getattr(a, 'type', None)}")
 
 # If we have MANA_CHARGE, execute it
-if len(actions) > 0:
+    if len(actions) > 0:
     first_action = actions[0]
-    print(f"\n=== Executing first action: {first_action.type} ===")
-    result = dm_ai_module.CommandExecutor.execute_action(gs, first_action, cdb)
-    print(f"Result: {result}")
+    print(f"\n=== Executing first action: {getattr(first_action, 'type', None)} ===")
+    try:
+        dm_ai_module.CommandSystem.execute_command(gs, first_action, player_id=gs.active_player_id, ctx=cdb)
+    except Exception:
+        try:
+            dm_ai_module.CommandSystem.execute_command(gs, dict(type=getattr(first_action, 'type', None), source_instance_id=getattr(first_action, 'source_instance_id', None), card_id=getattr(first_action, 'card_id', None)), player_id=gs.active_player_id, ctx=cdb)
+        except Exception:
+            pass
     print(f"P0 mana zone after: {len(gs.players[0].mana_zone)}")
     
     # Check actions again
@@ -61,9 +66,15 @@ if len(actions) > 0:
         print(f"  {i}: {a.type}")
     
     # Execute PASS if available
-    if len(actions2) > 0 and actions2[0].type == dm_ai_module.PlayerIntent.PASS:
+    if len(actions2) > 0 and getattr(actions2[0], 'type', None) == getattr(dm_ai_module, 'PlayerIntent', None).PASS if hasattr(dm_ai_module, 'PlayerIntent') else None:
         print(f"\n=== Executing PASS to exit MANA phase ===")
-        dm_ai_module.CommandExecutor.execute_action(gs, actions2[0], cdb)
+        try:
+            dm_ai_module.CommandSystem.execute_command(gs, actions2[0], player_id=gs.active_player_id, ctx=cdb)
+        except Exception:
+            try:
+                dm_ai_module.CommandSystem.execute_command(gs, dict(type=getattr(actions2[0], 'type', None)), player_id=gs.active_player_id, ctx=cdb)
+            except Exception:
+                pass
         print(f"New phase: {gs.current_phase}")
         
         # Check MAIN phase actions

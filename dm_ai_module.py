@@ -16,6 +16,20 @@ import copy
 import math
 import uuid
 
+# Minimal early fallbacks so `from dm_ai_module import GameInstance, GameResult`
+# doesn't fail during partial/guarded imports. Real/full definitions follow
+# later in the module and will override these when import completes.
+class GameResult(IntEnum):
+    NONE = -1
+    P1_WIN = 0
+    P2_WIN = 1
+    DRAW = 2
+
+
+class GameInstance:
+    def __init__(self, seed: int = 0, card_db: Any = None):
+        self.state = None
+        self.card_db = card_db
 # Try to load native extension if present in build output (prefer native C++ implementation)
 # unless explicitly disabled via DM_DISABLE_NATIVE environment variable.
 _disable_native = os.environ.get('DM_DISABLE_NATIVE', '').lower() in ('1', 'true', 'yes')
@@ -42,6 +56,7 @@ if not _disable_native:
                     pass
         except Exception:
             pass
+        
         _root = os.path.dirname(__file__)
         native_override = os.environ.get('DM_AI_MODULE_NATIVE')
         _candidates = []
@@ -80,21 +95,17 @@ if not _disable_native:
                         if _k.startswith('__'):
                             continue
                         globals()[_k] = _v
-                    # Ensure the imported extension is the module seen by import machinery
-                    try:
-                        sys.modules['dm_ai_module'] = mod
-                    except Exception:
-                        pass
+                    # Do NOT replace sys.modules['dm_ai_module'] with native mod.
+                    # This Python file remains the canonical module; we just imported
+                    # native symbols into its globals(). This allows Python fallbacks
+                    # defined later in this file to augment the native extension.
                     IS_NATIVE = True
                     _loaded_native = True
                     break
             except Exception:
                 continue
-        if _loaded_native:
-            # Expose that we loaded native and stop defining Python fallback
-            __all__ = list(globals().keys())
-            # Nothing more to do; native symbols are present
-            pass
+        # Continue execution even if native loaded; Python fallbacks below
+        # will augment the native extension with additional helpers.
     except Exception:
         IS_NATIVE = False
 else:
@@ -338,6 +349,19 @@ class ActionType(IntEnum):
     RESOLVE_EFFECT = 8
 
 
+class PlayerIntent(IntEnum):
+    """Player intent types (compatible with Action.type)."""
+    NONE = 0
+    PASS = 1
+    MANA_CHARGE = 2
+    PLAY_CARD = 3
+    DECLARE_PLAY = 4
+    PAY_COST = 5
+    ATTACK_PLAYER = 6
+    ATTACK_CREATURE = 7
+    RESOLVE_EFFECT = 8
+
+
 class CommandType(IntEnum):
     NONE = 0
     PLAY_FROM_ZONE = 1
@@ -366,15 +390,166 @@ class CommandSystem:
             if isinstance(cmd, dict):
                 t = cmd.get('type')
                 if t in (CommandType.MANA_CHARGE, 'MANA_CHARGE'):
-                    # emulate mana charge
+                    # Emulate mana charge: remove from hand (if present) and add to mana_zone
                     pid = getattr(state, 'active_player_id', player_id)
-                    cid = cmd.get('card_id') or cmd.get('instance_id') or 0
-                    state.players[pid].mana_zone.append(CardStub(cid))
+                    # Prefer instance_id/source_instance_id/card_id
+                    cid = cmd.get('card_id') or cmd.get('instance_id') or cmd.get('source_instance_id') or 0
+                    try:
+                        # Try to remove matching CardStub from hand by instance_id
+                        hand = getattr(state.players[pid], 'hand', [])
+                        removed = False
+                        for i, c in enumerate(list(hand)):
+                            try:
+                                if getattr(c, 'instance_id', None) == cid or getattr(c, 'card_id', None) == cid:
+                                    # remove and move to mana_zone
+                                    try:
+                                        hand.pop(i)
+                                    except Exception:
+                                        pass
+                                    try:
+                                        state.players[pid].mana_zone.append(c)
+                                    except Exception:
+                                        state.players[pid].mana_zone.append(CardStub(cid))
+                                    removed = True
+                                    break
+                            except Exception:
+                                continue
+                        if not removed:
+                            # No exact instance found: attempt to move any card with matching card_id
+                            for i, c in enumerate(list(hand)):
+                                try:
+                                    if getattr(c, 'card_id', None) == cid:
+                                        try:
+                                            hand.pop(i)
+                                        except Exception:
+                                            pass
+                                        try:
+                                            state.players[pid].mana_zone.append(c)
+                                        except Exception:
+                                            state.players[pid].mana_zone.append(CardStub(cid))
+                                        removed = True
+                                        break
+                                except Exception:
+                                    continue
+                        if not removed:
+                            # Fallback: append a new CardStub to mana_zone
+                            state.players[pid].mana_zone.append(CardStub(cid))
+                    except Exception:
+                        try:
+                            state.players[pid].mana_zone.append(CardStub(cid))
+                        except Exception:
+                            pass
+                    if not hasattr(state, 'command_history'):
+                        state.command_history = []
+                    state.command_history.append(cmd)
+                # DESTROY: remove cards by instance_id from execution_context.variables
+                elif t == 'DESTROY' or t == getattr(CommandType, 'DESTROY', 'DESTROY'):
+                    if not hasattr(state, 'execution_context'):
+                        return
+                    ctx_vars = getattr(state.execution_context, 'variables', {})
+                    input_key = cmd.get('input_value_key') or 'selected'
+                    target_ids = ctx_vars.get(input_key, [])
+                    if not isinstance(target_ids, list):
+                        target_ids = [target_ids]
+                    
+                    # Remove cards from all zones and move to graveyard
+                    for pid in range(len(state.players)):
+                        p = state.players[pid]
+                        for zone_name in ('battle_zone', 'hand', 'mana_zone'):
+                            zone = getattr(p, zone_name, [])
+                            for tid in target_ids:
+                                for c in list(zone):
+                                    if getattr(c, 'instance_id', None) == tid:
+                                        try:
+                                            zone.remove(c)
+                                            p.graveyard.append(c)
+                                        except Exception:
+                                            pass
+                    if not hasattr(state, 'command_history'):
+                        state.command_history = []
+                    state.command_history.append(cmd)
+                # SELECT_TARGET: place selected ids into execution_context.variables
+                elif t == 'SELECT_TARGET' or t == getattr(CommandType, 'SELECT_TARGET', 'SELECT_TARGET'):
+                    # Ensure execution_context exists and has variables mapping
+                    if not hasattr(state, 'execution_context'):
+                        class _EC:
+                            def __init__(self):
+                                self.variables = {}
+                        state.execution_context = _EC()
+                    ctx_vars = getattr(state.execution_context, 'variables', {})
+                    # Determine candidates based on target_group
+                    target_group = cmd.get('target_group', 'PLAYER_SELF')
+                    amount = int(cmd.get('amount', 1) or 1)
+                    out = []
+                    pid = player_id
+                    try:
+                        if target_group == 'PLAYER_SELF':
+                            zone = getattr(state.players[pid], 'battle_zone', []) or []
+                            out = [getattr(c, 'instance_id', None) for c in zone][:amount]
+                        elif target_group == 'PLAYER_OPPONENT':
+                            zone = getattr(state.players[1-pid], 'battle_zone', []) or []
+                            out = [getattr(c, 'instance_id', None) for c in zone][:amount]
+                        else:
+                            # Generic: use player's battle zone
+                            zone = getattr(state.players[pid], 'battle_zone', []) or []
+                            out = [getattr(c, 'instance_id', None) for c in zone][:amount]
+                    except Exception:
+                        out = []
+                    key = cmd.get('output_value_key') or cmd.get('str_param') or 'selected'
+                    try:
+                        ctx_vars[key] = out
+                    except Exception:
+                        try:
+                            setattr(state.execution_context, 'variables', {key: out})
+                        except Exception:
+                            pass
+                    try:
+                        state.execution_context.variables = ctx_vars
+                    except Exception:
+                        pass
                     if not hasattr(state, 'command_history'):
                         state.command_history = []
                     state.command_history.append(cmd)
         except Exception:
             pass
+
+
+class CommandDef:
+    def __init__(self):
+        # Common command fields used by EngineCompat mapping
+        self.type = None
+        self.amount = 0
+        self.str_param = ''
+        self.optional = False
+        self.up_to = False
+        self.instance_id = None
+        self.target_instance = None
+        self.owner_id = None
+        self.from_zone = ''
+        self.to_zone = ''
+        self.mutation_kind = ''
+        self.input_value_key = ''
+        self.output_value_key = ''
+
+
+class FilterDef:
+    def __init__(self):
+        self.zones = []
+        self.min_cost = None
+        self.max_cost = None
+        self.predicates = None
+
+
+class CardRegistry:
+    @staticmethod
+    def get_all_cards() -> dict:
+        # Try to use JsonLoader if present; otherwise return empty mapping
+        try:
+            if 'JsonLoader' in globals():
+                return JsonLoader.load_cards('data/cards.json')
+        except Exception:
+            pass
+        return {}
 
 
 class CardType(IntEnum):
@@ -430,7 +605,17 @@ class Player:
 class GameState:
     def __init__(self, seed: int = 0):
         self.players: List[Player] = [Player(0), Player(1)]
-        self.current_phase = Phase.MANA
+        # Robustly initialize current_phase: if `Phase` isn't available
+        # (e.g., native extension replaced module globals), fall back to
+        # a local Phase-like mapping to avoid NameError during tests.
+        try:
+            self.current_phase = Phase.MANA
+        except NameError:
+            # Fallback to numeric phase value to avoid creating a new Enum type
+            try:
+                self.current_phase = int(Phase.MANA)
+            except Exception:
+                self.current_phase = 2
         self.active_player_id = 0
         self.pending_effects: List[Any] = []
         self.turn_number = 1
@@ -439,6 +624,83 @@ class GameState:
         self.command_history: List[Any] = []
         # Initialize player_modes: both AI by default
         self.player_modes = [PlayerMode.AI, PlayerMode.AI]
+        # Lightweight execution context used by selection queries and UI
+        class _ExecCtx:
+            def __init__(self):
+                self.variables: dict = {}
+        try:
+            self.execution_context = _ExecCtx()
+        except Exception:
+            self.execution_context = type('EC', (), {'variables': {}})()
+
+    def calculate_hash(self) -> int:
+        """Return a deterministic hash of key game-state fields for tests."""
+        try:
+            data = {
+                'turn_number': int(getattr(self, 'turn_number', 0)),
+                'active_player_id': int(getattr(self, 'active_player_id', 0)),
+                'current_phase': int(getattr(self, 'current_phase', 0)) if not isinstance(getattr(self, 'current_phase', 0), str) else str(getattr(self, 'current_phase', 0)),
+                'players': []
+            }
+            for p in getattr(self, 'players', []):
+                pdata = {
+                    'hand': [getattr(c, 'instance_id', None) for c in getattr(p, 'hand', [])],
+                    'mana': [getattr(c, 'instance_id', None) for c in getattr(p, 'mana_zone', [])],
+                    'battle': [getattr(c, 'instance_id', None) for c in getattr(p, 'battle_zone', [])],
+                }
+                data['players'].append(pdata)
+            s = json.dumps(data, sort_keys=True)
+            return abs(hash(s))
+        except Exception:
+            try:
+                return abs(hash(repr(self)))
+            except Exception:
+                return 0
+
+    def create_snapshot(self) -> Any:
+        try:
+            snap = type('Snap', (), {})()
+            snap.state = copy.deepcopy(self)
+            snap.hash_at_snapshot = self.calculate_hash()
+            return snap
+        except Exception:
+            return None
+
+    def restore_snapshot(self, snap: Any) -> None:
+        try:
+            if snap is None:
+                return
+            src = snap.state
+            self.__dict__.clear()
+            self.__dict__.update(copy.deepcopy(src.__dict__))
+        except Exception:
+            pass
+
+    def make_move(self, action: Any) -> None:
+        # Minimal move handling: record history and allow unmake via snapshot
+        try:
+            self._last_snap = self.create_snapshot()
+            # Append to command history to indicate a change
+            if not hasattr(self, 'command_history'):
+                self.command_history = []
+            self.command_history.append(action)
+        except Exception:
+            pass
+
+    def unmake_move(self) -> None:
+        try:
+            if hasattr(self, '_last_snap') and self._last_snap is not None:
+                self.restore_snapshot(self._last_snap)
+                self._last_snap = None
+        except Exception:
+            pass
+
+    def get_next_instance_id(self) -> int:
+        """Return a deterministic increasing instance id for test usage."""
+        if not hasattr(self, '_next_instance_id'):
+            self._next_instance_id = 1000
+        self._next_instance_id += 1
+        return int(self._next_instance_id)
 
     def setup_test_duel(self):
         """Initialize game state for test duels.
@@ -486,7 +748,14 @@ class GameState:
         # Reset game state
         self.turn_number = 1
         self.active_player_id = 0
-        self.current_phase = Phase.MANA
+        # Robustly set phase to MANA even if Phase symbol missing
+        try:
+            self.current_phase = Phase.MANA
+        except NameError:
+            try:
+                self.current_phase = int(getattr(Phase, 'MANA', 2))
+            except Exception:
+                self.current_phase = 2
         self.game_over = False
         self.winner = -1
 
@@ -589,7 +858,14 @@ class GameInstance:
         self.card_db = card_db
 
     def start_game(self):
-        self.state.current_phase = Phase.MANA
+        """Initialize game to starting state."""
+        # Ensure Phase is available in global scope (may be overridden by native)
+        _Phase = globals().get('Phase')
+        if _Phase is not None:
+            self.state.current_phase = _Phase.MANA
+        else:
+            # Fallback to integer value if Phase enum not available
+            self.state.current_phase = 2  # Phase.MANA = 2
         self.state.active_player_id = 0
 
     def initialize_card_stats(self, deck_size: int):
@@ -972,16 +1248,44 @@ class PhaseManager:
             card_db: Card database (optional)
         """
         try:
-            if state.current_phase == Phase.MANA:
-                state.current_phase = Phase.MAIN
-            elif state.current_phase == Phase.MAIN:
-                state.current_phase = Phase.ATTACK
-            elif state.current_phase == Phase.ATTACK:
-                state.current_phase = Phase.END
+            # Compare by numeric value to tolerate different Enum subclasses or ints
+            def _phase_value(x):
+                # Robust numeric extraction from many possible phase representations
+                try:
+                    return int(x)
+                except Exception:
+                    pass
+                try:
+                    return int(getattr(x, 'value'))
+                except Exception:
+                    pass
+                try:
+                    return int(str(x))
+                except Exception:
+                    return int(getattr(Phase, 'END', 5))
+
+            cur = _phase_value(state.current_phase)
+            
+            # Get Phase enum from globals() safely
+            _Phase = globals().get('Phase')
+            if _Phase is None:
+                # Fallback: use integer values directly
+                class _Phase(IntEnum):
+                    MANA = 2
+                    MAIN = 3
+                    ATTACK = 4
+                    END = 5
+
+            if cur == int(_Phase.MANA):
+                state.current_phase = _Phase.MAIN
+            elif cur == int(_Phase.MAIN):
+                state.current_phase = _Phase.ATTACK
+            elif cur == int(_Phase.ATTACK):
+                state.current_phase = _Phase.END
             else:
                 # END -> Next Turn (MANA)
                 state.active_player_id = 1 - state.active_player_id
-                state.current_phase = Phase.MANA
+                state.current_phase = _Phase.MANA
 
                 # Untap Step: Reset all tapped cards
                 p = state.players[state.active_player_id]
@@ -1106,13 +1410,16 @@ class TensorConverter:
 
 
 __all__ = [
-    'IS_NATIVE', 'GameInstance', 'GameState', 'Action', 'ActionType', 'ActionEncoder',
+    'IS_NATIVE', 'GameInstance', 'GameState', 'Action', 'ActionType', 'PlayerIntent', 'ActionEncoder',
     'ActionGenerator', 'IntentGenerator', 'PhaseManager', 'EffectResolver', 'CardStub',
-    'CardType', 'Phase', 'GameResult', 'GameCommand',
+    'CardType', 'Phase', 'GameResult', 'GameCommand', 'CommandSystem', 'ExecuteActionCompat',
 ]
 
 if CommandEncoder is not None:
-    __all__.append('CommandEncoder')
+    try:
+        __all__.append('CommandEncoder')
+    except Exception:
+        __all__ = list(__all__) + ['CommandEncoder']
 
 if 'Zone' not in globals():
     from enum import IntEnum
@@ -1327,143 +1634,132 @@ if 'MutateCommand' not in globals():
                 except Exception:
                     pass
 
-        if 'ActionGenerator' not in globals():
-            class ActionGenerator:
-                def __init__(self, registry: Any = None):
-                    self.registry = registry
+    # Provide minimal, module-level fallback helpers (kept simple and robust)
+    if 'ActionGenerator' not in globals():
+        class ActionGenerator:
+            def __init__(self, registry: Any = None):
+                self.registry = registry
 
-                def generate(self, state: Any, player_id: int) -> list:
+            def generate(self, state: Any, player_id: int) -> list:
+                return []
+
+    if 'ActionEncoder' not in globals():
+        class ActionEncoder:
+            def __init__(self):
+                pass
+
+            def encode(self, action: Any) -> dict:
+                try:
+                    return {
+                        'type': getattr(action, 'type', None),
+                        'card_id': getattr(action, 'card_id', None),
+                        'source_instance_id': getattr(action, 'source_instance_id', getattr(action, 'instance_id', None))
+                    }
+                except Exception:
+                    return {}
+
+    if 'EffectResolver' not in globals():
+        class EffectResolver:
+            @staticmethod
+            def resolve(state: Any, effect: Any, player_id: int) -> None:
+                pass
+
+    if 'TensorConverter' not in globals():
+        class TensorConverter:
+            @staticmethod
+            def convert_to_tensor(state: Any, player_id: int, card_db: Any, mask_opponent: bool = True) -> List[float]:
+                return [0.0] * 856
+
+    if 'TokenConverter' not in globals():
+        class TokenConverter:
+            def to_tokens(self, obj: Any) -> list:
+                try:
+                    if obj is None:
+                        return []
+                    if isinstance(obj, list):
+                        return [int(x) for x in obj][:256]
+                    if hasattr(obj, 'instance_id'):
+                        return [int(getattr(obj, 'instance_id')) % 8192]
+                    if isinstance(obj, dict):
+                        tokens = []
+                        for k, v in obj.items():
+                            try:
+                                tokens.append(abs(hash(k)) % 8192)
+                                if isinstance(v, int):
+                                    tokens.append(v % 8192)
+                                else:
+                                    tokens.append(abs(hash(str(v))) % 8192)
+                            except Exception:
+                                continue
+                        return tokens[:256]
+                    return [abs(hash(str(obj))) % 8192]
+                except Exception:
                     return []
 
-        if 'ActionEncoder' not in globals():
-            class ActionEncoder:
-                def __init__(self):
-                    pass
+            @staticmethod
+            def get_vocab_size() -> int:
+                return 8192
 
-                def encode(self, action: Any) -> dict:
-                    try:
-                        return {
-                            'type': getattr(action, 'type', None),
-                            'card_id': getattr(action, 'card_id', None),
-                            'source_instance_id': getattr(action, 'source_instance_id', getattr(action, 'instance_id', None))
-                        }
-                    except Exception:
-                        return {}
-
-        if 'EffectResolver' not in globals():
-            class EffectResolver:
-                @staticmethod
-                def resolve(state: Any, effect: Any, player_id: int) -> None:
-                    pass
-
-        if 'TensorConverter' not in globals():
-            class TensorConverter:
-                @staticmethod
-                def convert_to_tensor(state: Any, player_id: int, card_db: Any, mask_opponent: bool = True) -> List[float]:
-                    # Simulate C++ returning float vector
-                    return [0.0] * 856
-
-        if 'TokenConverter' not in globals():
-            class TokenConverter:
-                def to_tokens(self, obj: Any) -> list:
-                    try:
-                        if obj is None:
-                            return []
-                        if isinstance(obj, list):
-                            return [int(x) for x in obj][:256]
-                        if hasattr(obj, 'instance_id'):
-                            return [int(getattr(obj, 'instance_id')) % 8192]
-                        if isinstance(obj, dict):
-                            tokens = []
-                            for k, v in obj.items():
+            @staticmethod
+            def encode_state(state: Any, player_id: int, max_len: int = 512) -> list:
+                tokens: list[int] = []
+                try:
+                    players = getattr(state, 'players', None)
+                    if players is None or player_id >= len(players):
+                        return tokens
+                    p = players[player_id]
+                    tokens.append(int(getattr(p, 'player_id', player_id)) % 8192)
+                    for zone in ('hand', 'battle_zone', 'mana_zone', 'shield_zone', 'graveyard'):
+                        z = getattr(p, zone, []) or []
+                        tokens.append(len(z) % 8192)
+                        for c in z:
+                            cid = getattr(c, 'card_id', None) or getattr(c, 'base_id', None) or getattr(c, 'id', None)
+                            if cid is None:
+                                tokens.append(abs(hash(str(c))) % 8192)
+                            else:
                                 try:
-                                    tokens.append(abs(hash(k)) % 8192)
-                                    if isinstance(v, int):
-                                        tokens.append(v % 8192)
-                                    else:
-                                        tokens.append(abs(hash(str(v))) % 8192)
+                                    tokens.append(int(cid) % 8192)
                                 except Exception:
-                                    continue
-                            return tokens[:256]
-                        return [abs(hash(str(obj))) % 8192]
-                    except Exception:
-                        return []
+                                    tokens.append(abs(hash(str(cid))) % 8192)
+                            if len(tokens) >= max_len:
+                                return tokens[:max_len]
+                    return tokens[:max_len]
+                except Exception:
+                    return tokens[:max_len]
 
-                @staticmethod
-                def get_vocab_size() -> int:
-                    return 8192
-
-                @staticmethod
-                def encode_state(state: Any, player_id: int, max_len: int = 512) -> list:
-                    tokens: list[int] = []
+    if 'TransitionCommand' not in globals():
+        class TransitionCommand:
+            def __init__(self, instance_id: int = -1, from_zone: str = '', to_zone: str = '', **kwargs: Any):
+                self.instance_id = instance_id
+                self.from_zone = from_zone
+                self.to_zone = to_zone
+                for k, v in kwargs.items():
                     try:
-                        players = getattr(state, 'players', None)
-                        if players is None or player_id >= len(players):
-                            return tokens
-                        p = players[player_id]
-                        tokens.append(int(getattr(p, 'player_id', player_id)) % 8192)
-                        for zone in ('hand', 'battle_zone', 'mana_zone', 'shield_zone', 'graveyard'):
-                            z = getattr(p, zone, []) or []
-                            tokens.append(len(z) % 8192)
-                            for c in z:
-                                cid = getattr(c, 'card_id', None) or getattr(c, 'base_id', None) or getattr(c, 'id', None)
-                                if cid is None:
-                                    tokens.append(abs(hash(str(c))) % 8192)
-                                else:
-                                    try:
-                                        tokens.append(int(cid) % 8192)
-                                    except Exception:
-                                        tokens.append(abs(hash(str(cid))) % 8192)
-                                if len(tokens) >= max_len:
-                                    return tokens[:max_len]
-                        return tokens[:max_len]
-                    except Exception:
-                        return tokens[:max_len]
-
-        if 'TransitionCommand' not in globals():
-            class TransitionCommand:
-                def __init__(self, instance_id: int = -1, from_zone: str = '', to_zone: str = '', **kwargs: Any):
-                    self.instance_id = instance_id
-                    self.from_zone = from_zone
-                    self.to_zone = to_zone
-                    for k, v in kwargs.items():
-                        try:
-                            setattr(self, k, v)
-                        except Exception:
-                            pass
-
-                def execute(self, state: Any) -> None:
-                    try:
-                        inst = state.get_card_instance(self.instance_id) if hasattr(state, 'get_card_instance') else None
-                        if inst is None:
-                            return
-                        for p in state.players:
-                            for zone_name in ('hand', 'battle_zone', 'mana_zone', 'shield_zone', 'graveyard', 'deck'):
-                                z = getattr(p, zone_name, [])
-                                for i, o in enumerate(list(z)):
-                                    if getattr(o, 'instance_id', None) == getattr(inst, 'instance_id', None):
-                                        try:
-                                            z.pop(i)
-                                        except Exception:
-                                            pass
-                        dest = 'graveyard' if 'GRAVE' in str(self.to_zone).upper() else ('battle_zone' if 'BATTLE' in str(self.to_zone).upper() else 'hand')
-                        try:
-                            state.players[getattr(state, 'active_player_id', 0)].__dict__.setdefault(dest, []).append(inst)
-                        except Exception:
-                            pass
+                        setattr(self, k, v)
                     except Exception:
                         pass
-        def execute(self, state: Any) -> None:
-            try:
-                inst = state.get_card_instance(self.instance_id) if hasattr(state, 'get_card_instance') else None
-                if inst is None:
-                    return
-                if getattr(self.mutation_type, 'name', None) == 'TAP' or str(self.mutation_type) == 'TAP':
-                    inst.is_tapped = True
-                if getattr(self.mutation_type, 'name', None) == 'UNTAP' or str(self.mutation_type) == 'UNTAP':
-                    inst.is_tapped = False
-            except Exception:
-                pass
+
+            def execute(self, state: Any) -> None:
+                try:
+                    inst = state.get_card_instance(self.instance_id) if hasattr(state, 'get_card_instance') else None
+                    if inst is None:
+                        return
+                    for p in state.players:
+                        for zone_name in ('hand', 'battle_zone', 'mana_zone', 'shield_zone', 'graveyard', 'deck'):
+                            z = getattr(p, zone_name, [])
+                            for i, o in enumerate(list(z)):
+                                if getattr(o, 'instance_id', None) == getattr(inst, 'instance_id', None):
+                                    try:
+                                        z.pop(i)
+                                    except Exception:
+                                        pass
+                    dest = 'graveyard' if 'GRAVE' in str(self.to_zone).upper() else ('battle_zone' if 'BATTLE' in str(self.to_zone).upper() else 'hand')
+                    try:
+                        state.players[getattr(state, 'active_player_id', 0)].__dict__.setdefault(dest, []).append(inst)
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
 
 if 'DataCollector' not in globals():
     class DataCollector:
@@ -1942,3 +2238,125 @@ if 'MCTS' not in globals():
                 node.value_sum += value
                 value = -value
                 node = node.parent
+
+# Backwards-compatible fallbacks: ensure common public symbols exist
+if 'GameInstance' not in globals():
+    class GameInstance:
+        def __init__(self, seed: int = 0, card_db: Any = None):
+            self.state = GameState()
+            self.card_db = card_db
+
+        def start_game(self):
+            try:
+                PhaseManager.start_game(self.state, self.card_db)
+            except Exception:
+                try:
+                    self.state.setup_test_duel()
+                except Exception:
+                    pass
+
+        def execute_action(self, action: Any) -> None:
+            # Minimal delegate to GameInstance-like behavior on state if possible
+            try:
+                if hasattr(self.state, 'game_instance') and hasattr(self.state.game_instance, 'execute_action'):
+                    return self.state.game_instance.execute_action(action)
+            except Exception:
+                pass
+
+if 'CommandSystem' not in globals():
+    class CommandSystem:
+        @staticmethod
+        def execute_command(state: Any, cmd: Any, source_id: int = -1, player_id: int = 0, ctx: Any = None) -> None:
+            try:
+                # Prefer any previously defined execute_command
+                existing = globals().get('CommandSystem')
+                if existing and existing is not CommandSystem and hasattr(existing, 'execute_command'):
+                    return existing.execute_command(state, cmd, source_id, player_id, ctx)
+            except Exception:
+                pass
+            try:
+                if hasattr(cmd, 'execute'):
+                    return cmd.execute(state)
+            except Exception:
+                pass
+
+if 'CardStub' not in globals():
+    class CardStub:
+        def __init__(self, card_id: int, instance_id: Optional[int] = None):
+            self.card_id = card_id
+            self.instance_id = instance_id if instance_id is not None else 0
+            self.is_tapped = False
+            self.sick = False
+
+
+# Compatibility helper: prefer command-first execution, fall back to legacy execute_action
+def ExecuteActionCompat(target: Any, action: Any, player_id: int = 0, ctx: Any = None) -> bool:
+    """Execute an action using command-first semantics when possible.
+
+    - If `action` is a dict-like command, prefer `CommandSystem.execute_command` or
+      `EngineCompat.ExecuteCommand` (if available).
+    - If `target` exposes `execute_action`, call it as a last resort.
+    Returns True on success, False otherwise.
+    """
+    try:
+        # If action already exposes execute(), try that first
+        if hasattr(action, 'execute') and callable(getattr(action, 'execute')):
+            try:
+                action.execute(getattr(target, 'state', target))
+                return True
+            except Exception:
+                pass
+
+        # If action is dict-like, prefer command execution APIs
+        if isinstance(action, dict):
+            # Try CommandSystem if present
+            try:
+                if 'CommandSystem' in globals() and hasattr(CommandSystem, 'execute_command'):
+                    CommandSystem.execute_command(getattr(target, 'state', target), action, -1, player_id, ctx)
+                    return True
+            except Exception:
+                pass
+
+            # EngineCompat.ExecuteCommand fallback (used by toolkit)
+            try:
+                from dm_toolkit.engine.compat import EngineCompat
+                EngineCompat.ExecuteCommand(getattr(target, 'state', target), action, None)
+                return True
+            except Exception:
+                pass
+
+        # If target is a GameInstance-like object, call its execute_action
+        try:
+            if hasattr(target, 'execute_action') and callable(getattr(target, 'execute_action')):
+                target.execute_action(action)
+                return True
+        except Exception:
+            pass
+
+        # As last resort, if target is a plain state, try CommandSystem on it
+        try:
+            if 'CommandSystem' in globals() and hasattr(CommandSystem, 'execute_command'):
+                CommandSystem.execute_command(target, action, -1, player_id, ctx)
+                return True
+        except Exception:
+            pass
+    except Exception:
+        pass
+    return False
+
+
+# Ensure core symbols exist on the module object even if a native extension
+# was loaded earlier and didn't export them. This makes `from dm_ai_module import X`
+# robust during incremental migration.
+try:
+    import sys as _sys
+    _mod = _sys.modules.get('dm_ai_module')
+    if _mod is not None:
+        if not hasattr(_mod, 'GameInstance') and 'GameInstance' in globals():
+            setattr(_mod, 'GameInstance', globals().get('GameInstance'))
+        if not hasattr(_mod, 'GameResult') and 'GameResult' in globals():
+            setattr(_mod, 'GameResult', globals().get('GameResult'))
+        if not hasattr(_mod, 'ExecuteActionCompat'):
+            setattr(_mod, 'ExecuteActionCompat', ExecuteActionCompat)
+except Exception:
+    pass

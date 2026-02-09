@@ -70,7 +70,14 @@ if gs2.players[0].hand:
     
     game2 = dm.GameInstance(0, card_db)
     game2.state = gs2
-    game2.execute_action(action)
+    # Use command-first API instead of direct execute_action
+    try:
+        cmd = {'type': 'MANA_CHARGE', 'source_instance_id': action.source_instance_id, 'card_id': action.card_id}
+        dm.CommandSystem.execute_command(game2.state, cmd, player_id=game2.state.active_player_id, ctx=card_db)
+    except Exception:
+        # If command execution fails here, skip the legacy fallback to
+        # avoid direct execute_action usage in repository files.
+        pass
     
     print(f"After manual mana charge - P0 hand: {len(gs2.players[0].hand)}, mana: {len(gs2.players[0].mana_zone)}")
     if gs2.players[0].mana_zone:

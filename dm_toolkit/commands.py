@@ -1,4 +1,5 @@
 from typing import Any, Dict, Optional, Protocol, runtime_checkable, List, cast
+import os
 from dm_toolkit.action_to_command import map_action
 import warnings
 import logging
@@ -16,6 +17,15 @@ def _call_native_action_generator(state: Any, card_db: Any) -> List[Any]:
     - dm_ai_module.ActionGenerator.generate_legal_actions
     - instance.generate(state, player_id)
     """
+    # Allow disabling native engine calls when running tests or debugging
+    # Set `DM_DISABLE_NATIVE=1` in the environment to force Python-only paths.
+    try:
+        if os.getenv('DM_DISABLE_NATIVE') in ('1', 'true', 'True'):
+            logger.debug('DM_DISABLE_NATIVE is set; skipping native action generator')
+            return []
+    except Exception:
+        pass
+
     try:
         import dm_ai_module
     except Exception:
@@ -412,6 +422,57 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
                     actions = _call_native_action_generator(state, card_db) or []
             except Exception:
                 pass  # Silent fallback - if fast_forward fails, return empty actions
+
+        # If native is disabled or no native actions found, synthesize simple
+        # play candidates from Python state as a best-effort fallback so tests
+        # and tools can exercise play logic without the C++ engine.
+        try:
+            if not actions and os.getenv('DM_DISABLE_NATIVE') in ('1', 'true', 'True'):
+                pid = getattr(state, 'active_player_id', 0)
+                hand = []
+                try:
+                    hand = list(getattr(state.players[pid], 'hand', []) or [])
+                except Exception:
+                    hand = []
+                synth = []
+                for c in hand:
+                    try:
+                        iid = getattr(c, 'instance_id', None) or getattr(c, 'id', None)
+                        # Prefer creating an Action-like object when the shim exposes Action/ActionType
+                        act_obj = None
+                        try:
+                            import dm_ai_module
+                            ActionCls = getattr(dm_ai_module, 'Action', None)
+                            ActionType = getattr(dm_ai_module, 'ActionType', None)
+                            if ActionCls is not None:
+                                act_obj = ActionCls()
+                                # Set type to PLAY_CARD when ActionType exists
+                                try:
+                                    if ActionType is not None and hasattr(ActionType, 'PLAY_CARD'):
+                                        act_obj.type = getattr(ActionType, 'PLAY_CARD')
+                                    else:
+                                        act_obj.type = 'PLAY_CARD'
+                                except Exception:
+                                    act_obj.type = 'PLAY_CARD'
+                                # Attach identifiers
+                                try:
+                                    setattr(act_obj, 'instance_id', iid)
+                                except Exception:
+                                    pass
+                        except Exception:
+                            act_obj = None
+
+                        if act_obj is not None:
+                            synth.append(act_obj)
+                        else:
+                            synth.append({'type': 'PLAY_FROM_ZONE', 'instance_id': iid, 'player_id': pid, 'unified_type': 'PLAY'})
+                    except Exception:
+                        continue
+                actions = synth
+                if actions:
+                    logger.debug(f"Synthesized {len(actions)} play actions as Python fallback (DM_DISABLE_NATIVE)")
+        except Exception:
+            pass
         
         # Trust C++ engine completely - wrap actions for GUI execution
         cmds = []
