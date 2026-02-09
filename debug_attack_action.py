@@ -51,7 +51,8 @@ if test_card_id in card_db:
 
 # Generate actions
 print('\n=== Generating Actions ===')
-actions = dm.IntentGenerator.generate_legal_actions(gs, card_db)
+    from dm_toolkit import commands_v2 as commands
+    actions = commands.generate_legal_commands(gs, card_db, strict=False)
 print(f'Total actions: {len(actions)}')
 
 attack_actions = []

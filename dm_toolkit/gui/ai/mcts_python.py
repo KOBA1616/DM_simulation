@@ -181,21 +181,17 @@ class PythonMCTS:
         child_node = Node(next_state, parent=node, action=action)
         # Populate untried actions for child (prefer Action list)
         try:
-            child_actions = dm_ai_module.ActionGenerator.generate_legal_commands(next_state, self.card_db) or []
-        except Exception:
-            child_actions = []
-        # Prefer command-first for child expansion
-        try:
+            # Prefer command-first generator, fallback to legacy ActionGenerator
             child_cmds = commands.generate_legal_commands(next_state, self.card_db) or []
         except Exception:
             child_cmds = []
+        try:
+            child_actions = dm_ai_module.ActionGenerator.generate_legal_commands(next_state, self.card_db) or []
+        except Exception:
+            child_actions = []
         if child_cmds:
             child_node.untried_actions = child_cmds
         else:
-            try:
-                child_actions = dm_ai_module.ActionGenerator.generate_legal_commands(next_state, self.card_db) or []
-            except Exception:
-                child_actions = []
             child_node.untried_actions = child_actions
         node.children.append(child_node)
         return child_node

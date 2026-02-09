@@ -40,11 +40,13 @@ def test_twinpact_action_generation():
     print(f"P0 Hand: {len(gs.players[0].hand)} cards")
     print(f"P0 Mana: {len(gs.players[0].mana_zone)} cards")
     
-    # アクション生成
-    actions = dm.ActionGenerator.generate_legal_actions(gs, card_db)
+    # コマンド優先で生成
+    from dm_toolkit import commands_v2 as commands
+    actions = commands.generate_legal_commands(gs, card_db, strict=False)
     
     # DECLARE_PLAYアクションを抽出
-    declare_play_actions = [a for a in actions if a.type == dm.PlayerIntent.DECLARE_PLAY]
+    # Map command-like objects to a similar interface if needed, fallback to filtering by type string
+    declare_play_actions = [a for a in (actions or []) if getattr(a, 'type', None) == getattr(dm.PlayerIntent, 'DECLARE_PLAY', None) or str(getattr(a, 'type', '')).upper().find('DECLARE_PLAY') != -1]
     
     print(f"\nTotal DECLARE_PLAY actions: {len(declare_play_actions)}")
     

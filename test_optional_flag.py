@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import dm_ai_module as dm
+from dm_toolkit import commands_v2 as commands
 
 gs = dm.GameState(seed=42, p0_deck=[1]*40, p1_deck=[91]*40)
 gs.execute_command(dm.DrawCardCommand(0, 5))
@@ -16,8 +17,8 @@ if gs.pending_effects:
     print(f"controller: {pe.controller}")
     print(f"resolve_type: {pe.resolve_type}")
     
-    # アクション生成
-    actions = gs.generate_legal_actions()
+    # コマンド優先で生成
+    actions = commands.generate_legal_commands(gs, None, strict=False)
     print(f"\nTotal actions: {len(actions)}")
     
     pass_count = sum(1 for a in actions if a.type == dm.PlayerIntent.PASS)

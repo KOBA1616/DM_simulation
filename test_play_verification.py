@@ -44,8 +44,9 @@ print(f"Battle Zone: {len(player.battle_zone)} cards")
 print(f"Graveyard: {len(player.graveyard)} cards")
 print(f"Stack: {len(player.stack)} cards")
 
-# アクション生成
-actions = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+# アクション生成（コマンド優先）
+from dm_toolkit import commands_v2 as commands
+actions = commands.generate_legal_commands(game.state, card_db, strict=False)
 declare_play_actions = [a for a in actions if int(a.type) == 15]  # DECLARE_PLAY
 
 if not declare_play_actions:

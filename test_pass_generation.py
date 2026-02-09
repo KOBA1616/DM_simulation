@@ -24,7 +24,8 @@ for _ in range(20):
     phase = int(gs.current_phase)
     if phase == 3:  # MAIN phase (3)
         # Generate actions
-        actions = module.IntentGenerator.generate_legal_actions(gs, card_db)
+        from dm_toolkit import commands_v2 as commands
+        actions = commands.generate_legal_commands(gs, card_db, strict=False)
         print(f"Phase {phase} (MAIN): Generated {len(actions)} actions")
         for i, a in enumerate(actions[:5]):
             print(f"  Action {i}: type={int(a.type)}")

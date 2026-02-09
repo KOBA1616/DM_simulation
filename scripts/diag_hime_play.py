@@ -25,7 +25,8 @@ game.state.current_phase = dm.Phase.MAIN
 
 print('Before play: pending_effects count=', len(getattr(game.state, 'pending_effects', [])))
 
-actions = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+from dm_toolkit import commands_v2 as commands
+actions = commands.generate_legal_commands(game.state, card_db, strict=False)
 print('Generated actions:', len(actions))
 for i,a in enumerate(actions[:20]):
     print(i, repr(getattr(a, 'type', a)), getattr(a, 'card_id', None), getattr(a, 'source_instance_id', None))
@@ -41,7 +42,7 @@ else:
 
 print('After play: pending_effects count=', len(getattr(game.state, 'pending_effects', [])))
 
-actions2 = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+actions2 = commands.generate_legal_commands(game.state, card_db, strict=False)
 print('Generated after actions:', len(actions2))
 for i,a in enumerate(actions2[:20]):
     print(i, repr(getattr(a, 'type', a)), getattr(a, 'card_id', None), getattr(a, 'source_instance_id', None))

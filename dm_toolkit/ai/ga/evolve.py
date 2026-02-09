@@ -96,13 +96,14 @@ class DeckEvolution:
                     return []
 
             try:
-                actions = dm_ai_module.ActionGenerator.generate_legal_commands(gs, self.card_db) or []
-            except Exception:
-                actions = []
-            try:
+                # Prefer command-first generator, fallback to legacy ActionGenerator
                 cmds = commands.generate_legal_commands(gs, self.card_db) or []
             except Exception:
                 cmds = []
+            try:
+                actions = dm_ai_module.ActionGenerator.generate_legal_commands(gs, self.card_db) or []
+            except Exception:
+                actions = []
 
             if not actions and not cmds:
                 dm_ai_module.PhaseManager.next_phase(gs)

@@ -25,7 +25,8 @@ print(f"After start_game: phase={gs.current_phase}, turn={gs.turn_number}")
 mana_count = 0
 max_iterations = 20  # Safety limit
 for iteration in range(max_iterations):
-    actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+    from dm_toolkit import commands_v2 as commands
+    actions = commands.generate_legal_commands(gs, card_db, strict=False)
     
     if not actions:
         print(f"No actions available. Fast-forwarding...")
@@ -65,10 +66,10 @@ print(f"  Mana used: {mana_count}")
 # Check MAIN_PHASE actions
 if gs.current_phase == dm_ai_module.Phase.MAIN:
     print(f"\n[SUCCESS] Reached MAIN_PHASE!")
-    main_actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
-    print(f"  MAIN_PHASE actions: {len(main_actions)}")
+    main_actions = commands.generate_legal_commands(gs, card_db, strict=False)
+    print(f"  MAIN_PHASE actions: {len(main_actions) if main_actions is not None else 0}")
     
-    play_actions = [a for a in main_actions if int(a.type) == 2]  # ActionType.PLAY
+    play_actions = [a for a in (main_actions or []) if str(getattr(a, 'type', '')).isdigit() and int(a.type) == 2]
     print(f"  PLAY actions: {len(play_actions)}")
     
     if play_actions:

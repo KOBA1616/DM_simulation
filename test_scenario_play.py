@@ -30,12 +30,13 @@ print(f"✓ Scenario set - Phase: {int(state.current_phase)}, Active: {state.act
 print(f"  P0: Hand={len(state.players[0].hand)}, Mana={len(state.players[0].mana_zone)}, Battle={len(state.players[0].battle_zone)}")
 
 # IntentGeneratorでアクション生成
-print("\n4. Generating actions with IntentGenerator...")
+print("\n4. Generating commands with commands_v2...")
+from dm_toolkit import commands_v2 as commands
 try:
-    # IntentGeneratorを直接呼び出す (C++実装が使われる)
-    actions = dm.IntentGenerator.generate_legal_actions(state, card_db)
-    print(f"  IntentGenerator type: {type(dm.IntentGenerator)}")
-    print(f"✓ Generated {len(actions)} actions")
+    # Prefer native command generator
+    actions = commands.generate_legal_commands(state, card_db, strict=False)
+    print(f"  commands_v2 type: {type(commands)}")
+    print(f"✓ Generated {len(actions) if actions is not None else 0} commands")
     
     # アクションタイプを確認
     action_types = {}

@@ -2,6 +2,7 @@
 import sys
 sys.path.insert(0, '.')
 import dm_ai_module
+from dm_toolkit import commands_v2 as commands
 
 seed = 42
 card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
@@ -22,7 +23,7 @@ dm_ai_module.PhaseManager.fast_forward(gs, card_db)
 print(f"After fast_forward: phase={gs.current_phase}, turn={gs.turn_number}")
 
 # Execute ONE MANA_CHARGE, then fast_forward
-actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+actions = commands.generate_legal_commands(gs, card_db, strict=False)
 mana_actions = [a for a in actions if int(a.type) == 1]
 if mana_actions:
     print(f"\n=== Executing MANA_CHARGE ===")
@@ -36,8 +37,8 @@ if mana_actions:
     print(f"After fast_forward: phase={gs.current_phase}, mana={len(gs.players[0].mana_zone)}")
     
     # Check actions in current phase
-    actions_after = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
-    print(f"\nActions available: {len(actions_after)}")
+    actions_after = commands.generate_legal_commands(gs, card_db, strict=False)
+    print(f"\nActions available: {len(actions_after) if actions_after is not None else 0}")
     if actions_after:
-        for i, a in enumerate(actions_after[:5]):
-            print(f"  [{i}] type={a.type} card_id={a.card_id}")
+        for i, a in enumerate((actions_after or [])[:5]):
+            print(f"  [{i}] type={getattr(a, 'type', None)} card_id={getattr(a, 'card_id', None)}")

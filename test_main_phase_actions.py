@@ -25,7 +25,8 @@ print(f"P0 mana: {len(gs.players[0].mana_zone)}")
 # Do MANA_CHARGE for first 3 turns
 for turn in range(1, 4):
     print(f"\n=== Turn {turn} ===")
-    actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+    from dm_toolkit import commands_v2 as commands
+    actions = commands.generate_legal_commands(gs, card_db, strict=False)
     print(f"Phase: {gs.current_phase}, Actions: {len(actions)}")
     
     # Find MANA_CHARGE action
@@ -44,8 +45,8 @@ for turn in range(1, 4):
         
         # Check MAIN_PHASE actions
         if gs.current_phase == dm_ai_module.Phase.MAIN:
-            main_actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
-            print(f"MAIN_PHASE: {len(main_actions)} actions available")
+            main_actions = commands.generate_legal_commands(gs, card_db, strict=False)
+            print(f"MAIN_PHASE: {len(main_actions) if main_actions is not None else 0} actions available")
             
             # Show first few actions
             for i, a in enumerate(main_actions[:5]):

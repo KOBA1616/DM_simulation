@@ -32,7 +32,8 @@ except Exception:
 print('Before: pending_effects attr exists?', hasattr(game.state, 'pending_effects'))
 print('Before: pending_effects len (if any):', len(getattr(game.state, 'pending_effects', [])))
 
-actions = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+from dm_toolkit import commands_v2 as commands
+actions = commands.generate_legal_commands(game.state, card_db, strict=False)
 print('Generated actions count:', len(actions))
 for i, a in enumerate(actions[:20]):
     print(i, type(a), vars(a) if hasattr(a, '__dict__') else a)
@@ -49,7 +50,7 @@ if play_actions:
 
 print('After: pending_effects len:', len(getattr(game.state, 'pending_effects', [])))
 
-actions2 = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+actions2 = commands.generate_legal_commands(game.state, card_db, strict=False)
 print('After generated actions count:', len(actions2))
 for i,a in enumerate(actions2[:20]):
     print('  ', i, type(a), getattr(a, 'type', None), getattr(a, 'source_instance_id', None), getattr(a, 'card_id', None))

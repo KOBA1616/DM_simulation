@@ -26,7 +26,8 @@ print(f"3. Scenario setup complete - Phase={int(game.state.current_phase)}")
 print(f"   P0: Hand={len(game.state.players[0].hand)}, Mana={len(game.state.players[0].mana_zone)}, Battle={len(game.state.players[0].battle_zone)}")
 
 # Generate actions
-actions = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+from dm_toolkit import commands_v2 as commands
+actions = commands.generate_legal_commands(game.state, card_db, strict=False)
 print(f"\\n4. Generated {len(actions)} actions")
 
 # Check for DECLARE_PLAY actions

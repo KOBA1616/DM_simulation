@@ -30,7 +30,8 @@ print(f"  Battle zone: {len(gs.players[0].battle_zone)} creatures")
 
 # Try to generate actions in MANA phase
 print(f"\n=== MANA Phase Actions ===")
-actions_mana = dm_ai_module.IntentGenerator.generate_legal_actions(gs, cdb)
+from dm_toolkit import commands_v2 as commands
+actions_mana = commands.generate_legal_commands(gs, cdb, strict=False)
 print(f"Actions: {len(actions_mana)}")
 for i, a in enumerate(actions_mana[:10]):
     print(f"  {i}: {a.type}")
@@ -42,7 +43,7 @@ if len(actions_mana) > 0 and actions_mana[0].type == dm_ai_module.PlayerIntent.M
     print(f"Mana zone now: {len(gs.players[0].mana_zone)} cards")
     
     # Regenerate actions
-    actions_after = dm_ai_module.IntentGenerator.generate_legal_actions(gs, cdb)
+    actions_after = commands.generate_legal_commands(gs, cdb, strict=False)
     print(f"Actions after MANA_CHARGE: {len(actions_after)}")
     for i, a in enumerate(actions_after[:10]):
         print(f"  {i}: {a.type}")
@@ -50,7 +51,7 @@ if len(actions_mana) > 0 and actions_mana[0].type == dm_ai_module.PlayerIntent.M
 # Now try MAIN phase
 print(f"\n=== Forcing MAIN Phase ===")
 gs.current_phase = dm_ai_module.Phase.MAIN
-actions_main = dm_ai_module.IntentGenerator.generate_legal_actions(gs, cdb)
+actions_main = commands.generate_legal_commands(gs, cdb, strict=False)
 print(f"MAIN phase actions: {len(actions_main)}")
 for i, a in enumerate(actions_main[:10]):
     print(f"  {i}: {a.type}")

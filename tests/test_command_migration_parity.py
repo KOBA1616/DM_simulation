@@ -8,20 +8,22 @@ def test_generators_exist_and_return_iterables():
     gi = dm.GameInstance(42, card_db)
     state = gi.state
 
-    # Legacy action generator
+    # Legacy action generator (fallback)
     actions = []
     try:
         actions = dm.IntentGenerator.generate_legal_actions(state, card_db) or []
     except Exception:
         actions = []
 
-    # New command-first generator (binding added in phase 2)
+    # New command-first generator (prefer native binding via commands_v2)
     commands = []
     try:
-        commands = dm.generate_commands(state, card_db) or []
-    except Exception:
-        # Fallback to commands_v2 wrapper
         commands = commands_v2.generate_legal_commands(state, card_db, strict=False) or []
+    except Exception:
+        try:
+            commands = dm.generate_commands(state, card_db) or []
+        except Exception:
+            commands = []
 
     # Basic sanity: both return iterables (lengths are integers)
     assert hasattr(actions, '__len__')

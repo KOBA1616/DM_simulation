@@ -27,7 +27,8 @@ print(f"Hand: {len(game.state.players[0].hand)} cards")
 print(f"Mana: {len(game.state.players[0].mana_zone)} cards (5 untapped)")
 
 # アクション生成
-actions = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+from dm_toolkit import commands_v2 as commands
+actions = commands.generate_legal_commands(game.state, card_db, strict=False)
 print(f"\nGenerated {len(actions)} actions")
 
 # アクションタイプの分類
@@ -86,7 +87,7 @@ print(f"Manually placed card on stack (untapped)")
 print(f"Stack: {len(game2.state.players[0].stack)} cards")
 
 # アクション生成 - StackStrategyがPAY_COSTを生成するか確認
-actions2 = dm.IntentGenerator.generate_legal_actions(game2.state, card_db)
+actions2 = commands.generate_legal_commands(game2.state, card_db, strict=False)
 print(f"\nGenerated {len(actions2)} actions")
 
 action_types2 = {}
@@ -117,7 +118,7 @@ print("-" * 50)
 
 card_inst.is_tapped = True  # 支払い済み状態に変更
 
-actions3 = dm.IntentGenerator.generate_legal_actions(game2.state, card_db)
+actions3 = commands.generate_legal_commands(game2.state, card_db, strict=False)
 action_types3 = {}
 for a in actions3:
     atype = int(a.type)

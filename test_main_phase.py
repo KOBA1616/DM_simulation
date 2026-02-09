@@ -20,7 +20,8 @@ print(f"Phase: {gs.current_phase}, Turn: {gs.turn_number}")
 print(f"P0 hand size: {len(gs.players[0].hand)}")
 
 # Generate actions
-actions = dm_ai_module.IntentGenerator.generate_legal_actions(gs, cdb)
+from dm_toolkit import commands_v2 as commands
+actions = commands.generate_legal_commands(gs, cdb, strict=False)
 print(f"\nMAIN phase actions: {len(actions)}")
 
 # Show first 20 actions

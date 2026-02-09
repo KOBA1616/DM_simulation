@@ -2,6 +2,7 @@
 import sys
 sys.path.insert(0, '.')
 import dm_ai_module as dm
+from dm_toolkit import commands_v2 as commands
 
 print("=== Turn Ending Test ===\n")
 
@@ -33,7 +34,7 @@ print(f"  Mana: {len(p0.mana_zone)} (untapped: {sum(1 for c in p0.mana_zone if n
 print(f"  Battle: {len(p0.battle_zone)}")
 
 # アクション生成
-actions = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+actions = commands.generate_legal_commands(game.state, card_db, strict=False)
 print(f"\n利用可能なアクション: {len(actions)}")
 
 # DECLARE_PLAYアクションを探す
@@ -58,7 +59,7 @@ if declare_play_actions:
     print(f"  Battle: {len(p0.battle_zone)}")
     
     # PASSアクションを確認
-    actions_after_play = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+    actions_after_play = commands.generate_legal_commands(game.state, card_db, strict=False)
     pass_actions_after = [a for a in actions_after_play if int(a.type) == 0]
     declare_actions_after = [a for a in actions_after_play if int(a.type) == 15]
     
@@ -74,7 +75,7 @@ if declare_play_actions:
     max_iterations = 10
     iteration = 0
     while iteration < max_iterations:
-        actions_current = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+        actions_current = commands.generate_legal_commands(game.state, card_db, strict=False)
         resolve_actions = [a for a in actions_current if int(a.type) == 10]  # RESOLVE_EFFECT
         pass_actions_current = [a for a in actions_current if int(a.type) == 0]  # PASS
         
@@ -114,7 +115,7 @@ if declare_play_actions:
         print(f"pending_effectsを強制クリアしてターン終了機能をテスト")
         game.state.pending_effects.clear()
         
-        actions_after_clear = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+        actions_after_clear = commands.generate_legal_commands(game.state, card_db, strict=False)
         pass_actions_after = [a for a in actions_after_clear if int(a.type) == 0]
         print(f"クリア後のアクション: {len(actions_after_clear)}, PASS: {len(pass_actions_after)}")
         if actions_after_clear:

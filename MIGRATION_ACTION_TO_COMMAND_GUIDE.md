@@ -239,6 +239,44 @@ Behavior
 - Do not accept Action-like objects.
 - Only convert to dict for logs via CommandDef.to_dict().
 
+実装状況（最新）
+-----------------
+- 日付: 2026-02-09
+- 概要: Python 側の残存レガシー呼び出しのバッチ移行を継続し、`training/head2head.py` の複数箇所でコマンドファースト生成を優先するよう更新しました。これによりトレーニングループがまずネイティブの `commands_v2.generate_legal_commands(..., strict=False)` を試し、失敗時に従来の `IntentGenerator.generate_legal_commands` にフォールバックします。
+- 変更ファイル:
+  - [training/head2head.py](training/head2head.py#L380-L430)
+  - [training/head2head.py](training/head2head.py#L960-L1010)
+  - [training/head2head.py](training/head2head.py#L1060-L1090)
+- 検証: 直近の parity 単体テストを実行し、全テストがパスしました（`1 passed` を確認）。
+- 次ステップ: 残存する呼び出し箇所を 10–20 ファイルずつのバッチで順次移行し、各バッチ後に parity テストと主要テスト群を実行します。
+
+追記 — バッチ(次の 10 ファイル相当)適用
+-------------------------------------
+- 日付: 2026-02-09
+- 概要: 追加バッチを適用し、コマンド優先化を以下のファイル群に導入しました（既存の ActionGenerator フォールバックは維持）。
+- 変更ファイル:
+  - [dm_toolkit/training/evolution_ecosystem.py](dm_toolkit/training/evolution_ecosystem.py#L1-L80)
+  - [dm_toolkit/ai/analytics/deck_consistency.py](dm_toolkit/ai/analytics/deck_consistency.py#L1-L80)
+  - [dm_toolkit/ai/ga/evolve.py](dm_toolkit/ai/ga/evolve.py#L1-L80)
+  - [dm_toolkit/gui/ai/mcts_python.py](dm_toolkit/gui/ai/mcts_python.py#L1-L120)
+- 検証: parity テストを実行し、1 件のパリティテストが合格しました（`1 passed`）。
+- 次ステップ: 残りのレガシー呼び出し箇所をさらにバッチで移行し、各バッチ後に `tests/test_command_migration_parity.py` と主要テスト群を実行します。
+
+残タスクのサマリ
+-----------------
+- コアバインディング (`dm_ai_module.py`) は現在も一部 `ActionGenerator` を露出しています。これらは互換性のために残しますが、最終フェーズでは `dm_ai_module.generate_commands` を優先的に提供し、`ActionGenerator` を互換 shim に限定する予定です。
+- `dm_toolkit/engine/compat.py` は移行中の互換レイヤであり、ここでの API を段階的に切り替え・無効化することで Python 全体の切替作業を制御できます。
+- `dm_toolkit/gui/headless.py` にあるスタブはテスト環境向けのフォールバックです。ネイティブバインディングが揃うまで保持します。
+
+優先度と次のステップ
+-------------------
+1. パリティ強化テストを作成（Action->Command のフィールドレベルの一致検証）。
+2. コアバインディングの監査: `dm_ai_module.py` 内の Action 露出点を列挙し、`generate_commands` を優先するパッチ案を用意。
+3. 小さな試験的切替を 1 箇所のエンジンループで実施（リスク低減のためブランチで実験）。
+4. 全面切替のためのロールアウト計画（バージョンやフラグで段階的適用）。
+
+注: これらの作業は必ず小さな変更単位で実施し、各ステップごとに parity テストと主要テスト群を実行してください。
+
 Validation checklist
 - A CommandDef produced by commands_v2 executes successfully.
 

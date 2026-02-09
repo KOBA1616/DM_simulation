@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 from dm_toolkit.ai.agent.tokenization import StateTokenizer
 from dm_toolkit.engine.compat import EngineCompat
+from dm_toolkit import commands_v2 as commands
 import dm_ai_module
 
 
@@ -35,7 +36,7 @@ def make_synthetic_examples(n_each: int = 100):
         s = emit.make_playable_state()
         toks = tokenizer.encode_state(s, 0)
         # legal indices
-        cmds = EngineCompat.ActionGenerator_generate_legal_commands(s, card_db)
+        cmds = commands.generate_legal_commands(s, card_db, strict=False)
         legal = [False] * dm_ai_module.CommandEncoder.TOTAL_COMMAND_SIZE
         chosen = None
         for c in cmds:
@@ -64,7 +65,7 @@ def make_synthetic_examples(n_each: int = 100):
     for _ in range(n_each):
         s = emit.make_attack_state()
         toks = tokenizer.encode_state(s, 0)
-        cmds = EngineCompat.ActionGenerator_generate_legal_commands(s, card_db)
+        cmds = commands.generate_legal_commands(s, card_db, strict=False)
         legal = [False] * dm_ai_module.CommandEncoder.TOTAL_COMMAND_SIZE
         chosen = None
         for c in cmds:

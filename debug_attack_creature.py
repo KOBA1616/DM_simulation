@@ -53,7 +53,8 @@ if 1 in card_db:
     print(f"Card has MACH_FIGHTER: {getattr(card_def.keywords, 'mach_fighter', False)}")
 
 # Generate actions
-actions = dm.IntentGenerator.generate_legal_actions(gs, card_db)
+from dm_toolkit import commands_v2 as commands
+actions = commands.generate_legal_commands(gs, card_db, strict=False)
 
 print(f"\nGenerated {len(actions)} actions:")
 for i, a in enumerate(actions):

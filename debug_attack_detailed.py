@@ -51,13 +51,14 @@ print(f'  Instance ID: {c_enemy.instance_id}')
 print(f'  Is Tapped: {c_enemy.is_tapped}')
 print(f'  Turn Played: {c_enemy.turn_played}')
 
-# Generate actions with details
-print(f'\n=== Action Generation ===')
-actions = dm.IntentGenerator.generate_legal_actions(gs, card_db)
-print(f'Total actions: {len(actions)}')
+from dm_toolkit import commands_v2 as commands
+# Generate commands with details
+print(f'\n=== Command Generation ===')
+actions = commands.generate_legal_commands(gs, card_db, strict=False)
+print(f'Total commands: {len(actions) if actions is not None else 0}')
 
-for i, a in enumerate(actions):
-    atype = int(a.type)
+for i, a in enumerate((actions or [])):
+    atype = int(a.type) if str(getattr(a, 'type', '')).isdigit() else getattr(a, 'type', None)
     if atype == 0:
         print(f'  {i}: PASS')
     elif atype == 6:

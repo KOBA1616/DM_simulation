@@ -26,7 +26,8 @@ print("=== Step 1: Play Card ID=1 ===")
 print(f"Before PLAY_CARD, pending_effects: {len(game.state.pending_effects)}")
 
 # Generate legal actions and play the card
-actions = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+from dm_toolkit import commands_v2 as commands
+actions = commands.generate_legal_commands(game.state, card_db, strict=False)
 declare_play_actions = [a for a in actions if int(a.type) == 15]  # DECLARE_PLAY
 
 if declare_play_actions:
@@ -43,7 +44,7 @@ if declare_play_actions:
         print(f"  Optional: {is_opt}")
 
 print("\n=== Step 2: Generate actions for pending effect ===")
-actions = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+actions = commands.generate_legal_commands(game.state, card_db, strict=False)
 pass_actions = [a for a in actions if a.type == dm.PlayerIntent.PASS]
 resolve_actions = [a for a in actions if a.type == dm.PlayerIntent.RESOLVE_EFFECT]
 

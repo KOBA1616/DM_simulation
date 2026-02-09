@@ -25,7 +25,8 @@ game.state.current_phase = dm.Phase.MAIN
 
 print('before pending len', len(game.state.pending_effects))
 
-actions = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+from dm_toolkit import commands_v2 as commands
+actions = commands.generate_legal_commands(game.state, card_db, strict=False)
 print('initial actions count', len(actions))
 for i,a in enumerate(actions[:20]):
     print(i, type(a), getattr(a, 'type', None), getattr(a, 'source_instance_id', None), getattr(a, 'slot_index', None))
@@ -53,7 +54,7 @@ except Exception as e:
     print('  failed to read pending_query fields', e)
 
 # Now generate actions
-actions2 = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+actions2 = commands.generate_legal_commands(game.state, card_db, strict=False)
 print('after-play actions count', len(actions2))
 for i,a in enumerate(actions2[:50]):
     print(i, type(a), getattr(a, 'type', None), getattr(a, 'source_instance_id', None), getattr(a, 'slot_index', None))

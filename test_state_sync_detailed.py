@@ -21,7 +21,8 @@ print(f"  gs.turn_number: {gs.turn_number}")
 print(f"  gs.current_phase: {gs.current_phase}")
 
 # Get actions and execute ONE MANA_CHARGE with PASS
-actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+from dm_toolkit import commands_v2 as commands
+actions = commands.generate_legal_commands(gs, card_db, strict=False)
 mana_actions = [a for a in actions if int(a.type) == 1]  # MANA_CHARGE
 pass_actions = [a for a in actions if int(a.type) == 0]  # PASS
 
@@ -45,8 +46,8 @@ if mana_actions:
     print(f"\nAre they the same object? {gs is gs_new}")
     
     # Now execute PASS to advance phase
-    actions2 = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
-    pass_actions2 = [a for a in actions2 if int(a.type) == 0]
+    actions2 = commands.generate_legal_commands(gs, card_db, strict=False)
+    pass_actions2 = [a for a in (actions2 or []) if str(getattr(a, 'type', '')).isdigit() and int(a.type) == 0]
     
     if pass_actions2:
         print(f"\n=== Executing PASS to advance phase ===")

@@ -26,7 +26,8 @@ dm_ai_module.PhaseManager.fast_forward(state, card_db)
 print(f"After fast_forward: phase={state.current_phase}, active_player={state.active_player_id}")
 
 # Get actions
-actions = dm_ai_module.ActionGenerator.generate_legal_actions(state, card_db)
+from dm_toolkit import commands_v2 as commands
+actions = commands.generate_legal_commands(state, card_db, strict=False)
 print(f"\nGenerated {len(actions)} actions")
 
 if actions:

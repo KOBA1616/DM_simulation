@@ -19,7 +19,8 @@ dm_ai_module.PhaseManager.fast_forward(gs, card_db)
 print(f"=== Turn {gs.turn_number}, Phase: {gs.current_phase} ===\n")
 
 # Execute 1 MANA_CHARGE for P0
-actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+from dm_toolkit import commands_v2 as commands
+actions = commands.generate_legal_commands(gs, card_db, strict=False)
 mana_action = next((a for a in actions if int(a.type) == 1), None)  # MANA_CHARGE
 
 if mana_action:
@@ -37,7 +38,7 @@ if mana_action:
     print(f"\nAfter fast_forward: phase={gs.current_phase}, turn={gs.turn_number}")
     
     # Check actions in MAIN phase
-    actions_main = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+    actions_main = commands.generate_legal_commands(gs, card_db, strict=False)
     print(f"\nMAIN_PHASE actions: {len(actions_main)}")
     
     if gs.current_phase == dm_ai_module.Phase.MAIN:

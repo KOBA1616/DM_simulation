@@ -23,11 +23,12 @@ for i in range(5):
     print(f"--- Step {i+1} ---")
     print(f"Before: Turn={gs.turn_number}, Phase={gs.current_phase}, Player={gs.active_player_id}")
     
-    # Generate actions to see what's available
-    actions = dm_ai_module.IntentGenerator.generate_legal_actions(gs, card_db)
-    print(f"Actions available ({len(actions)}):")
-    for j, action in enumerate(actions[:5]):  # Show first 5
-        print(f"  {j+1}. {action.type}")
+    # Generate commands to see what's available
+    from dm_toolkit import commands_v2 as commands
+    actions = commands.generate_legal_commands(gs, card_db, strict=False)
+    print(f"Commands available ({len(actions) if actions is not None else 0}):")
+    for j, action in enumerate((actions or [])[:5]):  # Show first 5
+        print(f"  {j+1}. {getattr(action, 'type', None)}")
     if len(actions) > 5:
         print(f"  ... and {len(actions)-5} more")
     

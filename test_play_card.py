@@ -4,6 +4,7 @@ sys.path.insert(0, '.')
 
 try:
     import dm_ai_module as dm
+    from dm_toolkit import commands_v2 as commands
     print("✓ dm_ai_module imported")
     
     # カードDB読み込み
@@ -56,7 +57,7 @@ try:
     
     # アクション生成
     print("\n8. Generating actions...")
-    actions = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+        actions = commands.generate_legal_commands(game.state, card_db, strict=False)
     play_actions = [a for a in actions if int(a.type) == 1]  # ActionType.PLAY_CARD = 1
     print(f"✓ Total actions: {len(actions)}, PLAY_CARD: {len(play_actions)}")
     

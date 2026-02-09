@@ -51,5 +51,6 @@ print(f"Phase: {gs.current_phase}")
 print(f"P0 mana zone: {len(gs.players[0].mana_zone)}")
 
 # Check actions in MAIN
-actions = dm_ai_module.IntentGenerator.generate_legal_actions(gs, cdb)
-print(f"Actions in MAIN: {len(actions)}")
+from dm_toolkit import commands_v2 as commands
+actions = commands.generate_legal_commands(gs, cdb, strict=False)
+print(f"Commands in MAIN: {len(actions) if actions is not None else 0}")

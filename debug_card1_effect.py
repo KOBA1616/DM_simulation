@@ -53,7 +53,8 @@ p0 = game.state.players[0]
 if len(p0.hand) > 0:
     card = p0.hand[0]
     
-    actions = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+    from dm_toolkit import commands_v2 as commands
+    actions = commands.generate_legal_commands(game.state, card_db, strict=False)
     declare_play_actions = [a for a in actions if int(a.type) == 15]
     
     if declare_play_actions:
@@ -87,7 +88,7 @@ if len(p0.hand) > 0:
                         print(f"    Action {j}: {act.type}")
         
         # RESOLVE_EFFECTを1回実行
-        actions_after = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+        actions_after = commands.generate_legal_commands(game.state, card_db, strict=False)
         resolve_actions = [a for a in actions_after if int(a.type) == 10]
         
         print(f"\n=== RESOLVE_EFFECT実行前 ===")
@@ -115,7 +116,7 @@ if len(p0.hand) > 0:
                         print(f"  execution_context: {pe.execution_context}")
             
             # もう一度アクション生成
-            actions_after2 = dm.IntentGenerator.generate_legal_actions(game.state, card_db)
+            actions_after2 = commands.generate_legal_commands(game.state, card_db, strict=False)
             resolve_actions2 = [a for a in actions_after2 if int(a.type) == 10]
             pass_actions2 = [a for a in actions_after2 if int(a.type) == 0]
             

@@ -18,11 +18,12 @@ print(f"P0 hand: {len(gs.players[0].hand)}")
 print(f"P0 mana zone: {len(gs.players[0].mana_zone)}")
 
 # Generate actions in current phase (MANA)
-print(f"\n=== Current phase ({gs.current_phase}) actions ===")
-actions = dm_ai_module.IntentGenerator.generate_legal_actions(gs, cdb)
-print(f"Total actions: {len(actions)}")
-for i, a in enumerate(actions[:10]):
-    print(f"  {i}: {a.type}")
+print(f"\n=== Current phase ({gs.current_phase}) commands ===")
+from dm_toolkit import commands_v2 as commands
+actions = commands.generate_legal_commands(gs, cdb, strict=False)
+print(f"Total commands: {len(actions) if actions is not None else 0}")
+for i, a in enumerate((actions or [])[:10]):
+    print(f"  {i}: {getattr(a, 'type', None)}")
 
 # If we have MANA_CHARGE, execute it
 if len(actions) > 0:
@@ -34,7 +35,7 @@ if len(actions) > 0:
     
     # Check actions again
     print(f"\n=== Actions after execution ===")
-    actions2 = dm_ai_module.IntentGenerator.generate_legal_actions(gs, cdb)
+    actions2 = commands.generate_legal_commands(gs, cdb, strict=False)
     print(f"Total actions: {len(actions2)}")
     for i, a in enumerate(actions2[:10]):
         print(f"  {i}: {a.type}")
@@ -48,7 +49,7 @@ if len(actions) > 0:
         # Check MAIN phase actions
         if gs.current_phase == dm_ai_module.Phase.MAIN:
             print(f"\n=== MAIN phase actions ===")
-            actions3 = dm_ai_module.IntentGenerator.generate_legal_actions(gs, cdb)
-            print(f"Total actions: {len(actions3)}")
-            for i, a in enumerate(actions3[:10]):
-                print(f"  {i}: {a.type}")
+            actions3 = commands.generate_legal_commands(gs, cdb, strict=False)
+            print(f"Total actions: {len(actions3) if actions3 is not None else 0}")
+            for i, a in enumerate((actions3 or [])[:10]):
+                print(f"  {i}: {getattr(a, 'type', None)}")

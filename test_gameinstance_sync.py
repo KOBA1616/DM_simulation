@@ -2,6 +2,7 @@
 import sys
 sys.path.insert(0, '.')
 import dm_ai_module
+from dm_toolkit import commands_v2 as commands
 
 # Create game
 seed = 42
@@ -22,7 +23,7 @@ gs = game_instance.state  # Re-sync after fast_forward
 print(f"After start_game + fast_forward: phase={gs.current_phase}, turn={gs.turn_number}")
 
 # Generate actions
-actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+actions = commands.generate_legal_commands(gs, card_db, strict=False)
 print(f"Actions: {len(actions)}")
 
 # Find MA NA_CHARGE
@@ -55,7 +56,7 @@ if mana_action:
     # Check if we're in MAIN_PHASE
     if gs.current_phase == dm_ai_module.Phase.MAIN:
         print("\n✓ Successfully reached MAIN_PHASE")
-        main_actions = dm_ai_module.ActionGenerator.generate_legal_actions(gs, card_db)
+        main_actions = commands.generate_legal_commands(gs, card_db, strict=False)
         print(f"MAIN_PHASE actions: {len(main_actions)}")
         for i, a in enumerate(main_actions[:3]):
             print(f"  {i}: type={a.type} card_id={a.card_id}")

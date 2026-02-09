@@ -19,7 +19,8 @@ try:
     for i in range(30):
         phase = int(gs.current_phase)
         if phase == 3:  # MAIN
-            actions = module.IntentGenerator.generate_legal_actions(gs, card_db)
+            from dm_toolkit import commands_v2 as commands
+            actions = commands.generate_legal_commands(gs, card_db, strict=False)
             action_types = [int(a.type) for a in actions]
             has_pass = 0 in action_types
             print(f"{i}: Phase 3 - {len(actions)} actions - has_PASS={has_pass} - types={action_types[:3]}")

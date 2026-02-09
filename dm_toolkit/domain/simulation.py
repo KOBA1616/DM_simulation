@@ -139,18 +139,22 @@ class SimulationRunner:
 
                             # Generate legal mask
                             try:
-                                legal_actions = dm_ai_module.IntentGenerator.generate_legal_actions(s, self.card_db)
+                                # Prefer command-first generator for legal mask
+                                from dm_toolkit import commands_v2 as commands
+                                legal_actions = commands.generate_legal_commands(s, self.card_db, strict=False)
                                 mask = np.zeros(reserved_dim, dtype=bool)
-                                for action in legal_actions:
+                                for action in (legal_actions or []):
                                     try:
-                                        idx = dm_ai_module.CommandEncoder.command_to_index(action)
-                                        if 0 <= idx < reserved_dim:
+                                        # action may be CommandDef or dict-like
+                                        d = action.to_dict() if hasattr(action, 'to_dict') else (action if isinstance(action, dict) else None)
+                                        idx = dm_ai_module.CommandEncoder.command_to_index(d if d is not None else action)
+                                        if idx is not None and 0 <= idx < reserved_dim:
                                             mask[idx] = True
-                                    except:
+                                    except Exception:
                                         continue
                                 legal_masks.append(mask)
                             except Exception:
-                                # Fallback
+                                # Fallback to permissive mask
                                 legal_masks.append(np.ones(reserved_dim, dtype=bool))
 
                         # Pad sequences

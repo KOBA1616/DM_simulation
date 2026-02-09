@@ -158,10 +158,13 @@ class MCTS:
             actions = []
             if not cmd_list:
                 try:
-                    # Fallback to legacy ActionGenerator.generate_legal_actions
-                    actions = dm_ai_module.ActionGenerator.generate_legal_commands(state, self.card_db) or []
+                    # Prefer command-first generator, fallback to legacy ActionGenerator
+                    actions = commands.generate_legal_commands(state, self.card_db) or []
                 except Exception:
-                    actions = []
+                    try:
+                        actions = dm_ai_module.ActionGenerator.generate_legal_commands(state, self.card_db) or []
+                    except Exception:
+                        actions = []
             if not cmd_list and not actions:
                 return 0.0
         except Exception:

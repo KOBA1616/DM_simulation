@@ -63,8 +63,8 @@ if play_cmd is not None:
 			except Exception:
 				pass
 # pay cost
-actions = dm_ai_module.IntentGenerator.generate_legal_commands(game, card_db)
-print('after declare, actions:', [(a.type, a.card_id) for a in actions])
+actions = generate_legal_commands(game, card_db) if generate_legal_commands else []
+print('after declare, actions:', [(getattr(a,'type',None), getattr(a,'card_id',None)) for a in actions])
 pay = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
 print('pay', pay)
 pay_cmd = getattr(pay, 'command', None) if pay is not None else None
@@ -91,8 +91,8 @@ else:
 	except Exception:
 		dm_ai_module.GameLogicSystem.resolve_action(game, pay, card_db)
 # resolve
-actions = dm_ai_module.IntentGenerator.generate_legal_commands(game, card_db)
-print('before resolve, actions:', [(a.type, a.card_id) for a in actions])
+actions = generate_legal_commands(game, card_db) if generate_legal_commands else []
+print('before resolve, actions:', [(getattr(a,'type',None), getattr(a,'card_id',None)) for a in actions])
 res = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
 print('resolve', res)
 res_cmd = getattr(res, 'command', None) if res is not None else None

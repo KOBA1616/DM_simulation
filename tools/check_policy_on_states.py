@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from dm_toolkit.ai.agent.tokenization import StateTokenizer
 from dm_toolkit.engine.compat import EngineCompat
+from dm_toolkit import commands_v2 as commands
 import dm_ai_module
 
 try:
@@ -72,7 +73,7 @@ def model_policy_for_state(sess, tokenizer, state, player_id=0):
 
 def legal_indices_for_state(state, card_db=None):
     card_db = card_db or {}
-    cmds = EngineCompat.ActionGenerator_generate_legal_commands(state, card_db)
+    cmds = commands.generate_legal_commands(state, card_db, strict=False)
     mapped = []
     for w in cmds:
         try:
