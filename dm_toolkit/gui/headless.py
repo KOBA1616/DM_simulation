@@ -146,13 +146,22 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
                         def generate_legal_commands(state, card_db):
                             out = []
                             try:
-                                # Prefer adapting from ActionGenerator if available
+                                # Prefer command-first generator when possible, else adapt from ActionGenerator
                                 acts = []
                                 try:
-                                    if hasattr(_native, 'ActionGenerator'):
-                                        acts = _native.ActionGenerator.generate_legal_commands(state, card_db)
+                                    try:
+                                        from dm_toolkit import commands as _commands
+                                        acts = _commands.generate_legal_commands(state, card_db) or []
+                                    except Exception:
+                                        acts = []
                                 except Exception:
                                     acts = []
+                                if not acts:
+                                    try:
+                                        if hasattr(_native, 'ActionGenerator'):
+                                            acts = _native.ActionGenerator.generate_legal_commands(state, card_db)
+                                    except Exception:
+                                        acts = []
 
                                 if acts:
                                     for a in acts:

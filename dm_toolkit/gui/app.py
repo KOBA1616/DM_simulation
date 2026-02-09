@@ -478,15 +478,18 @@ class GameWindow(QMainWindow):
         # per-player filtered list is empty.
         all_legal_actions = []
         try:
-            # Prefer native command-first generator via commands_v2 wrapper; fall back to EngineCompat for compatibility
-            all_legal_actions = commands.generate_legal_commands(self.gs, self.card_db, strict=False)
-            if not all_legal_actions:
-                all_legal_actions = EngineCompat.ActionGenerator_generate_legal_commands(self.gs, self.card_db)
-        except Exception:
+            # Prefer native command-first generator via commands wrapper; only call EngineCompat fallback when empty
             try:
-                all_legal_actions = EngineCompat.ActionGenerator_generate_legal_commands(self.gs, self.card_db)
+                all_legal_actions = commands.generate_legal_commands(self.gs, self.card_db, strict=False) or []
             except Exception:
                 all_legal_actions = []
+            if not all_legal_actions:
+                try:
+                    all_legal_actions = EngineCompat.ActionGenerator_generate_legal_commands(self.gs, self.card_db) or []
+                except Exception:
+                    all_legal_actions = []
+        except Exception:
+            all_legal_actions = []
 
         legal_actions = []
         is_human = False

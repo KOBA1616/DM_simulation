@@ -404,18 +404,18 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
 
             active = state.active_player_id
             try:
-                # prefer native command-first generator
-                legal = commands.generate_legal_commands(state, CARD_DB, strict=False) or []
+                # prefer native command-first generator, fallback to legacy IntentGenerator only when empty
+                try:
+                    legal = commands.generate_legal_commands(state, CARD_DB, strict=False) or []
+                except Exception:
+                    legal = []
+                if not legal:
+                    try:
+                        legal = dm.IntentGenerator.generate_legal_commands(state, CARD_DB) or []
+                    except Exception:
+                        legal = []
             except Exception:
-                try:
-                    legal = dm.IntentGenerator.generate_legal_commands(state, CARD_DB) or []
-                except Exception:
-                    legal = []
-            if not legal:
-                try:
-                    legal = dm.IntentGenerator.generate_legal_commands(state, CARD_DB) or []
-                except Exception:
-                    legal = []
+                legal = []
 
             # Emit minimal legal/active inspection so we always know why sequences may be skipped
             try:
@@ -978,14 +978,14 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                     try:
                         legal = commands.generate_legal_commands(inst.state, CARD_DB, strict=False) or []
                     except Exception:
-                        legal = dm.IntentGenerator.generate_legal_commands(inst.state, CARD_DB) or []
+                        legal = []
+                    if not legal:
+                        try:
+                            legal = dm.IntentGenerator.generate_legal_commands(inst.state, CARD_DB) or []
+                        except Exception:
+                            legal = []
                 except Exception:
                     legal = []
-                if not legal:
-                    try:
-                        legal = dm.IntentGenerator.generate_legal_commands(inst.state, CARD_DB) or []
-                    except Exception:
-                        legal = []
                 pending = EngineCompat.get_pending_effects_info(inst.state)
                 # turn number and simple player zone summaries
                 turn = EngineCompat.get_turn_number(inst.state)
@@ -1070,14 +1070,18 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
             for i, inst in enumerate(instances):
                 try:
                     try:
-                        legal = commands.generate_legal_commands(inst.state, CARD_DB, strict=False) or []
-                    except Exception:
-                        legal = dm.IntentGenerator.generate_legal_commands(inst.state, CARD_DB) or []
-                    if not legal:
+                        legal = []
                         try:
-                            legal = dm.IntentGenerator.generate_legal_commands(inst.state, CARD_DB) or []
+                            legal = commands.generate_legal_commands(inst.state, CARD_DB, strict=False) or []
                         except Exception:
                             legal = []
+                        if not legal:
+                            try:
+                                legal = dm.IntentGenerator.generate_legal_commands(inst.state, CARD_DB) or []
+                            except Exception:
+                                legal = []
+                    except Exception:
+                        legal = []
                     pending = EngineCompat.get_pending_effects_info(inst.state)
                     turn = EngineCompat.get_turn_number(inst.state)
                     p0 = EngineCompat.get_player(inst.state, 0)

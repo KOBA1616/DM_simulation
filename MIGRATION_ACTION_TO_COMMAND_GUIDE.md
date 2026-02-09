@@ -250,6 +250,20 @@ Behavior
 - 検証: 直近の parity 単体テストを実行し、全テストがパスしました（`1 passed` を確認）。
 - 次ステップ: 残存する呼び出し箇所を 10–20 ファイルずつのバッチで順次移行し、各バッチ後に parity テストと主要テスト群を実行します。
 
+追加バッチ（2026-02-09）:
+- 概要: Python 側の追加バッチ移行を実施し、主に GUI/AI/トレーニング周りの呼び出しを「コマンド優先」へ切替えました。
+- 変更ファイル（抜粋）:
+  - dm_toolkit/training/evolution_ecosystem.py
+  - dm_toolkit/gui/headless.py
+  - dm_toolkit/gui/ai/mcts_python.py
+  - dm_toolkit/ai/agent/mcts.py
+  - dm_toolkit/ai/analytics/deck_consistency.py
+  - dm_toolkit/ai/ga/evolve.py
+  - training/head2head.py
+-  - dm_toolkit/gui/app.py (fallback to EngineCompat tightened to only run when command-first returns empty)
+- 検証: `tests/test_command_migration_parity.py` を実行 — 合格（`1 passed`）。
+ - 次ステップ: 続けて別バッチを適用（各バッチごとに parity テスト実行）。
+
 追記 — バッチ(次の 10 ファイル相当)適用
 -------------------------------------
 - 日付: 2026-02-09
@@ -383,10 +397,10 @@ Appendix: Evidence of Action usage
   - [training/fine_tune_with_mask.py](training/fine_tune_with_mask.py#L28-L80)
   - [tools/emit_play_attack_states.py](tools/emit_play_attack_states.py#L17-L50)
 
-## 実装状況（最新）
-
-- 日付: 2026-02-08
-- ステータス概要: Phase 1〜3 完了、Phase 4 実装済み、Phase 5 基本パリティ検査を追加して合格、Phase 6 の Python 側呼び出し置換を段階的に実施中。
+-## 実装状況（最新）
+-
+-日付: 2026-02-09
+-ステータス概要: Phase 1〜3 完了、Phase 4 実装済み、Phase 5 基本パリティ検査を追加して合格（`tests/test_command_migration_parity.py` — `1 passed`）、Phase 6 の Python 側呼び出し置換を段階的に実施中。
 - ビルド: Release ビルドでネイティブ拡張生成に成功（出力例: `bin/Release/dm_ai_module.cp312-win_amd64.pyd`, `bin/Release/dm_core.lib`）。
 
 主要変更ファイル（抜粋）
