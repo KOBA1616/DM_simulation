@@ -44,10 +44,20 @@ if __name__ == '__main__':
     cre = make_creature(card_id=1, iid_start=3001)
     p.battle_zone.append(cre)
 
-    # Prefer command-first generator (compat wrapper)
+    # Prefer command-first generator (compat wrapper) with fallback
     from dm_toolkit import commands_v2
-    generate_legal_commands = commands_v2.generate_legal_commands
-    cmds = generate_legal_commands(gs, card_db)
+    try:
+        cmds = commands_v2.generate_legal_commands(gs, card_db, strict=False) or []
+    except Exception:
+        cmds = []
+    if not cmds:
+        try:
+            cmds = commands_v2.generate_legal_commands(gs, card_db) or []
+        except Exception:
+            try:
+                cmds = commands_v2.generate_legal_commands(gs, card_db, strict=False) or []
+            except Exception:
+                cmds = []
     print('Wrapped cmds count:', len(cmds))
     for i, c in enumerate(cmds[:20]):
         try:

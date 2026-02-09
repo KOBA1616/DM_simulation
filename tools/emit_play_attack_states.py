@@ -23,7 +23,14 @@ except Exception:
 
 
 def dump_mapped_commands(state, card_db, note: str):
-    cmds = commands.generate_legal_commands(state, card_db, strict=False)
+    try:
+        cmds = commands.generate_legal_commands(state, card_db, strict=False) or []
+    except Exception:
+        try:
+            cmds = commands.generate_legal_commands(state, card_db) or []
+        except Exception:
+            cmds = []
+
     out = []
     for w in cmds:
         try:

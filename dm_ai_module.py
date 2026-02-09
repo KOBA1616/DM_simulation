@@ -17,44 +17,88 @@ import math
 import uuid
 
 # Try to load native extension if present in build output (prefer native C++ implementation)
-try:
-    import importlib.util, importlib.machinery, sys
-    _root = os.path.dirname(__file__)
-    _candidates = [
-        os.path.join(_root, 'bin', 'Release', 'dm_ai_module.cp312-win_amd64.pyd'),
-        os.path.join(_root, 'build-msvc', 'Release', 'dm_ai_module.cp312-win_amd64.pyd'),
-        os.path.join(_root, 'build-msvc', 'dm_ai_module.cp312-win_amd64.pyd'),
-    ]
-    _loaded_native = False
-    for _p in _candidates:
+# unless explicitly disabled via DM_DISABLE_NATIVE environment variable.
+_disable_native = os.environ.get('DM_DISABLE_NATIVE', '').lower() in ('1', 'true', 'yes')
+if not _disable_native:
+    try:
+        import importlib.util, importlib.machinery, sys
+        # On Windows, proactively preload the onnxruntime DLL that ships with the
+        # installed Python package. This avoids accidentally binding to a system-wide
+        # onnxruntime.dll (e.g. under System32) which can be an older version and
+        # trigger ORT API version mismatches when importing the native extension.
         try:
-            if _p and os.path.exists(_p):
-                # Load with the canonical module name so the pyd's PyInit symbol matches
-                loader = importlib.machinery.ExtensionFileLoader('dm_ai_module', _p)
-                spec = importlib.util.spec_from_loader('dm_ai_module', loader)
-                mod = importlib.util.module_from_spec(spec)
-                loader.exec_module(mod)
-                # Copy public attributes into this module's globals
-                for _k, _v in mod.__dict__.items():
-                    if _k.startswith('__'):
-                        continue
-                    globals()[_k] = _v
-                # Ensure the imported extension is the module seen by import machinery
+            if os.name == 'nt':
+                import ctypes
+                from pathlib import Path
+
                 try:
-                    sys.modules['dm_ai_module'] = mod
+                    import onnxruntime as _ort  # type: ignore
+
+                    _capi_dir = Path(getattr(_ort, '__file__', '')).resolve().parent / 'capi'
+                    _ort_dll = _capi_dir / 'onnxruntime.dll'
+                    if _ort_dll.exists():
+                        ctypes.WinDLL(str(_ort_dll))
                 except Exception:
                     pass
-                IS_NATIVE = True
-                _loaded_native = True
-                break
         except Exception:
-            continue
-    if _loaded_native:
-        # Expose that we loaded native and stop defining Python fallback
-        __all__ = list(globals().keys())
-        # Nothing more to do; native symbols are present
-        pass
-except Exception:
+            pass
+        _root = os.path.dirname(__file__)
+        native_override = os.environ.get('DM_AI_MODULE_NATIVE')
+        _candidates = []
+
+        # If the caller specifies an explicit native module path, try it first.
+        # This lets launch scripts avoid manipulating PYTHONPATH (which can cause
+        # Python to import the extension directly and skip this shim's DLL preloading).
+        if native_override:
+            try:
+                if os.path.isdir(native_override):
+                    # Accept a directory override and search within it.
+                    for name in os.listdir(native_override):
+                        if name.startswith('dm_ai_module') and name.endswith('.pyd'):
+                            _candidates.append(os.path.join(native_override, name))
+                elif os.path.exists(native_override):
+                    _candidates.append(native_override)
+            except Exception:
+                pass
+
+        _candidates += [
+            os.path.join(_root, 'bin', 'Release', 'dm_ai_module.cp312-win_amd64.pyd'),
+            os.path.join(_root, 'build-msvc', 'Release', 'dm_ai_module.cp312-win_amd64.pyd'),
+            os.path.join(_root, 'build-msvc', 'dm_ai_module.cp312-win_amd64.pyd'),
+        ]
+        _loaded_native = False
+        for _p in _candidates:
+            try:
+                if _p and os.path.exists(_p):
+                    # Load with the canonical module name so the pyd's PyInit symbol matches
+                    loader = importlib.machinery.ExtensionFileLoader('dm_ai_module', _p)
+                    spec = importlib.util.spec_from_loader('dm_ai_module', loader)
+                    mod = importlib.util.module_from_spec(spec)
+                    loader.exec_module(mod)
+                    # Copy public attributes into this module's globals
+                    for _k, _v in mod.__dict__.items():
+                        if _k.startswith('__'):
+                            continue
+                        globals()[_k] = _v
+                    # Ensure the imported extension is the module seen by import machinery
+                    try:
+                        sys.modules['dm_ai_module'] = mod
+                    except Exception:
+                        pass
+                    IS_NATIVE = True
+                    _loaded_native = True
+                    break
+            except Exception:
+                continue
+        if _loaded_native:
+            # Expose that we loaded native and stop defining Python fallback
+            __all__ = list(globals().keys())
+            # Nothing more to do; native symbols are present
+            pass
+    except Exception:
+        IS_NATIVE = False
+else:
+    # DM_DISABLE_NATIVE is set; skip native module loading
     IS_NATIVE = False
 
 
@@ -397,7 +441,36 @@ class GameState:
         self.player_modes = [PlayerMode.AI, PlayerMode.AI]
 
     def setup_test_duel(self):
-        """Initialize game state for test duels."""
+        """Initialize game state for test duels.
+        
+        CRITICAL INITIALIZATION:
+        Resets all game state to clean slate for testing.
+        
+        WHAT THIS DOES:
+        1. Create fresh Player objects for both players
+        2. Clear all zones (hand, mana, battle, shields, graveyard, deck)
+        3. Reset game counters (turn number = 1)
+        4. Set initial phase to MANA
+        5. Set active player to 0 (first player)
+        
+        WHAT THIS DOES NOT DO:
+        - Does NOT set up decks (use set_deck() afterwards)
+        - Does NOT place initial shields/hand (use PhaseManager.start_game())
+        - Does NOT load card database
+        
+        REGRESSION PREVENTION:
+        - ALWAYS call this before set_deck() to ensure clean state
+        - After setup_test_duel(), deck will be empty until you call set_deck()
+        - After set_deck(), you must call PhaseManager.start_game() for shields/hand
+        
+        TYPICAL USAGE:
+        ```python
+        gs.setup_test_duel()                    # Clear everything
+        gs.set_deck(0, [1,2,3,4,5]*8)          # Set P0 deck (40 cards)
+        gs.set_deck(1, [1,2,3,4,5]*8)          # Set P1 deck (40 cards)
+        PhaseManager.start_game(gs, card_db)    # Place shields + draw hand
+        ```
+        """
         # Ensure we have 2 players
         self.players = [Player(0), Player(1)]
         
@@ -451,8 +524,31 @@ class GameState:
             self.players[player].mana_zone.append(c)
 
     def set_deck(self, player: int, deck_ids: List[int]):
+        """Set a player's deck from a list of card IDs.
+        
+        CRITICAL DECK INITIALIZATION:
+        - Deck must contain CardStub objects, NOT raw card IDs (integers)
+        - Each CardStub must have a unique instance_id for tracking across zones
+        - Instance IDs should start from a high base (10000+) to avoid conflicts
+        
+        REGRESSION PREVENTION:
+        - DO NOT assign deck_ids directly: self.players[player].deck = deck_ids
+        - ALWAYS convert IDs to CardStub objects with unique instance_ids
+        - Without CardStub objects, card movement between zones will fail
+        
+        Args:
+            player: Player index (0 or 1)
+            deck_ids: List of card IDs to create deck from
+        """
         try:
-            self.players[player].deck = list(deck_ids)
+            # Convert card IDs to CardStub objects with unique instance IDs
+            # Start instance IDs from a high number to avoid conflicts with cards in other zones
+            base_instance_id = 10000 + (player * 1000)
+            deck_cards = []
+            for i, card_id in enumerate(deck_ids):
+                instance_id = base_instance_id + i
+                deck_cards.append(CardStub(card_id, instance_id))
+            self.players[player].deck = deck_cards
         except Exception:
             pass
 
@@ -499,26 +595,62 @@ class GameInstance:
     def initialize_card_stats(self, deck_size: int):
         pass
 
-    def execute_action(self, action: Action):
-        if action.type == ActionType.PLAY_CARD or action.type == ActionType.DECLARE_PLAY:
-            pid = getattr(action, 'target_player', getattr(self.state, 'active_player_id', 0))
+    def execute_action(self, action):
+        """Execute a game action (mana charge, play card, etc.).
+        
+        CRITICAL: This method must properly handle both Action objects and dict-format commands.
+        DO NOT create new CardStub instances for cards already in zones - move the existing objects.
+        
+        Args:
+            action: Can be either an Action object or a dict-format command
+        """
+        # Normalize action to get type and attributes
+        if isinstance(action, dict):
+            # Dict format from generate_legal_commands
+            action_type = action.get('type')
+            source_instance_id = action.get('source_instance_id')
+            card_id = action.get('card_id')
+            target_player = action.get('target_player')
+        else:
+            # Object format
+            action_type = getattr(action, 'type', None)
+            source_instance_id = getattr(action, 'source_instance_id', None)
+            card_id = getattr(action, 'card_id', None)
+            target_player = getattr(action, 'target_player', None)
+        
+        # Handle ActionType enum or integer
+        try:
+            if hasattr(action_type, 'value'):
+                action_type_value = action_type.value
+            else:
+                action_type_value = int(action_type) if action_type is not None else None
+        except Exception:
+            action_type_value = action_type
+        
+        # ActionType values: PASS=1, MANA_CHARGE=2, PLAY_CARD=3, etc.
+        if action_type_value in (3, 4) or action_type == ActionType.PLAY_CARD or action_type == ActionType.DECLARE_PLAY:
+            # PLAY_CARD or DECLARE_PLAY
+            pid = target_player if target_player is not None else getattr(self.state, 'active_player_id', 0)
             hand = self.state.players[pid].hand
             found = None
+            # Find and remove card from hand by instance_id (unique identifier)
             for c in list(hand):
-                if getattr(c, 'card_id', None) == getattr(action, 'card_id', None) or getattr(c, 'instance_id', None) == getattr(action, 'source_instance_id', None):
+                if getattr(c, 'instance_id', None) == source_instance_id:
                     found = c
                     try:
                         hand.remove(c)
                     except Exception:
                         pass
                     break
+            # Create pending effect for the card
             eff = type('Eff', (), {})()
             try:
-                eff.card_id = action.card_id
+                eff.card_id = card_id if card_id is not None else (found.card_id if found else None)
             except Exception:
                 eff.card_id = None
             self.state.pending_effects.append(eff)
-        elif action.type == ActionType.RESOLVE_EFFECT:
+        elif action_type_value == 5 or action_type == ActionType.RESOLVE_EFFECT:
+            # RESOLVE_EFFECT
             if self.state.pending_effects:
                 eff = self.state.pending_effects.pop()
                 pid = getattr(self.state, 'active_player_id', 0)
@@ -528,14 +660,53 @@ class GameInstance:
                         self.state.players[pid].graveyard.append(CardStub(cid))
                 except Exception:
                     pass
-        elif action.type == ActionType.MANA_CHARGE:
+        elif action_type_value == 2 or action_type == ActionType.MANA_CHARGE:
+            # MANA_CHARGE
+            # CRITICAL: For mana charge, move the actual CardStub from hand to mana zone
+            # DO NOT create a new CardStub - preserve instance_id for tracking
             pid = getattr(self.state, 'active_player_id', 0)
-            cid = getattr(action, 'card_id', None)
-            self.state.players[pid].mana_zone.append(CardStub(cid if cid is not None else 0))
+            hand = self.state.players[pid].hand
+            
+            # Find the card in hand by instance_id
+            card_to_charge = None
+            for c in list(hand):
+                if getattr(c, 'instance_id', None) == source_instance_id:
+                    card_to_charge = c
+                    hand.remove(c)
+                    break
+            
+            # Add to mana zone (use existing CardStub if found, otherwise create new one)
+            if card_to_charge:
+                self.state.players[pid].mana_zone.append(card_to_charge)
+            else:
+                # Fallback: create new CardStub if card not found in hand
+                # This shouldn't normally happen but prevents crashes
+                self.state.players[pid].mana_zone.append(CardStub(card_id if card_id is not None else 0))
 
     def step(self) -> bool:
         """
         Execute one step of game progression.
+        
+        CRITICAL GAME LOOP IMPLEMENTATION:
+        1. Generate legal actions for current game state
+        2. Execute first action (AI behavior)
+        3. Call fast_forward() to auto-advance phases without player input
+        
+        AI ACTION SELECTION:
+        - Prefer meaningful actions (mana charge, play card, attack) over PASS
+        - PASS should only be chosen when no other actions are available
+        - This ensures the game progresses (mana is charged, creatures are played, etc.)
+        
+        REGRESSION PREVENTION - MANA CHARGE BUG:
+        - DO NOT always execute actions[0] - it may be PASS
+        - ALWAYS filter out PASS actions first, prefer non-PASS actions
+        - Without this, AI will never charge mana or play cards
+        - Test: After multiple turns, players should have mana in mana_zone
+        
+        REGRESSION PREVENTION - GAME PROGRESSION:
+        - Always call PhaseManager.fast_forward() after executing an action
+        - This ensures game progresses through automatic phases (draw, untap, etc.)
+        - Without fast_forward(), game will be stuck waiting for input in every phase
         
         Returns:
             bool: True if successful, False if game is over or no actions available
@@ -544,7 +715,7 @@ class GameInstance:
         if getattr(self.state, 'game_over', False):
             return False
         
-        # Generate legal actions
+        # Generate legal actions for current state
         try:
             actions = ActionGenerator.generate_legal_actions(self.state, self.card_db)
         except Exception:
@@ -553,10 +724,33 @@ class GameInstance:
         if not actions:
             return False
         
-        # Execute the first available action (AI chooses first legal action)
+        # CRITICAL: Prefer non-PASS actions over PASS
+        # Filter actions to find meaningful actions (mana charge, play, attack, etc.)
+        non_pass_actions = []
+        for action in actions:
+            action_type = action.get('type') if isinstance(action, dict) else getattr(action, 'type', None)
+            # Skip PASS actions (ActionType.PASS = 1)
+            try:
+                from dm_toolkit.dm_types import ActionType
+                if action_type != ActionType.PASS and action_type != 1:
+                    non_pass_actions.append(action)
+            except Exception:
+                # Fallback: if we can't import ActionType, just check numeric value
+                if action_type != 1:  # 1 is ActionType.PASS
+                    non_pass_actions.append(action)
+        
+        # Choose action: prefer non-PASS, fall back to PASS if no other options
+        action_to_execute = non_pass_actions[0] if non_pass_actions else actions[0]
+        
+        # Execute the chosen action
         try:
-            action = actions[0]
-            self.execute_action(action)
+            self.execute_action(action_to_execute)
+            
+            # CRITICAL: Call fast_forward to auto-advance through phases
+            # This moves the game from current phase to the next player-input-required state
+            # Without this, the game will be stuck in the current phase
+            PhaseManager.fast_forward(self.state, self.card_db)
+            
             return True
         except Exception:
             return False
@@ -705,9 +899,46 @@ class IntentGenerator(ActionGenerator):
 class PhaseManager:
     @staticmethod
     def start_game(state: GameState, card_db: Any = None) -> None:
+        """Start the game with initial setup: 5 shields and 5 hand cards for each player.
+        
+        CRITICAL GAME INITIALIZATION:
+        This method performs the standard Duel Masters game setup:
+        1. Set initial phase to MANA and active player to 0
+        2. Place 5 cards from top of each player's deck as shields (face-down)
+        3. Draw 5 cards into each player's hand
+        
+        REGRESSION PREVENTION:
+        - MUST place shields BEFORE drawing cards (correct order)
+        - MUST move actual CardStub objects from deck, not create new ones
+        - Use deck.pop() to take from top of deck (end of list)
+        - After setup: deck should have 30 cards (40 - 5 shields - 5 hand)
+        - DO NOT call add_card_to_hand() with placeholder IDs - move real cards
+        
+        Args:
+            state: GameState to initialize
+            card_db: Card database (optional, for future use)
+        """
         try:
             state.current_phase = Phase.MANA
             state.active_player_id = 0
+            
+            # Initial setup: Place 5 shields and draw 5 cards for each player
+            for pid in (0, 1):
+                p = state.players[pid]
+                
+                # Place 5 shields from top of deck (face-down protection)
+                shields_to_place = min(5, len(p.deck))
+                for _ in range(shields_to_place):
+                    if p.deck:
+                        card = p.deck.pop()  # Take from top (end of list)
+                        p.shield_zone.append(card)
+                
+                # Draw 5 cards into hand (starting hand)
+                cards_to_draw = min(5, len(p.deck))
+                for _ in range(cards_to_draw):
+                    if p.deck:
+                        card = p.deck.pop()  # Take from top (end of list)
+                        p.hand.append(card)
         except Exception:
             pass
 
@@ -717,6 +948,29 @@ class PhaseManager:
 
     @staticmethod
     def next_phase(state: GameState, card_db: Any = None) -> None:
+        """Advance to the next game phase.
+        
+        PHASE PROGRESSION:
+        MANA → MAIN → ATTACK → END → (next turn) MANA
+        
+        TURN TRANSITION (END → MANA):
+        When transitioning from END to MANA, performs turn start procedures:
+        1. Switch active player (0 ↔ 1)
+        2. Untap all cards in mana zone and battle zone
+        3. Remove summoning sickness (creatures can attack this turn)
+        4. Draw 1 card from deck into hand
+        5. Increment turn counter when P0 becomes active
+        
+        REGRESSION PREVENTION:
+        - When drawing at turn start, MUST move actual CardStub from deck
+        - DO NOT use add_card_to_hand(player_id, placeholder_id)
+        - Use deck.pop() to get card, then hand.append(card)
+        - This preserves instance_id and card_id for tracking
+        
+        Args:
+            state: GameState to advance
+            card_db: Card database (optional)
+        """
         try:
             if state.current_phase == Phase.MANA:
                 state.current_phase = Phase.MAIN
@@ -729,20 +983,23 @@ class PhaseManager:
                 state.active_player_id = 1 - state.active_player_id
                 state.current_phase = Phase.MANA
 
-                # Untap Step
+                # Untap Step: Reset all tapped cards
                 p = state.players[state.active_player_id]
                 for c in p.mana_zone:
                     c.is_tapped = False
                 for c in p.battle_zone:
                     c.is_tapped = False
-                    c.sick = False # Remove summoning sickness
+                    c.sick = False  # Remove summoning sickness
 
-                # Draw Step
-                # Use a placeholder card ID for draw (use 1 to be safe within vocab limits)
-                state.add_card_to_hand(state.active_player_id, 1)
+                # Draw Step: Draw 1 card from deck (if available)
+                # CRITICAL: Move actual CardStub from deck, not placeholder
+                p = state.players[state.active_player_id]
+                if p.deck:
+                    card = p.deck.pop()  # Take from top of deck
+                    p.hand.append(card)  # Add to hand
 
-                # Increment Turn Counter (assuming increment on P0 start or every turn?)
-                # Usually standard practice:
+                # Increment Turn Counter
+                # Standard practice: increment when player 0 becomes active
                 if state.active_player_id == 0:
                     state.turn_number += 1
         except Exception:
@@ -750,6 +1007,36 @@ class PhaseManager:
 
     @staticmethod
     def fast_forward(state: GameState, card_db: Any = None) -> None:
+        """Auto-advance game state through phases that don't require player input.
+        
+        CRITICAL AUTO-PROGRESSION:
+        This method handles automatic phase transitions and turn progression.
+        Called after each player action to advance to next input-required state.
+        
+        PHASE FLOW:
+        - MANA → MAIN: Automatic (mana phase has no automation, just transitions)
+        - MAIN → ATTACK: After player passes main phase
+        - ATTACK → END: After attack declarations/blocks
+        - END → Next turn MANA: Turn end, switch active player
+        
+        TURN TRANSITIONS (END → MANA):
+        1. Switch active player (0 ↔ 1)
+        2. Untap all mana and creatures
+        3. Remove summoning sickness from creatures
+        4. Draw 1 card from deck
+        5. Increment turn counter (when P0 becomes active)
+        
+        REGRESSION PREVENTION:
+        - ALWAYS advance at least one phase to prevent infinite loops
+        - STOP at MAIN phase (requires player input for actions)
+        - STOP if pending_effects exist (need resolution before proceeding)
+        - When drawing at turn start, move actual CardStub from deck, not placeholder
+        - Use deck.pop() to take from top, then hand.append() - preserve instance_id
+        
+        Args:
+            state: GameState to advance
+            card_db: Card database (optional, for future use)
+        """
         try:
             # Ensure the current_phase is a valid Phase; normalize unknown values
             cp = getattr(state, 'current_phase', None)

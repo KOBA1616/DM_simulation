@@ -95,17 +95,32 @@ class DeckEvolution:
                 def _generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> List[Any]:
                     return []
 
+            # Prefer command-first generator with a non-strict attempt, then
+            # fall back to a strict-less call if the wrapper doesn't accept
+            # the `strict` parameter. If no commands returned, fall back to
+            # the legacy ActionGenerator so behavior remains safe.
+            cmds = []
             try:
-                # Prefer command-first generator, fallback to legacy ActionGenerator
-                cmds = commands.generate_legal_commands(gs, self.card_db) or []
+                try:
+                    cmds = commands.generate_legal_commands(gs, self.card_db, strict=False) or []
+                except TypeError:
+                    # Older wrappers may not accept `strict`
+                    cmds = commands.generate_legal_commands(gs, self.card_db) or []
+                except Exception:
+                    cmds = []
             except Exception:
                 cmds = []
+
             actions = []
             if not cmds:
                 try:
-                    actions = dm_ai_module.ActionGenerator.generate_legal_commands(gs, self.card_db) or []
+                    from dm_toolkit import commands as legacy_commands
+                    actions = legacy_commands._call_native_action_generator(gs, self.card_db) or []
                 except Exception:
-                    actions = []
+                    try:
+                        actions = dm_ai_module.ActionGenerator.generate_legal_commands(gs, self.card_db) or []
+                    except Exception:
+                        actions = []
 
             if not actions and not cmds:
                 dm_ai_module.PhaseManager.next_phase(gs)

@@ -352,7 +352,24 @@ class GameSession:
         """Get legal commands from C++ engine."""
         if not self.gs:
             return []
-        return _generate_legal_commands(self.gs, self.card_db)
+        try:
+            try:
+                cmds = _generate_legal_commands(self.gs, self.card_db, strict=False) or []
+            except TypeError:
+                cmds = _generate_legal_commands(self.gs, self.card_db) or []
+            except Exception:
+                cmds = []
+        except Exception:
+            cmds = []
+
+        if not cmds:
+            try:
+                # Legacy fallback via EngineCompat/ActionGenerator
+                return EngineCompat.ActionGenerator_generate_legal_commands(self.gs, self.card_db)
+            except Exception:
+                return []
+
+        return cmds
 
     def is_game_over(self) -> bool:
         """Check if game is over."""

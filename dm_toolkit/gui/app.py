@@ -107,18 +107,9 @@ class GameWindow(QMainWindow):
             except Exception:
                 pass
             self.update_ui()
-            # For test operation: auto-apply the 'standard_start' scenario if present
-            try:
-                if hasattr(self, 'scenario_tools') and getattr(self, 'scenario_tools') is not None:
-                    for sc in getattr(self.scenario_tools, 'scenarios', []):
-                        if sc and sc.get('name') == 'standard_start':
-                            # Apply scenario (this will reset game and set zones accordingly)
-                            self.scenario_tools.apply_scenario(sc)
-                            self.log_viewer.log_message(tr("Applied 'standard_start' scenario on startup"))
-                            break
-            except Exception as e:
-                self.log_viewer.log_message(f"Failed to auto-apply standard scenario: {e}")
             # Load and auto-deploy a default deck on startup (shuffle then reset)
+            # Must be done BEFORE applying scenarios to avoid overwriting scenario state
+            scenario_to_apply = None
             try:
                 repo_root = os.path.join(os.getcwd())
                 meta_decks = os.path.join(repo_root, 'data', 'meta_decks.json')
@@ -154,9 +145,28 @@ class GameWindow(QMainWindow):
                             pass
             except Exception:
                 pass
+            # For test operation: auto-apply the 'standard_start' scenario if present
+            # Apply AFTER deck loading to avoid scenario state being overwritten
+            try:
+                if hasattr(self, 'scenario_tools') and getattr(self, 'scenario_tools') is not None:
+                    for sc in getattr(self.scenario_tools, 'scenarios', []):
+                        if sc and sc.get('name') == 'standard_start':
+                            # Apply scenario (this will reset game and set zones accordingly)
+                            self.scenario_tools.apply_scenario(sc)
+                            self.log_viewer.log_message(tr("Applied 'standard_start' scenario on startup"))
+                            break
+            except Exception as e:
+                self.log_viewer.log_message(f"Failed to auto-apply standard scenario: {e}")
             try:
                 self.showMaximized()
                 _log_msg('GameWindow.showMaximized called')
+                try:
+                    # Ensure the window is raised and activated on startup
+                    self.raise_()
+                    self.activateWindow()
+                    QTimer.singleShot(100, lambda: (self.raise_(), self.activateWindow()))
+                except Exception:
+                    pass
             except Exception as e:
                 _log_msg(f'Error during showMaximized: {e}')
                 try:

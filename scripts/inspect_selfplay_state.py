@@ -36,9 +36,12 @@ def inspect_game(max_steps=500, seed=42):
     start = time.time()
     while steps < max_steps and not sess.is_game_over():
         try:
-            cmds = generate_legal_commands(gs, card_db) or []
+            cmds = commands_v2.generate_legal_commands(gs, card_db, strict=False) or []
         except Exception:
-            cmds = []
+            try:
+                cmds = commands_v2.generate_legal_commands(gs, card_db) or []
+            except Exception:
+                cmds = []
 
         # Log phase transitions
         try:

@@ -44,7 +44,27 @@ print(f"Mana: {len(game.state.players[0].mana_zone)} cards")
 
 # Generate legal actions and play the spell
 from dm_toolkit import commands_v2 as commands
-actions = commands.generate_legal_commands(game.state, card_db, strict=False)
+import dm_ai_module as _dm
+
+def _get_legal(gs, card_db):
+    try:
+        cmds = commands.generate_legal_commands(gs, card_db, strict=False) or []
+    except Exception:
+        cmds = []
+    if not cmds:
+        try:
+            try:
+                cmds = commands.generate_legal_commands(gs, card_db, strict=False) or []
+            except Exception:
+                try:
+                    cmds = commands.generate_legal_commands(gs, card_db) or []
+                except Exception:
+                    cmds = []
+        except Exception:
+            cmds = []
+    return cmds
+
+actions = _get_legal(game.state, card_db)
 declare_play_actions = [a for a in actions if int(a.type) == 15]  # DECLARE_PLAY
 
 print(f"\nDECLARE_PLAY actions available: {len(declare_play_actions)}")
@@ -77,7 +97,7 @@ if declare_play_actions:
     
     # Generate actions for the pending effect
     print(f"\n=== Generating actions for pending effects ===")
-    actions = commands.generate_legal_commands(game.state, card_db, strict=False)
+    actions = _get_legal(game.state, card_db)
     pass_count = sum(1 for a in actions if a.type == dm.PlayerIntent.PASS)
     resolve_count = sum(1 for a in actions if a.type == dm.PlayerIntent.RESOLVE_EFFECT)
     

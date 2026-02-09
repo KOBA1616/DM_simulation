@@ -20,7 +20,27 @@ print(f"P0 mana zone: {len(gs.players[0].mana_zone)}")
 # Generate actions in current phase (MANA)
 print(f"\n=== Current phase ({gs.current_phase}) commands ===")
 from dm_toolkit import commands_v2 as commands
-actions = commands.generate_legal_commands(gs, cdb, strict=False)
+import dm_ai_module as _dm
+
+def _get_legal(gs, card_db):
+    try:
+        cmds = commands.generate_legal_commands(gs, card_db, strict=False) or []
+    except Exception:
+        cmds = []
+    if not cmds:
+        try:
+            try:
+                cmds = commands.generate_legal_commands(gs, card_db, strict=False) or []
+            except Exception:
+                try:
+                    cmds = commands.generate_legal_commands(gs, card_db) or []
+                except Exception:
+                    cmds = []
+        except Exception:
+            cmds = []
+    return cmds
+
+actions = _get_legal(gs, cdb)
 print(f"Total commands: {len(actions) if actions is not None else 0}")
 for i, a in enumerate((actions or [])[:10]):
     print(f"  {i}: {getattr(a, 'type', None)}")

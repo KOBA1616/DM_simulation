@@ -69,30 +69,31 @@ if ($existing.Count -gt 0) {
     $env:PYTHONPATH = $env:PYTHONPATH + ';' + ($existing -join ';')
 }
 
+# Native module currently causes heap corruption (0xc0000374) during
+# generate_legal_commands calls. Disable native module detection until
+# the native extension is rebuilt and verified to be compatible with
+# current Python code.
+$env:DM_DISABLE_NATIVE = '1'
+
 # Prefer native build artefact: search build dir for dm_ai_module*.pyd and set override
-try {
-    # Search preferred locations for native artefact. Include build dir and common bin/Release.
-    $searchDirs = @($buildDir, (Join-Path $projectRoot 'bin\Release')) | Where-Object { $_ -and (Test-Path $_) }
-    $pyd = $null
-    foreach ($dir in $searchDirs) {
-        $pyd = Get-ChildItem -Path $dir -Filter "dm_ai_module*.pyd" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($pyd) { break }
-    }
-    if ($pyd) {
-        $full = $pyd.FullName
-        Write-Host "Found native dm_ai_module at $full -- forcing loader override."
-        $env:DM_AI_MODULE_NATIVE = $full
-        # Ensure directory containing pyd is on PYTHONPATH first; avoid empty entries and duplicates
-        $pydDir = Split-Path -Parent $full
-        $current = @()
-        if ($env:PYTHONPATH) { $current = $env:PYTHONPATH -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } }
-        if ($current -notcontains $pydDir) {
-            $env:PYTHONPATH = $pydDir + ';' + ($current -join ';')
-        }
-    }
-} catch {
-    # non-fatal
-}
+# try {
+#     # Search preferred locations for native artefact. Include build dir and common bin/Release.
+#     $searchDirs = @($buildDir, (Join-Path $projectRoot 'bin\Release')) | Where-Object { $_ -and (Test-Path $_) }
+#     $pyd = $null
+#     foreach ($dir in $searchDirs) {
+#         $pyd = Get-ChildItem -Path $dir -Filter "dm_ai_module*.pyd" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+#         if ($pyd) { break }
+#     }
+#     if ($pyd) {
+#         $full = $pyd.FullName
+#         Write-Host "Found native dm_ai_module at $full -- forcing loader override."
+#         $env:DM_AI_MODULE_NATIVE = $full
+#     }
+# } catch {
+#     # non-fatal
+# }
+
+Write-Host "Using Python fallback for dm_ai_module (native module disabled due to heap corruption)"
 
 # Centralized logging defaults for GUI runs. These can be overridden by the user's environment.
 # - DM_CONSOLE_LOG_LEVEL: console verbosity (INFO|WARNING|ERROR)

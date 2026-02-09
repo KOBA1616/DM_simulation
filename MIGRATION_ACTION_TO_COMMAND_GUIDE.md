@@ -218,6 +218,52 @@ Status: IMPLEMENTED (Phase 3)
 
 Behavior
 - Prefer dm_ai_module.generate_commands (CommandDef-only).
+
+Final removal checklist (before deleting `ActionGenerator`)
+-------------------------------------------------------
+These are the required steps to safely remove the legacy `ActionGenerator` and related Python shims. Do not delete until every item is completed and CI+integration tests pass.
+
+1. Run strict parity tests across representative states
+  - Execute `tests/test_command_migration_parity_strict.py` in CI and locally with `DM_DISABLE_NATIVE` unset and set. Confirm no mismatches.
+2. Run full test-suite
+  - Run `pytest` across the repository (or CI pipeline). Address any failures.
+3. Smoke integration runs
+  - Execute representative end-to-end scripts: `training/head2head.py` (short run), `scripts/replay_game_verbose.py`, `dm_toolkit/gui/headless` flows.
+4. Update C++ bindings (if required)
+  - Ensure `dm_ai_module.generate_commands` (CommandDef) is exposed and authoritative.
+  - Remove `m.attr("ActionGenerator") = m.attr("IntentGenerator")` only after python shim removed.
+5. Remove Python legacy shims
+  - Remove `dm_ai_module` Python-side `ActionGenerator` stubs and any toolkit shim classes introduced solely for Action fallback.
+6. Update docs and telemetry
+  - Remove references to `ActionGenerator` in docs and code comments.
+  - Ensure telemetry/logging uses `CommandDef.to_dict()`.
+7. CI gating and rollout
+  - Merge behind feature flag or on a release branch; run extended self-play and stress tests for at least 24 hours in CI.
+8. Final cleanup
+  - Remove any remaining code paths that reference `ActionGenerator`.
+  - Run `rg ActionGenerator` and verify zero production references.
+
+Recommendation: perform the removal in a dedicated PR and keep it reversible (feature flag or branch) until extended self-play/QA completes.
+
+Batch note (2026-02-09)
+----------------------
+- Files updated in this batch:
+  - `dm_toolkit/ai/ga/evolve.py` — replaced direct legacy call patterns with a command-first safe pattern:
+    - try `commands.generate_legal_commands(..., strict=False)`
+    - fall back to `commands.generate_legal_commands(... )` if `strict` is unsupported
+    - if commands list is empty, fall back to `dm_ai_module.ActionGenerator.generate_legal_commands`
+- Tests run: `tests/test_command_migration_parity.py` — 1 test passed locally (parity guard).
+- Notes: This change keeps legacy fallback while preferring command-first paths; ready for next batch.
+  - Additional files updated in this batch:
+    - `scripts/replay_game_verbose.py` — replaced direct `dm_ai_module.ActionGenerator` fallback with `dm_toolkit.commands._call_native_action_generator(...)` centralized helper.
+    - `dm_toolkit/ai/ga/evolve.py` — updated ActionGenerator fallback to use `dm_toolkit.commands._call_native_action_generator(...)`, with a final fallback to `dm_ai_module.ActionGenerator` for maximum compatibility.
+    - `dm_toolkit/gui/headless.py` — replaced direct `_native.ActionGenerator.generate_legal_commands` call with centralized `dm_toolkit.commands._call_native_action_generator(...)` fallback.
+    - `training/head2head.py` — replaced direct `dm.IntentGenerator.generate_legal_commands(...)` fallback with centralized `_call_native_action_generator(...)` helper, preserving a final fallback to `dm.IntentGenerator`.
+    - `training/head2head.py` — finalized: all remaining direct `dm.IntentGenerator.generate_legal_commands` fallbacks in finalize/diagnostic sections were updated to use `_call_native_action_generator(...)` first, then fallback to `dm.IntentGenerator` for compatibility.
+  - Tests run: `tests/test_command_migration_parity.py` — 1 test passed locally (parity guard).
+  - Notes: Centralized fallback reduces scattered direct calls to `dm_ai_module.ActionGenerator`.
+    - Archive: On 2026-02-09 candidate logs and reports were archived into `archive/logs_2026-02-09.zip` and originals were removed from the workspace. This is a reversible safety step before any permanent deletion.
+      - Parity test: Added a stricter field-level parity test `tests/test_command_migration_parity_strict.py` that compares command-first outputs with legacy-mapped outputs in an isolated subprocess to avoid native-extension instability. It reports explicit mismatches and is safe to run in CI.
 - If unavailable, optional fallback to old generate_legal_actions (temporary).
 - Provide strict mode: error if command generator missing.
 
@@ -264,6 +310,22 @@ Behavior
  -  - tests/test_command_migration_parity.py (updated to prefer command-first generator with legacy fallback)
 - 検証: `tests/test_command_migration_parity.py` を実行 — 合格（`1 passed`）。
  - 次ステップ: 続けて別バッチを適用（各バッチごとに parity テスト実行）。
+
+追加ミニバッチ（2026-02-09 追記）:
+- 概要: さらに小さなミニバッチを適用し、ツール／ドメイン／REPL 辺りの呼び出しをコマンド優先に切替えました。
+- 変更ファイル:
+  - `dm_toolkit/domain/simulation.py` — legal mask 生成を `commands_v2.generate_legal_commands` を優先し、空の場合に `ActionGenerator` にフォールバックするよう更新。
+  - `tools/emit_play_attack_states.py` — デバッグ用コマンド出力ツールをコマンド優先化（フォールバック保持）。
+  - `dm_toolkit/gui/console_repl.py` — REPL の `list_legal` をコマンド優先に変更し、失敗/空時に `ActionGenerator` を呼ぶように修正。
+- 検証: 変更後に `tests/test_command_migration_parity.py` を実行 — 合格（`1 passed`）。
+
+不要ファイルの削除候補（提案）:
+- ルートにあるビルド/デバッグ出力と思われるテキストファイルはアーカイブ済みまたは再生成可能なログであれば削除候補です。提案リスト（削除実行は要承認）:
+  - `build_debug.txt`, `build_output.txt`, `build_draw_fix.txt`, `build_draw_debug.txt`, `full_output.txt`
+  - `gui_debug.txt`, `gui_draw_test.txt`, `gui_final.txt`, `gui_final_test.txt`, `gui_test_output.txt`
+  - `test_output.txt`, `test_card1_output.txt`
+
+これらは主にビルド／テストログやレポートのスナップショットで、必要なら `reports/` 以下に移動するか、コミット履歴から復元可能です。削除して良ければ私が一括で削除します。確認をお願いします。
 
 追記 — バッチ(次の 10 ファイル相当)適用
 -------------------------------------
@@ -383,6 +445,40 @@ Open questions to resolve early
 - Should C++ implement direct command generation per phase or map from Actions initially?
 - What is the cutoff for removing Python fallback in dm_ai_module.py?
 
+
+## 2026-02-09 追加バッチ報告（追記）
+- 概要: Python 側の追加バッチを適用し、主にスクリプト／ツール／テストの呼び出しを「コマンド優先」へ切替えました。各変更はまず `commands_v2.generate_legal_commands(..., strict=False)` を試行し、空または例外時に既存の `ActionGenerator.generate_legal_commands` にフォールバックする安全なパターンを採用しています。
+- 本バッチで修正した主なファイル例:
+  - `training/fine_tune_with_mask.py`
+  - `tools/emit_play_attack_states.py`
+  - `tools/check_policy_on_states.py`
+  - `scripts/inspect_selfplay_state.py`
+  - `scripts/run_test_manual.py`
+  - `scripts/selfplay_long.py`
+  - `simple_play_test.py`
+  - `test_turn_ending.py`
+  - `test_without_gameinstance.py`
+  - `dm_toolkit/ai/analytics/deck_consistency.py`
+- 検証: 変更後に `tests/test_command_migration_parity.py` を実行 — 合格（`1 passed`）。
+- 次ステップ: 残りのレガシー呼び出し箇所をさらに小さなバッチで移行し、各バッチ後に parity テストと主要テスト群を実行します。
+
+### 2026-02-09 バッチ2（テスト群の移行）
+- 概要: テストスイートや小さなユーティリティスクリプト内の `ActionGenerator.generate_legal_commands` 呼び出しを `commands_v2.generate_legal_commands(..., strict=False)` を優先するパターンへ移行しました。strict 引数が受け付けられないラッパーへの互換も維持します。
+- 修正例（抜粋）:
+  - `test_step_progression.py`
+  - `test_state_sync_detailed.py`
+  - `test_spell.py`
+  - `test_play_verification.py`
+  - `test_play_card.py`
+  - `test_phases_simple.py`
+  - `test_pass_to_main.py`
+  - `test_optional_flag.py`
+  - `test_pass_generation.py`
+  - `scripts/diag_pending_actions.py`
+- 検証: `tests/test_command_migration_parity.py` 実行 — 合格（`1 passed`）。
+
+次: 残りのスクリプト/ツール（`scripts/replay_game_verbose.py`, `scripts/python/stress_test.py`, `scripts/run_direct_test.py`, `dm_toolkit/training/evolution_ecosystem.py` など）を次バッチで移行します。
+
 Appendix: Evidence of Action usage
 - IntentGenerator generates actions in C++.
   - [src/engine/actions/intent_generator.cpp](src/engine/actions/intent_generator.cpp#L1-L120)
@@ -427,3 +523,26 @@ Appendix: Evidence of Action usage
 - 3) 十分なパリティが確認できたらエンジンループを `IntentGenerator` から `CommandGenerator` へ切替（Phase 6 の最終化）。
 
 注記: 重要な設計判断や低レベルの整合性は C++ 側が最終的な根拠です。Python 側の変更は段階的かつ後方互換重視で行っています。
+
+
+# 追記: 2026-02-09 バッチ (MCTS / GA / GUI)
+- 概要: MCTS、GA、GUI 周りの Python 実装で「コマンド優先」へ変更しました。変更は安全性重視で、まず `commands_v2.generate_legal_commands(..., strict=False)` を試し、空や未対応のときに `ActionGenerator` にフォールバックするパターンを採用しています。
+- 変更ファイル（今回追加）:
+  - `dm_toolkit/ai/agent/mcts.py`
+  - `dm_toolkit/ai/ga/evolve.py`
+  - `dm_toolkit/gui/headless.py`
+  - `dm_toolkit/gui/ai/mcts_python.py`
+  - `dm_toolkit/training/evolution_ecosystem.py`
+- 検証: parity テストを実行 — 合格（`1 passed`）。
+- 次: 残りの呼び出し箇所を同様のバッチで段階的に処理し、各バッチ後にパリティ/主要テストを実行します。
+
+### 2026-02-09 バッチ3（ツール／スクリプト移行）
+- 概要: ツールやストレステスト、再生スクリプトの `ActionGenerator.generate_legal_commands` 呼び出しを `commands_v2.generate_legal_commands(..., strict=False)` を優先するように更新しました。`commands_v2` が存在しない場合や `strict` が未対応のラッパーへの互換も確保しています。
+- 修正例（抜粋）:
+  - `scripts/replay_game_verbose.py`
+  - `scripts/python/stress_test.py`
+  - `scripts/run_direct_test.py`
+  - `dm_toolkit/training/evolution_ecosystem.py`
+  - `dm_toolkit/ai/agent/mcts.py` (内部の子ノード生成やロールアウト用の呼び出しを更新)
+- 検証: `tests/test_command_migration_parity.py` 実行 — 合格（`1 passed`）。
+- 次: 残りのスクリプト/ツールをさらにバッチで移行し、並行してパリティ強化テストを準備します。

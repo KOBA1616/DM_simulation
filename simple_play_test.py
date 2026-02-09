@@ -60,10 +60,13 @@ try:
     # IntentGeneratorでアクション生成
     print("\n9. Generating actions...")
     from dm_toolkit import commands_v2 as commands
-    actions = commands.generate_legal_commands(state, card_db, strict=False)
-    # IntentGeneratorでアクション生成
-    print("\n9. Generating actions...")
-    actions = commands.generate_legal_commands(state, card_db, strict=False)
+    try:
+        actions = commands.generate_legal_commands(state, card_db, strict=False) or []
+    except Exception:
+        try:
+            actions = commands.generate_legal_commands(state, card_db) or []
+        except Exception:
+            actions = []
     print(f"✓ {len(actions)} actions available")
     
     # PLAY_CARDアクション確認

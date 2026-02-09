@@ -73,7 +73,15 @@ def model_policy_for_state(sess, tokenizer, state, player_id=0):
 
 def legal_indices_for_state(state, card_db=None):
     card_db = card_db or {}
-    cmds = commands.generate_legal_commands(state, card_db, strict=False)
+    try:
+        try:
+            cmds = commands.generate_legal_commands(state, card_db, strict=False) or []
+        except TypeError:
+            cmds = commands.generate_legal_commands(state, card_db) or []
+        except Exception:
+            cmds = []
+    except Exception:
+        cmds = []
     mapped = []
     for w in cmds:
         try:

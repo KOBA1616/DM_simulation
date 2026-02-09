@@ -43,7 +43,21 @@ def run():
     except Exception:
         pass
 
-    cmds = commands.generate_legal_commands(state, card_db)
+    cmds = []
+    try:
+        try:
+            cmds = commands.generate_legal_commands(state, card_db, strict=False) or []
+        except TypeError:
+            cmds = commands.generate_legal_commands(state, card_db) or []
+        except Exception:
+            cmds = []
+    except Exception:
+        cmds = []
+    if not cmds:
+        try:
+            cmds = commands.generate_legal_commands(state, card_db) or []
+        except Exception:
+            cmds = []
     print('Generated', len(cmds), 'commands')
     for c in cmds:
         try:

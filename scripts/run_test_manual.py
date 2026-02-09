@@ -51,8 +51,14 @@ try:
     except Exception:
         pass
 
-    print('Calling commands.generate_legal_commands')
-    cmds = commands.generate_legal_commands(state, card_db)
+    print('Calling commands.generate_legal_commands (prefer command-first)')
+    try:
+        cmds = commands.generate_legal_commands(state, card_db, strict=False) or []
+    except Exception:
+        try:
+            cmds = commands.generate_legal_commands(state, card_db) or []
+        except Exception:
+            cmds = []
     print(f'generate_legal_commands returned {len(cmds)} commands')
 
     found_play = False

@@ -1,5 +1,16 @@
 import dm_ai_module
 from dm_toolkit import commands_v2 as commands
+import dm_ai_module as _dm
+
+def _get_legal(gs, card_db):
+    try:
+        cmds = commands.generate_legal_commands(gs, card_db, strict=False) or []
+    except Exception:
+        try:
+            cmds = commands.generate_legal_commands(gs, card_db) or []
+        except Exception:
+            cmds = []
+    return cmds
 
 # Load cards
 cdb = dm_ai_module.JsonLoader.load_cards('data/cards.json')
@@ -37,7 +48,7 @@ print(f"Phase: {gs.current_phase}")
 # Step 3: Check MAIN phase
 if gs.current_phase == dm_ai_module.Phase.MAIN:
     print("\n=== Now in MAIN Phase ===")
-    actions = commands.generate_legal_commands(gs, cdb, strict=False)
+    actions = _get_legal(gs, cdb)
     print(f"Available actions: {len(actions)}")
     for i, a in enumerate(actions[:10]):
         print(f"  {i}: {a.type}")

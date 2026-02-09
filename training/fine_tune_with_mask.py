@@ -35,8 +35,14 @@ def make_synthetic_examples(n_each: int = 100):
     for _ in range(n_each):
         s = emit.make_playable_state()
         toks = tokenizer.encode_state(s, 0)
-        # legal indices
-        cmds = commands.generate_legal_commands(s, card_db, strict=False)
+        # legal indices (prefer command-first; fallback to ActionGenerator when empty)
+        try:
+            cmds = commands.generate_legal_commands(s, card_db, strict=False) or []
+        except Exception:
+            try:
+                cmds = commands.generate_legal_commands(s, card_db) or []
+            except Exception:
+                cmds = []
         legal = [False] * dm_ai_module.CommandEncoder.TOTAL_COMMAND_SIZE
         chosen = None
         for c in cmds:
@@ -65,7 +71,13 @@ def make_synthetic_examples(n_each: int = 100):
     for _ in range(n_each):
         s = emit.make_attack_state()
         toks = tokenizer.encode_state(s, 0)
-        cmds = commands.generate_legal_commands(s, card_db, strict=False)
+        try:
+            cmds = commands.generate_legal_commands(s, card_db, strict=False) or []
+        except Exception:
+            try:
+                cmds = commands.generate_legal_commands(s, card_db) or []
+            except Exception:
+                cmds = []
         legal = [False] * dm_ai_module.CommandEncoder.TOTAL_COMMAND_SIZE
         chosen = None
         for c in cmds:

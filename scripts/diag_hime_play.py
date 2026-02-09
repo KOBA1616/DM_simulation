@@ -26,7 +26,15 @@ game.state.current_phase = dm.Phase.MAIN
 print('Before play: pending_effects count=', len(getattr(game.state, 'pending_effects', [])))
 
 from dm_toolkit import commands_v2 as commands
-actions = commands.generate_legal_commands(game.state, card_db, strict=False)
+try:
+    try:
+        actions = commands.generate_legal_commands(game.state, card_db, strict=False) or []
+    except TypeError:
+        actions = commands.generate_legal_commands(game.state, card_db) or []
+    except Exception:
+        actions = []
+except Exception:
+    actions = []
 print('Generated actions:', len(actions))
 for i,a in enumerate(actions[:20]):
     print(i, repr(getattr(a, 'type', a)), getattr(a, 'card_id', None), getattr(a, 'source_instance_id', None))
@@ -42,7 +50,15 @@ else:
 
 print('After play: pending_effects count=', len(getattr(game.state, 'pending_effects', [])))
 
-actions2 = commands.generate_legal_commands(game.state, card_db, strict=False)
+try:
+    try:
+        actions2 = commands.generate_legal_commands(game.state, card_db, strict=False) or []
+    except TypeError:
+        actions2 = commands.generate_legal_commands(game.state, card_db) or []
+    except Exception:
+        actions2 = []
+except Exception:
+    actions2 = []
 print('Generated after actions:', len(actions2))
 for i,a in enumerate(actions2[:20]):
     print(i, repr(getattr(a, 'type', a)), getattr(a, 'card_id', None), getattr(a, 'source_instance_id', None))

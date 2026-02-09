@@ -158,10 +158,15 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
                                     acts = []
                                 if not acts:
                                     try:
-                                        if hasattr(_native, 'ActionGenerator'):
-                                            acts = _native.ActionGenerator.generate_legal_commands(state, card_db)
+                                        # Centralized native fallback helper
+                                        from dm_toolkit import commands as _commands
+                                        acts = _commands._call_native_action_generator(state, card_db) or []
                                     except Exception:
-                                        acts = []
+                                        try:
+                                            if hasattr(_native, 'ActionGenerator'):
+                                                acts = _native.ActionGenerator.generate_legal_commands(state, card_db)
+                                        except Exception:
+                                            acts = []
 
                                 if acts:
                                     for a in acts:
@@ -314,7 +319,13 @@ def find_legal_commands_for_instance(sess: GameSession, instance_id: int) -> Lis
         return []
         from dm_toolkit import commands_v2
     try:
+        cmds = []
+        try:
+            cmds = commands_v2.generate_legal_commands(sess.gs, sess.card_db, strict=False)
+        except TypeError:
             cmds = commands_v2.generate_legal_commands(sess.gs, sess.card_db)
+        except Exception:
+            cmds = []
     except Exception:
         return []
     out = []

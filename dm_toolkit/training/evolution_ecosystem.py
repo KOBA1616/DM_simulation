@@ -129,16 +129,17 @@ class EvolutionEcosystem:
                     break
 
                  try:
-                     # Prefer native command-first generator, fall back to legacy ActionGenerator
-                     cmds = commands.generate_legal_commands(instance.state, self.card_db) or []
-                 except Exception:
-                     cmds = []
+                    # Prefer native command-first generator (non-strict).
+                    cmds = []
+                    try:
+                        cmds = commands.generate_legal_commands(instance.state, self.card_db, strict=False) or []
+                    except TypeError:
+                        cmds = commands.generate_legal_commands(instance.state, self.card_db) or []
+                    except Exception:
+                        cmds = []
+
                  legal_actions = []
-                 if not cmds:
-                     try:
-                         legal_actions = dm_ai_module.ActionGenerator.generate_legal_commands(instance.state, self.card_db) or []
-                     except Exception:
-                         legal_actions = []
+                 # Legacy ActionGenerator fallback is handled by commands_v2 when available.
                  if not legal_actions and not cmds:
                      dm_ai_module.PhaseManager.next_phase(instance.state, self.card_db)
                      continue

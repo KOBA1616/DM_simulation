@@ -26,7 +26,13 @@ game.state.current_phase = dm.Phase.MAIN
 print('before pending len', len(game.state.pending_effects))
 
 from dm_toolkit import commands_v2 as commands
-actions = commands.generate_legal_commands(game.state, card_db, strict=False)
+try:
+    actions = commands.generate_legal_commands(game.state, card_db, strict=False) or []
+except Exception:
+    try:
+        actions = commands.generate_legal_commands(game.state, card_db) or []
+    except Exception:
+        actions = []
 print('initial actions count', len(actions))
 for i,a in enumerate(actions[:20]):
     print(i, type(a), getattr(a, 'type', None), getattr(a, 'source_instance_id', None), getattr(a, 'slot_index', None))

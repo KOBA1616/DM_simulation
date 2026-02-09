@@ -25,7 +25,27 @@ for _ in range(20):
     if phase == 3:  # MAIN phase (3)
         # Generate actions
         from dm_toolkit import commands_v2 as commands
-        actions = commands.generate_legal_commands(gs, card_db, strict=False)
+        import dm_ai_module as _dm
+
+        def _get_legal(gs, card_db):
+            try:
+                cmds = commands.generate_legal_commands(gs, card_db, strict=False) or []
+            except Exception:
+                cmds = []
+            if not cmds:
+                try:
+                    try:
+                        cmds = commands.generate_legal_commands(gs, card_db, strict=False) or []
+                    except Exception:
+                        try:
+                            cmds = commands.generate_legal_commands(gs, card_db) or []
+                        except Exception:
+                            cmds = []
+                except Exception:
+                    cmds = []
+            return cmds
+
+        actions = _get_legal(gs, card_db)
         print(f"Phase {phase} (MAIN): Generated {len(actions)} actions")
         for i, a in enumerate(actions[:5]):
             print(f"  Action {i}: type={int(a.type)}")

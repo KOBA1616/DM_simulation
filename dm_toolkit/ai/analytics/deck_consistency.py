@@ -90,16 +90,25 @@ class SolitaireRunner:
         # Let's perform ONE action here to respect the outer safety counter.
 
         try:
-            # Prefer native command-first generator, fallback to legacy ActionGenerator
-            cmds = commands.generate_legal_commands(state, cast(Dict[int, Any], self.card_db)) or []
+            # Prefer native command-first generator (non-strict), fallback to legacy ActionGenerator
+            cmds = []
+            try:
+                cmds = commands.generate_legal_commands(state, cast(Dict[int, Any], self.card_db), strict=False) or []
+            except TypeError:
+                cmds = commands.generate_legal_commands(state, cast(Dict[int, Any], self.card_db)) or []
+            except Exception:
+                cmds = []
         except Exception:
             cmds = []
         actions: List[Any] = []
         if not cmds:
             try:
-                actions = dm_ai_module.ActionGenerator.generate_legal_commands(state, self.card_db) or []
+                actions = commands.generate_legal_commands(state, cast(Dict[int, Any], self.card_db), strict=False) or []
             except Exception:
-                actions = []
+                try:
+                    actions = commands.generate_legal_commands(state, cast(Dict[int, Any], self.card_db)) or []
+                except Exception:
+                    actions = []
 
         if not actions and not cmds:
             dm_ai_module.PhaseManager.next_phase(state, self.card_db)

@@ -39,8 +39,18 @@ if native_p:
 
 from dm_toolkit.gui.headless import create_session
 from dm_toolkit import commands_v2
-# Prefer command-first wrapper
-generate_legal_commands = commands_v2.generate_legal_commands
+import dm_ai_module
+
+# Prefer command-first wrapper; provide safe fallback to legacy ActionGenerator
+def get_legal_commands(gs, card_db):
+    try:
+        cmds = commands_v2.generate_legal_commands(gs, card_db, strict=False) or []
+    except Exception:
+        try:
+            cmds = commands_v2.generate_legal_commands(gs, card_db) or []
+        except Exception:
+            cmds = []
+    return cmds
 
 # module logger; use manager's `get_logger` so it inherits configured handlers
 logger = get_logger('selfplay_long')
@@ -123,7 +133,7 @@ def run_one_game(max_steps=10000, max_actions_per_phase=50):
             logger.exception('Error while logging phase/attack debug info')
 
         try:
-            cmds = generate_legal_commands(gs, card_db)
+            cmds = get_legal_commands(gs, card_db)
         except Exception:
             cmds = []
 
@@ -227,7 +237,7 @@ def run_one_game(max_steps=10000, max_actions_per_phase=50):
             same_phase_count = 0
             # try regenerate commands and skip to next loop if none
             try:
-                cmds = generate_legal_commands(gs, card_db)
+                cmds = get_legal_commands(gs, card_db)
             except Exception:
                 cmds = []
             if not cmds:
@@ -252,7 +262,7 @@ def run_one_game(max_steps=10000, max_actions_per_phase=50):
                 break
 
             try:
-                cmds = generate_legal_commands(gs, card_db)
+                cmds = get_legal_commands(gs, card_db)
             except Exception:
                 logger.exception('Error generating legal commands inside phase loop')
                 cmds = []

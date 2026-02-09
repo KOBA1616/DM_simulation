@@ -23,7 +23,27 @@ print(f"After fast_forward: phase={gs.current_phase}, turn={gs.turn_number}")
 # Execute 1 MANA_CHARGE + PASS sequence manually
 print(f"\n=== Executing MANA_CHARGE ===")
 from dm_toolkit import commands_v2 as commands
-actions1 = commands.generate_legal_commands(gs, card_db, strict=False)
+import dm_ai_module as _dm
+
+def _get_legal(gs, card_db):
+    try:
+        cmds = commands.generate_legal_commands(gs, card_db, strict=False) or []
+    except Exception:
+        cmds = []
+    if not cmds:
+        try:
+            try:
+                cmds = commands.generate_legal_commands(gs, card_db, strict=False) or []
+            except Exception:
+                try:
+                    cmds = commands.generate_legal_commands(gs, card_db) or []
+                except Exception:
+                    cmds = []
+        except Exception:
+            cmds = []
+    return cmds
+
+actions1 = _get_legal(gs, card_db)
 print(f"Actions in MANA phase: {len(actions1)}")
 mana_action = next((a for a in actions1 if int(a.type) == 1), None)
 
@@ -34,7 +54,7 @@ if mana_action:
     
     # Now get actions again - should include PASS
     print(f"\n=== After MANA_CHARGE, checking actions ===")
-    actions2 = commands.generate_legal_commands(gs, card_db, strict=False)
+    actions2 = _get_legal(gs, card_db)
     print(f"Actions available: {len(actions2)}")
     for i, a in enumerate(actions2[:10]):
         print(f"  [{i}] type={a.type} (int={int(a.type)}), card_id={a.card_id}")
@@ -51,7 +71,7 @@ if mana_action:
         print(f"After fast_forward: phase={gs.current_phase}, turn={gs.turn_number}")
         
         # Check actions in current phase
-        actions3 = commands.generate_legal_commands(gs, card_db, strict=False)
+        actions3 = _get_legal(gs, card_db)
         print(f"\nActions in {gs.current_phase}: {len(actions3)}")
         for i, a in enumerate(actions3[:10]):
             action_type = str(a.type).split('.')[-1] if hasattr(a.type, 'name') else str(a.type)

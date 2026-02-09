@@ -37,10 +37,8 @@ def replay(seed, deck=None, max_steps=200):
         print(f"STEP {step}: turn={gs.turn_number} phase={gs.current_phase} active={gs.active_player_id} winner={gs.winner}")
         print(f"  p0 hand={len(gs.players[0].hand)} p1 hand={len(gs.players[1].hand)} deck0={len(gs.players[0].deck)} deck1={len(gs.players[1].deck)}")
         try:
-            legal = commands.generate_legal_commands(gs, card_db) or []
+            legal = commands.generate_legal_commands(gs, card_db, strict=False) or []
         except Exception:
-            legal = []
-        if not legal:
             try:
                 legal = commands.generate_legal_commands(gs, card_db) or []
             except Exception:
@@ -55,7 +53,22 @@ def replay(seed, deck=None, max_steps=200):
             while True:
                 if gs.winner != dm_ai_module.GameResult.NONE:
                     break
-                legal2 = commands.generate_legal_commands(gs, card_db)
+                try:
+                    legal2 = commands.generate_legal_commands(gs, card_db, strict=False) or []
+                except Exception:
+                    try:
+                        legal2 = commands.generate_legal_commands(gs, card_db) or []
+                    except Exception:
+                        legal2 = []
+                if not legal2:
+                    try:
+                        from dm_toolkit import commands as legacy_commands
+                        legal2 = legacy_commands._call_native_action_generator(gs, card_db) or []
+                    except Exception:
+                        try:
+                            legal2 = dm_ai_module.ActionGenerator.generate_legal_commands(gs, card_db) or []
+                        except Exception:
+                            legal2 = []
                 if legal2:
                     break
                 dm_ai_module.PhaseManager.next_phase(gs, card_db)

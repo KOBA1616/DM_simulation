@@ -41,16 +41,22 @@ class PythonMCTS:
         # and ICommand wrappers (command-first path) for execution.
         # Prefer command-first generator, fallback to legacy ActionGenerator
         try:
+            legal_commands = []
             try:
+                legal_commands = commands.generate_legal_commands(self.root.state, self.card_db, strict=False) or []
+            except TypeError:
                 legal_commands = commands.generate_legal_commands(self.root.state, self.card_db) or []
             except Exception:
                 legal_commands = []
             legal_actions = []
             if not legal_commands:
                 try:
-                    legal_actions = dm_ai_module.ActionGenerator.generate_legal_commands(self.root.state, self.card_db) or []
+                    legal_actions = commands.generate_legal_commands(self.root.state, self.card_db, strict=False) or []
                 except Exception:
-                    legal_actions = []
+                    try:
+                        legal_actions = commands.generate_legal_commands(self.root.state, self.card_db) or []
+                    except Exception:
+                        legal_actions = []
         except Exception:
             legal_actions = []
             legal_commands = []
@@ -180,21 +186,27 @@ class PythonMCTS:
 
         child_node = Node(next_state, parent=node, action=action)
         # Populate untried actions for child (prefer Action list)
-        try:
-            # Prefer command-first generator, fallback to legacy ActionGenerator only when needed
             try:
-                child_cmds = commands.generate_legal_commands(next_state, self.card_db) or []
-            except Exception:
+                # Prefer command-first generator, fallback to legacy ActionGenerator only when needed
                 child_cmds = []
-            child_actions = []
-            if not child_cmds:
                 try:
-                    child_actions = dm_ai_module.ActionGenerator.generate_legal_commands(next_state, self.card_db) or []
+                    child_cmds = commands.generate_legal_commands(next_state, self.card_db, strict=False) or []
+                except TypeError:
+                    child_cmds = commands.generate_legal_commands(next_state, self.card_db) or []
                 except Exception:
-                    child_actions = []
-            child_node.untried_actions = child_cmds if child_cmds else child_actions
-        except Exception:
-            child_node.untried_actions = []
+                    child_cmds = []
+                child_actions = []
+                    if not child_cmds:
+                    try:
+                        child_actions = commands.generate_legal_commands(next_state, self.card_db, strict=False) or []
+                    except Exception:
+                        try:
+                            child_actions = commands.generate_legal_commands(next_state, self.card_db) or []
+                        except Exception:
+                            child_actions = []
+                child_node.untried_actions = child_cmds if child_cmds else child_actions
+            except Exception:
+                child_node.untried_actions = []
         node.children.append(child_node)
         return child_node
 
@@ -217,19 +229,25 @@ class PythonMCTS:
                 else:
                     return 0.0
             
-            try:
-                # Prefer command-first during simulation rollouts
                 try:
-                    actions = commands.generate_legal_commands(current_state, self.card_db) or []
-                except Exception:
+                    # Prefer command-first during simulation rollouts
                     actions = []
-                if not actions:
                     try:
-                        actions = dm_ai_module.ActionGenerator.generate_legal_commands(current_state, self.card_db) or []
+                        actions = commands.generate_legal_commands(current_state, self.card_db, strict=False) or []
+                    except TypeError:
+                        actions = commands.generate_legal_commands(current_state, self.card_db) or []
                     except Exception:
                         actions = []
-            except Exception:
-                actions = []
+                    if not actions:
+                        try:
+                            actions = commands.generate_legal_commands(current_state, self.card_db, strict=False) or []
+                        except Exception:
+                            try:
+                                actions = commands.generate_legal_commands(current_state, self.card_db) or []
+                            except Exception:
+                                actions = []
+                except Exception:
+                    actions = []
             if not actions:
                 dm_ai_module.PhaseManager.next_phase(current_state, self.card_db)
             else:

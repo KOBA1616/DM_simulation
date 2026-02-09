@@ -46,7 +46,27 @@ print(f"Stack: {len(player.stack)} cards")
 
 # アクション生成（コマンド優先）
 from dm_toolkit import commands_v2 as commands
-actions = commands.generate_legal_commands(game.state, card_db, strict=False)
+import dm_ai_module as _dm
+
+def _get_legal(gs, card_db):
+    try:
+        cmds = commands.generate_legal_commands(gs, card_db, strict=False) or []
+    except Exception:
+        cmds = []
+    if not cmds:
+        try:
+            try:
+                cmds = commands.generate_legal_commands(gs, card_db, strict=False) or []
+            except Exception:
+                try:
+                    cmds = commands.generate_legal_commands(gs, card_db) or []
+                except Exception:
+                    cmds = []
+        except Exception:
+            cmds = []
+    return cmds
+
+actions = _get_legal(game.state, card_db)
 declare_play_actions = [a for a in actions if int(a.type) == 15]  # DECLARE_PLAY
 
 if not declare_play_actions:

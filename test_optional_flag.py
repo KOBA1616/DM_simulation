@@ -17,8 +17,27 @@ if gs.pending_effects:
     print(f"controller: {pe.controller}")
     print(f"resolve_type: {pe.resolve_type}")
     
-    # コマンド優先で生成
-    actions = commands.generate_legal_commands(gs, None, strict=False)
+    # コマンド優先で生成（フォールバックを含む）
+    import dm_ai_module as _dm
+    def _get_legal(gs, card_db):
+        try:
+            cmds = commands.generate_legal_commands(gs, card_db, strict=False) or []
+        except Exception:
+            cmds = []
+        if not cmds:
+            try:
+                try:
+                    cmds = commands.generate_legal_commands(gs, card_db, strict=False) or []
+                except Exception:
+                    try:
+                        cmds = commands.generate_legal_commands(gs, card_db) or []
+                    except Exception:
+                        cmds = []
+            except Exception:
+                cmds = []
+        return cmds
+
+    actions = _get_legal(gs, None)
     print(f"\nTotal actions: {len(actions)}")
     
     pass_count = sum(1 for a in actions if a.type == dm.PlayerIntent.PASS)

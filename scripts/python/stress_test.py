@@ -81,7 +81,20 @@ def run_stress_test(iterations=10000, max_steps=2000, verbose=False):
                     generate_legal_commands = None
 
                 # Prefer commands; avoid direct action usage
-                cmds = generate_legal_commands(state, card_db) if generate_legal_commands else []
+                cmds = []
+                if generate_legal_commands:
+                    try:
+                        try:
+                            cmds = generate_legal_commands(state, card_db, strict=False) or []
+                        except TypeError:
+                            cmds = generate_legal_commands(state, card_db) or []
+                        except Exception:
+                            cmds = []
+                    except Exception:
+                        cmds = []
+                if not cmds:
+                    # Fallback handled by commands_v2; keep empty list
+                    cmds = []
 
                 if not cmds:
                     # Stalemate or bug

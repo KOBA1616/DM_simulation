@@ -152,15 +152,25 @@ class MCTS:
         # Generate legal moves: prefer command-first (`ICommand` wrappers), fallback to legacy Actions
         try:
             try:
-                cmd_list = commands.generate_legal_commands(state, self.card_db) or []
+                cmd_list = []
+                try:
+                    cmd_list = commands.generate_legal_commands(state, self.card_db, strict=False) or []
+                except TypeError:
+                    # Older wrapper may not accept strict
+                    cmd_list = commands.generate_legal_commands(state, self.card_db) or []
+                except Exception:
+                    cmd_list = []
             except Exception:
                 cmd_list = []
             actions = []
             if not cmd_list:
                 try:
-                    actions = dm_ai_module.ActionGenerator.generate_legal_commands(state, self.card_db) or []
+                    actions = commands.generate_legal_commands(state, self.card_db, strict=False) or []
                 except Exception:
-                    actions = []
+                    try:
+                        actions = commands.generate_legal_commands(state, self.card_db) or []
+                    except Exception:
+                        actions = []
             if not cmd_list and not actions:
                 return 0.0
         except Exception:
@@ -181,32 +191,47 @@ class MCTS:
             elif isinstance(tensor, (list, np.ndarray)) and (
                 (isinstance(tensor, list) and len(tensor) > 0 and isinstance(tensor[0], (int, np.integer))) or
                 (isinstance(tensor, np.ndarray) and np.issubdtype(tensor.dtype, np.integer))
-            ):
-                tensor_t = torch.tensor(tensor, dtype=torch.long).unsqueeze(0)
-            else:
-                 # Fallback/Default float tensor
-                tensor_t = torch.tensor(tensor, dtype=torch.float32).unsqueeze(0)
-        else:
-            tensor = dm_ai_module.TensorConverter.convert_to_tensor(
-                state, state.active_player_id, self.card_db, True
-            )
-            tensor_t = torch.tensor(tensor, dtype=torch.float32).unsqueeze(0)
-
+            try:
+                child_cmds = []
+                try:
+                    child_cmds = commands.generate_legal_commands(next_state, self.card_db, strict=False) or []
+                except TypeError:
+                    child_cmds = commands.generate_legal_commands(next_state, self.card_db) or []
+                except Exception:
+                    child_cmds = []
+            except Exception:
+                child_cmds = []
+            child_actions = []
+            if not child_cmds:
+                try:
+                    child_actions = commands.generate_legal_commands(next_state, self.card_db, strict=False) or []
+                except Exception:
+                    try:
+                        child_actions = commands.generate_legal_commands(next_state, self.card_db) or []
+                    except Exception:
+                        child_actions = []
+            child_node.untried_actions = child_cmds if child_cmds else child_actions
         with torch.no_grad():
             policy_logits, value = self.network(tensor_t)
-
-        policy = torch.softmax(policy_logits, dim=1).squeeze(0).numpy()
-        value = float(value.item())
-
-        # Create children
-        # Iterate over Action objects if present, otherwise over ICommand objects
-        iterable = actions if actions else cmd_list
-        for item in iterable:
-            # Identify legacy Action instances explicitly when possible
-            try:
-                ActionCls = getattr(dm_ai_module, 'Action', None)
-                is_action = isinstance(item, ActionCls) if ActionCls is not None else False
-            except Exception:
+                try:
+                    # Prefer command-first during simulation rollouts
+                    actions = []
+                    try:
+                        actions = commands.generate_legal_commands(current_state, self.card_db, strict=False) or []
+                    except TypeError:
+                        actions = commands.generate_legal_commands(current_state, self.card_db) or []
+                    except Exception:
+                        actions = []
+                    if not actions:
+                        try:
+                            actions = commands.generate_legal_commands(current_state, self.card_db, strict=False) or []
+                        except Exception:
+                            try:
+                                actions = commands.generate_legal_commands(current_state, self.card_db) or []
+                            except Exception:
+                                actions = []
+                except Exception:
+                    actions = []
                 is_action = False
 
             # Map action to index when possible
