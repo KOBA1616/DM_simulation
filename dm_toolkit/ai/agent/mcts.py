@@ -1,331 +1,43 @@
 """
-DEPRECATED: This module contains a pure Python implementation of MCTS which is no longer supported.
-Please use the C++ implementation `dm_ai_module.MCTS` instead.
+Lightweight shim for MCTS usage in Python tests.
+
+The original pure-Python MCTS implementation was deprecated and contained
+complex logic that is no longer maintained. For test-collection stability
+we provide a small shim that delegates to the native `dm_ai_module.MCTS`
+when available; otherwise it raises a clear error at runtime.
+
+This keeps the module importable (fixing syntax issues) while preserving
+the public `MCTS` symbol used by tests.
 """
-import math
+from typing import Any, Optional
+
 try:
-    import torch
-    import numpy as np
-except ImportError:
-    pass
-import dm_ai_module
-from dm_toolkit import commands_v2 as commands
-from typing import Any, Optional, List, Dict, Tuple, Callable
-
-
-class MCTSNode:
-    def __init__(self, state: Any, parent: Optional['MCTSNode'] = None, action: Any = None) -> None:
-        self.state: Any = state
-        self.parent: Optional['MCTSNode'] = parent
-        self.action: Any = action  # Action that led to this state
-        self.children: List['MCTSNode'] = []
-        self.visit_count: int = 0
-        self.value_sum: float = 0.0
-        self.prior: float = 0.0
-
-    def is_expanded(self) -> bool:
-        return len(self.children) > 0
-
-    def value(self) -> float:
-        if self.visit_count == 0:
-            return 0.0
-        return self.value_sum / self.visit_count
+    import dm_ai_module
+except Exception:
+    dm_ai_module = None
 
 
 class MCTS:
-    def __init__(self, network: Any, card_db: Any, simulations: int = 100, c_puct: float = 1.0, dirichlet_alpha: float = 0.3, dirichlet_epsilon: float = 0.25, state_converter: Optional[Callable[[Any, int, Dict], Any]] = None, action_encoder: Optional[Callable[[Any, Any, int], int]] = None, player_id: int = 0) -> None:
-        self.network: Any = network
-        self.card_db: Any = card_db
-        self.simulations: int = simulations
-        self.c_puct: float = c_puct
-        self.dirichlet_alpha: float = dirichlet_alpha
-        self.dirichlet_epsilon: float = dirichlet_epsilon
-        self.state_converter = state_converter
-        self.action_encoder = action_encoder
-        self.player_id = player_id
-
-    def _fast_forward(self, state: Any) -> None:
-        dm_ai_module.PhaseManager.fast_forward(state, self.card_db)
-
-    def search(self, root_state: Any, add_noise: bool = False) -> MCTSNode:
-        root_state_clone = root_state.clone()
-        self._fast_forward(root_state_clone)
-        root = MCTSNode(root_state_clone)
-
-        # Expand root
-        self._expand(root)
-        
-        if add_noise:
-            self._add_exploration_noise(root)
-
-        for _ in range(self.simulations):
-            node = root
-
-            # Selection
-            while node.is_expanded():
-                next_node = self._select_child(node)
-                if next_node is None:
-                    break
-                node = next_node
-
-            # Expansion & Evaluation
-            if not node.is_expanded():
-                value = self._expand(node)
-            else:
-                value = node.value()
-
-            # Backpropagation
-            self._backpropagate(node, value)
-
-        return root
-
-    def _add_exploration_noise(self, node: MCTSNode) -> None:
-        if not node.children:
-            return
-            
-        noise = np.random.dirichlet([self.dirichlet_alpha] * len(node.children))
-        
-        for i, child in enumerate(node.children):
-            child.prior = child.prior * (1 - self.dirichlet_epsilon) + noise[i] * self.dirichlet_epsilon
-
-    def _select_child(self, node: MCTSNode) -> Optional[MCTSNode]:
-        best_score = -float('inf')
-        best_child = None
-
-        for child in node.children:
-            u_score = self.c_puct * child.prior * math.sqrt(
-                node.visit_count
-            ) / (1 + child.visit_count)
-            q_score = child.value()
-            # If active player is different, we might need to flip value?
-            # AlphaZero usually assumes value is for the current player.
-            # If next state is opponent's turn, the value returned by network
-            # for that state is for opponent.
-            # So Q should be -Value(child_state).
-            # But here we store value_sum.
-            # Let's assume standard AlphaZero: Q is mean value.
-            # If child state is opponent's turn, the value we get from network
-            # is "Probability Opponent Wins".
-            # So for us (Parent), it is -Value.
-
-            score = q_score + u_score
-            
-            if math.isnan(score):
-                score = -float('inf')
-
-            if score > best_score:
-                best_score = score
-                best_child = child
-
-        if best_child is None and node.children:
-            best_child = node.children[0]
-
-        return best_child
-
-    def _expand(self, node: MCTSNode) -> float:
-        # Use observer view if available to prevent cheating
-        if hasattr(node.state, 'create_observer_view'):
-            state = node.state.create_observer_view(self.player_id)
-        else:
-            state = node.state.clone()
-
-        # Check game over
-        is_over, result = dm_ai_module.PhaseManager.check_game_over(state)
-        if is_over:
-            # Result: 0=None, 1=P1_WIN, 2=P2_WIN, 3=DRAW
-            # We need value for the player who just moved
-            # (node.parent.state.active_player)
-            # Or simply, value for the player at state.active_player_id?
-            # Usually value is [-1, 1] from perspective of current player.
-            # If P1 wins, and current is P1, value = 1.
-            # If P1 wins, and current is P2, value = -1.
-
-            current_player = state.active_player_id
-            if result == 3:
-                return 0.0
-            if result == 1:
-                return 1.0 if current_player == 0 else -1.0
-            if result == 2:
-                return 1.0 if current_player == 1 else -1.0
-            return 0.0
-
-        # Generate legal moves: prefer command-first (`ICommand` wrappers), fallback to legacy Actions
-        try:
+    def __init__(self, network: Any = None, card_db: Any = None, simulations: int = 100, c_puct: float = 1.0, **kwargs) -> None:
+        self.network = network
+        self.card_db = card_db
+        self.simulations = simulations
+        self.c_puct = c_puct
+        self._native = None
+        if dm_ai_module is not None and hasattr(dm_ai_module, 'MCTS'):
             try:
-                cmd_list = []
-                try:
-                    cmd_list = commands.generate_legal_commands(state, self.card_db, strict=False) or []
-                except TypeError:
-                    # Older wrapper may not accept strict
-                    cmd_list = commands.generate_legal_commands(state, self.card_db) or []
-                except Exception:
-                    cmd_list = []
+                # Try to instantiate native MCTS if signature matches
+                self._native = dm_ai_module.MCTS(self.card_db, self.c_puct, 0.0, 0.0)
             except Exception:
-                cmd_list = []
-            actions = []
-            if not cmd_list:
-                try:
-                    actions = commands.generate_legal_commands(state, self.card_db, strict=False) or []
-                except Exception:
-                    try:
-                        actions = commands.generate_legal_commands(state, self.card_db) or []
-                    except Exception:
-                        actions = []
-            if not cmd_list and not actions:
-                return 0.0
-        except Exception:
-            return 0.0
+                self._native = None
 
-        # Evaluate with Network
-        # Use Masked Tensor (mask_opponent_hand=True) during inference
-        if self.state_converter:
-            tensor = self.state_converter(
-                state, state.active_player_id, self.card_db
-            )
-            # Check if tensor is already a tensor or numpy array of ints (tokens)
-            if isinstance(tensor, torch.Tensor):
-                if tensor.dim() == 1:
-                    tensor_t = tensor.unsqueeze(0)
-                else:
-                    tensor_t = tensor
-            elif isinstance(tensor, (list, np.ndarray)) and (
-                (isinstance(tensor, list) and len(tensor) > 0 and isinstance(tensor[0], (int, np.integer))) or
-                (isinstance(tensor, np.ndarray) and np.issubdtype(tensor.dtype, np.integer))
+    def search(self, root_state: Any, add_noise: bool = False) -> Any:
+        if self._native is not None:
             try:
-                child_cmds = []
-                try:
-                    child_cmds = commands.generate_legal_commands(next_state, self.card_db, strict=False) or []
-                except TypeError:
-                    child_cmds = commands.generate_legal_commands(next_state, self.card_db) or []
-                except Exception:
-                    child_cmds = []
-            except Exception:
-                child_cmds = []
-            child_actions = []
-            if not child_cmds:
-                try:
-                    child_actions = commands.generate_legal_commands(next_state, self.card_db, strict=False) or []
-                except Exception:
-                    try:
-                        child_actions = commands.generate_legal_commands(next_state, self.card_db) or []
-                    except Exception:
-                        child_actions = []
-            child_node.untried_actions = child_cmds if child_cmds else child_actions
-        with torch.no_grad():
-            policy_logits, value = self.network(tensor_t)
-                try:
-                    # Prefer command-first during simulation rollouts
-                    actions = []
-                    try:
-                        actions = commands.generate_legal_commands(current_state, self.card_db, strict=False) or []
-                    except TypeError:
-                        actions = commands.generate_legal_commands(current_state, self.card_db) or []
-                    except Exception:
-                        actions = []
-                    if not actions:
-                        try:
-                            actions = commands.generate_legal_commands(current_state, self.card_db, strict=False) or []
-                        except Exception:
-                            try:
-                                actions = commands.generate_legal_commands(current_state, self.card_db) or []
-                            except Exception:
-                                actions = []
-                except Exception:
-                    actions = []
-                is_action = False
-
-            # Map action to index when possible
-            action_idx = -1
-
-            if self.action_encoder:
-                try:
-                    action_idx = self.action_encoder(item, state, state.active_player_id)
-                except Exception:
-                    action_idx = -1
-
-            if action_idx == -1:
-                # Prefer command-first encoder when possible
-                try:
-                    # If item is a plain dict (command-like)
-                    if isinstance(item, dict):
-                        action_idx = dm_ai_module.CommandEncoder.command_to_index(item)
-                    else:
-                        # If wrapper exposes normalized dict via `to_dict`
-                        to_dict = getattr(item, 'to_dict', None)
-                        if callable(to_dict):
-                            try:
-                                action_idx = dm_ai_module.CommandEncoder.command_to_index(item.to_dict())
-                            except Exception:
-                                action_idx = -1
-                        else:
-                            action_idx = -1
-                except Exception:
-                    action_idx = -1
-
-                # Fallback to legacy ActionEncoder (supports legacy Action objects or underlying `_action`)
-                if action_idx == -1:
-                    try:
-                        if is_action:
-                            action_idx = dm_ai_module.ActionEncoder.action_to_index(item)
-                        else:
-                            underlying = getattr(item, '_action', None)
-                            if underlying is not None:
-                                action_idx = dm_ai_module.ActionEncoder.action_to_index(underlying)
-                            else:
-                                action_idx = -1
-                    except Exception:
-                        action_idx = -1
-
-            # Clone state (propagating observer view)
-            next_state = state.clone()
-
-            # Apply action/command
-            try:
-                from dm_toolkit.unified_execution import ensure_executable_command
-                from dm_toolkit.engine.compat import EngineCompat
-                if is_action:
-                    cmd = ensure_executable_command(item)
-                    EngineCompat.ExecuteCommand(next_state, cmd, self.card_db)
-                else:
-                    # ICommand-like
-                    if hasattr(next_state, 'execute_command'):
-                        next_state.execute_command(item)
-                    elif hasattr(item, 'execute'):
-                        item.execute(next_state)
-                    else:
-                        EngineCompat.ExecuteCommand(next_state, item, self.card_db)
+                return self._native.search(root_state, add_noise)
             except Exception:
                 pass
+        raise NotImplementedError('Pure-Python MCTS removed; use dm_ai_module.MCTS or provide a compatible implementation')
 
-            # Check pass/phase-change for both kinds
-            try:
-                if is_action and getattr(item, 'type', None) == dm_ai_module.ActionType.PASS:
-                    dm_ai_module.PhaseManager.next_phase(next_state, self.card_db)
-                elif not is_action:
-                    payload = getattr(item, 'payload', {}) or {}
-                    if payload.get('pass') or payload.get('add_mana'):
-                        dm_ai_module.PhaseManager.next_phase(next_state, self.card_db)
-            except Exception:
-                pass
 
-            # Fast forward through auto-phases
-            self._fast_forward(next_state)
-
-            child = MCTSNode(next_state, parent=node, action=item)
-
-            # Prior probability from policy (if we have an index)
-            if 0 <= action_idx < len(policy):
-                child.prior = float(policy[action_idx])
-            else:
-                child.prior = 0.0
-
-            node.children.append(child)
-
-        return value
-
-    def _backpropagate(self, node: Optional[MCTSNode], value: float) -> None:
-        while node is not None:
-            node.visit_count += 1
-            node.value_sum += value
-            value = -value  # Flip for opponent
-            node = node.parent
+__all__ = ['MCTS']
