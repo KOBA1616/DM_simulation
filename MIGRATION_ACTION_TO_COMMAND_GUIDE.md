@@ -630,3 +630,15 @@ Appendix: Evidence of Action usage
 7. 不要ファイル・スクリプトのクリーンアップ
 
 **マイルストーン達成**: 🎯 **Python Fallback 完全動作環境確立**
+
+## 追記: 2026-02-10 — Phase 1 雛形追加
+
+- 実施: C++ 側のコマンドジェネレータ雛形と pybind バインディングの雛形を追加しました（Phase 1 の初期実装ステップ）。
+- 追加ファイル:
+  - `src/engine/commands/command_generator.hpp`
+  - `src/engine/commands/command_generator.cpp`
+  - `src/bindings/bind_command_generator.hpp`
+  - `src/bindings/bind_command_generator.cpp`
+- 概要: 現在は最小のスタブ実装で、将来的に `IntentGenerator` を呼び出して Action -> Command のマッピングを行うブリッジを実装する予定です。
+
+次の推奨作業: `command_generator.cpp` を IntentGenerator ブリッジ実装へ拡張し、`CMakeLists.txt` のソース集合に `src/engine/commands/command_generator.cpp` を確実に含め、ビルドして pybind 経由で `dm_ai_module.generate_commands` を検証してください。
