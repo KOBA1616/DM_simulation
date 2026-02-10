@@ -4,6 +4,7 @@ if os.path.isdir('python'):
     sys.path.insert(0, os.path.abspath('python'))
 import dm_ai_module
 from dm_toolkit import commands_v2 as commands
+from dm_toolkit.engine.compat import EngineCompat
 
 card_db = dm_ai_module.JsonLoader.load_cards('data/cards.json')
 valid_ids = list(card_db.keys())
@@ -65,10 +66,7 @@ def replay(seed, deck=None, max_steps=200):
                         from dm_toolkit import commands as legacy_commands
                         legal2 = legacy_commands._call_native_action_generator(gs, card_db) or []
                     except Exception:
-                        try:
-                            legal2 = dm_ai_module.ActionGenerator.generate_legal_commands(gs, card_db) or []
-                        except Exception:
-                            legal2 = []
+                        legal2 = []
                 if legal2:
                     break
                 dm_ai_module.PhaseManager.next_phase(gs, card_db)

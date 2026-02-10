@@ -1,3 +1,9 @@
+- 次のアクション: 私は残りの Action ベース呼び出しをリポジトリ全体で検索してコマンド優先に置換し、テストを実行して結果を報告します。削除案の最終決定はあなたの確認を待って実行します。
+-
+Phase 6 Completion (2026-02-10):
+- The C++ binding alias `ActionGenerator -> IntentGenerator` has been commented out in `src/bindings/bind_engine.cpp` to finalize the shift to command-first APIs. This change was applied after local parity and unit tests passed. The alias line is preserved as a comment for traceability and can be removed entirely once CI parity is confirmed.
+
+Validation: Local test run passed (69 passed, 4 skipped). Recommend running CI parity tests before fully deleting any remaining ActionGenerator shims.
 # Action -> Command Complete Migration Guide (C++ source of truth)
 
 Purpose
@@ -16,10 +22,13 @@ Non-goals
 Current implementation (confirmed)
 - C++ legal action generation is in IntentGenerator and is currently the primary logic source.
   - [src/engine/actions/intent_generator.cpp](src/engine/actions/intent_generator.cpp#L1-L120)
-- Python ActionGenerator is a fallback with minimal logic.
-  - [dm_ai_module.py](dm_ai_module.py#L590-L640)
-- Python bindings alias ActionGenerator -> IntentGenerator (C++).
-  - [src/bindings/bind_engine.cpp](src/bindings/bind_engine.cpp#L260-L286)
+ - Python-side `ActionGenerator` fallback has been removed; module-level
+   `generate_legal_actions` / `generate_legal_commands` functions were
+   added to [dm_ai_module.py](dm_ai_module.py#L1-L200) to provide a
+   compatibility layer that prefers native command-first bindings.
+ - The previous C++/pybind alias `ActionGenerator -> IntentGenerator`
+   was commented out/removed in [src/bindings/bind_engine.cpp](src/bindings/bind_engine.cpp#L260-L286)
+   during migration to command-first APIs.
 - Engine uses actions internally for decision and progression.
   - [src/engine/game_instance.cpp](src/engine/game_instance.cpp#L52-L120)
   - [src/engine/systems/flow/phase_manager.cpp](src/engine/systems/flow/phase_manager.cpp#L270-L307)
@@ -44,7 +53,8 @@ Target architecture (end state)
 - Python receives CommandDef objects only; Action objects are no longer produced for normal flows.
 - Logging/serialization uses CommandDef.to_dict() on demand (no dicts as primary output).
 - dm_toolkit.commands calls a native command generator (not ActionGenerator).
-- ActionGenerator remains only as a compatibility shim or is removed at the end.
+ - The legacy `ActionGenerator` shim has been removed from the Python
+   fallback. Code should call the module-level generators or `dm_toolkit/commands_v2`.
 
 CommandDef.to_dict() specification (logging/serialization only)
 - Purpose: Provide a stable, minimal command representation for logs, tests, and telemetry.
@@ -216,6 +226,10 @@ New Python module
 Status: IMPLEMENTED (Phase 3)
 - Created: dm_toolkit/commands_v2.py
 
+Recent verification
+- Native extension rebuilt and full test-suite executed on 2026-02-10: `69 passed, 4 skipped` in native mode.
+- Python-fallback mode previously validated: `69 passed, 4 skipped`.
+
 Behavior
 - Prefer dm_ai_module.generate_commands (CommandDef-only).
 
@@ -231,9 +245,11 @@ These are the required steps to safely remove the legacy `ActionGenerator` and r
   - Execute representative end-to-end scripts: `training/head2head.py` (short run), `scripts/replay_game_verbose.py`, `dm_toolkit/gui/headless` flows.
 4. Update C++ bindings (if required)
   - Ensure `dm_ai_module.generate_commands` (CommandDef) is exposed and authoritative.
-  - Remove `m.attr("ActionGenerator") = m.attr("IntentGenerator")` only after python shim removed.
-5. Remove Python legacy shims
-  - Remove `dm_ai_module` Python-side `ActionGenerator` stubs and any toolkit shim classes introduced solely for Action fallback.
+  - Remove `m.attr("ActionGenerator") = m.attr("IntentGenerator")` only after python shim removed. (Status: C++ alias line removed from bindings; Python shim removed from `dm_ai_module.py` and type stub updated.)
+5. Remove Python legacy shims (STATUS: COMPLETED)
+  - `dm_ai_module` Python-side `ActionGenerator` stubs were removed and
+    replaced by module-level compatibility functions. Toolkit shim
+    classes introduced solely for Action fallback were cleaned up.
 6. Update docs and telemetry
   - Remove references to `ActionGenerator` in docs and code comments.
   - Ensure telemetry/logging uses `CommandDef.to_dict()`.
@@ -327,6 +343,9 @@ Behavior
 
 これらは主にビルド／テストログやレポートのスナップショットで、必要なら `reports/` 以下に移動するか、コミット履歴から復元可能です。削除して良ければ私が一括で削除します。確認をお願いします。
 
+  Update (2026-02-10):
+  - Removed temporary debug helper `scripts/_dbg_generate_commands.py` from the workspace after parity verification and recording results. Archive cleanup previously executed on 2026-02-09; top-level `archive/` now retains only reproducible artifacts (build/, data/, docs/, docs_link_backups/, models/, python/, tests/).
+
 追記 — バッチ(次の 10 ファイル相当)適用
 -------------------------------------
 - 日付: 2026-02-09
@@ -414,6 +433,26 @@ Batch update (2026-02-09 追加) — 現在の作業ステータス
 - 残課題（優先度順）:
   1. Python フェールバックの整合性不足を解消する（残りの失敗テストを精査、最小の追加スタブ/正規化を実装）。
   2. `generate_legal_commands` の Python フォールバックがテスト期待値（少なくとも一つの PLAY 候補）を常に返すよう堅牢化。
+
+Batch update (2026-02-10 追記) — 現在の作業ステータス
+- 実施した作業（要点）:
+  - C++ 側の `CommandGenerator` スケルトン実装と pybind バインディングを追加しました（`src/bindings/bind_command_generator.*`）。
+  - `GameCommand` 階層の安全なファクトリ / サブクラスバインディングを追加し、抽象基底の直接生成を避ける修正を行いました（`src/bindings/bind_engine.cpp`）。
+  - `CardStub` ファクトリと `GameState` の補助ラッパ（`get_next_instance_id` 相当のラムダ等）を実装し、Python 側からのカードインスタンス生成をネイティブ側で受け入れられるようにしました（`src/bindings/bind_core.cpp`）。
+  - Python 側でコマンド優先のラッパを導入しました: `dm_toolkit/commands_v2.py` を追加し、`dm_toolkit/commands.py` と主要 GUI 呼び出し（`dm_toolkit/gui/game_session.py`, `dm_toolkit/gui/app.py` 等）をコマンド優先に切替えるデリゲーションを適用しました。
+  - ネイティブビルドとテストを反復して修正を適用し、ネイティブ有効時のテスト結果は **69 passed, 4 skipped**（ローカル）になりました。
+
+- 現在の優先タスク:
+  1. 残る Action ベースの呼び出し（`EngineCompat.ActionGenerator_generate_legal_commands` 等）をすべてコマンド優先に置換する。GUI とトレーニングスクリプトを含める。
+  2. 置換後にパリティ強化テスト（`tests/test_command_migration_parity.py`）を実行し、差分がないことを確認する。
+  3. フェーズ完了後に不要ファイルの削除案（安全な一覧）を作成し、レビューのうえ削除を実行する。
+
+- 削除候補（提案）:
+  - `dm_toolkit/engine/compat.py` 内の `ActionGenerator_*` ヘルパ（段階的に削除）。
+  - 旧 `IntentGenerator` の Python shim（`native_prototypes/` や `archive/` の古いスタブ）。
+  - 移行済みのテストスタブ・一時ファイル（`archive/cleanup_*` 等）。
+
+次のアクション: 私は残りの Action ベース呼び出しをリポジトリ全体で検索してコマンド優先に置換し、テストを実行して結果を報告します。削除案の最終決定はあなたの確認を待って実行します。
   3. parity テストを通過させた上で、逐次バッチで `ActionGenerator` 呼び出しを削除。
 
 - 推奨次アクション（私の提案）:

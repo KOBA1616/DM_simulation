@@ -408,7 +408,11 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 # native-action helper if no commands are returned. Maintain
                 # final fallback to dm.IntentGenerator for maximum compatibility.
                 try:
-                    legal = commands.generate_legal_commands(state, CARD_DB, strict=False) or []
+                    # Prefer command-first generator from commands_v2, then
+                    # centralized native-action helper. Do not call legacy
+                    # IntentGenerator directly from Python.
+                    from dm_toolkit import commands_v2 as cmdv2
+                    legal = cmdv2.generate_legal_commands(state, CARD_DB, strict=False) or []
                 except Exception:
                     legal = []
                 if not legal:
@@ -416,10 +420,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                         from dm_toolkit import commands as legacy_commands
                         legal = legacy_commands._call_native_action_generator(state, CARD_DB) or []
                     except Exception:
-                        try:
-                            legal = dm.IntentGenerator.generate_legal_commands(state, CARD_DB) or []
-                        except Exception:
-                            legal = []
+                        legal = []
             except Exception:
                 legal = []
 
