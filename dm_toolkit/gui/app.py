@@ -491,11 +491,23 @@ class GameWindow(QMainWindow):
             # Prefer native command-first generator via commands wrapper; only call EngineCompat fallback when empty
             try:
                 all_legal_actions = commands.generate_legal_commands(self.gs, self.card_db, strict=False) or []
+            except TypeError:
+                all_legal_actions = commands.generate_legal_commands(self.gs, self.card_db) or []
             except Exception:
                 all_legal_actions = []
+
+            if not all_legal_actions:
+                # Try calling command wrapper again with alternate signature
+                try:
+                    all_legal_actions = commands.generate_legal_commands(self.gs, self.card_db, strict=False) or []
+                except Exception:
+                    all_legal_actions = []
+
             if not all_legal_actions:
                 try:
-                    all_legal_actions = EngineCompat.ActionGenerator_generate_legal_commands(self.gs, self.card_db) or []
+                    # Final fallback to legacy ActionGenerator for compatibility
+                    from dm_toolkit import commands as legacy_commands
+                    all_legal_actions = legacy_commands._call_native_action_generator(self.gs, self.card_db) or []
                 except Exception:
                     all_legal_actions = []
         except Exception:

@@ -364,10 +364,18 @@ class GameSession:
 
         if not cmds:
             try:
-                # Legacy fallback via EngineCompat/ActionGenerator
-                return EngineCompat.ActionGenerator_generate_legal_commands(self.gs, self.card_db)
+                # Fallback to command-first generator (commands_v2) if native returned none
+                try:
+                    return _generate_legal_commands(self.gs, self.card_db, strict=False) or []
+                except TypeError:
+                    return _generate_legal_commands(self.gs, self.card_db) or []
             except Exception:
-                return []
+                # Final fallback to legacy ActionGenerator for compatibility
+                try:
+                    from dm_toolkit import commands as legacy_commands
+                    return legacy_commands._call_native_action_generator(self.gs, self.card_db) or []
+                except Exception:
+                    return []
 
         return cmds
 

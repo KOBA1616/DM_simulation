@@ -1,5 +1,6 @@
-- 次のアクション: 私は残りの Action ベース呼び出しをリポジトリ全体で検索してコマンド優先に置換し、テストを実行して結果を報告します。削除案の最終決定はあなたの確認を待って実行します。
--
+- ステータス: コード側のコマンド優先へのカットオーバーが完了しました（2026-02-10）。
+- 次のアクション: PR を作成し CI を実行してパリティを確認した後、ドキュメント/テスト内の残存参照を最終削除します。
+
 Phase 6 Completion (2026-02-10):
 - The C++ binding alias `ActionGenerator -> IntentGenerator` has been commented out in `src/bindings/bind_engine.cpp` to finalize the shift to command-first APIs. This change was applied after local parity and unit tests passed. The alias line is preserved as a comment for traceability and can be removed entirely once CI parity is confirmed.
 
@@ -245,7 +246,7 @@ These are the required steps to safely remove the legacy `ActionGenerator` and r
   - Execute representative end-to-end scripts: `training/head2head.py` (short run), `scripts/replay_game_verbose.py`, `dm_toolkit/gui/headless` flows.
 4. Update C++ bindings (if required)
   - Ensure `dm_ai_module.generate_commands` (CommandDef) is exposed and authoritative.
-  - Remove `m.attr("ActionGenerator") = m.attr("IntentGenerator")` only after python shim removed. (Status: C++ alias line removed from bindings; Python shim removed from `dm_ai_module.py` and type stub updated.)
+  - `m.attr("ActionGenerator") = m.attr("IntentGenerator")` was commented out in the C++ bindings. Final deletion of that commented alias will be performed after CI parity confirmation; Python shim removal is complete.
 5. Remove Python legacy shims (STATUS: COMPLETED)
   - `dm_ai_module` Python-side `ActionGenerator` stubs were removed and
     replaced by module-level compatibility functions. Toolkit shim
@@ -267,12 +268,12 @@ Batch note (2026-02-09)
   - `dm_toolkit/ai/ga/evolve.py` — replaced direct legacy call patterns with a command-first safe pattern:
     - try `commands.generate_legal_commands(..., strict=False)`
     - fall back to `commands.generate_legal_commands(... )` if `strict` is unsupported
-    - if commands list is empty, fall back to `dm_ai_module.ActionGenerator.generate_legal_commands`
+    - if commands list is empty, fall back to centralized `dm_toolkit.commands._call_native_action_generator` (no `dm_ai_module.ActionGenerator` fallback remains)
 - Tests run: `tests/test_command_migration_parity.py` — 1 test passed locally (parity guard).
 - Notes: This change keeps legacy fallback while preferring command-first paths; ready for next batch.
   - Additional files updated in this batch:
     - `scripts/replay_game_verbose.py` — replaced direct `dm_ai_module.ActionGenerator` fallback with `dm_toolkit.commands._call_native_action_generator(...)` centralized helper.
-    - `dm_toolkit/ai/ga/evolve.py` — updated ActionGenerator fallback to use `dm_toolkit.commands._call_native_action_generator(...)`, with a final fallback to `dm_ai_module.ActionGenerator` for maximum compatibility.
+    - `dm_toolkit/ai/ga/evolve.py` — updated to use `dm_toolkit.commands._call_native_action_generator(...)` and no longer falls back to `dm_ai_module.ActionGenerator`.
     - `dm_toolkit/gui/headless.py` — replaced direct `_native.ActionGenerator.generate_legal_commands` call with centralized `dm_toolkit.commands._call_native_action_generator(...)` fallback.
     - `training/head2head.py` — replaced direct `dm.IntentGenerator.generate_legal_commands(...)` fallback with centralized `_call_native_action_generator(...)` helper, preserving a final fallback to `dm.IntentGenerator`.
     - `training/head2head.py` — finalized: all remaining direct `dm.IntentGenerator.generate_legal_commands` fallbacks in finalize/diagnostic sections were updated to use `_call_native_action_generator(...)` first, then fallback to `dm.IntentGenerator` for compatibility.
@@ -330,9 +331,9 @@ Behavior
 追加ミニバッチ（2026-02-09 追記）:
 - 概要: さらに小さなミニバッチを適用し、ツール／ドメイン／REPL 辺りの呼び出しをコマンド優先に切替えました。
 - 変更ファイル:
-  - `dm_toolkit/domain/simulation.py` — legal mask 生成を `commands_v2.generate_legal_commands` を優先し、空の場合に `ActionGenerator` にフォールバックするよう更新。
+  - `dm_toolkit/domain/simulation.py` — legal mask 生成を `commands_v2.generate_legal_commands` を優先し、空の場合に中央化された `dm_toolkit.commands._call_native_action_generator` にフォールバックするよう更新。
   - `tools/emit_play_attack_states.py` — デバッグ用コマンド出力ツールをコマンド優先化（フォールバック保持）。
-  - `dm_toolkit/gui/console_repl.py` — REPL の `list_legal` をコマンド優先に変更し、失敗/空時に `ActionGenerator` を呼ぶように修正。
+  - `dm_toolkit/gui/console_repl.py` — REPL の `list_legal` をコマンド優先に変更し、失敗/空時に中央化された `dm_toolkit.commands._call_native_action_generator` を呼ぶように修正。
 - 検証: 変更後に `tests/test_command_migration_parity.py` を実行 — 合格（`1 passed`）。
 
 不要ファイルの削除候補（提案）:

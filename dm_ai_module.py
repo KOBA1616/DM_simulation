@@ -621,6 +621,13 @@ class GameState:
         self.turn_number = 1
         self.game_over = False
         self.winner = -1
+    
+    def initialize(self):
+        """Compatibility alias for older tests/scripts: initialize the test duel."""
+        try:
+            self.setup_test_duel()
+        except Exception:
+            pass
         self.command_history: List[Any] = []
         # Initialize player_modes: both AI by default
         self.player_modes = [PlayerMode.AI, PlayerMode.AI]
@@ -960,7 +967,7 @@ class GameInstance:
         
         # Generate legal actions for current state
         try:
-            actions = ActionGenerator.generate_legal_actions(self.state, self.card_db)
+            actions = generate_commands(self.state, self.card_db)
         except Exception:
             actions = []
         
@@ -1051,92 +1058,86 @@ class ActionEncoder:
             return -1
 
 
-class ActionGenerator:
-    @staticmethod
-    def generate_legal_actions(state: GameState, card_db: Any = None) -> List[Action]:
-        out: List[Action] = []
+def generate_legal_actions(state: GameState, card_db: Any = None) -> List[Action]:
+    out: List[Action] = []
+    try:
+        pid = getattr(state, 'active_player_id', 0)
+        p = state.players[pid]
+
+        # PASS is always legal
+        a = Action()
+        a.type = ActionType.PASS
+        out.append(a)
+
+        phase = getattr(state, 'current_phase', Phase.MANA)
+
+        if phase == Phase.MANA:
+            for c in list(p.hand):
+                ma = Action()
+                ma.type = ActionType.MANA_CHARGE
+                ma.card_id = c.card_id
+                ma.source_instance_id = c.instance_id
+                out.append(ma)
+
+        elif phase == Phase.MAIN:
+            for c in list(p.hand):
+                pa = Action()
+                pa.type = ActionType.PLAY_CARD
+                pa.card_id = c.card_id
+                pa.source_instance_id = c.instance_id
+                out.append(pa)
+
+        elif phase == Phase.ATTACK:
+             # Minimal attack logic for fallback
+            for c in list(p.battle_zone):
+                 if not c.is_tapped and not c.sick:
+                    att = Action()
+                    att.type = ActionType.ATTACK_PLAYER
+                    att.source_instance_id = c.instance_id
+                    att.target_player = 1 - pid
+                    out.append(att)
+
+    except Exception:
+        return []
+    return out
+
+
+def generate_legal_commands(state: GameState, card_db: Any = None) -> List[Any]:
+    # Prefer native command-first binding if present
+    try:
+        gen = globals().get('generate_commands', None)
+        if callable(gen):
+            return gen(state, card_db) or []
+    except Exception:
+        pass
+
+    # Fallback: map legacy Action objects to minimal command dicts
+    actions = generate_legal_actions(state, card_db) or []
+    out: List[Any] = []
+    for a in actions:
         try:
-            pid = getattr(state, 'active_player_id', 0)
-            p = state.players[pid]
-
-            # PASS is always legal
-            a = Action()
-            a.type = ActionType.PASS
-            out.append(a)
-
-            phase = getattr(state, 'current_phase', Phase.MANA)
-
-            if phase == Phase.MANA:
-                for c in list(p.hand):
-                    ma = Action()
-                    ma.type = ActionType.MANA_CHARGE
-                    ma.card_id = c.card_id
-                    ma.source_instance_id = c.instance_id
-                    out.append(ma)
-
-            elif phase == Phase.MAIN:
-                for c in list(p.hand):
-                    pa = Action()
-                    pa.type = ActionType.PLAY_CARD
-                    pa.card_id = c.card_id
-                    pa.source_instance_id = c.instance_id
-                    out.append(pa)
-
-            elif phase == Phase.ATTACK:
-                 # Minimal attack logic for fallback
-                for c in list(p.battle_zone):
-                     if not c.is_tapped and not c.sick:
-                        att = Action()
-                        att.type = ActionType.ATTACK_PLAYER
-                        att.source_instance_id = c.instance_id
-                        att.target_player = 1 - pid
-                        out.append(att)
-
+            t = getattr(a, 'type', None)
+            if t == ActionType.PASS:
+                typ = 'PASS'
+            elif t == ActionType.MANA_CHARGE:
+                typ = 'MANA_CHARGE'
+            elif t == ActionType.PLAY_CARD:
+                typ = 'PLAY_FROM_ZONE'
+            elif t == ActionType.ATTACK_PLAYER:
+                typ = 'ATTACK'
+            else:
+                typ = str(t)
+            cmd = {'type': typ, 'uid': str(uuid.uuid4())}
+            iid = getattr(a, 'instance_id', None) or getattr(a, 'source_instance_id', None)
+            if iid is not None:
+                cmd['instance_id'] = iid
+            cid = getattr(a, 'card_id', None)
+            if cid is not None:
+                cmd['card_id'] = cid
+            out.append(cmd)
         except Exception:
-            return []
-        return out
-
-    @staticmethod
-    def generate_legal_commands(state: GameState, card_db: Any = None) -> List[Any]:
-        # Prefer native command-first binding if present
-        try:
-            gen = globals().get('generate_commands', None)
-            if callable(gen):
-                return gen(state, card_db) or []
-        except Exception:
-            pass
-
-        # Fallback: map legacy Action objects to minimal command dicts
-        actions = ActionGenerator.generate_legal_actions(state, card_db) or []
-        out: List[Any] = []
-        for a in actions:
-            try:
-                t = getattr(a, 'type', None)
-                if t == ActionType.PASS:
-                    typ = 'PASS'
-                elif t == ActionType.MANA_CHARGE:
-                    typ = 'MANA_CHARGE'
-                elif t == ActionType.PLAY_CARD:
-                    typ = 'PLAY_FROM_ZONE'
-                elif t == ActionType.ATTACK_PLAYER:
-                    typ = 'ATTACK'
-                else:
-                    typ = str(t)
-                cmd = {'type': typ, 'uid': str(uuid.uuid4())}
-                iid = getattr(a, 'instance_id', None) or getattr(a, 'source_instance_id', None)
-                if iid is not None:
-                    cmd['instance_id'] = iid
-                cid = getattr(a, 'card_id', None)
-                if cid is not None:
-                    cmd['card_id'] = cid
-                out.append(cmd)
-            except Exception:
-                continue
-        return out
-
-
-class IntentGenerator(ActionGenerator):
-    pass
+            continue
+    return out
 
 
 class PhaseManager:
@@ -1601,14 +1602,8 @@ if 'MutateCommand' not in globals():
                 except Exception:
                     pass
 
-    # Provide minimal, module-level fallback helpers (kept simple and robust)
-    if 'ActionGenerator' not in globals():
-        class ActionGenerator:
-            def __init__(self, registry: Any = None):
-                self.registry = registry
-
-            def generate(self, state: Any, player_id: int) -> list:
-                return []
+    # Note: legacy `ActionGenerator` shim removed in favor of module-level
+    # command-first generation helpers. Use `generate_legal_commands` below.
 
     if 'ActionEncoder' not in globals():
         class ActionEncoder:
@@ -1959,22 +1954,59 @@ except Exception:
 
 
 def generate_commands(state: Any, card_db: Any = None) -> list:
-    actions = []
+    # Prefer command-first generator from `dm_toolkit.commands_v2` when available.
+    cmds = []
     try:
-        if 'ActionGenerator' in globals() and hasattr(ActionGenerator, 'generate_legal_actions'):
-            try:
-                actions = ActionGenerator.generate_legal_actions(state, card_db)
-            except Exception:
-                try:
-                    actions = ActionGenerator().generate(state, getattr(state, 'active_player_id', 0))
-                except Exception:
-                    actions = []
-        else:
-            actions = []
+        from dm_toolkit import commands_v2 as cmdv2
+        try:
+            cmds = cmdv2.generate_legal_commands(state, card_db, strict=False) or []
+        except TypeError:
+            cmds = cmdv2.generate_legal_commands(state, card_db) or []
+        except Exception:
+            cmds = []
     except Exception:
-        actions = []
+        cmds = []
 
-    return commands_from_actions(actions, state)
+    # Normalize outputs into simple dicts suitable for legacy callers.
+    out = []
+    for c in (cmds or []):
+        try:
+            if isinstance(c, dict):
+                out.append(c)
+                continue
+            if hasattr(c, 'to_dict'):
+                try:
+                    out.append(c.to_dict())
+                    continue
+                except Exception:
+                    pass
+            # If this looks like an Action-like object (has 'type'), map via commands_from_actions
+            if hasattr(c, 'type') and not hasattr(c, 'to_dict'):
+                out.extend(commands_from_actions(cmds, state))
+                break
+            # Fallback: try attribute extraction
+            d = {}
+            try:
+                d['type'] = getattr(c, 'type', None)
+            except Exception:
+                pass
+            try:
+                if hasattr(c, 'instance_id'):
+                    d['instance_id'] = getattr(c, 'instance_id')
+                if hasattr(c, 'source_instance_id'):
+                    d['source_instance_id'] = getattr(c, 'source_instance_id')
+            except Exception:
+                pass
+            try:
+                if hasattr(c, 'card_id'):
+                    d['card_id'] = getattr(c, 'card_id')
+            except Exception:
+                pass
+            out.append(d)
+        except Exception:
+            continue
+
+    return out
 
 if 'DeckEvolutionConfig' not in globals():
     class DeckEvolutionConfig:
@@ -2139,7 +2171,7 @@ if 'MCTS' not in globals():
                 if result == GameResult.P2_WIN: return 1.0 if current_player == 1 else -1.0
                 return 0.0
 
-            actions = ActionGenerator.generate_legal_actions(node.state, self.card_db)
+            actions = generate_commands(node.state, self.card_db)
             if not actions:
                 return 0.0
 

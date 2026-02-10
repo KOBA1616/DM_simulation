@@ -103,12 +103,10 @@ class SolitaireRunner:
         actions: List[Any] = []
         if not cmds:
             try:
-                actions = commands.generate_legal_commands(state, cast(Dict[int, Any], self.card_db), strict=False) or []
+                from dm_toolkit import commands as legacy_commands
+                actions = legacy_commands._call_native_action_generator(state, cast(Dict[int, Any], self.card_db)) or []
             except Exception:
-                try:
-                    actions = commands.generate_legal_commands(state, cast(Dict[int, Any], self.card_db)) or []
-                except Exception:
-                    actions = []
+                actions = []
 
         if not actions and not cmds:
             dm_ai_module.PhaseManager.next_phase(state, self.card_db)

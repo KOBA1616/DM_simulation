@@ -1,5 +1,5 @@
-#include "src/engine/commands/command_generator.hpp"
-#include "src/engine/actions/intent_generator.hpp"
+#include "engine/commands/command_generator.hpp"
+#include "engine/actions/intent_generator.hpp"
 
 #include <atomic>
 #include <sstream>

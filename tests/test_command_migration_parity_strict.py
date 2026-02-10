@@ -140,12 +140,7 @@ try:
     try:
         cmds2 = legacy_commands._call_native_action_generator(s, card_db) or []
     except Exception:
-        AG = getattr(dm_ai_module, 'ActionGenerator', None)
-        if AG is not None and hasattr(AG, 'generate_legal_commands'):
-            try:
-                cmds2 = AG.generate_legal_commands(s, card_db) or []
-            except Exception:
-                cmds2 = []
+        cmds2 = []
 except Exception:
     cmds2 = []
 

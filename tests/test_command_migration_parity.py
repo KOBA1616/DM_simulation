@@ -18,10 +18,10 @@ def test_generators_exist_and_return_iterables():
         except Exception:
             cmds = []
 
-    # Legacy actions as fallback for parity checks
+    # Legacy-equivalent commands for parity checks (use module-level generator)
     actions = []
     try:
-        actions = dm.IntentGenerator.generate_legal_actions(state, card_db) or []
+        actions = dm.generate_commands(state, card_db) or []
     except Exception:
         actions = []
 

@@ -42,7 +42,11 @@ def _call_native_action_generator(state: Any, card_db: Any) -> List[Any]:
     try:
         if hasattr(dm_ai_module, 'generate_commands'):
             try:
-                return dm_ai_module.generate_commands(state, native_db) or []
+                res = dm_ai_module.generate_commands(state, native_db) or []
+                # Prefer non-empty command-first output; if empty, fall back to
+                # legacy ActionGenerator paths to preserve compatibility.
+                if res:
+                    return res
             except Exception:
                 pass
     except Exception:
@@ -232,6 +236,8 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
     """
     try:
         import dm_ai_module
+        # Ensure actions variable is always defined to avoid UnboundLocalError
+        actions: List[Any] = []
         # Debug: report observed state phase and active player for diagnostics
         try:
             cur_phase = getattr(state, 'current_phase', None)
@@ -240,16 +246,27 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
         except Exception:
             pass
 
-        actions: List[Any] = []
-        try:
-            # Prefer command-first generator when available (returns command dicts)
-            # Use robust native action generator helper that supports several
-            # historical names and generator shapes (generate_commands, 
-            # generate_legal_commands, generate_legal_actions, instance.generate).
+            actions: List[Any] = []
+            # Prefer native/module-level command generator if available
             try:
-                actions = _call_native_action_generator(state, card_db) or []
+                import dm_ai_module as native
+                try:
+                    # dm_ai_module.generate_legal_commands is a module-level compatibility
+                    # function that prefers native command-first output and falls back
+                    # to a Python action-to-command mapping when native is unavailable.
+                    actions = native.generate_legal_commands(state, card_db) or []
+                    logger.debug(f"Using dm_ai_module.generate_legal_commands -> count={len(actions)}")
+                except Exception:
+                    actions = []
             except Exception:
                 actions = []
+
+            # If module-level generator returned nothing, try native action generator helper
+            if not actions:
+                try:
+                    actions = _call_native_action_generator(state, card_db) or []
+                except Exception:
+                    actions = []
             # Debug: show types/reprs of first few returned actions to diagnose discrepancies
             try:
                 sample = []
@@ -423,11 +440,12 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
             except Exception:
                 pass  # Silent fallback - if fast_forward fails, return empty actions
 
-        # If native is disabled or no native actions found, synthesize simple
-        # play candidates from Python state as a best-effort fallback so tests
-        # and tools can exercise play logic without the C++ engine.
+        # If no native actions found, synthesize simple play candidates from
+        # Python state as a best-effort fallback so tests and tools can
+        # exercise play logic without the C++ engine. This helps when the
+        # native engine returns an empty set for the current state.
         try:
-            if not actions and os.getenv('DM_DISABLE_NATIVE') in ('1', 'true', 'True'):
+            if not actions:
                 pid = getattr(state, 'active_player_id', 0)
                 hand = []
                 try:

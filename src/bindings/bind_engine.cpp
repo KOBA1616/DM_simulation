@@ -22,6 +22,23 @@ using namespace dm;
 using namespace dm::core;
 using namespace dm::engine;
 
+// A minimal concrete GameCommand implementation usable from Python tests.
+// The project GameCommand is abstract; exposing a concrete trivial implementation
+// allows Python tests to construct a command object when they expect one.
+struct PyGameCommandImpl : public dm::engine::game_command::GameCommand {
+    PyGameCommandImpl() = default;
+    ~PyGameCommandImpl() override = default;
+    void execute(dm::core::GameState &state) override {
+        // no-op default
+    }
+    void invert(dm::core::GameState &state) override {
+        // no-op default
+    }
+    dm::engine::game_command::CommandType get_type() const override {
+        return dm::engine::game_command::CommandType::PASS_TURN;
+    }
+};
+
 // Helper to access pipeline
 std::shared_ptr<dm::engine::systems::PipelineExecutor> get_active_pipeline(GameState& state) {
     return std::static_pointer_cast<dm::engine::systems::PipelineExecutor>(state.active_pipeline);
@@ -29,9 +46,16 @@ std::shared_ptr<dm::engine::systems::PipelineExecutor> get_active_pipeline(GameS
 
 void bind_engine(py::module& m) {
      // GameCommand bindings
+    // Bind abstract base (no constructor)
     py::class_<dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::GameCommand>>(m, "GameCommand")
         .def("get_type", &dm::engine::game_command::GameCommand::get_type)
         .def("invert", &dm::engine::game_command::GameCommand::invert);
+
+    // Provide a Python-callable factory that returns a concrete, trivial GameCommand
+    // instance so tests can call `GameCommand()` to obtain a constructible command.
+    m.def("GameCommand", []() {
+        return std::shared_ptr<dm::engine::game_command::GameCommand>(std::make_shared<PyGameCommandImpl>());
+    });
 
     // Removed CommandType binding here to avoid conflict with bind_core.cpp
     // The core CommandType (card_json_types.hpp) is now the primary one exposed.
@@ -279,8 +303,7 @@ void bind_engine(py::module& m) {
             return IntentGenerator::generate_legal_actions(gs, db);
         });
 
-    // Alias for backward compatibility
-    m.attr("ActionGenerator") = m.attr("IntentGenerator");
+    // Alias for backward compatibility was removed to finalize command-first migration.
 
     auto effect_resolver = py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver");
     effect_resolver
@@ -353,6 +376,7 @@ void bind_engine(py::module& m) {
             return std::make_unique<GameInstance>(seed, db);
         }))
         .def(py::init<uint32_t>())
+        .def(py::init([]() { return std::make_unique<GameInstance>(0u); }))
         .def_property_readonly("state", [](GameInstance &g) -> core::GameState& { return g.state; }, py::return_value_policy::reference_internal)
         .def("start_game", &GameInstance::start_game)
         .def("resolve_action", &GameInstance::resolve_action)

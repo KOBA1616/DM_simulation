@@ -2,7 +2,8 @@
 import math
 import random
 import dm_ai_module
-from dm_toolkit import commands as commands
+from dm_toolkit import commands_v2 as commands
+from dm_toolkit.engine.compat import EngineCompat
 from PyQt6.QtWidgets import QApplication
 
 class Node:

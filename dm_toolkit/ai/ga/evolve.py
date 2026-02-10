@@ -10,6 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 import dm_ai_module
 # Prefer command-first generation where available
 from dm_toolkit import commands_v2 as commands
+from dm_toolkit.engine.compat import EngineCompat
 # from dm_toolkit.ai.agent.mcts import MCTS # MCTS might not be available in python toolkit yet or deprecated
 # Since MCTS is now in C++ (dm_ai_module.MCTS), we should use that or skip deep logic here.
 
@@ -117,10 +118,7 @@ class DeckEvolution:
                     from dm_toolkit import commands as legacy_commands
                     actions = legacy_commands._call_native_action_generator(gs, self.card_db) or []
                 except Exception:
-                    try:
-                        actions = dm_ai_module.ActionGenerator.generate_legal_commands(gs, self.card_db) or []
-                    except Exception:
-                        actions = []
+                    actions = []
 
             if not actions and not cmds:
                 dm_ai_module.PhaseManager.next_phase(gs)

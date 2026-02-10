@@ -991,10 +991,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                             from dm_toolkit import commands as legacy_commands
                             legal = legacy_commands._call_native_action_generator(inst.state, CARD_DB) or []
                         except Exception:
-                            try:
-                                legal = dm.IntentGenerator.generate_legal_commands(inst.state, CARD_DB) or []
-                            except Exception:
-                                legal = []
+                            legal = []
                 except Exception:
                     legal = []
                 pending = EngineCompat.get_pending_effects_info(inst.state)
@@ -1091,10 +1088,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                                 from dm_toolkit import commands as legacy_commands
                                 legal = legacy_commands._call_native_action_generator(inst.state, CARD_DB) or []
                             except Exception:
-                                try:
-                                    legal = dm.IntentGenerator.generate_legal_commands(inst.state, CARD_DB) or []
-                                except Exception:
-                                    legal = []
+                                legal = []
                     except Exception:
                         legal = []
                     pending = EngineCompat.get_pending_effects_info(inst.state)
