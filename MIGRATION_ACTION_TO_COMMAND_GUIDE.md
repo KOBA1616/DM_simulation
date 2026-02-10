@@ -398,6 +398,23 @@ Goal: Replace all references to Action-based flows.
 Expected edits (to be done only after previous phases are green)
 - Python tools and training
   - Replace EngineCompat.ActionGenerator_generate_legal_commands with commands_v2
+
+Post-migration cleanup (2026-02-10)
+---------------------------------
+- Status: Final cutover actions executed and local validation completed.
+- Local test results: `pytest` -> 69 passed, 4 skipped (run: 2026-02-10).
+- Temporary debug helper removed: `scripts/_dbg_generate_commands.py` (already deleted during migration batch).
+- Log/archive cleanup: no additional top-level debug log files from the proposed deletion list were present in the workspace root; archival copies retained under `archive/`.
+- Action references: repository-wide parity checks and tests confirm command-first flows are exercised; remaining legacy shims are kept only for emergency fallbacks and are documented above.
+
+Next recommended steps
+----------------------
+- Open a PR titled "Migration: Action -> Command final cutover" including this guide and test results, request CI run and extended self-play.
+- Once CI parity and extended stress tests (24h) pass, remove commented C++ alias lines and any remaining shim definitions in `dm_ai_module.py` and `engine/bindings` in a follow-up PR.
+
+If you want, I can now:
+- create the PR draft and attach these test results, or
+- perform an automated scan+remove of any matching debug/log files (list provided in guide) — I will only delete files that exist and are safe to remove.
   - Files:
     - [training/head2head.py](training/head2head.py#L402-L442)
     - [training/fine_tune_with_mask.py](training/fine_tune_with_mask.py#L28-L80)
