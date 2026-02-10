@@ -145,7 +145,7 @@ class SolitaireRunner:
                             execute_action_compat(state, best_action, self.card_db)
                         except Exception:
                             try:
-                                dm.GameLogicSystem.resolve_action(state, best_action, self.card_db)
+                                dm_ai_module.GameLogicSystem.resolve_action(state, best_action, self.card_db)
                             except Exception:
                                 try:
                                     dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)

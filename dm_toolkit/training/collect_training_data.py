@@ -65,9 +65,67 @@ if __name__ == "__main__":
         sys.exit(0)
 
     # Convert to numpy arrays
-    policies = np.array(batch.policies, dtype=np.float32)
+    policies_raw = batch.policies
     masks = np.array(batch.masks, dtype=np.float32)
     values = np.array(batch.values, dtype=np.float32)
+
+    # Normalize policies if they are returned as command-like objects
+    try:
+        from dm_toolkit.training.command_compat import command_to_index
+    except Exception:
+        command_to_index = None
+
+    def _is_prob_array(obj):
+        try:
+            a = np.array(obj, dtype=np.float32)
+            return np.issubdtype(a.dtype, np.floating) or np.issubdtype(a.dtype, np.integer)
+        except Exception:
+            return False
+
+    if isinstance(policies_raw, (list, tuple)) and len(policies_raw) > 0 and not _is_prob_array(policies_raw[0]):
+        # Need to convert command-like policies into canonical one-hot/prob vectors
+        new_dim = None
+        try:
+            if hasattr(dm_ai_module, 'CommandEncoder') and getattr(dm_ai_module.CommandEncoder, 'TOTAL_COMMAND_SIZE', None) is not None:
+                new_dim = int(dm_ai_module.CommandEncoder.TOTAL_COMMAND_SIZE)
+        except Exception:
+            new_dim = None
+
+        if new_dim is None or command_to_index is None:
+            print("Warning: Unable to normalize command-like policies (CommandEncoder or command_compat missing). Saving raw policies as object array.")
+            policies = np.array(policies_raw, dtype=object)
+        else:
+            policies = np.zeros((len(policies_raw), new_dim), dtype=np.float32)
+            for i, entry in enumerate(policies_raw):
+                # entry may be dict{cmd:prob}, list of cmds, or single cmd
+                if isinstance(entry, dict):
+                    for k, v in entry.items():
+                        idx = command_to_index(k) if not isinstance(k, int) else k
+                        if idx is not None and 0 <= idx < new_dim:
+                            policies[i, int(idx)] += float(v)
+                elif isinstance(entry, (list, tuple)):
+                    for item in entry:
+                        if isinstance(item, (list, tuple)) and len(item) == 2:
+                            k, v = item
+                            idx = command_to_index(k) if not isinstance(k, int) else k
+                            if idx is not None and 0 <= idx < new_dim:
+                                policies[i, int(idx)] += float(v)
+                        else:
+                            idx = command_to_index(item) if not isinstance(item, int) else item
+                            if idx is not None and 0 <= idx < new_dim:
+                                policies[i, int(idx)] += 1.0
+                else:
+                    idx = command_to_index(entry) if not isinstance(entry, int) else entry
+                    if idx is not None and 0 <= idx < new_dim:
+                        policies[i, int(idx)] += 1.0
+
+            # Normalize rows
+            row_sums = policies.sum(axis=1, keepdims=True)
+            mask = row_sums.squeeze() > 0
+            if mask.any():
+                policies[mask] = policies[mask] / row_sums[mask]
+    else:
+        policies = np.array(policies_raw, dtype=np.float32)
 
     save_dict = {
         'policies': policies,

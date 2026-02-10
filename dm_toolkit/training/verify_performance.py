@@ -41,7 +41,11 @@ class PerformanceVerifier:
         dummy_instance = dm_ai_module.GameInstance(42, self.card_db)
         dummy_vec = dm_ai_module.TensorConverter.convert_to_tensor(dummy_instance.state, 0, self.card_db)
         self.input_size = len(dummy_vec)
-        self.action_size = dm_ai_module.CommandEncoder.TOTAL_COMMAND_SIZE
+        try:
+            self.action_size = int(getattr(dm_ai_module.CommandEncoder, 'TOTAL_COMMAND_SIZE'))
+        except Exception:
+            self.action_size = 591
+            print(f"Warning: dm_ai_module.CommandEncoder.TOTAL_COMMAND_SIZE not available, falling back to {self.action_size}")
 
         # Initialize Network based on type
         self.network: Any

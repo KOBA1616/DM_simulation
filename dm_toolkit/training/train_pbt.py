@@ -68,7 +68,12 @@ class PBTManager:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.network: Optional[AlphaZeroNetwork] = None
         self.input_size = dm_ai_module.TensorConverter.INPUT_SIZE
-        self.action_size = dm_ai_module.CommandEncoder.TOTAL_COMMAND_SIZE
+        try:
+            self.action_size = int(getattr(dm_ai_module.CommandEncoder, 'TOTAL_COMMAND_SIZE'))
+        except Exception:
+            # Fallback: use historical default and warn
+            self.action_size = 591
+            print(f"Warning: dm_ai_module.CommandEncoder.TOTAL_COMMAND_SIZE not available, falling back to {self.action_size}")
 
         # Evolution Config
         self.evo_config = dm_ai_module.DeckEvolutionConfig()

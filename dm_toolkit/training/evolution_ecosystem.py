@@ -20,7 +20,67 @@ try:
 except ImportError:
     print("Error: Could not import dm_ai_module. Ensure it is built and in bin/")
     sys.exit(1)
-from dm_toolkit import commands
+from dm_toolkit import commands as legacy_commands
+try:
+    from dm_toolkit import commands_v2 as commands_v2
+except Exception:
+    commands_v2 = None
+
+
+def _generate_legal_commands(state, card_db):
+    """Prefer command-first generator (commands_v2) with safe fallbacks."""
+    try:
+        if commands_v2 is not None:
+            try:
+                return commands_v2.generate_legal_commands(state, card_db, strict=False) or []
+            except TypeError:
+                return commands_v2.generate_legal_commands(state, card_db) or []
+            except Exception:
+                return []
+        else:
+            # If commands_v2 isn't available, try legacy wrapper if present
+            try:
+                return legacy_commands.generate_legal_commands(state, card_db, strict=False) or []
+            except Exception:
+                try:
+                    return legacy_commands.generate_legal_commands(state, card_db) or []
+                except Exception:
+                    return []
+    except Exception:
+        return []
+
+
+def _is_action_type_compat(act: Any, action_type: Any) -> bool:
+    """Compatibility wrapper: supports native Action objects and command dicts.
+
+    - If `act` is a dict (command), try to match by 'type' field against the
+      provided `action_type` enum/name/value.
+    - Otherwise delegate to `dm_ai_module.is_action_type` for native objects.
+    """
+    try:
+        if isinstance(act, dict):
+            t = act.get('type')
+            if t is None:
+                return False
+            at_name = getattr(action_type, 'name', None)
+            at_value = getattr(action_type, 'value', None)
+            # Match by enum name (common case for command dicts)
+            if at_name is not None and (t == at_name or t == at_name.lower()):
+                return True
+            # Match by enum value (if command encodes numeric code)
+            if at_value is not None and (t == at_value or str(t) == str(at_value)):
+                return True
+            # Try numeric comparison
+            try:
+                if int(t) == int(action_type):
+                    return True
+            except Exception:
+                pass
+            return False
+        else:
+            return dm_ai_module.is_action_type(act, action_type)
+    except Exception:
+        return False
 
 class EvolutionEcosystem:
     def __init__(self, cards_path: str, meta_decks_path: str, output_path: Optional[str] = None) -> None:
@@ -121,115 +181,106 @@ class EvolutionEcosystem:
             max_steps = 10000 # Increase limit to avoid premature termination
 
             while steps < max_steps:
-                 if instance.state.game_over:
-                     break
-
-                 res = dm_ai_module.GameResult.NONE
-                 if dm_ai_module.PhaseManager.check_game_over(instance.state, res):
+                if instance.state.game_over:
                     break
 
-                 try:
-                    # Prefer native command-first generator (non-strict).
-                    cmds = []
+                res = dm_ai_module.GameResult.NONE
+                if dm_ai_module.PhaseManager.check_game_over(instance.state, res):
+                    break
+
+                # Prefer native command-first generator (non-strict).
+                try:
                     try:
-                        cmds = commands.generate_legal_commands(instance.state, self.card_db, strict=False) or []
+                        cmds = _generate_legal_commands(instance.state, self.card_db) or []
                     except TypeError:
-                        cmds = commands.generate_legal_commands(instance.state, self.card_db) or []
-                    except Exception:
-                        cmds = []
+                        cmds = _generate_legal_commands(instance.state, self.card_db) or []
+                except Exception:
+                    cmds = []
 
-                 legal_actions = []
-                 # Legacy ActionGenerator fallback is handled by commands_v2 when available.
-                 if not legal_actions and not cmds:
-                     dm_ai_module.PhaseManager.next_phase(instance.state, self.card_db)
-                     continue
-
-                 # Simple greedy selection using HeuristicEvaluator (which returns float score)
-                 # Actually HeuristicEvaluator evaluates state.
-                 # We need an agent that picks action.
-                 # Python binding for HeuristicAgent is not exposed directly?
-                 # Ah, wait. ParallelRunner uses HeuristicAgent in C++.
-                 # In Python, we can just pick random or use a simple heuristic.
-                 # For stat collection, random might be too chaotic.
-                 # Let's pick random for now as HeuristicAgent isn't exposed.
-                 # Or better, just pick first action (often PASS if available, or first card).
-                 # To get meaningful stats, we want somewhat reasonable play.
-                 # Let's use a very simple heuristic: prioritized actions.
-
-                 # Prefer an action that can be executed via command when available
-                 best_action = legal_actions[0] if legal_actions else None
-                 best_cmd = None
-                 if cmds:
-                     best_cmd = cmds[0]
-
-                 # Improved simple heuristic for stat collection
-                 # 1. Charge Mana (up to 7)
-                 # 2. Play Card
-                 # 3. Attack Player
-                 # 4. Pass/Other
-
-                 found = False
-                 # Check for Mana Charge first
-                 current_mana = len(instance.state.get_zone(instance.state.active_player_id, dm_ai_module.Zone.MANA))
-                 if current_mana < 7:
-                    # Use getattr guards for ActionType members to satisfy mypy
-                    _MANA_CHARGE = getattr(dm_ai_module.ActionType, 'MANA_CHARGE', None)
-                    _MOVE_CARD = getattr(dm_ai_module.ActionType, 'MOVE_CARD', None)
-                    for act in legal_actions:
-                        # Check for MANA_CHARGE or MOVE_CARD in Mana Phase
-                        if dm_ai_module.is_action_type(act, _MANA_CHARGE):
-                            best_action = act
-                            found = True
-                            break
-                        if instance.state.current_phase == dm_ai_module.Phase.MANA and dm_ai_module.is_action_type(act, _MOVE_CARD):
-                            best_action = act
-                            found = True
-                            break
-
-                 if not found:
-                     for act in legal_actions:
-                         if dm_ai_module.is_action_type(act, dm_ai_module.ActionType.PLAY_CARD):
-                             best_action = act
-                             found = True
-                             break
-
-                 if not found:
-                     for act in legal_actions:
-                         if dm_ai_module.is_action_type(act, dm_ai_module.ActionType.ATTACK_PLAYER):
-                             best_action = act
-                             found = True
-                             break
-
-                 # Execute via unified command path; convert action if needed
-                 from dm_toolkit.unified_execution import ensure_executable_command
-                 from dm_toolkit.engine.compat import EngineCompat
-                 if best_cmd is not None:
+                # If no commands returned, try legacy Action generator as fallback
+                legal_actions = []
+                if not cmds:
                     try:
-                        cast(Any, instance.state).execute_command(best_cmd)
+                        from dm_toolkit import commands as legacy_commands
+                        legal_actions = legacy_commands._call_native_action_generator(instance.state, self.card_db) or []
+                    except Exception:
+                        legal_actions = []
+
+                if not legal_actions and not cmds:
+                    dm_ai_module.PhaseManager.next_phase(instance.state, self.card_db)
+                    continue
+
+                # Build unified candidate list (commands first, then legacy actions)
+                candidates = list(cmds) + list(legal_actions)
+
+                # Default picks
+                best_candidate = candidates[0] if candidates else None
+                best_cmd = cmds[0] if cmds else None
+
+                # Heuristic prioritization over unified candidates
+                found = False
+                current_mana = len(instance.state.get_zone(instance.state.active_player_id, dm_ai_module.Zone.MANA))
+                _MANA_CHARGE = getattr(dm_ai_module.ActionType, 'MANA_CHARGE', None)
+                _MOVE_CARD = getattr(dm_ai_module.ActionType, 'MOVE_CARD', None)
+
+                if current_mana < 7:
+                    for cand in candidates:
+                        if _is_action_type_compat(cand, _MANA_CHARGE):
+                            best_candidate = cand
+                            found = True
+                            break
+                        if instance.state.current_phase == dm_ai_module.Phase.MANA and _is_action_type_compat(cand, _MOVE_CARD):
+                            best_candidate = cand
+                            found = True
+                            break
+
+                if not found:
+                    for cand in candidates:
+                        if _is_action_type_compat(cand, dm_ai_module.ActionType.PLAY_CARD):
+                            best_candidate = cand
+                            found = True
+                            break
+
+                if not found:
+                    for cand in candidates:
+                        if _is_action_type_compat(cand, dm_ai_module.ActionType.ATTACK_PLAYER):
+                            best_candidate = cand
+                            found = True
+                            break
+
+                # Execute: if candidate is a command dict (from cmds), prefer engine execute_command
+                from dm_toolkit.unified_execution import ensure_executable_command
+                from dm_toolkit.engine.compat import EngineCompat
+
+                if isinstance(best_candidate, dict):
+                    # Best candidate is a command dict
+                    try:
+                        cast(Any, instance.state).execute_command(best_candidate)
                     except Exception:
                         try:
-                            best_cmd.execute(instance.state)
+                            best_candidate.execute(instance.state)
                         except Exception:
                             try:
-                                EngineCompat.ExecuteCommand(instance.state, best_cmd)
+                                EngineCompat.ExecuteCommand(instance.state, best_candidate)
                             except Exception:
                                 pass
-                 else:
-                     if best_action is not None:
-                         try:
-                            cmd = ensure_executable_command(best_action)
+                else:
+                    # Legacy Action object or unknown: normalize to executable command, then execute
+                    if best_candidate is not None:
+                        try:
+                            cmd = ensure_executable_command(best_candidate)
                             EngineCompat.ExecuteCommand(instance.state, cmd)
-                         except Exception:
-                             # Last resort: try central compat wrapper, then fall back to EngineCompat resolver
-                             try:
-                                 from dm_toolkit.compat_wrappers import execute_action_compat
-                                 execute_action_compat(instance.state, best_action, cast(Dict[int, Any], self.card_db))
-                             except Exception:
-                                 try:
-                                     EngineCompat.EffectResolver_resolve_action(instance.state, best_action, cast(Dict[int, Any], self.card_db))
-                                 except Exception:
-                                     pass
-                 steps += 1
+                        except Exception:
+                            try:
+                                from dm_toolkit.compat_wrappers import execute_action_compat
+                                execute_action_compat(instance.state, best_candidate, cast(Dict[int, Any], self.card_db))
+                            except Exception:
+                                try:
+                                    EngineCompat.EffectResolver_resolve_action(instance.state, best_candidate, cast(Dict[int, Any], self.card_db))
+                                except Exception:
+                                    pass
+
+                steps += 1
 
             # Game finished (or max steps), collect stats
             # get_card_stats returns {cid: {play_count, win_count, sum_cost_discount, sum_early_usage, ...}}

@@ -48,8 +48,50 @@ import time
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.action_to_command import map_action
 from dm_toolkit import commands_v2 as commands
+from dm_toolkit.training.command_compat import generate_legal_commands, normalize_to_command, command_to_index
 
 CARD_DB = dm.JsonLoader.load_cards('data/cards.json')
+
+
+# Helper: normalize an action/command-like object into a command-dict/object
+def _normalize_to_command(obj):
+    try:
+        # already a dict (likely from CommandDef.to_dict())
+        if isinstance(obj, dict):
+            return obj
+        # object provides to_dict()
+        if hasattr(obj, 'to_dict'):
+            try:
+                return obj.to_dict()
+            except Exception:
+                pass
+        # try mapping legacy Action -> Command
+        try:
+            mapped = map_action(obj)
+            return mapped
+        except Exception:
+            return None
+    except Exception:
+        return None
+
+
+def _index_for_action_or_command(act):
+    # Prefer encoding a Command (dict or CommandDef), fallback to ActionEncoder
+    try:
+        cmd = _normalize_to_command(act)
+        if cmd is not None:
+            try:
+                return dm.CommandEncoder.command_to_index(cmd)
+            except Exception:
+                pass
+        # final fallback: legacy ActionEncoder
+        try:
+            return dm.ActionEncoder.action_to_index(act)
+        except Exception:
+            return None
+    except Exception:
+        return None
+
 
 
 def make_session(model_path: str, use_pytorch: bool = False):
@@ -569,7 +611,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 legal_map = []
                 for a in legal:
                     try:
-                        idx = dm.CommandEncoder.command_to_index(map_action(a) if hasattr(a, 'to_dict') or isinstance(a, dict) else a if isinstance(a, dict) else (a.to_dict() if hasattr(a, 'to_dict') else a))
+                        idx = _index_for_action_or_command(a)
                         legal_map.append({'repr': map_action(a) if True else str(a), 'index': int(idx) if idx is not None else None})
                     except Exception as _e:
                         try:
@@ -634,13 +676,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
             best_score = -1e9
             for act in legal:
                 try:
-                    # Prefer command-based encoding; accept legacy Action or dict-like
-                    if isinstance(act, dict):
-                        idx = dm.CommandEncoder.command_to_index(act)
-                    elif hasattr(act, 'to_dict'):
-                        idx = dm.CommandEncoder.command_to_index(act.to_dict())
-                    else:
-                        idx = dm.ActionEncoder.action_to_index(act)
+                    idx = _index_for_action_or_command(act)
                 except Exception:
                     idx = -1
                 if idx is None:
@@ -664,16 +700,20 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
             if chosen is None:
                 chosen = random.choice(legal)
             # compute chosen index for diagnostics
-            try:
                 try:
-                    if isinstance(chosen, dict):
-                        chosen_idx = dm.CommandEncoder.command_to_index(chosen)
-                    elif hasattr(chosen, 'to_dict'):
-                        chosen_idx = dm.CommandEncoder.command_to_index(chosen.to_dict())
-                    else:
-                        chosen_idx = dm.ActionEncoder.action_to_index(chosen)
-                except Exception:
-                    chosen_idx = None
+                    try:
+                        if isinstance(chosen, dict):
+                            chosen_idx = dm.CommandEncoder.command_to_index(chosen)
+                        elif hasattr(chosen, 'to_dict'):
+                            chosen_idx = dm.CommandEncoder.command_to_index(chosen.to_dict())
+                        else:
+                            try:
+                                mapped_ch = map_action(chosen)
+                                chosen_idx = dm.CommandEncoder.command_to_index(mapped_ch) if mapped_ch is not None else dm.ActionEncoder.action_to_index(chosen)
+                            except Exception:
+                                chosen_idx = dm.ActionEncoder.action_to_index(chosen)
+                    except Exception:
+                        chosen_idx = None
                 chosen_score = float(policy_masked[int(chosen_idx)]) if chosen_idx is not None and 0 <= int(chosen_idx) < len(policy_masked) and not np.isneginf(policy_masked[int(chosen_idx)]) else None
                 print("H2H_JSON: " + __import__('json').dumps({'event': 'chosen_action', 'index': game_idx, 'chosen_index': (int(chosen_idx) if chosen_idx is not None else None), 'chosen_score': chosen_score, 'chosen_repr': map_action(chosen) if True else str(chosen)}, ensure_ascii=False))
             except Exception:
@@ -792,12 +832,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 legal_map = []
                 for a in legal:
                     try:
-                        if isinstance(a, dict):
-                            idx = dm.CommandEncoder.command_to_index(a)
-                        elif hasattr(a, 'to_dict'):
-                            idx = dm.CommandEncoder.command_to_index(a.to_dict())
-                        else:
-                            idx = dm.ActionEncoder.action_to_index(a)
+                        idx = _index_for_action_or_command(a)
                         legal_map.append({'repr': map_action(a) if True else str(a), 'index': int(idx) if idx is not None else None})
                     except Exception as _e:
                         try:
@@ -835,12 +870,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
             best_score = -1e9
             for act in legal:
                 try:
-                    if isinstance(act, dict):
-                        idx = dm.CommandEncoder.command_to_index(act)
-                    elif hasattr(act, 'to_dict'):
-                        idx = dm.CommandEncoder.command_to_index(act.to_dict())
-                    else:
-                        idx = dm.ActionEncoder.action_to_index(act)
+                    idx = _index_for_action_or_command(act)
                 except Exception:
                     idx = -1
                 if idx is None:
@@ -866,12 +896,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
             # compute chosen index for diagnostics (player B)
             try:
                 try:
-                    if isinstance(chosen, dict):
-                        chosen_idx = dm.CommandEncoder.command_to_index(chosen)
-                    elif hasattr(chosen, 'to_dict'):
-                        chosen_idx = dm.CommandEncoder.command_to_index(chosen.to_dict())
-                    else:
-                        chosen_idx = dm.ActionEncoder.action_to_index(chosen)
+                    chosen_idx = _index_for_action_or_command(chosen)
                 except Exception:
                     chosen_idx = None
                 chosen_score = float(policy_masked[int(chosen_idx)]) if chosen_idx is not None and 0 <= int(chosen_idx) < len(policy_masked) and not np.isneginf(policy_masked[int(chosen_idx)]) else None
@@ -983,7 +1008,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 continue
                 try:
                     try:
-                        legal = commands.generate_legal_commands(inst.state, CARD_DB, strict=False) or []
+                        legal = generate_legal_commands(inst.state, CARD_DB, strict=False) or []
                     except Exception:
                         legal = []
                     if not legal:
@@ -1001,26 +1026,11 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 p1 = EngineCompat.get_player(inst.state, 1)
                 def zone_summary(p):
                     try:
-                        return {
-                            'hand': len(getattr(p, 'hand', [])),
-                            'deck': len(getattr(p, 'deck', [])),
-                            'battle': len(getattr(p, 'battle_zone', [])),
-                            'mana': len(getattr(p, 'mana_zone', [])),
-                            'shields': len(getattr(p, 'shield_zone', [])),
-                        }
-                    except Exception:
-                        return {}
-
-                di = {'index': i, 'active': getattr(inst.state, 'active_player_id', None), 'winner': int(getattr(inst.state, 'winner', 0)), 'legal_count': len(legal), 'pending_effects': pending, 'turn': turn, 'players': [zone_summary(p0), zone_summary(p1)]}
-                # map legal actions to serializable form (best-effort)
-                try:
-                    mapped_legals = []
-                    for a in legal:
                         try:
-                            mapped_legals.append(map_action(a))
+                            # Prefer command-first generator via compatibility helper
+                            legal = generate_legal_commands(state, CARD_DB, strict=False) or []
                         except Exception:
-                            try:
-                                mapped_legals.append(a.to_dict())
+                            legal = []
                             except Exception:
                                 mapped_legals.append(str(a))
                     di['legal_actions'] = mapped_legals
@@ -1080,7 +1090,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                     try:
                         legal = []
                         try:
-                            legal = commands.generate_legal_commands(inst.state, CARD_DB, strict=False) or []
+                            legal = generate_legal_commands(inst.state, CARD_DB, strict=False) or []
                         except Exception:
                             legal = []
                         if not legal:

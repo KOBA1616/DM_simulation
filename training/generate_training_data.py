@@ -110,6 +110,17 @@ def main():
     np.savez_compressed(output_path, states=states_np, policies=policies_np, values=values_np)
     
     size_mb = os.path.getsize(output_path) / (1024 * 1024)
+    # Check policy vector dimensionality against canonical CommandEncoder size
+    try:
+        import dm_ai_module as _dm
+        if hasattr(_dm, 'CommandEncoder') and getattr(_dm.CommandEncoder, 'TOTAL_COMMAND_SIZE', None) is not None:
+            desired = int(_dm.CommandEncoder.TOTAL_COMMAND_SIZE)
+            if policies_np.shape[1] != desired:
+                print(f"Warning: generated policies dim ({policies_np.shape[1]}) != CommandEncoder.TOTAL_COMMAND_SIZE ({desired}).")
+                print("If needed, run training/convert_training_policies.py to convert existing datasets to the canonical command index mapping.")
+    except Exception:
+        pass
+
     print(f"✓ Saved to {output_path}")
     print(f"  File size: {size_mb:.2f} MB")
     

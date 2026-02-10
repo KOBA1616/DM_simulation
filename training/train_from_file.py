@@ -30,6 +30,18 @@ def train_from_file(data_path: str = "data/simple_training_data.npz", epochs: in
     policies = torch.from_numpy(data['policies']).float()
     values = torch.from_numpy(data['values']).float()
 
+    # Validate against canonical CommandEncoder size when available
+    try:
+        import dm_ai_module as _dm
+        if hasattr(_dm, 'CommandEncoder') and getattr(_dm.CommandEncoder, 'TOTAL_COMMAND_SIZE', None) is not None:
+            desired = int(_dm.CommandEncoder.TOTAL_COMMAND_SIZE)
+            if policies.shape[1] != desired:
+                print(f"ERROR: dataset policy dim ({policies.shape[1]}) != CommandEncoder.TOTAL_COMMAND_SIZE ({desired}).")
+                print("Please run training/convert_training_policies.py to produce a converted dataset matching the canonical CommandEncoder size.")
+                return
+    except Exception:
+        pass
+
     print('States shape', states.shape)
     print('Policies shape', policies.shape)
     print('Values shape', values.shape)

@@ -393,7 +393,20 @@ class GameWindow(QMainWindow):
 
     def pass_turn(self) -> None:
         if hasattr(self, 'current_pass_action') and self.current_pass_action:
-            self.session.execute_action(self.current_pass_action)
+            try:
+                a = self.current_pass_action
+                # If this is a legacy Action object, map to Command first
+                if not hasattr(a, 'to_dict') and hasattr(a, 'type'):
+                    try:
+                        from dm_toolkit.action_to_command import map_action
+                        cmd = map_action(a)
+                        self.session.execute_action(cmd)
+                        return
+                    except Exception:
+                        pass
+                self.session.execute_action(a)
+            except Exception:
+                pass
 
     def confirm_selection(self) -> None:
         self.input_handler.confirm_selection()

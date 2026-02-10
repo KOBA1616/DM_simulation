@@ -34,6 +34,10 @@ class SimpleGameGenerator:
         self.card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
         self.max_steps = 200  # Increased from default
         self.target_samples_per_episode = 10  # ~10 states per game
+        try:
+            self.action_dim = int(getattr(dm_ai_module.CommandEncoder, 'TOTAL_COMMAND_SIZE'))
+        except Exception:
+            self.action_dim = 591
     
     def generate_episodes(self, num_episodes: int) -> Tuple[List, List, List]:
         """Generate complete game episodes with proper termination"""
@@ -226,8 +230,9 @@ class SimpleGameGenerator:
     
     def _create_policy_vector(self, num_actions: int, chosen_idx: int) -> List[float]:
         """Create one-hot policy vector"""
-        policy = [0.0] * 591  # Total action space size
-        if chosen_idx < 591:
+        size = int(num_actions) if num_actions is not None else self.action_dim
+        policy = [0.0] * size
+        if 0 <= chosen_idx < size:
             policy[chosen_idx] = 1.0
         return policy
 

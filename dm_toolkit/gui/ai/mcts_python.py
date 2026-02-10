@@ -3,6 +3,7 @@ import math
 import random
 import dm_ai_module
 from dm_toolkit import commands_v2 as commands
+from dm_toolkit.action_to_command import map_action
 from dm_toolkit.engine.compat import EngineCompat
 from PyQt6.QtWidgets import QApplication
 
@@ -186,28 +187,41 @@ class PythonMCTS:
              dm_ai_module.PhaseManager.next_phase(next_state, self.card_db)
 
         child_node = Node(next_state, parent=node, action=action)
-        # Populate untried actions for child (prefer Action list)
+        # Populate untried actions for child (prefer Command list, map Actions when needed)
+        try:
+            child_cmds = []
             try:
-                # Prefer command-first generator, fallback to legacy ActionGenerator only when needed
-                child_cmds = []
-                try:
-                    child_cmds = commands.generate_legal_commands(next_state, self.card_db, strict=False) or []
-                except TypeError:
-                    child_cmds = commands.generate_legal_commands(next_state, self.card_db) or []
-                except Exception:
-                    child_cmds = []
-                child_actions = []
-                    if not child_cmds:
-                    try:
-                        child_actions = commands.generate_legal_commands(next_state, self.card_db, strict=False) or []
-                    except Exception:
-                        try:
-                            child_actions = commands.generate_legal_commands(next_state, self.card_db) or []
-                        except Exception:
-                            child_actions = []
-                child_node.untried_actions = child_cmds if child_cmds else child_actions
+                child_cmds = commands.generate_legal_commands(next_state, self.card_db, strict=False) or []
+            except TypeError:
+                child_cmds = commands.generate_legal_commands(next_state, self.card_db) or []
             except Exception:
-                child_node.untried_actions = []
+                child_cmds = []
+
+            child_actions = []
+            if not child_cmds:
+                # Try legacy action generator fallback
+                try:
+                    from dm_toolkit import commands as legacy_commands
+                    child_actions = legacy_commands._call_native_action_generator(next_state, self.card_db) or []
+                except Exception:
+                    child_actions = []
+
+            # If we only have legacy actions, map them to commands where possible
+            if not child_cmds and child_actions:
+                mapped_cmds = []
+                for a in child_actions:
+                    try:
+                        m = map_action(a)
+                        if m:
+                            mapped_cmds.append(m)
+                    except Exception:
+                        continue
+                if mapped_cmds:
+                    child_cmds = mapped_cmds
+
+            child_node.untried_actions = child_cmds if child_cmds else child_actions
+        except Exception:
+            child_node.untried_actions = []
         node.children.append(child_node)
         return child_node
 

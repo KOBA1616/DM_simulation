@@ -361,6 +361,23 @@ def play_instance(sess: GameSession, instance_id: int) -> bool:
         play_cmd = cmds[0]
 
     try:
+        # Prefer command-first execution. If play_cmd looks like a legacy Action,
+        # map it to a Command before executing.
+        try:
+            if play_cmd is None:
+                return False
+            if not hasattr(play_cmd, 'to_dict') and hasattr(play_cmd, 'type'):
+                from dm_toolkit.action_to_command import map_action
+                try:
+                    mapped = map_action(play_cmd)
+                    sess.execute_action(mapped)
+                    return True
+                except Exception:
+                    # fall back to original object
+                    pass
+        except Exception:
+            pass
+
         sess.execute_action(play_cmd)
         return True
     except Exception:

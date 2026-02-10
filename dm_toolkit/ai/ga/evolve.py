@@ -11,6 +11,7 @@ import dm_ai_module
 # Prefer command-first generation where available
 from dm_toolkit import commands_v2 as commands
 from dm_toolkit.engine.compat import EngineCompat
+from dm_toolkit.action_to_command import map_action
 # from dm_toolkit.ai.agent.mcts import MCTS # MCTS might not be available in python toolkit yet or deprecated
 # Since MCTS is now in C++ (dm_ai_module.MCTS), we should use that or skip deep logic here.
 
@@ -68,23 +69,34 @@ class DeckEvolution:
         #     mcts = dm_ai_module.MCTS(self.card_db, 1.4, 0.25, 1.0, 1600, 1.0)
             
         turn_count = 0
-        while True:
-            turn_count += 1
-            if turn_count > 200:
-                # print("Draw (Turn Limit)")
-                return -1 # Draw
-                
-            is_over, result = dm_ai_module.PhaseManager.check_game_over(gs)
-            if is_over:
-                # 1=P1(0), 2=P2(1), 3=Draw
-                # print(f"Game Over: {result} at turn {turn_count}")
-                if result == 1: return 0
-                if result == 2: return 1
-                return -1
-                
-            if mcts:
-                # Need to use C++ MCTS search
-                # For now let's stick to random for this script update
+                                try:
+                                    # Try to map legacy Action -> Command first
+                                    try:
+                                        mapped = map_action(action)
+                                    except Exception:
+                                        mapped = None
+                                    if mapped:
+                                        try:
+                                            EngineCompat.ExecuteCommand(gs, mapped, self.card_db)
+                                            continue
+                                        except Exception:
+                                            pass
+                                    # Fallback to unified_execution path
+                                    from dm_toolkit.unified_execution import ensure_executable_command
+                                    cdict = ensure_executable_command(action)
+                                    EngineCompat.ExecuteCommand(gs, cdict, self.card_db)
+                                except Exception:
+                                    try:
+                                        from dm_toolkit.compat_wrappers import execute_action_compat
+                                        execute_action_compat(gs, action, self.card_db)
+                                    except Exception:
+                                        try:
+                                            dm.GameLogicSystem.resolve_action(gs, action, self.card_db)
+                                        except Exception:
+                                            try:
+                                                dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+                                            except Exception:
+                                                pass
                 pass
 
             # Random (prefer commands when available)

@@ -55,13 +55,25 @@ class GameInputHandler:
                     self.window.update_ui()
             return
 
-        cmds = generate_legal_commands(self.gs, self.card_db)
+        try:
+            try:
+                cmds = generate_legal_commands(self.gs, self.card_db, strict=False) or []
+            except TypeError:
+                cmds = generate_legal_commands(self.gs, self.card_db) or []
+            except Exception:
+                cmds = generate_legal_commands(self.gs, self.card_db) or []
+        except Exception:
+            cmds = []
         relevant_cmds = []
         for c in cmds:
             try:
                 d = c.to_dict()
             except Exception:
-                d = {}
+                try:
+                    from dm_toolkit.action_to_command import map_action
+                    d = map_action(c)
+                except Exception:
+                    d = {}
             if d.get('instance_id') == instance_id or d.get('source_instance_id') == instance_id:
                 relevant_cmds.append(c)
 
@@ -91,13 +103,25 @@ class GameInputHandler:
         if EngineCompat.is_waiting_for_user_input(self.gs):
             return
 
-        cmds = generate_legal_commands(self.gs, self.card_db)
+        try:
+            try:
+                cmds = generate_legal_commands(self.gs, self.card_db, strict=False) or []
+            except TypeError:
+                cmds = generate_legal_commands(self.gs, self.card_db) or []
+            except Exception:
+                cmds = generate_legal_commands(self.gs, self.card_db) or []
+        except Exception:
+            cmds = []
         relevant_cmds = []
         for c in cmds:
             try:
                 d = c.to_dict()
             except Exception:
-                d = {}
+                try:
+                    from dm_toolkit.action_to_command import map_action
+                    d = map_action(c)
+                except Exception:
+                    d = {}
             if d.get('instance_id') == instance_id or d.get('source_instance_id') == instance_id:
                 relevant_cmds.append((c, d))
 
@@ -120,14 +144,27 @@ class GameInputHandler:
             elif not other_cmd:
                 other_cmd = cmd
 
-        if play_cmd:
-            self.session.execute_action(play_cmd)
-        elif attack_cmd:
-            self.session.execute_action(attack_cmd)
-        elif other_cmd:
-            self.session.execute_action(other_cmd)
-        elif mana_cmd:
-            self.session.execute_action(mana_cmd)
+        chosen = play_cmd or attack_cmd or other_cmd or mana_cmd
+        if not chosen:
+            return
+
+        # If chosen looks like legacy Action, map to Command first
+        try:
+            if not hasattr(chosen, 'to_dict') and hasattr(chosen, 'type'):
+                from dm_toolkit.action_to_command import map_action
+                try:
+                    cmd = map_action(chosen)
+                    self.session.execute_action(cmd)
+                    return
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        try:
+            self.session.execute_action(chosen)
+        except Exception:
+            pass
 
     def handle_user_input_request(self) -> None:
         """Called by GameSession when input is needed."""
@@ -200,13 +237,25 @@ class GameInputHandler:
         logger = logging.getLogger(__name__)
         logger.debug(f"[InputHandler] on_resolve_effect_from_stack called with index {index}")
 
-        cmds = generate_legal_commands(self.gs, self.card_db)
+        try:
+            try:
+                cmds = generate_legal_commands(self.gs, self.card_db, strict=False) or []
+            except TypeError:
+                cmds = generate_legal_commands(self.gs, self.card_db) or []
+            except Exception:
+                cmds = generate_legal_commands(self.gs, self.card_db) or []
+        except Exception:
+            cmds = []
         resolve_cmds = []
         for c in cmds:
             try:
                 d = c.to_dict()
             except Exception:
-                d = {}
+                try:
+                    from dm_toolkit.action_to_command import map_action
+                    d = map_action(c)
+                except Exception:
+                    d = {}
             if d.get('type') == 'RESOLVE_EFFECT':
                 resolve_cmds.append((c, d))
 
@@ -220,9 +269,31 @@ class GameInputHandler:
                 break
         if target_cmd:
             logger.debug(f"[InputHandler] Executing RESOLVE_EFFECT command")
-            self.session.execute_action(target_cmd)
+            try:
+                c = target_cmd
+                if not hasattr(c, 'to_dict') and hasattr(c, 'type'):
+                    from dm_toolkit.action_to_command import map_action
+                    try:
+                        self.session.execute_action(map_action(c))
+                    except Exception:
+                        self.session.execute_action(c)
+                else:
+                    self.session.execute_action(c)
+            except Exception:
+                logger.exception("Failed executing resolve command")
         elif len(resolve_cmds) == 1:
             logger.debug(f"[InputHandler] Only one RESOLVE_EFFECT, executing it")
-            self.session.execute_action(resolve_cmds[0][0])
+            try:
+                c = resolve_cmds[0][0]
+                if not hasattr(c, 'to_dict') and hasattr(c, 'type'):
+                    from dm_toolkit.action_to_command import map_action
+                    try:
+                        self.session.execute_action(map_action(c))
+                    except Exception:
+                        self.session.execute_action(c)
+                else:
+                    self.session.execute_action(c)
+            except Exception:
+                logger.exception("Failed executing single resolve command")
         else:
             logger.warning(f"[InputHandler] No matching RESOLVE_EFFECT command found for index {index}")
