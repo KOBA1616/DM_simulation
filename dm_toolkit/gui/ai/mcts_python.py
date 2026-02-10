@@ -202,7 +202,11 @@ class PythonMCTS:
                 # Try legacy action generator fallback
                 try:
                     from dm_toolkit import commands as legacy_commands
-                    child_actions = legacy_commands._call_native_action_generator(next_state, self.card_db) or []
+                    try:
+                        from dm_toolkit.training.command_compat import generate_legal_commands as compat_generate
+                        child_actions = compat_generate(next_state, self.card_db, strict=False) or []
+                    except Exception:
+                        child_actions = []
                 except Exception:
                     child_actions = []
 
@@ -304,8 +308,10 @@ class PythonMCTS:
                         execute_action_compat(current_state, action, self.card_db)
                     except Exception:
                         try:
-                            # Last resort: call native EffectResolver
-                            dm_ai_module.EffectResolver.resolve_action(current_state, action, self.card_db)
+                            from dm_toolkit.unified_execution import ensure_executable_command
+                            from dm_toolkit.engine.compat import EngineCompat
+                            cmd = ensure_executable_command(action)
+                            EngineCompat.ExecuteCommand(current_state, cmd, self.card_db)
                         except Exception:
                             pass
                 # Phase advancement: detect both Action and ICommand representations

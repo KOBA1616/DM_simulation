@@ -24,6 +24,15 @@
 - ツール類の更新: `tools/check_policy_on_states.py` 等が command-first の生成器を優先して利用するように変更。
 - ドキュメントと todo 管理を更新し、ローカルでフルテストを複数回実行して回帰を修正・確認（最終: 69 passed, 4 skipped, 13 warnings）。
 
+- 実施（部分）: `training/head2head.py` に残っていた古い native Action ジェネレータ呼び出しを、`generate_legal_commands(state, CARD_DB, strict=False)` を用いるコマンド優先の経路に置換しました（ローカルの代表テスト `tests/test_command_migration_parity_strict.py` が通過）。
+
+- 追加作業（最新）: 直接 `resolve_action` / `execute_action` を呼び出していた残りの箇所を、コマンド優先の経路または互換ラッパー経由に置換しました。該当ファイルの一例:
+	- `dm_toolkit/ai/ga/evolve.py`
+	- `dm_toolkit/ai/analytics/deck_consistency.py`
+	- `dm_toolkit/gui/ai/mcts_python.py`
+	- `training/head2head.py`
+ これらの変更を含めたローカルフルテスト結果: `69 passed, 4 skipped, 13 warnings`。
+
 ---
 
 ## 実装フェーズ（短縮版）

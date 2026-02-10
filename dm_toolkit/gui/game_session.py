@@ -392,11 +392,8 @@ class GameSession:
                     return _generate_legal_commands(self.gs, self.card_db) or []
             except Exception:
                 # Final fallback to legacy ActionGenerator for compatibility
-                try:
-                    from dm_toolkit import commands as legacy_commands
-                    return legacy_commands._call_native_action_generator(self.gs, self.card_db) or []
-                except Exception:
-                    return []
+                    from dm_toolkit.training.command_compat import generate_legal_commands as compat_generate
+                    return compat_generate(self.gs, self.card_db, strict=False) or []
 
         return cmds
 

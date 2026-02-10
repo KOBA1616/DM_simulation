@@ -90,13 +90,13 @@ class DeckEvolution:
                                         from dm_toolkit.compat_wrappers import execute_action_compat
                                         execute_action_compat(gs, action, self.card_db)
                                     except Exception:
+                                        # Best-effort: try unified command execution as a last resort
                                         try:
-                                            dm.GameLogicSystem.resolve_action(gs, action, self.card_db)
+                                            from dm_toolkit.unified_execution import ensure_executable_command
+                                            cdict = ensure_executable_command(action)
+                                            EngineCompat.ExecuteCommand(gs, cdict, self.card_db)
                                         except Exception:
-                                            try:
-                                                dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
-                                            except Exception:
-                                                pass
+                                            pass
                 pass
 
             # Random (prefer commands when available)
@@ -128,7 +128,11 @@ class DeckEvolution:
             if not cmds:
                 try:
                     from dm_toolkit import commands as legacy_commands
-                    actions = legacy_commands._call_native_action_generator(gs, self.card_db) or []
+                    try:
+                        from dm_toolkit.training.command_compat import generate_legal_commands as compat_generate
+                        actions = compat_generate(gs, self.card_db, strict=False) or []
+                    except Exception:
+                        actions = []
                 except Exception:
                     actions = []
 
@@ -163,10 +167,13 @@ class DeckEvolution:
                                         execute_action_compat(gs, action, self.card_db)
                                     except Exception:
                                         try:
-                                            dm.GameLogicSystem.resolve_action(gs, action, self.card_db)
+                                            from dm_toolkit.compat_wrappers import execute_action_compat
+                                            execute_action_compat(gs, action, self.card_db)
                                         except Exception:
                                             try:
-                                                dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+                                                from dm_toolkit.unified_execution import ensure_executable_command
+                                                cdict = ensure_executable_command(action)
+                                                EngineCompat.ExecuteCommand(gs, cdict, self.card_db)
                                             except Exception:
                                                 pass
 
@@ -192,10 +199,13 @@ class DeckEvolution:
                         execute_action_compat(gs, action, self.card_db)
                     except Exception:
                         try:
-                            dm.GameLogicSystem.resolve_action(gs, action, self.card_db)
+                            from dm_toolkit.compat_wrappers import execute_action_compat
+                            execute_action_compat(gs, action, self.card_db)
                         except Exception:
                             try:
-                                dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
+                                from dm_toolkit.unified_execution import ensure_executable_command
+                                cdict = ensure_executable_command(action)
+                                EngineCompat.ExecuteCommand(gs, cdict, self.card_db)
                             except Exception:
                                 pass
                 try:

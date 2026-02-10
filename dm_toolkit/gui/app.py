@@ -518,9 +518,9 @@ class GameWindow(QMainWindow):
 
             if not all_legal_actions:
                 try:
-                    # Final fallback to legacy ActionGenerator for compatibility
-                    from dm_toolkit import commands as legacy_commands
-                    all_legal_actions = legacy_commands._call_native_action_generator(self.gs, self.card_db) or []
+                    # Final fallback: use centralized compat helper (command-first)
+                    from dm_toolkit.training.command_compat import generate_legal_commands as compat_generate
+                    all_legal_actions = compat_generate(self.gs, self.card_db, strict=False) or []
                 except Exception:
                     all_legal_actions = []
         except Exception:

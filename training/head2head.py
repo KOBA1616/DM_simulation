@@ -459,8 +459,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                     legal = []
                 if not legal:
                     try:
-                        from dm_toolkit import commands as legacy_commands
-                        legal = legacy_commands._call_native_action_generator(state, CARD_DB) or []
+                        legal = generate_legal_commands(state, CARD_DB, strict=False) or []
                     except Exception:
                         legal = []
             except Exception:
@@ -781,7 +780,9 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 execute_action_compat(instances[game_idx].state, chosen, CARD_DB)
             except Exception:
                 try:
-                    dm.GameLogicSystem.resolve_action(instances[game_idx].state, chosen, CARD_DB)
+                    from dm_toolkit.unified_execution import ensure_executable_command
+                    cdict = ensure_executable_command(chosen)
+                    EngineCompat.ExecuteCommand(instances[game_idx].state, cdict, CARD_DB)
                 except Exception:
                     pass
             try:
@@ -946,7 +947,9 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 execute_action_compat(instances[game_idx].state, chosen, CARD_DB)
             except Exception:
                 try:
-                    dm.GameLogicSystem.resolve_action(instances[game_idx].state, chosen, CARD_DB)
+                    from dm_toolkit.unified_execution import ensure_executable_command
+                    cdict = ensure_executable_command(chosen)
+                    EngineCompat.ExecuteCommand(instances[game_idx].state, cdict, CARD_DB)
                 except Exception:
                     pass
             try:
@@ -1001,7 +1004,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
 
     # finalize results
     # If we exited because of max_steps, emit diagnostics for unfinished games
-    if (not all(finished)) and steps >= max_steps:
+                if (not all(finished)) and steps >= max_steps:
         diags = []
         for i, inst in enumerate(instances):
             if finished[i]:
@@ -1011,12 +1014,6 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                         legal = generate_legal_commands(inst.state, CARD_DB, strict=False) or []
                     except Exception:
                         legal = []
-                    if not legal:
-                        try:
-                            from dm_toolkit import commands as legacy_commands
-                            legal = legacy_commands._call_native_action_generator(inst.state, CARD_DB) or []
-                        except Exception:
-                            legal = []
                 except Exception:
                     legal = []
                 pending = EngineCompat.get_pending_effects_info(inst.state)
@@ -1095,8 +1092,8 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                             legal = []
                         if not legal:
                             try:
-                                from dm_toolkit import commands as legacy_commands
-                                legal = legacy_commands._call_native_action_generator(inst.state, CARD_DB) or []
+                                from dm_toolkit.training.command_compat import generate_legal_commands as compat_generate
+                                legal = compat_generate(inst.state, CARD_DB, strict=False) or []
                             except Exception:
                                 legal = []
                     except Exception:

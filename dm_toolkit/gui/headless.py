@@ -162,7 +162,11 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
                                     try:
                                         # Final fallback to centralized legacy helper
                                         from dm_toolkit import commands as legacy_commands
-                                        acts = legacy_commands._call_native_action_generator(state, card_db) or []
+                                        try:
+                                            from dm_toolkit.training.command_compat import generate_legal_commands as compat_generate
+                                            acts = compat_generate(state, card_db, strict=False) or []
+                                        except Exception:
+                                            acts = []
                                     except Exception:
                                         acts = []
 

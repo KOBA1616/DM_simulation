@@ -104,7 +104,11 @@ class SolitaireRunner:
         if not cmds:
             try:
                 from dm_toolkit import commands as legacy_commands
-                actions = legacy_commands._call_native_action_generator(state, cast(Dict[int, Any], self.card_db)) or []
+                try:
+                    from dm_toolkit.training.command_compat import generate_legal_commands as compat_generate
+                    actions = compat_generate(state, cast(Dict[int, Any], self.card_db), strict=False) or []
+                except Exception:
+                    actions = []
             except Exception:
                 actions = []
 
@@ -145,12 +149,11 @@ class SolitaireRunner:
                             execute_action_compat(state, best_action, self.card_db)
                         except Exception:
                             try:
-                                dm_ai_module.GameLogicSystem.resolve_action(state, best_action, self.card_db)
+                                from dm_toolkit.unified_execution import ensure_executable_command
+                                cmd = ensure_executable_command(best_action)
+                                EngineCompat.ExecuteCommand(state, cmd, self.card_db)
                             except Exception:
-                                try:
-                                    dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
-                                except Exception:
-                                    pass
+                                pass
 
     def _choose_action(self, actions: List[Any], state: Any) -> Any:
         # Prioritize:

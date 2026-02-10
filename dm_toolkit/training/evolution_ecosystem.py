@@ -197,12 +197,12 @@ class EvolutionEcosystem:
                 except Exception:
                     cmds = []
 
-                # If no commands returned, try legacy Action generator as fallback
+                # If no commands returned, try command-compat helper as fallback
                 legal_actions = []
                 if not cmds:
                     try:
-                        from dm_toolkit import commands as legacy_commands
-                        legal_actions = legacy_commands._call_native_action_generator(instance.state, self.card_db) or []
+                        from dm_toolkit.training.command_compat import generate_legal_commands as compat_generate
+                        legal_actions = compat_generate(instance.state, self.card_db, strict=False) or []
                     except Exception:
                         legal_actions = []
 
@@ -276,7 +276,9 @@ class EvolutionEcosystem:
                                 execute_action_compat(instance.state, best_candidate, cast(Dict[int, Any], self.card_db))
                             except Exception:
                                 try:
-                                    EngineCompat.EffectResolver_resolve_action(instance.state, best_candidate, cast(Dict[int, Any], self.card_db))
+                                    from dm_toolkit.unified_execution import ensure_executable_command
+                                    cdict = ensure_executable_command(best_candidate)
+                                    EngineCompat.ExecuteCommand(instance.state, cdict, cast(Dict[int, Any], self.card_db))
                                 except Exception:
                                     pass
 
