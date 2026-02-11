@@ -62,9 +62,9 @@ namespace dm::engine::game_command {
 
     class ManaChargeCommand : public GameCommand {
     public:
-        int card_id;
+        int instance_id;  // Card instance ID to charge as mana
 
-        ManaChargeCommand(int cid) : card_id(cid) {}
+        ManaChargeCommand(int iid) : instance_id(iid) {}
 
         void execute(core::GameState& state) override;
         void invert(core::GameState& state) override;

@@ -203,7 +203,7 @@ void bind_engine(py::module& m) {
 
     py::class_<dm::engine::game_command::ManaChargeCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::ManaChargeCommand>>(m, "ManaChargeCommand")
         .def(py::init<int>())
-        .def_readwrite("card_id", &dm::engine::game_command::ManaChargeCommand::card_id);
+        .def_readwrite("instance_id", &dm::engine::game_command::ManaChargeCommand::instance_id);
 
     py::class_<dm::engine::game_command::PassCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::PassCommand>>(m, "PassCommand")
         .def(py::init<>());

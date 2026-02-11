@@ -75,9 +75,14 @@ void bind_command_generator(py::module_ &m) {
                     default: t = "UNKNOWN"; break;
                 }
                 d["type"] = t;
-                // Map ids
-                if (a.card_id != 0) d["instance_id"] = static_cast<int>(a.card_id);
-                if (a.source_instance_id >= 0) d["source_id"] = a.source_instance_id;
+                // Map ids - CRITICAL FIX: Use source_instance_id for MANA_CHARGE
+                // The Action struct uses source_instance_id for MANA_CHARGE, not card_id
+                if (a.type == PI::MANA_CHARGE && a.source_instance_id >= 0) {
+                    d["instance_id"] = a.source_instance_id;
+                } else if (a.card_id != 0) {
+                    d["instance_id"] = static_cast<int>(a.card_id);
+                }
+                if (a.source_instance_id >= 0 && a.type != PI::MANA_CHARGE) d["source_id"] = a.source_instance_id;
                 if (a.target_instance_id >= 0) d["target_id"] = a.target_instance_id;
                 if (a.target_player >= 0) d["target_player"] = static_cast<int>(a.target_player);
                 if (a.slot_index >= 0) d["slot_index"] = a.slot_index;

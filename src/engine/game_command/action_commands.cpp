@@ -89,19 +89,19 @@ namespace dm::engine::game_command {
         try {
             std::ofstream lout("logs/manacharge_trace.txt", std::ios::app);
             if (lout) {
-                lout << "MANA_CHARGE_CMD CALLED id=" << card_id << "\n";
+                lout << "MANA_CHARGE_CMD CALLED instance_id=" << instance_id << "\n";
                 lout.close();
             }
         } catch(...) {}
         
         // Direct card transition from Hand to Mana Zone
         // Find card location first
-        const CardInstance* card_ptr = state.get_card_instance(card_id);
+        const CardInstance* card_ptr = state.get_card_instance(instance_id);
         if (!card_ptr) {
             try {
                 std::ofstream lout("logs/manacharge_trace.txt", std::ios::app);
                 if (lout) {
-                    lout << "MANA_CHARGE_CMD ERROR: card_ptr is null for id=" << card_id << "\n";
+                    lout << "MANA_CHARGE_CMD ERROR: card_ptr is null for instance_id=" << instance_id << "\n";
                     lout.close();
                 }
             } catch(...) {}
@@ -126,7 +126,7 @@ namespace dm::engine::game_command {
         
         const Player& p = state.players[owner];
         for(const auto& c : p.hand) {
-            if(c.instance_id == card_id) {
+            if(c.instance_id == instance_id) {
                 from_zone = Zone::HAND;
                 found = true;
                 break;
@@ -135,11 +135,18 @@ namespace dm::engine::game_command {
         
         if (!found) {
             // Card not in hand, cannot mana charge
+            try {
+                std::ofstream lout("logs/manacharge_trace.txt", std::ios::app);
+                if (lout) {
+                    lout << "MANA_CHARGE_CMD ERROR: card not found in hand, instance_id=" << instance_id << " owner=" << (int)owner << "\n";
+                    lout.close();
+                }
+            } catch(...) {}
             return;
         }
 
         // Execute card move from Hand to Mana Zone
-        auto move_cmd = std::make_shared<TransitionCommand>(card_id, Zone::HAND, Zone::MANA, owner);
+        auto move_cmd = std::make_shared<TransitionCommand>(instance_id, Zone::HAND, Zone::MANA, owner);
         state.execute_command(std::move(move_cmd));
         
         // DM Rule: Mark that mana was charged this turn (max 1 per turn)
@@ -151,7 +158,7 @@ namespace dm::engine::game_command {
         try {
             std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
             if (lout) {
-                lout << "MANA_CHARGE_CMD id=" << card_id
+                lout << "MANA_CHARGE_CMD instance_id=" << instance_id
                      << " owner=" << owner
                      << " result=success, set mana_charged_this_turn=true via FlowCommand\n";
                 lout.close();
