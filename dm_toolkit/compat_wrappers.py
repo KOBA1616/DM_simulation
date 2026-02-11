@@ -1,6 +1,11 @@
 """
 Compatibility Wrapper Helpers for Legacy Action/Command Aliases
 
+⚠️ DEPRECATED: This module is maintained for legacy compatibility only.
+New code should use command-first APIs directly:
+- dm_toolkit.commands_v2.generate_legal_commands()
+- dm_toolkit.unified_execution.ensure_executable_command()
+
 This module centralizes backward compatibility logic as mandated by AGENTS.md Policy Section 2:
 "Minimize Dispersion: Logic for backward compatibility and command post-processing should
 be centralized."
@@ -11,7 +16,7 @@ Key Functions:
 - is_legacy_command: Detects if a command was converted from a legacy Action
 - normalize_legacy_fields: Post-processes commands to ensure backward compatibility
 
-Usage Pattern:
+Usage Pattern (DEPRECATED - for legacy code only):
     After converting an action to command via action_to_command.map_action,
     the command is automatically annotated with:
     - legacy_original_type: Original action type before mapping

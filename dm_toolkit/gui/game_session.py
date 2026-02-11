@@ -258,63 +258,100 @@ class GameSession:
 
     def execute_action(self, raw_action: Any):
         """
-        Execute an action and update UI immediately.
+        Execute a command and update UI immediately.
         
-        This method:
-        1. Converts action to command dict
-        2. Executes via C++ engine
-        3. Updates UI to show the result
+        This method (Command-First Architecture):
+        1. Converts input to command dict
+        2. Creates C++ Action object from command
+        3. Executes via GameInstance.resolve_action
+        4. Advances game to next decision point
         
-        Note: Does NOT advance the game - that's step_game()'s responsibility
+        Note: Uses GameInstance.resolve_action for proper C++ integration.
         """
-        if not self.gs:
+        if not self.gs or not self.game_instance:
             return
 
+        # Convert to command dict (command-first approach)
         try:
-            # Convert to command dict
             cmd_dict = ensure_executable_command(raw_action)
         except Exception as e:
             self.callback_log(f"Command conversion error: {e}")
             return
 
         active_pid = EngineCompat.get_active_player_id(self.gs)
-        is_human = (self.player_modes.get(active_pid) == 'Human')
 
+        # Execute command via C++ GameInstance (command-first with Action bridge)
         try:
-            # Prefer executing native C++ Action objects directly to keep all game logic in C++
-            if hasattr(raw_action, '_action') and raw_action._action is not None and dm_ai_module:
-                # Direct C++ Action execution - all logic handled by C++ GameInstance.resolve_action()
+            # CRITICAL: Use GameInstance.resolve_action for proper C++ integration
+            # This ensures all game logic is handled by C++ and state is properly updated
+            
+            # Check if raw_action already has a C++ Action object
+            if hasattr(raw_action, '_action') and raw_action._action is not None:
+                # Direct C++ Action execution
                 action = raw_action._action
+                self.game_instance.resolve_action(action)
                 
-                try:
-                    self.game_instance.resolve_action(action)
-                    # IMPORTANT: Re-sync gs after C++ modifies GameInstance
-                    # This ensures Python sees the latest state
-                    self.gs = self.game_instance.state
-                except Exception as e:
-                    self.callback_log(f"ERROR: resolve_action failed: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    return
-                # Log action type for UI feedback
+                # Log action type
                 action_type_name = str(action.type).split('.')[-1] if hasattr(action.type, 'name') else str(action.type)
                 self.callback_log(f"P{active_pid}: {action_type_name}")
-                
             else:
-                # Fallback: Execute as command dict (for commands without native Action)
+                # Fallback: Use EngineCompat.ExecuteCommand for commands without Action
+                # This path is for compatibility with pure command dicts
                 EngineCompat.ExecuteCommand(self.gs, cmd_dict, self.card_db)
+                
+                # Log command type
                 cmd_type = cmd_dict.get('type', 'UNKNOWN')
                 self.callback_log(f"P{active_pid}: {cmd_type}")
+            
+            # Re-sync gs after C++ modifies state
+            if self.game_instance:
+                self.gs = self.game_instance.state
 
+            # Notify callback if registered
             if self.callback_action_executed:
                 self.callback_action_executed(cmd_dict)
 
         except Exception as e:
-            self.callback_log(f"Execution error: {e}")
+            self.callback_log(f"Command execution error: {e}")
+            import traceback
+            traceback.print_exc()
             self.callback_update_ui()
             return
 
-        # Update UI immediately to show action result
+        # CRITICAL: After executing command, advance game to next decision point
+        # This ensures the game progresses properly after human commands
+        try:
+            # First, fast-forward through automatic phases (draw, start of turn, etc.)
+            self._fast_forward()
+            
+            # Check if game is over
+            if self.is_game_over():
+                self.callback_log("Game Over")
+                self.callback_update_ui()
+                return
+            
+            # Check if we need more input (effect resolution, target selection, etc.)
+            if self._check_and_handle_input_wait():
+                # Waiting for user input - UI already updated by _check_and_handle_input_wait
+                return
+            
+            # Generate commands for next decision point
+            # This ensures UI shows available commands after progression
+            try:
+                cmds = _generate_legal_commands(self.gs, self.card_db)
+                if not cmds:
+                    # No commands available - might need another fast_forward
+                    # This can happen in phases like END_OF_TURN
+                    self._fast_forward()
+            except Exception:
+                pass
+                
+        except Exception as e:
+            self.callback_log(f"Post-command progression error: {e}")
+            import traceback
+            traceback.print_exc()
+
+        # Update UI to show the result and next available commands
         self.callback_update_ui()
 
     def _fast_forward(self):

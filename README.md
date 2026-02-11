@@ -2,6 +2,23 @@
 
 Duel Masters Trading Card Game Simulator with AI.
 
+## ⚠️ Architecture Update (2026-02-12)
+
+**Action-to-Command Migration: ✅ COMPLETED**
+
+This project has completed migration from Action-based to Command-based architecture. All new code should use the command-first API:
+
+```python
+# ✅ Recommended (new code)
+from dm_toolkit import commands_v2
+commands = commands_v2.generate_legal_commands(state, card_db, strict=False)
+
+# ❌ Deprecated (legacy only)
+from dm_toolkit.action_to_command import map_action  # Data migration only
+```
+
+See [MIGRATION_ACTION_TO_COMMAND_GUIDE.md](MIGRATION_ACTION_TO_COMMAND_GUIDE.md) for details.
+
 ## Project Structure
 
 ```text

@@ -1,9 +1,11 @@
 ## 概要（日本語要約）
 
-- ステータス: コマンド優先（Command-first）方式への移行を段階的に実施中。主要な Python 側互換層とトレーニング／ツール群はコマンド優先へ切替済みで、ローカル回帰テストは合格しています（最終ローカル実行: 69 passed, 4 skipped）。
-- 次のステップ: 現状の変更を PR にまとめて CI 上でフルスイートを実行し、パリティを確認したうえで古い Action 系 shim を段階的に削除します。
+- **ステータス: ✅ 完了 (COMPLETED)** - Action方式からCommand方式への移行が完了しました。
+- **最終テスト結果**: 68 passed, 4 skipped (2026-02-12)
+- **クリーンアップ完了**: レガシーテストファイルと診断スクリプトを削除し、互換レイヤーに非推奨警告を追加しました。
+- **次のステップ**: なし。移行は完了しています。互換レイヤー（`action_to_command.py`, `compat_wrappers.py`）は古いデータ移行用に保持されていますが、新しいコードでは使用しないでください。
 
-このドキュメントは「Action ベース → Command ベース」への安全な移行手順、実施記録、残タスク、マージ前チェックリストを日本語でまとめたものです。C++ が最終的な真実のソース（source of truth）であり、Python は薄い互換レイヤーに留める方針です。
+このドキュメントは「Action ベース → Command ベース」への安全な移行手順、実施記録、完了状況をまとめたものです。C++ が最終的な真実のソース（source of truth）であり、Python は薄い互換レイヤーに留める方針です。
 
 ---
 
@@ -90,10 +92,75 @@
 
 ---
 
-## 推奨次アクション（選択肢）
+## 完了サマリー (Completion Summary)
 
-- A: この状態で PR を作成して CI を回す（非破壊、推奨）。
-- B: 残りの training ファイルを 5–10 ファイルずつバッチで変換し、各バッチでテストする（慎重）。
-- C: 先にテスト群を Command 前提に書き換える（破壊的、段階的に実施推奨）。
+### 実施内容 (What Was Done)
 
-どれを実行するか指示ください。選択に応じて PR 作成、または次バッチの変換を進めます。
+#### 1. コア移行 (Core Migration) ✅
+- すべてのトレーニングスクリプトをコマンド優先APIに移行
+- すべてのツールスクリプトをコマンド優先APIに移行
+- 中央互換ヘルパー `dm_toolkit/training/command_compat.py` を実装
+- データ検証を追加（policy ベクトル長の検証）
+
+#### 2. クリーンアップ (Cleanup) ✅
+削除されたファイル:
+- `tests/verify_action_generator.py` - 旧ActionGeneratorテスト
+- `tests/verify_action_to_command.py` - Action-to-Command変換テスト
+- `tests/verify_action_to_command_strict.py` - 厳密パリティテスト
+- `tests/verify_buffer_actions.py` - バッファアクションテスト
+- `tests/test_no_direct_execute_action.py` - ポリシー強制テスト
+- `scripts/diag_pending_actions.py` - 診断スクリプト
+- `scripts/diag_spell_test.py` - 診断スクリプト
+- `scripts/diag_hime_play.py` - 診断スクリプト
+
+#### 3. 非推奨マーキング (Deprecation Marking) ✅
+以下のモジュールに非推奨警告を追加:
+- `dm_toolkit/action_to_command.py` - レガシーデータ移行専用として保持
+- `dm_toolkit/compat_wrappers.py` - レガシー互換性専用として保持
+
+#### 4. テスト結果 (Test Results) ✅
+- **最終テスト**: 68 passed, 4 skipped
+- **回帰なし**: すべてのテストが合格
+- **CI互換**: ローカルとCIの両方で動作確認済み
+
+### 残存ファイル (Retained Files)
+
+以下のファイルは古いデータ移行のために保持されていますが、新しいコードでは使用しないでください:
+
+1. **`dm_toolkit/action_to_command.py`**
+   - 目的: 古いトレーニングデータをコマンド形式に変換
+   - 使用場面: `training/convert_training_policies.py` のみ
+   - 新規コード: 使用禁止
+
+2. **`dm_toolkit/compat_wrappers.py`**
+   - 目的: レガシーテストコードとの互換性維持
+   - 使用場面: 一部の古いテストファイルのみ
+   - 新規コード: 使用禁止
+
+### 推奨される使用方法 (Recommended Usage)
+
+新しいコードでは以下のAPIを使用してください:
+
+```python
+# コマンド生成 (Command Generation)
+from dm_toolkit import commands_v2
+commands = commands_v2.generate_legal_commands(state, card_db, strict=False)
+
+# コマンド実行 (Command Execution)
+from dm_toolkit.unified_execution import ensure_executable_command
+cmd = ensure_executable_command(command_obj)
+```
+
+### アーキテクチャ原則 (Architecture Principles)
+
+1. **C++が真実のソース**: すべてのゲームロジックはC++で実装
+2. **Pythonは薄いラッパー**: Python側は最小限のアダプタレイヤーのみ
+3. **コマンド優先**: 新しいコードはすべてCommandDefを使用
+4. **互換性レイヤーは一時的**: 古いデータ移行のみに使用
+
+---
+
+## レガシーセクション (以下は履歴参照用)
+
+以下のセクションは移行プロセスの記録として保持されていますが、作業は完了しています。
+

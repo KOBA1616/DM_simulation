@@ -1,20 +1,22 @@
 # -*- coding: utf-8 -*-
 """
 Unified Action-to-Command Converter
-    ...
-    -> None:
+
+⚠️ DEPRECATED: This module is maintained for legacy data migration only.
+New code should use command-first APIs directly:
+- dm_toolkit.commands_v2.generate_legal_commands()
+- dm_toolkit.unified_execution.ensure_executable_command()
+
 This module serves as the **single source of truth** for converting legacy Action
-dictionaries to standardized GameCommand structures.
-    ...
-    -> None:
+dictionaries to standardized GameCommand structures during data migration.
+
 Key Principles (Specs/AGENTS.md Policy):
 1. All Action-to-Command conversions MUST go through this module's `map_action` function.
-    ...
-    -> None:
+2. Used ONLY for converting old training data or legacy test fixtures.
 3. Maintains backward compatibility via `compat_wrappers.add_aliases_to_command`.
 4. Eliminates ad-hoc dictionary manipulation in test code and wrappers.
 
-Usage:
+Legacy Usage (for data migration only):
     from dm_toolkit.action_to_command import map_action
     
     legacy_action = {"type": "DRAW_CARD", "value1": 2}

@@ -109,7 +109,7 @@ def build_transition_command(
 
 
 def build_mana_charge_command(
-    source_instance_id: int,
+    instance_id: int,
     from_zone: str = "HAND",
     **kwargs: Any
 ) -> Dict[str, Any]:
@@ -117,16 +117,20 @@ def build_mana_charge_command(
     Build a standardized MANA_CHARGE command.
     
     Args:
-        source_instance_id: Card instance ID to charge as mana
+        instance_id: Card instance ID to charge as mana (matches C++ binding)
         from_zone: Source zone (default: HAND)
         **kwargs: Additional command fields
         
     Returns:
         GameCommand dictionary ready for execution
+        
+    Note:
+        Uses 'instance_id' (not 'source_instance_id') to match C++ ManaChargeCommand binding.
+        The C++ binding expects: d["instance_id"].cast<int>()
     """
     cmd = {
         "type": "MANA_CHARGE",
-        "source_instance_id": source_instance_id,
+        "instance_id": instance_id,  # ← Changed from source_instance_id
         "from_zone": from_zone,
         "to_zone": "MANA",
         **kwargs
