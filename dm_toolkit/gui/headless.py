@@ -23,6 +23,15 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
       `reset_game` has been called and player modes set according to flags.
     """
     sess = GameSession()
+    
+    # Route session callback_log to the module logger so GameSession diagnostics
+    # appear in the centralized logs. Set this BEFORE initialization so we capture
+    # startup errors (JsonLoader, etc).
+    try:
+        sess.callback_log = logging.getLogger('selfplay_long').debug
+    except Exception:
+        pass
+
     # Set human/AI modes
     sess.set_player_mode(0, 'Human' if p0_human else 'AI')
     sess.set_player_mode(1, 'Human' if p1_human else 'AI')
@@ -304,13 +313,6 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
     except Exception:
         pass
 
-    # Route session callback_log to the module logger so GameSession diagnostics
-    # (Execute PRE/POST dumps) appear in the centralized logs when running
-    # headless scripts.
-    try:
-        sess.callback_log = logging.getLogger('selfplay_long').debug
-    except Exception:
-        pass
 
     return sess
 

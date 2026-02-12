@@ -10,17 +10,17 @@
 
 ### 実装レポート
 
-1. **[PHASE1_IMPLEMENTATION_REPORT.md](../PHASE1_IMPLEMENTATION_REPORT.md)**
+1. **[PHASE1_IMPLEMENTATION_REPORT.md](reports/PHASE1_IMPLEMENTATION_REPORT.md)**
    - SimpleAI実装レポート
    - AI選択ロジック統一
    - 実装ファイル: simple_ai.hpp/cpp
 
-2. **[PHASE2_IMPLEMENTATION_REPORT.md](../PHASE2_IMPLEMENTATION_REPORT.md)**
+2. **[PHASE2_IMPLEMENTATION_REPORT.md](reports/PHASE2_IMPLEMENTATION_REPORT.md)**
    - プレイヤーモード管理C++化
    - PlayerMode enum実装
    - GameState統合
 
-3. **[PHASE1_AND_PHASE2_SUMMARY.md](../PHASE1_AND_PHASE2_SUMMARY.md)**
+3. **[PHASE1_AND_PHASE2_SUMMARY.md](reports/PHASE1_AND_PHASE2_SUMMARY.md)**
    - Phase 1 + 2 統合サマリー
    - 実装時間: 約2時間
    - コード削減: ~100行
@@ -44,7 +44,7 @@
 
 ### アクションリファレンス
 
-7. **[PLAYER_INTENT_REFERENCE.md](../PLAYER_INTENT_REFERENCE.md)** ⭐ **必読**
+7. **[PLAYER_INTENT_REFERENCE.md](specs/PLAYER_INTENT_REFERENCE.md)** ⭐ **必読**
    - **全22種類のPlayerIntentアクション完全リファレンス**
    - 各アクションの詳細説明
    - パラメータ、生成条件、使用例
@@ -57,13 +57,13 @@
 
 ### 優先度設計
 
-9. **[PHASE_ACTION_PRIORITY_SPEC.md](../PHASE_ACTION_PRIORITY_SPEC.md)** ⭐ **必読**
+9. **[PHASE_ACTION_PRIORITY_SPEC.md](specs/PHASE_ACTION_PRIORITY_SPEC.md)** ⭐ **必読**
    - **フェーズ別アクション優先度完全仕様**
    - 全7フェーズの詳細
    - 各フェーズの許可/マスクアクション
    - 効果解決の優先度設計
 
-10. **[PRIORITY_QUICK_REFERENCE.md](../PRIORITY_QUICK_REFERENCE.md)**
+10. **[PRIORITY_QUICK_REFERENCE.md](specs/PRIORITY_QUICK_REFERENCE.md)**
     - 優先度クイックリファレンス
     - Level 1-5 分類
     - よくある間違い
@@ -75,17 +75,13 @@
 
 ### 設計ドキュメント
 
-11. **[PHASE_AWARE_AI_DESIGN.md](../PHASE_AWARE_AI_DESIGN.md)**
+11. **[PHASE_AWARE_AI_DESIGN.md](specs/PHASE_AWARE_AI_DESIGN.md)**
     - フェーズ対応AI設計
     - 問題提起と解決策
     - 優先度マトリクス
     - 実装スケジュール
 
-12. **[DESIGN_PHASE_AWARE_AI.hpp](../DESIGN_PHASE_AWARE_AI.hpp)**
-    - フェーズ対応SimpleAIヘッダー（サンプル）
 
-13. **[DESIGN_PHASE_AWARE_AI.cpp](../DESIGN_PHASE_AWARE_AI.cpp)**
-    - フェーズ対応SimpleAI実装（サンプル）
 
 ---
 
@@ -122,14 +118,14 @@
 
 ### マスタープラン
 
-19. **[CPP_MIGRATION_PLAN.md](../CPP_MIGRATION_PLAN.md)**
+19. **[CPP_MIGRATION_PLAN.md](migration/CPP_MIGRATION_PLAN.md)**
     - Python→C++ 移行実装計画
     - Phase 1-5 ロードマップ
     - 実装優先順位マトリクス
     - **Phase 1 & 2: ✅ 完了**
     - Phase 3-5: 未着手
 
-20. **[GAME_STARTUP_FLOW_ANALYSIS.md](../GAME_STARTUP_FLOW_ANALYSIS.md)**
+20. **[GAME_STARTUP_FLOW_ANALYSIS.md](specs/GAME_STARTUP_FLOW_ANALYSIS.md)**
     - ゲーム開始フロー分析
     - ファイル責務分割
     - 改善提案
@@ -142,16 +138,16 @@
 
 **推奨読書順序**:
 
-1. 📖 [PLAYER_INTENT_REFERENCE.md](../PLAYER_INTENT_REFERENCE.md)
+1. 📖 [PLAYER_INTENT_REFERENCE.md](specs/PLAYER_INTENT_REFERENCE.md)
    - すべてのアクションを理解する
 
 2. 📖 [action_quick_ref.md](action_quick_ref.md)
    - クイックリファレンスで確認
 
-3. 📖 [PHASE_ACTION_PRIORITY_SPEC.md](../PHASE_ACTION_PRIORITY_SPEC.md)
+3. 📖 [PHASE_ACTION_PRIORITY_SPEC.md](specs/PHASE_ACTION_PRIORITY_SPEC.md)
    - フェーズ別の詳細仕様を学ぶ
 
-4. 📖 [PRIORITY_QUICK_REFERENCE.md](../PRIORITY_QUICK_REFERENCE.md)
+4. 📖 [PRIORITY_QUICK_REFERENCE.md](specs/PRIORITY_QUICK_REFERENCE.md)
    - 優先度システムを理解
 
 5. 📊 Mermaid図で視覚的に確認
@@ -162,11 +158,10 @@
 
 **Phase 1.1実装ガイド**:
 
-1. 📖 [PHASE_AWARE_AI_DESIGN.md](../PHASE_AWARE_AI_DESIGN.md)
+1. 📖 [PHASE_AWARE_AI_DESIGN.md](specs/PHASE_AWARE_AI_DESIGN.md)
    - 設計意図を理解
 
-2. 💻 [DESIGN_PHASE_AWARE_AI.cpp](../DESIGN_PHASE_AWARE_AI.cpp)
-   - サンプル実装を確認
+
 
 3. ✅ テストケース作成
    - `test_phase_aware_ai.py`
@@ -195,20 +190,20 @@
 
 | 探したいこと | 参照ドキュメント |
 |-------------|-----------------|
-| アクション一覧 | [PLAYER_INTENT_REFERENCE.md](../PLAYER_INTENT_REFERENCE.md) |
-| アクション詳細 | [PLAYER_INTENT_REFERENCE.md](../PLAYER_INTENT_REFERENCE.md) の各セクション |
-| 優先度 | [PRIORITY_QUICK_REFERENCE.md](../PRIORITY_QUICK_REFERENCE.md) |
-| フェーズ別アクション | [PHASE_ACTION_PRIORITY_SPEC.md](../PHASE_ACTION_PRIORITY_SPEC.md) |
+| アクション一覧 | [PLAYER_INTENT_REFERENCE.md](specs/PLAYER_INTENT_REFERENCE.md) |
+| アクション詳細 | [PLAYER_INTENT_REFERENCE.md](specs/PLAYER_INTENT_REFERENCE.md) の各セクション |
+| 優先度 | [PRIORITY_QUICK_REFERENCE.md](specs/PRIORITY_QUICK_REFERENCE.md) |
+| フェーズ別アクション | [PHASE_ACTION_PRIORITY_SPEC.md](specs/PHASE_ACTION_PRIORITY_SPEC.md) |
 
 ### トピック別検索
 
 | トピック | 参照ドキュメント |
 |---------|----------------|
-| SimpleAI実装 | [PHASE1_IMPLEMENTATION_REPORT.md](../PHASE1_IMPLEMENTATION_REPORT.md) |
-| PlayerMode | [PHASE2_IMPLEMENTATION_REPORT.md](../PHASE2_IMPLEMENTATION_REPORT.md) |
-| フェーズ対応AI | [PHASE_AWARE_AI_DESIGN.md](../PHASE_AWARE_AI_DESIGN.md) |
-| 優先度設計 | [PHASE_ACTION_PRIORITY_SPEC.md](../PHASE_ACTION_PRIORITY_SPEC.md) |
-| マスタープラン | [CPP_MIGRATION_PLAN.md](../CPP_MIGRATION_PLAN.md) |
+| SimpleAI実装 | [PHASE1_IMPLEMENTATION_REPORT.md](reports/PHASE1_IMPLEMENTATION_REPORT.md) |
+| PlayerMode | [PHASE2_IMPLEMENTATION_REPORT.md](reports/PHASE2_IMPLEMENTATION_REPORT.md) |
+| フェーズ対応AI | [PHASE_AWARE_AI_DESIGN.md](specs/PHASE_AWARE_AI_DESIGN.md) |
+| 優先度設計 | [PHASE_ACTION_PRIORITY_SPEC.md](specs/PHASE_ACTION_PRIORITY_SPEC.md) |
+| マスタープラン | [CPP_MIGRATION_PLAN.md](migration/CPP_MIGRATION_PLAN.md) |
 
 ---
 

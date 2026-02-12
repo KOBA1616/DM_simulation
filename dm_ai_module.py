@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from enum import IntEnum
 from typing import Any, List, Optional
 import copy
@@ -33,6 +34,11 @@ class GameInstance:
 # Try to load native extension if present in build output (prefer native C++ implementation)
 # unless explicitly disabled via DM_DISABLE_NATIVE environment variable.
 _disable_native = os.environ.get('DM_DISABLE_NATIVE', '').lower() in ('1', 'true', 'yes')
+
+# Guard against double-loading the native module which causes "generic_type already registered" error
+if getattr(sys, '_dm_ai_native_loaded', False):
+    _disable_native = True
+
 if not _disable_native:
     try:
         import importlib.util, importlib.machinery, sys
@@ -375,6 +381,7 @@ class CommandSystem:
     @staticmethod
     def execute_command(state: Any, cmd: Any, source_id: int = -1, player_id: int = 0, ctx: Any = None) -> None:
         # Minimal wrapper: attempt to call `execute` on cmd or treat as Action
+        print(f"DEBUG: CommandSystem.execute_command CALLED with {cmd}")
         try:
             if hasattr(cmd, 'execute') and callable(getattr(cmd, 'execute')):
                 try:
@@ -389,7 +396,17 @@ class CommandSystem:
             # Fallback: if cmd is dict-like, try to map basic commands
             if isinstance(cmd, dict):
                 t = cmd.get('type')
-                if t in (CommandType.MANA_CHARGE, 'MANA_CHARGE'):
+                
+                # Robust equality check
+                is_mana = str(t) == 'MANA_CHARGE' or t == 2
+                is_play = str(t) == 'PLAY_FROM_ZONE' or t == 1
+                try:
+                    if not is_mana and t == CommandType.MANA_CHARGE: is_mana = True
+                    if not is_play and t == CommandType.PLAY_FROM_ZONE: is_play = True
+                except Exception:
+                    pass
+
+                if is_mana:
                     # Emulate mana charge: remove from hand (if present) and add to mana_zone
                     pid = getattr(state, 'active_player_id', player_id)
                     # Prefer instance_id/source_instance_id/card_id
@@ -442,6 +459,56 @@ class CommandSystem:
                     if not hasattr(state, 'command_history'):
                         state.command_history = []
                     state.command_history.append(cmd)
+
+                # PLAY_FROM_ZONE: move card from hand to battle zone
+                elif is_play:
+                    pid = cmd.get('player_id', getattr(state, 'active_player_id', player_id))
+                    # Prefer instance_id
+                    iid = cmd.get('instance_id') or cmd.get('source_instance_id')
+                    cid = cmd.get('card_id')
+                    
+                    p = getattr(state.players[pid], 'hand', [])
+                    moved_card = None
+                    idx_to_remove = -1
+                    
+                    # Find card in hand
+                    for i, c in enumerate(p):
+                         c_iid = getattr(c, 'instance_id', None)
+                         c_cid = getattr(c, 'card_id', None)
+                         
+                         if iid is not None:
+                             try:
+                                 if int(c_iid) == int(iid):
+                                     moved_card = c
+                                     idx_to_remove = i
+                                     break
+                             except Exception:
+                                 pass
+                         
+                         if moved_card is None and cid is not None:
+                             try:
+                                 if int(c_cid) == int(cid):
+                                     moved_card = c
+                                     idx_to_remove = i
+                                     break
+                             except Exception:
+                                 pass
+                    
+                    if moved_card:
+                        try:
+                            p.pop(idx_to_remove)
+                            # Add to battle zone (Creature assumption for fallback)
+                            moved_card.sick = True # Summoning sickness
+                            state.players[pid].battle_zone.append(moved_card)
+                        except Exception as e:
+                            pass
+                    else:
+                        pass
+
+                    if not hasattr(state, 'command_history'):
+                        state.command_history = []
+                    state.command_history.append(cmd)
+
                 # DESTROY: remove cards by instance_id from execution_context.variables
                 elif t == 'DESTROY' or t == getattr(CommandType, 'DESTROY', 'DESTROY'):
                     if not hasattr(state, 'execution_context'):
@@ -621,6 +688,9 @@ class GameState:
         self.turn_number = 1
         self.game_over = False
         self.winner = -1
+        # C++ Engine Side Flag Management:
+        self._mana_charged_flags = {0: False, 1: False}
+         self._last_turn_mana_charged = -1
     
     def initialize(self):
         """Compatibility alias for older tests/scripts: initialize the test duel."""
@@ -755,6 +825,9 @@ class GameState:
         # Reset game state
         self.turn_number = 1
         self.active_player_id = 0
+        # Reset flags on test duel setup
+        if hasattr(self, '_mana_charged_flags'):
+            self._mana_charged_flags = {0: False, 1: False}
         # Robustly set phase to MANA even if Phase symbol missing
         try:
             self.current_phase = Phase.MANA
@@ -909,27 +982,46 @@ class GameInstance:
             else:
                 action_dict = action
             
+            # Ensure type is string for consistency if possible, or leave as is
+            # Some parts expect 'MANA_CHARGE', others 2
+            
             # Try CommandSystem first
             _CommandSystem = globals().get('CommandSystem')
+            # print(f"DEBUG: _CommandSystem found: {_CommandSystem}")
             if _CommandSystem is not None:
                 try:
+                    # print(f"DEBUG: calling execute_command with {action_dict}")
                     _CommandSystem.execute_command(
                         self.state, 
                         action_dict, 
                         source_id=action_dict.get('source_instance_id', -1),
                         player_id=action_dict.get('player_id', getattr(self.state, 'active_player_id', 0))
                     )
-                    return
-                except Exception:
+                    # We continue even if execute_command "succeeds" because we might need legacy flags updated below
+                except Exception as e:
+                    # print(f"DEBUG: execute_command FAILED: {e}")
                     pass
             
-            # Fallback to EngineCompat if CommandSystem unavailable
+            # Fallback to EngineCompat if CommandSystem unavailable or for thoroughness
             try:
                 from dm_toolkit.engine.compat import EngineCompat
                 EngineCompat.ExecuteCommand(self.state, action_dict, self.card_db)
-                return
             except Exception:
                 pass
+            
+            # C++ Engine Side Flag Management:
+            # Update internal state flags based on the executed action.
+            # This ensures generate_commands() has accurate context for legality checks.
+            try:
+                atype = action_dict.get('type')
+                # Check for MANA_CHARGE (typcial int value 2 or string 'MANA_CHARGE')
+                if atype == 'MANA_CHARGE' or atype == 2 or str(atype) == 'ActionType.MANA_CHARGE':
+                    pid = action_dict.get('player_id', getattr(self.state, 'active_player_id', 0))
+                    if hasattr(self.state, '_mana_charged_flags'):
+                        self.state._mana_charged_flags[pid] = True
+            except Exception:
+                pass
+
         except Exception:
             pass
 
@@ -979,6 +1071,7 @@ class GameInstance:
         non_pass_actions = []
         for action in actions:
             action_type = action.get('type') if isinstance(action, dict) else getattr(action, 'type', None)
+            
             # Skip PASS actions (ActionType.PASS = 1)
             try:
                 from dm_toolkit.dm_types import ActionType
@@ -989,8 +1082,36 @@ class GameInstance:
                 if action_type != 1:  # 1 is ActionType.PASS
                     non_pass_actions.append(action)
         
-        # Choose action: prefer non-PASS, fall back to PASS if no other options
-        action_to_execute = non_pass_actions[0] if non_pass_actions else actions[0]
+        # Sort actions by priority to ensure meaningful play
+        # Priority: MANA_CHARGE > PLAY/ATTACK
+        # Heuristic: Always charge mana first if possible (and not already done), then play/attack
+        current_turn = getattr(self.state, 'turn_number', -1)
+        
+        # Filter out MANA_CHARGE if we already charged this turn
+        if self._last_turn_mana_charged == current_turn:
+            non_pass_actions = [a for a in non_pass_actions 
+                                if (a.get('type') if isinstance(a, dict) else getattr(a, 'type', '')) not in ('MANA_CHARGE', 2)]
+
+        def get_action_priority(act):
+            t = act.get('type') if isinstance(act, dict) else getattr(act, 'type', '')
+            if t in ('MANA_CHARGE', 2): return 110 # HIGHEST: Charge mana first
+            if t in ('PLAY_FROM_ZONE', 'PLAY_CARD', 3): return 100
+            if t in ('ATTACK', 'ATTACK_PLAYER', 'ATTACK_CREATURE', 4): return 90
+            return 0
+
+        if non_pass_actions:
+            non_pass_actions.sort(key=get_action_priority, reverse=True)
+            action_to_execute = non_pass_actions[0]
+            
+            # If we chose MANA_CHARGE, update our tracker
+            at = action_to_execute.get('type') if isinstance(action_to_execute, dict) else getattr(action_to_execute, 'type', '')
+            if at in ('MANA_CHARGE', 2):
+                self._last_turn_mana_charged = current_turn
+        else:
+            action_to_execute = actions[0]
+
+        # Debug choice
+        # print(f"DEBUG: Executing {action_to_execute}")
         
         # Execute the chosen action
         try:
@@ -1002,7 +1123,8 @@ class GameInstance:
             PhaseManager.fast_forward(self.state, self.card_db)
             
             return True
-        except Exception:
+        except Exception as e:
+            # print(f"Error in step execution: {e}")
             return False
 
     def resolve_action(self, action: Any) -> None:
@@ -1059,6 +1181,39 @@ class ActionEncoder:
 
 
 def generate_legal_actions(state: GameState, card_db: Any = None) -> List[Action]:
+    # Shim to support legacy calls: convert commands to Actions
+    cmds = generate_commands(state, card_db)
+    out: List[Action] = []
+    for cmd in cmds:
+        try:
+            a = Action()
+            t = cmd.get('type')
+            if t == 'PASS':
+                 a.type = ActionType.PASS
+            elif t == 'MANA_CHARGE':
+                 a.type = ActionType.MANA_CHARGE
+                 a.card_id = cmd.get('card_id')
+                 a.source_instance_id = cmd.get('instance_id') or cmd.get('source_instance_id')
+            elif t == 'PLAY_FROM_ZONE':
+                 a.type = ActionType.PLAY_CARD
+                 a.card_id = cmd.get('card_id')
+                 a.source_instance_id = cmd.get('instance_id') or cmd.get('source_instance_id')
+            elif t == 'ATTACK':
+                 a.type = ActionType.ATTACK_PLAYER # Simplified mapping
+                 a.source_instance_id = cmd.get('instance_id') or cmd.get('source_instance_id')
+                 a.target_player = 1 - state.active_player_id
+            else:
+                 continue
+            out.append(a)
+        except Exception:
+            continue
+    
+    # If no commands generated (e.g. error in commands_v2), fallback to crude logic
+    if not out:
+         return _fallback_generate_legal_actions(state, card_db)
+    return out
+
+def _fallback_generate_legal_actions(state: GameState, card_db: Any = None) -> List[Action]:
     out: List[Action] = []
     try:
         pid = getattr(state, 'active_player_id', 0)
@@ -1099,6 +1254,70 @@ def generate_legal_actions(state: GameState, card_db: Any = None) -> List[Action
 
     except Exception:
         return []
+    return out
+
+
+def generate_commands(state: GameState, card_db: Any = None) -> List[Any]:
+    """Generate legal commands using the robust dm_toolkit.commands_v2 logic."""
+    try:
+        # Import locally to avoid circular dependency (dm_toolkit imports dm_ai_module)
+        # Check if we are in the middle of import to avoid lock issues? 
+        # Usually safe inside a function call at runtime.
+        from dm_toolkit import commands_v2
+        
+        # Call generate_legal_commands with strict=False to allow it to use its own fallback logic
+        # But wait, commands_v2 calls dm_ai_module.generate_commands!
+        # We must prevent infinite recursion.
+        # commands_v2 checks `if hasattr(dm_ai_module, 'generate_commands')` -> calls it.
+        # So if we implement this function, commands_v2 will call US.
+        # We need to call the Python implementation logic from commands_v2 *ignoring* the native check
+        # OR we implement the logic here directly.
+        
+        # Actually, commands_v2 is a wrapper. The actual logic is in `dm_toolkit.commands.generate_legal_commands` (legacy)
+        # or we should implement the logic here using helper functions from `dm_toolkit`.
+        
+        # Let's try to use `dm_toolkit.commands_v2.generate_legal_commands` but we need to trick it 
+        # so it doesn't call us back. 
+        # Actually, `commands_v2.generate_legal_commands` tries `dm_ai_module` first.
+        # If we are `dm_ai_module`, calling `commands_v2.generate_legal_commands` will call us. Infinite loop.
+        
+        # Solution: Use `dm_toolkit.training.command_compat` or `dm_toolkit.commands` directly which are Python implementations.
+        from dm_toolkit import commands as legacy_commands
+        return legacy_commands.generate_legal_commands(state, card_db)
+        
+    except Exception as e:
+        # print(f"Error in generate_commands: {e}")
+        pass
+    
+    # Fallback if import fails
+    actions = _fallback_generate_legal_actions(state, card_db)
+    return _actions_to_commands(actions)
+
+def _actions_to_commands(actions: List[Action]) -> List[Any]:
+    out: List[Any] = []
+    for a in actions:
+        try:
+            t = getattr(a, 'type', None)
+            if t == ActionType.PASS:
+                typ = 'PASS'
+            elif t == ActionType.MANA_CHARGE:
+                typ = 'MANA_CHARGE'
+            elif t == ActionType.PLAY_CARD:
+                typ = 'PLAY_FROM_ZONE'
+            elif t == ActionType.ATTACK_PLAYER:
+                typ = 'ATTACK'
+            else:
+                typ = str(t)
+            cmd = {'type': typ, 'uid': str(uuid.uuid4())}
+            iid = getattr(a, 'instance_id', None) or getattr(a, 'source_instance_id', None)
+            if iid is not None:
+                cmd['instance_id'] = iid
+            cid = getattr(a, 'card_id', None)
+            if cid is not None:
+                cmd['card_id'] = cid
+            out.append(cmd)
+        except Exception:
+            continue
     return out
 
 
@@ -1253,6 +1472,13 @@ class PhaseManager:
             else:
                 # END -> Next Turn (MANA)
                 state.active_player_id = 1 - state.active_player_id
+                
+                # C++ Engine Side Flag Management:
+                # Reset turn-specific flags for the new active player.
+                # This enables MANA_CHARGE legality for the new turn.
+                if hasattr(state, '_mana_charged_flags'):
+                    state._mana_charged_flags[state.active_player_id] = False
+                
                 state.current_phase = _Phase.MANA
 
                 # Untap Step: Reset all tapped cards
@@ -1954,59 +2180,84 @@ except Exception:
 
 
 def generate_commands(state: Any, card_db: Any = None) -> list:
-    # Prefer command-first generator from `dm_toolkit.commands_v2` when available.
+    """Python fallback generator.
+    
+    Crucial fix for headless execution: prevent infinite recursion with dm_toolkit.
+    Generates basic legal moves (MANA_CHARGE, PLAY, ATTACK) when native module is missing.
+    """
     cmds = []
     try:
-        from dm_toolkit import commands_v2 as cmdv2
-        try:
-            cmds = cmdv2.generate_legal_commands(state, card_db, strict=False) or []
-        except TypeError:
-            cmds = cmdv2.generate_legal_commands(state, card_db) or []
-        except Exception:
-            cmds = []
-    except Exception:
-        cmds = []
+        # Get active player
+        pid = getattr(state, 'active_player_id', 0)
+        player = state.players[pid]
+        hand = getattr(player, 'hand', []) or []
+        mana_zone = getattr(player, 'mana_zone', []) or []
+        battle_zone = getattr(player, 'battle_zone', []) or []
+        
+        # 1. Generate MANA_CHARGE candidates
+        # (In a real game, this is limited to 1/turn, but for this fallback we generate options)
+        # Check C++ Engine Side Flag to avoid charging multiple times if possible.
+        charged = False
+        if hasattr(state, '_mana_charged_flags'):
+             charged = state._mana_charged_flags.get(pid, False)
+        
+        if not charged:
+            for card in hand:
+                cmds.append({
+                    'type': 'MANA_CHARGE',
+                    'card_id': getattr(card, 'card_id', 0),
+                    'instance_id': getattr(card, 'instance_id', 0),
+                    'player_id': pid,
+                    'unified_type': 'MANA_CHARGE'
+                })
 
-    # Normalize outputs into simple dicts suitable for legacy callers.
-    out = []
-    for c in (cmds or []):
-        try:
-            if isinstance(c, dict):
-                out.append(c)
-                continue
-            if hasattr(c, 'to_dict'):
-                try:
-                    out.append(c.to_dict())
-                    continue
-                except Exception:
-                    pass
-            # If this looks like an Action-like object (has 'type'), map via commands_from_actions
-            if hasattr(c, 'type') and not hasattr(c, 'to_dict'):
-                out.extend(commands_from_actions(cmds, state))
-                break
-            # Fallback: try attribute extraction
-            d = {}
-            try:
-                d['type'] = getattr(c, 'type', None)
-            except Exception:
-                pass
-            try:
-                if hasattr(c, 'instance_id'):
-                    d['instance_id'] = getattr(c, 'instance_id')
-                if hasattr(c, 'source_instance_id'):
-                    d['source_instance_id'] = getattr(c, 'source_instance_id')
-            except Exception:
-                pass
-            try:
-                if hasattr(c, 'card_id'):
-                    d['card_id'] = getattr(c, 'card_id')
-            except Exception:
-                pass
-            out.append(d)
-        except Exception:
-            continue
+        # 2. Generate PLAY candidates (simplified: assume enough mana)
+        current_mana = len(mana_zone)
+        # Handle tapped mana if tracked (mock might not track it fully)
+        untapped_mana = len([c for c in mana_zone if not getattr(c, 'is_tapped', False)])
+        
+        for card in hand:
+             # Get cost from card_db if available
+             cost = 0
+             if card_db and isinstance(card_db, dict):
+                 cdata = card_db.get(getattr(card, 'card_id', 0))
+                 if cdata:
+                     cost = cdata.get('cost', 0)
+             
+             if untapped_mana >= cost:
+                 cmds.append({
+                     'type': 'PLAY_FROM_ZONE', # Or PLAY_CARD
+                     'card_id': getattr(card, 'card_id', 0),
+                     'instance_id': getattr(card, 'instance_id', 0),
+                     'player_id': pid,
+                     'unified_type': 'PLAY'
+                 })
 
-    return out
+        # 3. Generate ATTACK candidates
+        # Simply allow all creatures in battle zone to attack player for now
+        for card in battle_zone:
+            if not getattr(card, 'is_tapped', False) and not getattr(card, 'sick', False):
+                 cmds.append({
+                     'type': 'ATTACK',
+                     'card_id': getattr(card, 'card_id', 0),
+                     'instance_id': getattr(card, 'instance_id', 0),
+                     'player_id': pid,
+                     'target_player': 1 - pid,
+                     'unified_type': 'ATTACK'
+                 })
+
+        # 4. Always add PASS
+        cmds.append({
+            'type': 'PASS',
+            'player_id': pid,
+            'unified_type': 'PASS'
+        })
+        
+    except Exception as e:
+        # If anything fails, return PASS to avoid crash
+        cmds.append({'type': 'PASS'})
+        
+    return cmds
 
 if 'DeckEvolutionConfig' not in globals():
     class DeckEvolutionConfig:

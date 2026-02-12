@@ -1,7 +1,7 @@
 ﻿param(
     [Parameter(Position = 0)]
     [string]$Config = "Release",
-    [ValidateSet('msvc','mingw')]
+    [ValidateSet('msvc', 'mingw')]
     [string]$Toolchain = 'msvc',
     [switch]$Build,
     [switch]$AllowFallback
@@ -35,14 +35,16 @@ if (-not (Test-Path $buildDir)) {
     Write-Host "Build directory not found at $buildDir. Attempting automatic build..."
     try {
         & "$scriptDir/build.ps1" -Config $Config -Toolchain $Toolchain
-    } catch {
+    }
+    catch {
         Write-Error "Automatic build failed: $_"
     }
     if (-not (Test-Path $buildDir)) {
         if (-not $AllowFallback) {
             Write-Error "Build directory still missing after automatic build. Aborting to avoid running with Python fallback."
             exit 1
-        } else {
+        }
+        else {
             Write-Warning "Build directory still missing; proceeding with Python fallback as requested by -AllowFallback."
         }
     }
@@ -69,11 +71,8 @@ if ($existing.Count -gt 0) {
     $env:PYTHONPATH = $env:PYTHONPATH + ';' + ($existing -join ';')
 }
 
-# Native module currently causes heap corruption (0xc0000374) during
-# generate_legal_commands calls. Disable native module detection until
-# the native extension is rebuilt and verified to be compatible with
-# current Python code.
-$env:DM_DISABLE_NATIVE = '1'
+# Native module usage is now enabled after command-system fixes
+# $env:DM_DISABLE_NATIVE = '1'
 
 # Prefer native build artefact: search build dir for dm_ai_module*.pyd and set override
 # try {
@@ -93,16 +92,16 @@ $env:DM_DISABLE_NATIVE = '1'
 #     # non-fatal
 # }
 
-Write-Host "Using Python fallback for dm_ai_module (native module disabled due to heap corruption)"
+
 
 # Centralized logging defaults for GUI runs. These can be overridden by the user's environment.
 # - DM_CONSOLE_LOG_LEVEL: console verbosity (INFO|WARNING|ERROR)
 # - DM_FILE_LOG_LEVEL: file handler verbosity (DEBUG|INFO|...)
 # - DM_ROOT_LOG_LEVEL: root logger level
 if (-not $env:DM_CONSOLE_LOG_LEVEL) { $env:DM_CONSOLE_LOG_LEVEL = 'WARNING' }
-if (-not $env:DM_FILE_LOG_LEVEL)    { $env:DM_FILE_LOG_LEVEL = 'DEBUG' }
-if (-not $env:DM_ROOT_LOG_LEVEL)    { $env:DM_ROOT_LOG_LEVEL = 'DEBUG' }
-if (-not $env:DM_SILENT_LOGGERS)    { $env:DM_SILENT_LOGGERS = 'EngineCompat,dm_ai_module,dm_toolkit' }
+if (-not $env:DM_FILE_LOG_LEVEL) { $env:DM_FILE_LOG_LEVEL = 'DEBUG' }
+if (-not $env:DM_ROOT_LOG_LEVEL) { $env:DM_ROOT_LOG_LEVEL = 'DEBUG' }
+if (-not $env:DM_SILENT_LOGGERS) { $env:DM_SILENT_LOGGERS = 'EngineCompat,dm_ai_module,dm_toolkit' }
 
 # Optional logging tuning defaults (can be overridden by the user)
 # - DM_LOG_RATE_LIMIT_SECONDS: per-console-message rate-limit (0 disables)

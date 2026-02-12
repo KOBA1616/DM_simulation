@@ -611,7 +611,22 @@ void bind_core(py::module& m) {
         .def_readwrite("options", &GameState::QueryContext::options);
 
     py::class_<TurnStats>(m, "TurnStats")
-         .def_readwrite("cards_drawn_this_turn", &TurnStats::cards_drawn_this_turn);
+         .def_readwrite("cards_drawn_this_turn", &TurnStats::cards_drawn_this_turn)
+         .def_readwrite("played_without_mana", &TurnStats::played_without_mana)
+         .def_readwrite("cards_discarded_this_turn", &TurnStats::cards_discarded_this_turn)
+         .def_readwrite("creatures_played_this_turn", &TurnStats::creatures_played_this_turn)
+         .def_readwrite("spells_cast_this_turn", &TurnStats::spells_cast_this_turn)
+         .def_property("mana_charged_by_player",
+             [](const TurnStats& ts) {
+                 return std::vector<bool>{ts.mana_charged_by_player[0], ts.mana_charged_by_player[1]};
+             },
+             [](TurnStats& ts, const std::vector<bool>& v) {
+                 if (v.size() >= 2) {
+                     ts.mana_charged_by_player[0] = v[0];
+                     ts.mana_charged_by_player[1] = v[1];
+                 }
+             }
+         );
 
     // Added CardStats binding
     py::class_<dm::core::CardStats>(m, "CardStats")

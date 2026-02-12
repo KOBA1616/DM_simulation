@@ -17,7 +17,7 @@ commands = commands_v2.generate_legal_commands(state, card_db, strict=False)
 from dm_toolkit.action_to_command import map_action  # Data migration only
 ```
 
-See [MIGRATION_ACTION_TO_COMMAND_GUIDE.md](MIGRATION_ACTION_TO_COMMAND_GUIDE.md) for details.
+See [docs/migration/MIGRATION_ACTION_TO_COMMAND_GUIDE.md](docs/migration/MIGRATION_ACTION_TO_COMMAND_GUIDE.md) for details.
 
 ## Project Structure
 

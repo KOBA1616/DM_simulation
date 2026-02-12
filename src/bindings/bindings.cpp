@@ -8,7 +8,21 @@
 #include <thread>
 
 void bind_common(py::module& m) {
-    py::bind_map<dm::CardDatabase, std::shared_ptr<dm::CardDatabase>>(m, "CardDatabase");
+    std::cerr << "[DEBUG] bind_common enter\n";
+    try {
+        if (!py::hasattr(m, "CardDatabase")) {
+            std::cerr << "[DEBUG] calling bind_map for CardDatabase (DISABLED)\n";
+            // py::bind_map<dm::CardDatabase, std::shared_ptr<dm::CardDatabase>>(m, "CardDatabase");
+            std::cerr << "[DEBUG] bind_map skipped\n";
+        } else {
+             std::cerr << "[DEBUG] CardDatabase already exists in module\n";
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[DEBUG] Caught exception: " << e.what() << "\n";
+    } catch (...) {
+        std::cerr << "[DEBUG] Caught unknown exception\n";
+    }
+    std::cerr << "[DEBUG] bind_common exit\n";
 }
 
 PYBIND11_MODULE(dm_ai_module, m) {

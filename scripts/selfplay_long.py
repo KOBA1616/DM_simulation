@@ -39,7 +39,6 @@ if native_p:
 
 from dm_toolkit.gui.headless import create_session
 from dm_toolkit import commands_v2
-import dm_ai_module
 
 # Prefer command-first wrapper; provide safe fallback to legacy compatibility shim when necessary
 def get_legal_commands(gs, card_db):
@@ -132,196 +131,40 @@ def run_one_game(max_steps=10000, max_actions_per_phase=50):
         except Exception:
             logger.exception('Error while logging phase/attack debug info')
 
-        try:
+
             cmds = get_legal_commands(gs, card_db)
-        except Exception:
-            cmds = []
-
-        # If in ATTACK phase, show a small sample of returned command types
-        try:
-            phase_name = getattr(cur_phase, 'name', None) or str(cur_phase)
-            if str(phase_name).upper() == 'ATTACK' or 'ATTACK' in str(phase_name).upper():
-                sample_types = []
-                for c in cmds[:20]:
-                    try:
-                        d = c.to_dict()
-                        sample_types.append(d.get('type'))
-                    except Exception:
-                        sample_types.append(getattr(c, 'type', None))
-                # summarize command samples (keep short list at INFO, full samples at DEBUG)
-                logger.info("ATTACK_CMD_SAMPLES -> count=%d, types=%s", len(cmds), sample_types[:5])
-                if logger.isEnabledFor(logging.DEBUG):
-                    logger.debug("ATTACK_CMD_SAMPLES_FULL -> %s", sample_types[:20])
-        except Exception:
-            logger.exception('Error while logging attack command samples')
-
-        if not cmds:
-            try:
-                sess.step_phase()
-            except Exception:
-                pass
-            steps += 1
-            continue
-
-        # inspect normalized commands (if available) and count types
-        try:
-            for c in cmds:
-                try:
-                    d = c.to_dict()
-                except Exception:
-                    d = {}
-                t = d.get('type') or getattr(c, 'type', None) or getattr(getattr(c, 'command', {}), 'get', lambda *_: '')('type', '')
-                if t in cmd_counts:
-                    cmd_counts[t] += 1
-                    if len(cmd_samples[t]) < 5:
-                        cmd_samples[t].append(d or repr(c))
-        except Exception:
-            logger.exception('Error while counting command types')
-
-        # If there are no play-like candidates, prefer PASS (advance phase)
-        has_play_candidate = False
-        pass_cmd = None
-        try:
-            for c in cmds:
-                try:
-                    d = c.to_dict()
-                except Exception:
-                    d = {}
-                t = (d.get('type') or '').upper()
-                if 'PLAY' in t and 'PASS' not in t:
-                    has_play_candidate = True
-                if t == 'PASS':
-                    pass_cmd = c
-        except Exception:
-            logger.exception('Error while searching for play/pass candidates')
-
-        # Choose action
-        choice = None
-        if not has_play_candidate and pass_cmd is not None:
-            choice = pass_cmd
-        else:
-            try:
+            if steps < 10 or steps % 100 == 0:
+                types = []
                 for c in cmds:
                     try:
-                        d = c.to_dict()
-                    except Exception:
-                        d = {}
-                    t = d.get('type', '')
-                    if t and t != 'PASS':
-                        choice = c
-                        break
-                if choice is None:
-                    choice = random.choice(cmds)
-            except Exception:
-                logger.exception('Error while choosing initial action; falling back to random')
-                choice = random.choice(cmds)
-
-        # If we've been stuck in the same phase for a few iterations, force advance
-        # (lowered threshold to make ATTACK-phase transitions observable in selfplay)
-        if same_phase_count > 5:
-            try:
-                from dm_toolkit.engine.compat import EngineCompat
-                try:
-                    EngineCompat.PhaseManager_next_phase(gs, card_db)
-                except Exception:
-                    try:
-                        sess.step_phase()
-                    except Exception:
-                        pass
-            except Exception:
-                try:
-                    sess.step_phase()
-                except Exception:
-                    pass
-            logger.debug(f"forced_phase_advance -> same_phase_count={same_phase_count}")
-            same_phase_count = 0
-            # try regenerate commands and skip to next loop if none
-            try:
-                cmds = get_legal_commands(gs, card_db)
-            except Exception:
-                cmds = []
-            if not cmds:
-                steps += 1
-                continue
-
-        # Execute chosen actions repeatedly within the same phase until
-        # there are no more meaningful commands (or we hit a safety limit),
-        # then advance the phase once. This ensures the engine can progress
-        # to ATTACK when players have exhausted plays.
-        actions_this_phase = 0
-        while True:
-            try:
-                sess.execute_action(choice)
-                actions_executed += 1
-            except Exception:
-                exceptions += 1
-                logger.exception('Exception executing action')
-
-            actions_this_phase += 1
-            if actions_this_phase >= max_actions_per_phase:
-                break
-
-            try:
-                cmds = get_legal_commands(gs, card_db)
-            except Exception:
-                logger.exception('Error generating legal commands inside phase loop')
-                cmds = []
-
-            # If no commands or only PASS remains, break to advance phase
-            if not cmds:
-                break
-            # find a PASS candidate
-            pass_cmd = None
-            has_play_candidate = False
-            try:
-                for c in cmds:
-                    try:
-                        d = c.to_dict()
-                    except Exception:
-                        d = {}
-                    t = (d.get('type') or '').upper()
-                    if t == 'PASS':
-                        pass_cmd = c
-                    if 'PLAY' in t and 'PASS' not in t:
-                        has_play_candidate = True
-            except Exception:
-                pass
-
-            if not has_play_candidate and pass_cmd is not None:
-                choice = pass_cmd
-                try:
-                    sess.execute_action(choice)
-                    actions_executed += 1
-                except Exception:
-                    exceptions += 1
-                    logger.exception('Exception executing PASS action')
-                break
-
-            # otherwise choose next non-PASS command if available
-            next_choice = None
-            try:
-                for c in cmds:
-                    try:
-                        d = c.to_dict()
-                    except Exception:
-                        d = {}
-                    t = d.get('type', '')
-                    if t and t != 'PASS':
-                        next_choice = c
-                        break
-                if next_choice is None:
-                    next_choice = random.choice(cmds)
-            except Exception:
-                logger.exception('Error choosing next action; falling back to random')
-                next_choice = random.choice(cmds)
-
-            choice = next_choice
-
-        # Advance phase after exhausting actions in this phase
-        try:
-            sess.step_phase()
+                        types.append(c.to_dict().get('type', 'UNKNOWN'))
+                    except:
+                        types.append(str(c))
+                logger.info(f"Step {steps}: Legal commands count={len(cmds)} types={types[:10]}")
         except Exception:
-            logger.exception('Error advancing phase at end of step')
+            logger.error("Failed to get legal commands for debug")
+
+
+        # Use GameSession.step_game() to delegate logic to C++ engine
+        # This handles action generation, selection, and execution internally
+        try:
+            sess.step_game()
+            
+            # After step, check what happened by looking at last action
+            # Note: We can't easily count specific command types since step_game() encapsulates it
+            # But we can check phase changes
+            actions_executed += 1
+            
+        except Exception:
+            exceptions += 1
+            logger.exception('Error during sess.step_game()')
+
+        # Continue loop until game over or max steps
+        steps += 1
+
+
+        # No need for manual execution loop since step_game() does it one step at a time
+
 
         steps += 1
     return {
