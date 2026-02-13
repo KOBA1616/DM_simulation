@@ -109,11 +109,11 @@ def test_encode_action_hierarchical():
     assert encode_action_hierarchical({'type': 'PLAY_CARD', 'slot_index': 1}) == [2, 1]
 
     # Test Enum support (mocking enum)
-    class ActionTypeEnum:
+    class CommandTypeEnum:
         def __init__(self, name):
             self.name = name
 
-    assert encode_action_hierarchical({'type': ActionTypeEnum('PASS')}) == [0, 0]
+    assert encode_action_hierarchical({'type': CommandTypeEnum('PASS')}) == [0, 0]
 
     # Test object input
     class ActionObj:

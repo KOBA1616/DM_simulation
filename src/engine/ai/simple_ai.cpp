@@ -7,7 +7,7 @@ namespace dm::engine::ai {
 using namespace dm::core;
 
 std::optional<size_t> SimpleAI::select_action(
-    const std::vector<Action>& actions,
+    const std::vector<CommandDef>& actions,
     const GameState& state
 ) {
     if (actions.empty()) {
@@ -33,55 +33,57 @@ std::optional<size_t> SimpleAI::select_action(
     return best_idx;
 }
 
-int SimpleAI::get_priority(const Action& action, const GameState& state) {
+int SimpleAI::get_priority(const CommandDef& action, const GameState& state) {
     // Universal priorities (phase-independent)
-    if (action.type == PlayerIntent::RESOLVE_EFFECT) return 100;
+    if (action.type == CommandType::RESOLVE_EFFECT) return 100;
     
     // Query responses - always high priority
-    if (action.type == PlayerIntent::SELECT_TARGET ||
-        action.type == PlayerIntent::SELECT_OPTION ||
-        action.type == PlayerIntent::SELECT_NUMBER) return 95;
+    if (action.type == CommandType::SELECT_TARGET ||
+        action.type == CommandType::CHOICE ||
+        action.type == CommandType::SELECT_NUMBER) return 95;
     
     // Stack actions - very high priority
-    if (action.type == PlayerIntent::PAY_COST ||
-        action.type == PlayerIntent::RESOLVE_PLAY) return 98;
+    // RESOLVE_PLAY is handled via pipeline, but if it appears as a command:
+    if (action.type == CommandType::RESOLVE_PLAY) return 98;
     
     // PASS - always lowest priority
-    if (action.type == PlayerIntent::PASS) return 0;
+    if (action.type == CommandType::PASS) return 0;
     
     // Phase-specific priorities
     switch (state.current_phase) {
         case Phase::MANA:
             // In MANA phase, prioritize MANA_CHARGE
-            if (action.type == PlayerIntent::MANA_CHARGE) return 90;
+            if (action.type == CommandType::MANA_CHARGE) return 90;
             return 10;  // Other actions have low priority
         
         case Phase::MAIN:
-            // In MAIN phase, prioritize card plays and attacks
-            if (action.type == PlayerIntent::DECLARE_PLAY) return 80;
-            if (action.type == PlayerIntent::PLAY_CARD ||
-                action.type == PlayerIntent::PLAY_CARD_INTERNAL) return 80;
-            if (action.type == PlayerIntent::ATTACK_PLAYER ||
-                action.type == PlayerIntent::ATTACK_CREATURE) return 60;
-            if (action.type == PlayerIntent::USE_ABILITY) return 50;
-            if (action.type == PlayerIntent::MANA_CHARGE) return 10;  // Wrong phase
+            // In MAIN phase, prioritize card plays
+            // ATTACK is usually not in MAIN, but if generated:
+            if (action.type == CommandType::PLAY_FROM_ZONE ||
+                action.type == CommandType::CAST_SPELL ||
+                action.type == CommandType::SUMMON_TOKEN) return 80;
+
+            if (action.type == CommandType::ATTACK_PLAYER ||
+                action.type == CommandType::ATTACK_CREATURE) return 60;
+
+            if (action.type == CommandType::USE_ABILITY) return 50;
+            if (action.type == CommandType::MANA_CHARGE) return 10;  // Wrong phase
             return 20;
         
         case Phase::ATTACK:
             // In ATTACK phase, prioritize attacks
-            if (action.type == PlayerIntent::ATTACK_PLAYER ||
-                action.type == PlayerIntent::ATTACK_CREATURE) return 85;
+            if (action.type == CommandType::ATTACK_PLAYER ||
+                action.type == CommandType::ATTACK_CREATURE) return 85;
             return 10;
         
         case Phase::BLOCK:
             // In BLOCK phase, prioritize blocking
-            if (action.type == PlayerIntent::BLOCK) return 85;
+            if (action.type == CommandType::BLOCK) return 85;
             return 10;
         
         default:
             // For other phases or general actions
-            if (action.type == PlayerIntent::PLAY_CARD ||
-                action.type == PlayerIntent::PLAY_CARD_INTERNAL) return 50;
+            if (action.type == CommandType::PLAY_FROM_ZONE) return 50;
             return 20;
     }
 }

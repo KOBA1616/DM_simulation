@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     import torch  # type: ignore
 
     GameState = dm_ai_module.GameState
-    Action = dm_ai_module.Action
+    CommandDef = dm_ai_module.CommandDef
     CardDatabase = dm_ai_module.CardDatabase
 
     NPArray = np.ndarray
@@ -53,11 +53,11 @@ else:
     try:
         import dm_ai_module
         GameState = dm_ai_module.GameState
-        Action = dm_ai_module.Action
+        CommandDef = dm_ai_module.CommandDef
         CardDatabase = dm_ai_module.CardDatabase
     except (ImportError, AttributeError):
         GameState = Any
-        Action = Any
+        CommandDef = Any
         CardDatabase = Any
 
 # map CardID to CardDefinition-like objects (use int keys)

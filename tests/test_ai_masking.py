@@ -14,7 +14,7 @@ except ImportError:
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from dm_ai_module import GameInstance, ActionType, CardStub, GameCommand
+from dm_ai_module import GameInstance, CommandType, CardStub, GameCommand
 from dm_toolkit.ai.agent.tokenization import ActionEncoder, StateTokenizer
 if torch:
     from training.ai_player import AIPlayer
@@ -47,7 +47,7 @@ class TestAIMasking(unittest.TestCase):
     def test_encode_action(self):
         # 1. Test PASS
         cmd = GameCommand()
-        cmd.type = ActionType.PASS
+        cmd.type = CommandType.PASS
         idx = self.encoder.encode_action(cmd, self.game.state, 0)
         self.assertEqual(idx, 0)
 
@@ -55,7 +55,7 @@ class TestAIMasking(unittest.TestCase):
         # Add card to hand
         self.game.state.add_card_to_hand(0, 100, 123) # Hand[0], inst=123
         cmd = GameCommand()
-        cmd.type = ActionType.MANA_CHARGE
+        cmd.type = CommandType.MANA_CHARGE
         cmd.source_instance_id = 123
         idx = self.encoder.encode_action(cmd, self.game.state, 0)
         self.assertEqual(idx, 1) # 1 + 0
@@ -64,7 +64,7 @@ class TestAIMasking(unittest.TestCase):
         # Add another card
         self.game.state.add_card_to_hand(0, 101, 124) # Hand[1], inst=124
         cmd = GameCommand()
-        cmd.type = ActionType.PLAY_CARD
+        cmd.type = CommandType.PLAY_CARD
         cmd.source_instance_id = 124
         idx = self.encoder.encode_action(cmd, self.game.state, 0)
         self.assertEqual(idx, 11 + 1) # 12
@@ -73,7 +73,7 @@ class TestAIMasking(unittest.TestCase):
         # Add card to battle zone
         self.game.state.add_test_card_to_battle(0, 102, 125, False, False) # Battle[0], inst=125
         cmd = GameCommand()
-        cmd.type = ActionType.ATTACK_PLAYER
+        cmd.type = CommandType.ATTACK_PLAYER
         cmd.source_instance_id = 125
         idx = self.encoder.encode_action(cmd, self.game.state, 0)
         self.assertEqual(idx, 21 + 0) # 21
@@ -108,7 +108,7 @@ class TestAIMasking(unittest.TestCase):
         # 1 -> Hand[0]
         # 5 -> Hand[4]
 
-        self.assertEqual(cmd.type, ActionType.MANA_CHARGE)
+        self.assertEqual(cmd.type, CommandType.MANA_CHARGE)
         # Check source instance id matches Hand[4]
         hand_card_4 = self.game.state.players[0].hand[4]
         self.assertEqual(cmd.source_instance_id, hand_card_4.instance_id)
@@ -116,7 +116,7 @@ class TestAIMasking(unittest.TestCase):
     def test_ai_masking_pass(self):
         valid_indices = [0] # PASS
         cmd = self.ai.get_action(self.game.state, 0, valid_indices)
-        self.assertEqual(cmd.type, ActionType.PASS)
+        self.assertEqual(cmd.type, CommandType.PASS)
 
 if __name__ == '__main__':
     unittest.main()

@@ -8,7 +8,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 from dm_toolkit import dm_ai_module
-from dm_toolkit.dm_ai_module import GameInstance, PhaseManager, Phase, ActionType
+from dm_toolkit.dm_ai_module import GameInstance, PhaseManager, Phase, CommandType
 from dm_toolkit.ai.agent.mcts import MCTS
 from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 from dm_toolkit.ai.agent.tokenization import StateTokenizer, ActionEncoder

@@ -8,7 +8,7 @@ def test_play_heuristic_with_mocked_dm_ai_module():
     # Prepare a fake dm_ai_module to avoid loading native extensions.
     fake = types.SimpleNamespace()
 
-    class ActionType:
+    class CommandType:
         PASS = 'PASS'
         MANA_CHARGE = 'MANA_CHARGE'
         PLAY_CARD = 'PLAY_CARD'
@@ -34,7 +34,7 @@ def test_play_heuristic_with_mocked_dm_ai_module():
             return None
 
     fake.Action = Action
-    fake.ActionType = ActionType
+    fake.CommandType = CommandType
     fake.ActionGenerator = ActionGenerator
     fake.PhaseManager = PhaseManager
 
@@ -76,7 +76,7 @@ def test_play_heuristic_with_mocked_dm_ai_module():
         if underlying is None:
             continue
         t = getattr(underlying, 'type', None)
-        if t == ActionType.PLAY_CARD:
+        if t == CommandType.PLAY_CARD:
             found_play = True
             break
 

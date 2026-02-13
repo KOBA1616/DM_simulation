@@ -3,6 +3,7 @@
 #include "core/card_def.hpp"
 #include "core/instruction.hpp"
 #include "core/action.hpp"
+#include "core/card_json_types.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include <map>
 #include <vector>
@@ -13,18 +14,11 @@ namespace dm::engine::systems {
     public:
         // Main Entry Points
 
-        // Dispatches action to appropriate handler using the provided pipeline
-        static void dispatch_action(PipelineExecutor& pipeline, core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db);
-
         // Dispatches command to appropriate handler using the provided pipeline
         static void dispatch_command(PipelineExecutor& pipeline, core::GameState& state, const core::CommandDef& cmd, const std::map<core::CardID, core::CardDefinition>& card_db);
 
-        // Creates a temporary pipeline to resolve a single action (Legacy/Test support)
-        static void resolve_action_oneshot(core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db);
-        // Alias for compatibility with EffectResolver::resolve_action
-        static void resolve_action(core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db) {
-            resolve_action_oneshot(state, action, card_db);
-        }
+        // Resolves a single command immediately (creates temporary pipeline)
+        static void resolve_command_oneshot(core::GameState& state, const core::CommandDef& cmd, const std::map<core::CardID, core::CardDefinition>& card_db);
 
         // Static helper to replace EffectResolver::resolve_play_from_stack
         static void resolve_play_from_stack(core::GameState& game_state, int stack_instance_id, int cost_reduction, core::SpawnSource spawn_source, core::PlayerID controller, const std::map<core::CardID, core::CardDefinition>& card_db, int evo_source_id = -1, core::ZoneDestination dest_override = core::ZoneDestination::NONE);

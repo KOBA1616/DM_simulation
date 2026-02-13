@@ -8,7 +8,7 @@ except ImportError:
         int64 = int
 
 import dm_ai_module
-from dm_ai_module import GameCommand, ActionType, CommandType
+from dm_ai_module import GameCommand, CommandType
 
 # Block size used for action index ranges (kept small to match tests)
 BLOCK = 10
@@ -190,7 +190,7 @@ class ActionEncoder:
 
         # 0: PASS
         if action_idx == 0:
-            cmd.type = ActionType.PASS
+            cmd.type = CommandType.PASS
             return cmd
 
         # Use module-level BLOCK (kept small to match tests)
@@ -203,13 +203,13 @@ class ActionEncoder:
             p = state.players[player_id]
             if hand_idx < len(p.hand):
                 c = p.hand[hand_idx]
-                cmd.type = ActionType.MANA_CHARGE
+                cmd.type = CommandType.MANA_CHARGE
                 cmd.card_id = c.card_id
                 cmd.source_instance_id = c.instance_id
                 return cmd
             else:
                 # Invalid index fallbacks to PASS
-                cmd.type = ActionType.PASS
+                cmd.type = CommandType.PASS
                 return cmd
         # 11..20: PLAY_CARD (Hand Index 0-9)
         if (BLOCK + 1) <= action_idx <= (2 * BLOCK):
@@ -217,12 +217,12 @@ class ActionEncoder:
             p = state.players[player_id]
             if hand_idx < len(p.hand):
                 c = p.hand[hand_idx]
-                cmd.type = ActionType.PLAY_CARD
+                cmd.type = CommandType.PLAY_FROM_ZONE
                 cmd.card_id = c.card_id
                 cmd.source_instance_id = c.instance_id
                 return cmd
             else:
-                cmd.type = ActionType.PASS
+                cmd.type = CommandType.PASS
                 return cmd
         # 21..30: ATTACK_PLAYER (Battle Zone Index 0-9)
         if (2 * BLOCK + 1) <= action_idx <= (3 * BLOCK):
@@ -230,16 +230,16 @@ class ActionEncoder:
             p = state.players[player_id]
             if bz_idx < len(p.battle_zone):
                 c = p.battle_zone[bz_idx]
-                cmd.type = ActionType.ATTACK_PLAYER
+                cmd.type = CommandType.ATTACK_PLAYER
                 cmd.source_instance_id = c.instance_id
                 cmd.target_player = 1 - player_id # Opponent
                 return cmd
             else:
-                cmd.type = ActionType.PASS
+                cmd.type = CommandType.PASS
                 return cmd
 
         # Default fallback
-        cmd.type = ActionType.PASS
+        cmd.type = CommandType.PASS
         return cmd
 
     def encode_action(self, action: GameCommand, state: Any, player_id: int) -> int:
@@ -297,11 +297,11 @@ class ActionEncoder:
             return False
 
         # Check PASS (index 0)
-        if _type_matches(cmd_type, ActionType.PASS):
+        if _type_matches(cmd_type, CommandType.PASS):
             return 0
 
         # Check MANA_CHARGE (1-10)
-        if _type_matches(cmd_type, ActionType.MANA_CHARGE):
+        if _type_matches(cmd_type, CommandType.MANA_CHARGE):
             p = state.players[player_id]
             # Determine source id from action (support dict/wrapper)
             # Try normalized dict first
@@ -323,8 +323,8 @@ class ActionEncoder:
             return -1
 
         # Check PLAY_CARD (11-20)
-        # Accept both legacy ActionType.PLAY_CARD and normalized command types
-        if _type_matches(cmd_type, ActionType.PLAY_CARD) or (
+        # Accept normalized command types
+        if _type_matches(cmd_type, CommandType.PLAY_FROM_ZONE) or (
             isinstance(action_dict, dict) and str(action_dict.get('type', '')).upper() in ('PLAY_FROM_ZONE', 'PLAY')
         ):
             p = state.players[player_id]
@@ -345,7 +345,7 @@ class ActionEncoder:
             return -1
 
         # Check ATTACK_PLAYER (21-30)
-        if _type_matches(cmd_type, ActionType.ATTACK_PLAYER):
+        if _type_matches(cmd_type, CommandType.ATTACK_PLAYER):
             p = state.players[player_id]
             if action_dict is not None:
                 cmd_src = action_dict.get('source_instance_id') or action_dict.get('instance_id')

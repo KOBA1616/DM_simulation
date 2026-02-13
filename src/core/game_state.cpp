@@ -373,10 +373,8 @@ namespace dm::core {
         }
     }
 
-    void GameState::make_move(const Action& action) {
-        move_start_indices.push_back(command_history.size());
-        const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
-        dm::engine::systems::GameLogicSystem::resolve_action_oneshot(*this, action, card_db);
+    void GameState::make_move(const CommandDef& cmd) {
+        execute_turn_command(cmd);
     }
 
     void GameState::execute_turn_command(const CommandDef& cmd) {

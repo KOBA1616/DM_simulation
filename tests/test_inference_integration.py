@@ -13,7 +13,7 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from dm_ai_module import GameInstance, ActionType, CardStub
+from dm_ai_module import GameInstance, CommandType, CardStub
 if torch:
     from dm_toolkit.ai.agent.transformer_model import DuelTransformer
     from training.ai_player import AIPlayer
@@ -89,8 +89,8 @@ class TestInferenceIntegration(unittest.TestCase):
 
         # 4. Verify Command Object
         self.assertIsNotNone(command)
-        # ActionType is IntEnum
-        self.assertIsInstance(command.type, (int, ActionType))
+        # CommandType is IntEnum
+        self.assertIsInstance(command.type, (int, CommandType))
 
         print(f"AI Selected Action Type: {command.type}")
 
@@ -112,10 +112,10 @@ class TestInferenceIntegration(unittest.TestCase):
                 pass
 
         # 6. Verify something happened (or didn't if PASS)
-        if command.type == ActionType.MANA_CHARGE:
+        if command.type == CommandType.MANA_CHARGE:
              new_mana_count = len(self.game.state.players[player_id].mana_zone)
              self.assertEqual(new_mana_count, initial_mana_count + 1)
-        elif command.type == ActionType.PASS:
+        elif command.type == CommandType.PASS:
              # Nothing changed
              pass
 

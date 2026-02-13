@@ -55,7 +55,7 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
         sess.card_db = card_db
 
         # If native dm_ai_module is present but missing ActionGenerator/ActionType,
-        # inject lightweight Python stubs so generate_legal_actions fallback works
+        # inject lightweight Python stubs so generate_legal_commands fallback works
         try:
             import dm_ai_module as _native
             need_stub = False
