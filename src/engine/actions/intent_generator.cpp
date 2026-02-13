@@ -8,62 +8,68 @@ namespace dm::engine {
 
     using namespace dm::core;
 
-    std::vector<Action> IntentGenerator::generate_legal_actions(const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+    std::vector<CommandDef> IntentGenerator::generate_legal_commands(const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         try {
             std::filesystem::create_directories("logs");
             std::ofstream diag("logs/crash_diag.txt", std::ios::app);
             if (diag) {
-                diag << "INTENT_GEN entry player=" << static_cast<int>(game_state.active_player_id)
+                diag << "INTENT_GEN_CMD entry player=" << static_cast<int>(game_state.active_player_id)
                      << " phase=" << static_cast<int>(game_state.current_phase) << "\n";
                 diag.close();
             }
         } catch(...) {}
-        // Helper to dump actions for debugging
-        auto dump_actions = [&](const std::vector<Action>& actions, const std::string& context) {
+
+        auto dump_actions = [&](const std::vector<CommandDef>& actions, const std::string& context) {
             try {
                 std::filesystem::create_directories("logs");
                 std::ofstream ofs("logs/intent_actions.txt", std::ios::app);
                 if (!ofs) return;
                 std::ostringstream ss;
-                ss << "[IntentActions] context=" << context << " player=" << static_cast<int>(game_state.active_player_id)
+                ss << "[IntentCommands] context=" << context << " player=" << static_cast<int>(game_state.active_player_id)
                    << " phase=" << static_cast<int>(game_state.current_phase) << " count=" << actions.size() << "\n";
                 for (size_t i = 0; i < actions.size(); ++i) {
                     const auto& a = actions[i];
                     ss << "  #" << i << " type=" << static_cast<int>(a.type)
-                       << " card_id=" << a.card_id
-                       << " src_iid=" << a.source_instance_id
-                       << " tgt_iid=" << a.target_instance_id
-                       << " tgt_player=" << static_cast<int>(a.target_player)
-                       << " slot=" << a.slot_index << " tgt_slot=" << a.target_slot_index << "\n";
+                       << " inst=" << a.instance_id
+                       << " tgt=" << a.target_instance
+                       << " amt=" << a.amount << "\n";
                 }
                 ofs << ss.str();
-            } catch (...) {
-                // Best-effort logging; swallow errors to not affect engine flow
-            }
+            } catch (...) {}
         };
 
         // Phase 6: Handle Waiting for User Input (Query Response)
-        if (game_state.waiting_for_user_input && game_state.waiting_for_user_input) {
-            std::vector<Action> actions;
+        if (game_state.waiting_for_user_input) {
+            std::vector<CommandDef> actions;
             const auto& query = game_state.pending_query;
 
             if (query.query_type == "SELECT_TARGET") {
                 for (int target_id : query.valid_targets) {
-                    Action act;
-                    act.type = PlayerIntent::SELECT_TARGET;
-                    act.target_instance_id = target_id;
-                    // We might need to encode query_id to ensure we are answering the right query,
-                    // but Action struct is limited. The engine state implies the context.
-                    actions.push_back(act);
+                    CommandDef cmd;
+                    cmd.type = CommandType::SELECT_TARGET;
+                    cmd.instance_id = target_id;
+                    actions.push_back(cmd);
                 }
             }
             else if (query.query_type == "SELECT_OPTION") {
                 for (size_t i = 0; i < query.options.size(); ++i) {
-                    Action act;
-                    act.type = PlayerIntent::SELECT_OPTION;
-                    act.target_slot_index = static_cast<int>(i);
-                    // Optionally store string value in a future Action extension
-                    actions.push_back(act);
+                    CommandDef cmd;
+                    cmd.type = CommandType::CHOICE;
+                    cmd.target_instance = static_cast<int>(i);
+                    actions.push_back(cmd);
+                }
+            } else if (query.query_type == "SELECT_NUMBER") {
+                // Assuming min/max params in query
+                int min_val = 0;
+                int max_val = 0;
+                if (query.params.count("min")) min_val = query.params.at("min");
+                if (query.params.count("max")) max_val = query.params.at("max");
+
+                for (int val = min_val; val <= max_val; ++val) {
+                    CommandDef cmd;
+                    cmd.type = CommandType::SELECT_NUMBER;
+                    cmd.target_instance = val;
+                    actions.push_back(cmd);
                 }
             }
 
@@ -100,24 +106,11 @@ namespace dm::engine {
             return res;
         }
 
-        // DEBUG: Log current phase before switch
-        try {
-            std::filesystem::create_directories("logs");
-            std::ofstream ofs("logs/intent_generator_phase_debug.txt", std::ios::app);
-            if (ofs) {
-                ofs << "[IntentGenerator] current_phase=" << static_cast<int>(game_state.current_phase)
-                    << " player=" << static_cast<int>(game_state.active_player_id)
-                    << " turn=" << game_state.turn_number << "\n";
-            }
-        } catch (...) {}
-
         switch (game_state.current_phase) {
             case Phase::START_OF_TURN:
             case Phase::DRAW:
                 {
-                    // No player actions allowed in START_OF_TURN/DRAW phases
-                    // Return empty vector so fast_forward will advance to next phase
-                    std::vector<Action> empty;
+                    std::vector<CommandDef> empty;
                     dump_actions(empty, "auto_advance_phase");
                     return empty;
                 }
@@ -144,7 +137,7 @@ namespace dm::engine {
                 }
             default:
                 {
-                    std::vector<Action> empty;
+                    std::vector<CommandDef> empty;
                     dump_actions(empty, "default_empty");
                     return {};
                 }

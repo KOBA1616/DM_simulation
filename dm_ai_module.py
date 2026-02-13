@@ -369,6 +369,52 @@ class CommandType(IntEnum):
     TRANSITION = 3
     ATTACK = 4
     PASS = 5
+    USE_ABILITY = 6
+    SELECT_TARGET = 7
+    ATTACK_PLAYER = 8
+    ATTACK_CREATURE = 9
+    BLOCK = 10
+    RESOLVE_BATTLE = 11
+    RESOLVE_PLAY = 12
+    RESOLVE_EFFECT = 13
+    BREAK_SHIELD = 14
+    SHIELD_TRIGGER = 15
+    CHOICE = 16
+    SELECT_NUMBER = 17
+    SHUFFLE_DECK = 18
+    LOOK_AND_ADD = 19
+    MEKRAID = 20
+    REVEAL_CARDS = 21
+    CAST_SPELL = 22
+    SUMMON_TOKEN = 23
+    SHIELD_BURN = 24
+    LOOK_TO_BUFFER = 25
+    REVEAL_TO_BUFFER = 26
+    SELECT_FROM_BUFFER = 27
+    PLAY_FROM_BUFFER = 28
+    MOVE_BUFFER_TO_ZONE = 29
+    FRIEND_BURST = 30
+    REGISTER_DELAYED_EFFECT = 31
+    MOVE_CARD = 32
+    ADD_MANA = 33
+    SEND_TO_MANA = 34
+    PLAYER_MANA_CHARGE = 35
+    SEARCH_DECK_BOTTOM = 36
+    ADD_SHIELD = 37
+    SEND_TO_DECK_BOTTOM = 38
+    SEARCH_DECK = 39
+    MUTATE = 40
+    FLOW = 41
+    QUERY = 42
+    DRAW_CARD = 43
+    DISCARD = 44
+    DESTROY = 45
+    BOOST_MANA = 46
+    TAP = 47
+    UNTAP = 48
+    POWER_MOD = 49
+    ADD_KEYWORD = 50
+    RETURN_TO_HAND = 51
 
 
 class CommandSystem:
@@ -676,6 +722,21 @@ class GameState:
         except Exception:
             pass
 
+    def apply_move(self, cmd: Any) -> None:
+        """Execute a command (CommandDef or dict) using the command system."""
+        try:
+            # Unwrap CommandDef if wrapper
+            if hasattr(cmd, '__dict__'):
+                d = cmd.__dict__
+            else:
+                d = cmd
+
+            # Delegate to CommandSystem
+            if 'CommandSystem' in globals():
+                CommandSystem.execute_command(self, d)
+        except Exception:
+            pass
+
     def make_move(self, action: Any) -> None:
         # Minimal move handling: record history and allow unmake via snapshot
         try:
@@ -902,6 +963,14 @@ class GameInstance:
             else:
                 action_dict = action
             
+            # Try new Command API (apply_move) first if available (Native Binding)
+            if hasattr(self.state, 'apply_move'):
+                try:
+                    self.state.apply_move(action_dict)
+                    return
+                except Exception:
+                    pass
+
             # Try CommandSystem first
             _CommandSystem = globals().get('CommandSystem')
             if _CommandSystem is not None:

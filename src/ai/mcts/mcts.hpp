@@ -8,7 +8,7 @@
 #include <map>
 #include <cmath>
 #include <functional>
-#include "core/action.hpp" // Include Action struct definition
+#include "core/card_json_types.hpp" // Use CommandDef
 #include "ai/mcts/tree_manager.hpp"
 
 namespace dm::ai {
@@ -21,7 +21,7 @@ namespace dm::ai {
         dm::core::GameState state;
         MCTSNode* parent = nullptr;
         std::vector<std::unique_ptr<MCTSNode>> children;
-        dm::core::Action action_from_parent;
+        dm::core::CommandDef action_from_parent;
         
         int visit_count = 0;
         float value_sum = 0.0f;

@@ -5,7 +5,7 @@ namespace dm::engine {
 
     class StackStrategy : public IActionStrategy {
     public:
-        std::vector<dm::core::Action> generate(const ActionGenContext& ctx) override;
+        std::vector<dm::core::CommandDef> generate(const ActionGenContext& ctx) override;
     };
 
 }
