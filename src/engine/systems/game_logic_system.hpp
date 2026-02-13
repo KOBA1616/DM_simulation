@@ -16,6 +16,9 @@ namespace dm::engine::systems {
         // Dispatches action to appropriate handler using the provided pipeline
         static void dispatch_action(PipelineExecutor& pipeline, core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db);
 
+        // Dispatches command to appropriate handler using the provided pipeline
+        static void dispatch_command(PipelineExecutor& pipeline, core::GameState& state, const core::CommandDef& cmd, const std::map<core::CardID, core::CardDefinition>& card_db);
+
         // Creates a temporary pipeline to resolve a single action (Legacy/Test support)
         static void resolve_action_oneshot(core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db);
         // Alias for compatibility with EffectResolver::resolve_action

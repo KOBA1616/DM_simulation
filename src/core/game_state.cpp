@@ -379,6 +379,24 @@ namespace dm::core {
         dm::engine::systems::GameLogicSystem::resolve_action_oneshot(*this, action, card_db);
     }
 
+    void GameState::execute_turn_command(const CommandDef& cmd) {
+        move_start_indices.push_back(command_history.size());
+        const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+
+        if (!active_pipeline) {
+            active_pipeline = std::make_shared<dm::engine::systems::PipelineExecutor>();
+        } else {
+            // Only clear stack if not paused (waiting for input)
+            if (!active_pipeline->execution_paused) {
+                active_pipeline->call_stack.clear();
+                active_pipeline->execution_paused = false;
+            }
+        }
+
+        dm::engine::systems::GameLogicSystem::dispatch_command(*active_pipeline, *this, cmd, card_db);
+        active_pipeline->execute(nullptr, *this, card_db);
+    }
+
     void GameState::unmake_move() {
         if (move_start_indices.empty()) return;
         size_t target_size = move_start_indices.back();

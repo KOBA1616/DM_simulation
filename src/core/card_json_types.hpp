@@ -184,6 +184,10 @@ namespace dm::core {
         IF,
         IF_ELSE,
         ELSE,
+        PASS,
+        USE_ABILITY,
+        MANA_CHARGE,
+        SELECT_TARGET,
 
         NONE
     };
@@ -307,6 +311,8 @@ namespace dm::core {
         std::string input_value_key;
         std::string input_value_usage;
         std::string output_value_key;
+        int slot_index = -1;
+        int target_slot_index = -1;
     };
 
     struct EffectDef {
@@ -531,7 +537,11 @@ namespace dm::core {
         {CommandType::REGISTER_DELAYED_EFFECT, "REGISTER_DELAYED_EFFECT"},
         {CommandType::IF, "IF"},
         {CommandType::IF_ELSE, "IF_ELSE"},
-        {CommandType::ELSE, "ELSE"}
+        {CommandType::ELSE, "ELSE"},
+        {CommandType::PASS, "PASS"},
+        {CommandType::USE_ABILITY, "USE_ABILITY"},
+        {CommandType::MANA_CHARGE, "MANA_CHARGE"},
+        {CommandType::SELECT_TARGET, "SELECT_TARGET"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(CostType, {
@@ -552,7 +562,7 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter, extra_fields)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, input_value_usage, output_value_key, inverse_target, condition, options, cast_spell_side)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, input_value_usage, output_value_key)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, input_value_usage, output_value_key, slot_index, target_slot_index)
 
     // Manual to_json for EffectDef to exclude actions
     inline void to_json(nlohmann::json& j, const EffectDef& e) {

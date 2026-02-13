@@ -15,14 +15,8 @@ namespace dm::engine {
 
     class IntentGenerator {
     public:
-        // Legacy support
-        static std::vector<dm::core::Action> generate_legal_actions(
-            const dm::core::GameState& game_state, 
-            const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db
-        );
-
-        // New GameCommand-based generation
-        static std::vector<std::shared_ptr<game_command::GameCommand>> generate_legal_commands(
+        // New Command-based generation
+        static std::vector<dm::core::CommandDef> generate_legal_commands(
             const dm::core::GameState& game_state,
             const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db
         );

@@ -2,6 +2,7 @@
 #include "core/game_state.hpp"
 #include "core/action.hpp"
 #include "core/card_def.hpp"
+#include "core/card_json_types.hpp"
 #include <vector>
 #include <map>
 
@@ -17,7 +18,7 @@ namespace dm::engine {
     public:
         virtual ~IActionStrategy() = default;
         // Generate actions.
-        virtual std::vector<dm::core::Action> generate(const ActionGenContext& ctx) = 0;
+        virtual std::vector<dm::core::CommandDef> generate(const ActionGenContext& ctx) = 0;
     };
 
 }

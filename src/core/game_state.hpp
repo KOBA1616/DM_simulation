@@ -160,6 +160,7 @@ namespace dm::core {
         void restore_snapshot(const StateSnapshot& snap);
 
         void make_move(const Action& action);
+        void execute_turn_command(const CommandDef& cmd);
         void unmake_move();
 
         void add_card_to_zone(const CardInstance& card, Zone zone, PlayerID pid);

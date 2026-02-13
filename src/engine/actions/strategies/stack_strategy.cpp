@@ -7,8 +7,8 @@ namespace dm::engine {
 
     using namespace dm::core;
 
-    std::vector<Action> StackStrategy::generate(const ActionGenContext& ctx) {
-        std::vector<Action> actions;
+    std::vector<CommandDef> StackStrategy::generate(const ActionGenContext& ctx) {
+        std::vector<CommandDef> actions;
         const auto& game_state = ctx.game_state;
         const auto& card_db = ctx.card_db;
         const Player& active_player = game_state.players[game_state.active_player_id];
@@ -18,9 +18,9 @@ namespace dm::engine {
         if (!game_state.pending_effects.empty()) {
             const auto& pending = game_state.pending_effects.back();
             if (pending.type == EffectType::INTERNAL_PLAY) {
-                 Action resolve;
-                 resolve.type = PlayerIntent::RESOLVE_PLAY;
-                 resolve.source_instance_id = pending.source_instance_id;
+                 CommandDef resolve;
+                 resolve.type = CommandType::RESOLVE_PLAY;
+                 resolve.instance_id = pending.source_instance_id;
                  actions.push_back(resolve);
             }
         }
@@ -29,22 +29,20 @@ namespace dm::engine {
         for (const auto& card : active_player.stack) {
             if (card.is_tapped) {
                 // Already paid -> RESOLVE_PLAY
-                Action resolve;
-                resolve.type = PlayerIntent::RESOLVE_PLAY;
-                resolve.source_instance_id = card.instance_id;
-                resolve.card_id = card.card_id;
+                CommandDef resolve;
+                resolve.type = CommandType::RESOLVE_PLAY;
+                resolve.instance_id = card.instance_id;
                 actions.push_back(resolve);
             } else {
-                // Not paid -> PAY_COST
+                // Not paid -> PLAY_FROM_ZONE (Triggers Pay + Resolve)
                 // Check if cost CAN be paid before generating the action
                 if (card_db.count(card.card_id)) {
                     const auto& def = card_db.at(card.card_id);
                     // Check if player can pay the cost
                     if (ManaSystem::can_pay_cost(game_state, active_player, def, card_db)) {
-                        Action pay;
-                        pay.type = PlayerIntent::PAY_COST;
-                        pay.source_instance_id = card.instance_id;
-                        pay.card_id = card.card_id;
+                        CommandDef pay;
+                        pay.type = CommandType::PLAY_FROM_ZONE;
+                        pay.instance_id = card.instance_id;
                         actions.push_back(pay);
                     }
                 }

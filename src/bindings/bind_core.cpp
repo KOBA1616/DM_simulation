@@ -347,6 +347,10 @@ void bind_core(py::module& m) {
         .value("IF", CommandType::IF)
         .value("IF_ELSE", CommandType::IF_ELSE)
         .value("ELSE", CommandType::ELSE)
+        .value("PASS", CommandType::PASS)
+        .value("USE_ABILITY", CommandType::USE_ABILITY)
+        .value("MANA_CHARGE", CommandType::MANA_CHARGE)
+        .value("SELECT_TARGET", CommandType::SELECT_TARGET)
         .value("NONE", CommandType::NONE)
         .export_values();
 
@@ -482,7 +486,9 @@ void bind_core(py::module& m) {
         .def_readwrite("if_false", &CommandDef::if_false)
         .def_readwrite("input_value_key", &CommandDef::input_value_key)
         .def_readwrite("input_value_usage", &CommandDef::input_value_usage)
-        .def_readwrite("output_value_key", &CommandDef::output_value_key);
+        .def_readwrite("output_value_key", &CommandDef::output_value_key)
+        .def_readwrite("slot_index", &CommandDef::slot_index)
+        .def_readwrite("target_slot_index", &CommandDef::target_slot_index);
 
     py::class_<EffectDef>(m, "EffectDef")
         .def(py::init<>())
@@ -678,6 +684,29 @@ void bind_core(py::module& m) {
         .def(py::init<int>())
         .def("setup_test_duel", &GameState::setup_test_duel)
         .def("execute_command", &GameState::execute_command)
+        .def("apply_move", [](GameState& s, const CommandDef& c) {
+             s.execute_turn_command(c);
+        })
+        .def("apply_move", [](GameState& s, py::dict d) {
+             CommandDef cmd;
+             if (d.contains("type")) {
+                 auto t = d["type"];
+                 if (py::isinstance<py::int_>(t)) cmd.type = static_cast<CommandType>(t.cast<int>());
+                 else cmd.type = t.cast<CommandType>();
+             }
+             if (d.contains("instance_id")) cmd.instance_id = d["instance_id"].cast<int>();
+             if (d.contains("target_instance")) cmd.target_instance = d["target_instance"].cast<int>();
+             if (d.contains("owner_id")) cmd.owner_id = d["owner_id"].cast<int>();
+             if (d.contains("amount")) cmd.amount = d["amount"].cast<int>();
+             if (d.contains("str_param")) cmd.str_param = d["str_param"].cast<std::string>();
+             if (d.contains("optional")) cmd.optional = d["optional"].cast<bool>();
+             if (d.contains("from_zone")) cmd.from_zone = d["from_zone"].cast<std::string>();
+             if (d.contains("to_zone")) cmd.to_zone = d["to_zone"].cast<std::string>();
+             if (d.contains("mutation_kind")) cmd.mutation_kind = d["mutation_kind"].cast<std::string>();
+             if (d.contains("input_value_key")) cmd.input_value_key = d["input_value_key"].cast<std::string>();
+             if (d.contains("output_value_key")) cmd.output_value_key = d["output_value_key"].cast<std::string>();
+             s.execute_turn_command(cmd);
+        })
         .def("add_card_to_zone", &GameState::add_card_to_zone)
         .def("register_card_instance", &GameState::register_card_instance)
         .def("undo", &GameState::undo)
