@@ -324,9 +324,18 @@ class GameWindow(QMainWindow):
         fname, _ = QFileDialog.getOpenFileName(self, tr("Load Deck P0"), "data/decks", "JSON Files (*.json)")
         if fname:
             try:
-                with open(fname, 'r', encoding='utf-8') as f: deck_ids = json.load(f)
+                self.log_viewer.log_message(f"Loading P0 Deck from: {fname}")
+                with open(fname, 'r', encoding='utf-8') as f: 
+                    deck_ids = json.load(f)
+                
+                if not isinstance(deck_ids, list):
+                    raise ValueError(f"Deck must be a list, got {type(deck_ids)}")
+
+                self.log_viewer.log_message(f"P0 Deck loaded. Count: {len(deck_ids)} cards.")
+
                 if len(deck_ids) != 40:
-                    QMessageBox.warning(self, tr("Invalid Deck"), tr("Deck must have 40 cards."))
+                    self.log_viewer.log_message(f"WARNING: Deck has {len(deck_ids)} cards, expected 40.")
+                    QMessageBox.warning(self, tr("Invalid Deck"), tr("Deck must have 40 cards.") + f" ({len(deck_ids)})")
                     return
                 # Shuffle deck on load so placement/draw are randomized immediately
                 try:
@@ -337,6 +346,7 @@ class GameWindow(QMainWindow):
                 self.reset_game()
                 self.log_viewer.log_message(f"{tr('Loaded Deck for P0')}: {os.path.basename(fname)} (shuffled)")
             except Exception as e:
+                self.log_viewer.log_message(f"ERROR Loading P0 Deck: {e}")
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load deck')}: {e}")
 
     def load_deck_p1(self) -> None:
@@ -344,9 +354,18 @@ class GameWindow(QMainWindow):
         fname, _ = QFileDialog.getOpenFileName(self, tr("Load Deck P1"), "data/decks", "JSON Files (*.json)")
         if fname:
             try:
-                with open(fname, 'r', encoding='utf-8') as f: deck_ids = json.load(f)
+                self.log_viewer.log_message(f"Loading P1 Deck from: {fname}")
+                with open(fname, 'r', encoding='utf-8') as f: 
+                    deck_ids = json.load(f)
+
+                if not isinstance(deck_ids, list):
+                    raise ValueError(f"Deck must be a list, got {type(deck_ids)}")
+
+                self.log_viewer.log_message(f"P1 Deck loaded. Count: {len(deck_ids)} cards.")
+
                 if len(deck_ids) != 40:
-                    QMessageBox.warning(self, tr("Invalid Deck"), tr("Deck must have 40 cards."))
+                    self.log_viewer.log_message(f"WARNING: Deck has {len(deck_ids)} cards, expected 40.")
+                    QMessageBox.warning(self, tr("Invalid Deck"), tr("Deck must have 40 cards.") + f" ({len(deck_ids)})")
                     return
                 # Shuffle deck on load so placement/draw are randomized immediately
                 try:
@@ -357,6 +376,7 @@ class GameWindow(QMainWindow):
                 self.reset_game()
                 self.log_viewer.log_message(f"{tr('Loaded Deck for P1')}: {os.path.basename(fname)} (shuffled)")
             except Exception as e:
+                self.log_viewer.log_message(f"ERROR Loading P1 Deck: {e}")
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load deck')}: {e}")
 
     def show_help(self) -> None:

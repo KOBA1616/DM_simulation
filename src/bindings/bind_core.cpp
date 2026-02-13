@@ -22,7 +22,10 @@ void bind_core(py::module& m) {
     py::bind_vector<std::vector<dm::core::Player>>(m, "PlayerList");
     
     // Bind opaque map
-    py::bind_map<dm::CardDatabase>(m, "CardDatabase");
+    // py::bind_map<dm::CardDatabase>(m, "CardDatabase");
+    
+    // CardDatabase binding moved to end of file to ensure CardDefinition is registered
+    // py::bind_map<dm::CardDatabase>(m, "CardDatabase");
 
     // ... (Previous Enums and Classes) ...
     // GameEvent bindings
@@ -494,10 +497,10 @@ void bind_core(py::module& m) {
         .def_readwrite("actions", &EffectDef::actions)
         .def_readwrite("commands", &EffectDef::commands); // Added commands field
 
-    py::class_<CardDefinition, std::shared_ptr<CardDefinition>>(m, "CardDefinition")
+    py::class_<CardDefinition>(m, "CardDefinition")
         .def(py::init([](int id, std::string name, std::string civ_str, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
             try {
-                auto c = std::make_shared<CardDefinition>();
+                auto c = std::make_unique<CardDefinition>();
                 c->id = id;
                 c->name = name;
                 c->cost = cost;
@@ -1069,4 +1072,16 @@ void bind_core(py::module& m) {
         .def_readwrite("slot_index", &Action::slot_index)
         .def_readwrite("target_slot_index", &Action::target_slot_index)
         .def("to_string", &Action::to_string);
+    // Manual binding to avoid reference/holder issues with CardDefinition
+    py::class_<dm::CardDatabase>(m, "CardDatabase")
+        .def(py::init<>())
+        .def("__len__", [](const dm::CardDatabase &v) { return v.size(); })
+        .def("__getitem__", [](const dm::CardDatabase &v, int key) -> dm::core::CardDefinition {
+            try { return v.at(key); } // Return by value (copy)
+            catch (const std::out_of_range &) { throw py::key_error("Key not found: " + std::to_string(key)); }
+        })
+        .def("__contains__", [](const dm::CardDatabase &v, int key) { return v.find(key) != v.end(); })
+        .def("__iter__", [](dm::CardDatabase &v) {
+             return py::make_key_iterator(v.begin(), v.end());
+        }, py::keep_alive<0, 1>());
 }

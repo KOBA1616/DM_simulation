@@ -960,6 +960,10 @@ class GameInstance:
             # Fallback to integer value if Phase enum not available
             self.state.current_phase = 2  # Phase.MANA = 2
         self.state.active_player_id = 0
+        
+        # PROPER INITIALIZATION: Place shields and draw initial hand
+        # This fixes the integrity check failure where players started with 0 cards in hand/shields
+        PhaseManager.start_game(self.state, self.card_db)
 
     def initialize_card_stats(self, deck_size: int):
         pass

@@ -217,10 +217,30 @@ class DeckBuilder(QWidget):
         )
         if fname:
             try:
+                print(f"DEBUG: Attempting to load deck from {fname}")
                 with open(fname, 'r', encoding='utf-8') as f:
-                    self.current_deck = json.load(f)
+                    content = f.read()
+                    print(f"DEBUG: File content length: {len(content)}")
+                    if not content.strip():
+                        raise ValueError("File is empty")
+                    self.current_deck = json.loads(content)
+                
+                print(f"DEBUG: Deck parsed successfully. Type: {type(self.current_deck)}, Length: {len(self.current_deck)}")
+                
+                if not isinstance(self.current_deck, list):
+                     raise ValueError(f"Deck file must contain a list of card IDs, got {type(self.current_deck)}")
+
                 self.update_deck_list()
+                QMessageBox.information(self, tr("Success"), tr("Deck loaded!"))
+            except json.JSONDecodeError as e:
+                print(f"ERROR: JSON Decode Error: {e}")
+                QMessageBox.critical(
+                    self, tr("Error"), f"{tr('Failed to load deck')}: Invalid JSON format\n{e}"
+                )
             except Exception as e:
+                print(f"ERROR: Deck parsing failed: {e}")
+                import traceback
+                traceback.print_exc()
                 QMessageBox.critical(
                     self, tr("Error"), f"{tr('Failed to load deck')}: {e}"
                 )
