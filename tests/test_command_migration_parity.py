@@ -21,7 +21,7 @@ def test_generators_exist_and_return_iterables():
     # Legacy actions as fallback for parity checks
     actions = []
     try:
-        actions = dm.IntentGenerator.generate_legal_actions(state, card_db) or []
+        actions = dm.IntentGenerator.generate_legal_commands(state, card_db) or []
     except Exception:
         actions = []
 

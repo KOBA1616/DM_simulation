@@ -833,13 +833,13 @@ class EngineCompat:
             return False, None
 
     @staticmethod
-    def ActionGenerator_generate_legal_actions(state: GameState, card_db: CardDB) -> List[Action]:
+    def ActionGenerator_generate_legal_commands(state: GameState, card_db: CardDB) -> List[Action]:
         """
         Deprecated: Prefer ActionGenerator_generate_legal_commands for new code.
         Returns raw Actions from the engine.
         """
         # Disabled to eliminate Action-based flows. Use dm_toolkit.commands.generate_legal_commands instead.
-        raise RuntimeError("ActionGenerator_generate_legal_actions is deprecated. Use generate_legal_commands.")
+        raise RuntimeError("ActionGenerator_generate_legal_commands is deprecated. Use generate_legal_commands.")
 
     @staticmethod
     def ActionGenerator_generate_legal_commands(state: GameState, card_db: CardDB) -> List[Any]:

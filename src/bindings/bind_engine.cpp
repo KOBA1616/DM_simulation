@@ -14,7 +14,6 @@
 #include "engine/game_command/commands.hpp"
 #include "engine/game_command/action_commands.hpp"
 #include "engine/utils/dev_tools.hpp"
-#include "bindings/bind_command_generator.hpp"
 #include <pybind11/stl.h>
 #include <fstream>
 
@@ -355,7 +354,7 @@ void bind_engine(py::module& m) {
         .def(py::init<uint32_t>())
         .def_property_readonly("state", [](GameInstance &g) -> core::GameState& { return g.state; }, py::return_value_policy::reference_internal)
         .def("start_game", &GameInstance::start_game)
-        .def("resolve_action", &GameInstance::resolve_action)
+        .def("resolve_command", &GameInstance::resolve_command)
         .def("step", &GameInstance::step, "Execute one game step: generate actions, select and execute first viable action, progress game state")
         .def("execute_command", [&m](GameInstance& gi, py::object obj) {
             try {
@@ -437,6 +436,4 @@ void bind_engine(py::module& m) {
         .def_static("next_phase", &PhaseManager::next_phase)
         .def_static("fast_forward", &PhaseManager::fast_forward)
         .def_static("check_game_over", &PhaseManager::check_game_over);
-    // Bind the new CommandGenerator helper (Phase1 bridge)
-    try { bind_command_generator(m); } catch(...) {}
 }

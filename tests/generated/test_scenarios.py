@@ -109,7 +109,7 @@ def test_generated_scenario(scenario_path, card_db):
             # Construct an Action-like object
             class MockAction:
                 def __init__(self):
-                    self.type = dm_ai_module.ActionType.MANA_CHARGE
+                    self.type = dm_ai_module.CommandType.MANA_CHARGE
                     self.card_id = card.card_id
                     self.source_instance_id = card.instance_id
                     self.target_player = p_idx

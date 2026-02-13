@@ -1,6 +1,6 @@
 #pragma once
 #include "core/game_state.hpp"
-#include "core/action.hpp"
+#include "core/card_json_types.hpp"
 #include <vector>
 #include <optional>
 
@@ -11,7 +11,7 @@ namespace dm::engine::ai {
  * 
  * This AI selects actions based on fixed priorities:
  * 1. RESOLVE_EFFECT (must complete pending effects)
- * 2. PLAY_CARD (play cards from hand)
+ * 2. PLAY_FROM_ZONE (play cards from hand)
  * 3. ATTACK (attack creatures/player)
  * 4. MANA_CHARGE (in MANA phase)
  * 5. Other actions
@@ -27,7 +27,7 @@ public:
      * @return Index of selected action, or nullopt if no action available
      */
     static std::optional<size_t> select_action(
-        const std::vector<core::Action>& actions,
+        const std::vector<core::CommandDef>& actions,
         const core::GameState& state
     );
 
@@ -40,7 +40,7 @@ private:
      * @param state Current game state (used for phase-aware priorities)
      * @return Priority value (0-100)
      */
-    static int get_priority(const core::Action& action, const core::GameState& state);
+    static int get_priority(const core::CommandDef& action, const core::GameState& state);
 };
 
 } // namespace dm::engine::ai

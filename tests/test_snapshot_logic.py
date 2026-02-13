@@ -42,14 +42,14 @@ class TestSnapshotLogic(unittest.TestCase):
         """Test make_move and unmake_move with PASS action."""
         initial_hash = self.state.calculate_hash()
 
-        # Create PASS action
-        action = dm_ai_module.Action()
-        action.type = dm_ai_module.PlayerIntent.PASS
-        action.target_player = self.state.active_player_id
+        # Create PASS command
+        cmd = dm_ai_module.CommandDef()
+        cmd.type = dm_ai_module.CommandType.PASS
+        # PASS doesn't need targets
 
         # Execute
         # Note: make_move requires the GameState to have access to CardRegistry (initialized by JsonLoader)
-        self.state.make_move(action)
+        self.state.make_move(cmd)
 
         # Check if state changed (hash or history size)
         after_move_hash = self.state.calculate_hash()

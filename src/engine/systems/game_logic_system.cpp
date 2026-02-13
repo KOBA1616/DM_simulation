@@ -51,87 +51,6 @@ namespace dm::engine::systems {
         return {Zone::GRAVEYARD, owner};
     }
 
-    void GameLogicSystem::dispatch_action(PipelineExecutor& pipeline, core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db) {
-        // Transitional shim: Convert Action to CommandDef
-        core::CommandDef cmd;
-        
-        switch (action.type) {
-            case PlayerIntent::PLAY_CARD:
-                cmd.type = core::CommandType::PLAY_FROM_ZONE;
-                break;
-            case PlayerIntent::ATTACK_PLAYER:
-                cmd.type = core::CommandType::ATTACK_PLAYER;
-                break;
-            case PlayerIntent::ATTACK_CREATURE:
-                cmd.type = core::CommandType::ATTACK_CREATURE;
-                break;
-            case PlayerIntent::BLOCK:
-                cmd.type = core::CommandType::BLOCK;
-                break;
-            case PlayerIntent::RESOLVE_BATTLE:
-                cmd.type = core::CommandType::RESOLVE_BATTLE;
-                break;
-            case PlayerIntent::RESOLVE_EFFECT:
-                cmd.type = core::CommandType::RESOLVE_EFFECT;
-                break;
-            case PlayerIntent::BREAK_SHIELD:
-                cmd.type = core::CommandType::BREAK_SHIELD;
-                break;
-            case PlayerIntent::PASS:
-                cmd.type = core::CommandType::PASS;
-                break;
-            case PlayerIntent::MANA_CHARGE:
-                cmd.type = core::CommandType::MANA_CHARGE;
-                break;
-            case PlayerIntent::USE_ABILITY:
-                cmd.type = core::CommandType::USE_ABILITY;
-                break;
-            case PlayerIntent::PLAY_CARD_INTERNAL:
-                // Special internal type, map to PLAY_FROM_ZONE with special flags?
-                // Or handle directly. For now, let's assume PLAY_FROM_ZONE handles it or add logic.
-                // Action uses PLAY_CARD_INTERNAL for internal plays (like from deck).
-                cmd.type = core::CommandType::PLAY_FROM_ZONE;
-                // We might need a flag to indicate "Internal".
-                break;
-            case PlayerIntent::SELECT_TARGET:
-                cmd.type = core::CommandType::SELECT_TARGET;
-                cmd.instance_id = action.target_instance_id; // Mapping target_instance_id to instance_id for consistency
-                break;
-            case PlayerIntent::SELECT_OPTION:
-                cmd.type = core::CommandType::CHOICE;
-                cmd.target_instance = action.target_slot_index; // Option index
-                break;
-            case PlayerIntent::SELECT_NUMBER:
-                cmd.type = core::CommandType::SELECT_NUMBER;
-                cmd.target_instance = action.target_instance_id; // Number value
-                break;
-            default:
-                cmd.type = core::CommandType::NONE;
-                break;
-        }
-
-        if (cmd.type != core::CommandType::SELECT_TARGET) {
-            cmd.instance_id = action.source_instance_id;
-        }
-        cmd.target_instance = action.target_instance_id;
-
-        // Use amount for slot_index / is_spell_side
-        if (action.type == PlayerIntent::RESOLVE_EFFECT) {
-            cmd.amount = action.slot_index;
-        } else if (action.type == PlayerIntent::PLAY_CARD) {
-            cmd.amount = action.is_spell_side ? 1 : 0;
-        } else if (action.type == PlayerIntent::BREAK_SHIELD) {
-            // Check if slot_index is used for pending effect reference
-            if (action.slot_index >= 0) cmd.amount = action.slot_index;
-        } else if (action.type == PlayerIntent::SELECT_OPTION || action.type == PlayerIntent::SELECT_NUMBER) {
-             // target_slot_index / target_instance_id handled above
-        } else {
-            cmd.amount = 0;
-        }
-
-        // Delegate to new dispatch_command
-        dispatch_command(pipeline, state, cmd, card_db);
-    }
 
     void GameLogicSystem::dispatch_command(PipelineExecutor& pipeline, core::GameState& state, const core::CommandDef& cmd, const std::map<core::CardID, core::CardDefinition>& card_db) {
         std::cerr << "\n=== dispatch_command called ===" << std::endl;
@@ -369,18 +288,14 @@ namespace dm::engine::systems {
         }
     }
 
-    void GameLogicSystem::resolve_action_oneshot(core::GameState& state, const core::Action& action, const std::map<core::CardID, core::CardDefinition>& card_db) {
-        // DIAGNOSTIC: Check if this is being called
-        std::cerr << "\n\n### GAME_LOGIC_SYSTEM::resolve_action_oneshot CALLED ###" << std::endl;
-        std::cerr << "### Action type: " << (int)action.type << std::endl;
-        std::cerr << "### Slot index: " << action.slot_index << std::endl;
-        std::cout << "\n\n### GAME_LOGIC_SYSTEM::resolve_action_oneshot CALLED ###" << std::endl;
-        std::cout << "### Action type: " << (int)action.type << std::endl;
-        std::cout << "### Slot index: " << action.slot_index << std::endl;
+
+    void GameLogicSystem::resolve_command_oneshot(core::GameState& state, const core::CommandDef& cmd, const std::map<core::CardID, core::CardDefinition>& card_db) {
+        std::cerr << "\n\n### GAME_LOGIC_SYSTEM::resolve_command_oneshot CALLED ###" << std::endl;
+        std::cerr << "### Command type: " << static_cast<int>(cmd.type) << std::endl;
         
         PipelineExecutor pipeline;
-        dispatch_action(pipeline, state, action, card_db);
-        pipeline.execute(nullptr, state, card_db); // Run the pipeline
+        dispatch_command(pipeline, state, cmd, card_db);
+        pipeline.execute(nullptr, state, card_db);
     }
 
     void GameLogicSystem::resolve_play_from_stack(core::GameState& game_state, int stack_instance_id, int cost_reduction, core::SpawnSource spawn_source, core::PlayerID controller, const std::map<core::CardID, core::CardDefinition>& card_db, int evo_source_id, core::ZoneDestination dest_override) {

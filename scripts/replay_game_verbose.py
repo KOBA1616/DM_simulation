@@ -66,7 +66,7 @@ def replay(seed, deck=None, max_steps=200):
                         legal2 = legacy_commands._call_native_action_generator(gs, card_db) or []
                     except Exception:
                         try:
-                            legal2 = dm_ai_module.ActionGenerator.generate_legal_commands(gs, card_db) or []
+                            legal2 = dm_ai_module.IntentGenerator.generate_legal_commands(gs, card_db) or []
                         except Exception:
                             legal2 = []
                 if legal2:

@@ -13,8 +13,8 @@ def _call_native_action_generator(state: Any, card_db: Any) -> List[Any]:
 
     Handles multiple possible native names for compatibility:
     - dm_ai_module.generate_commands
-    - dm_ai_module.ActionGenerator.generate_legal_commands
-    - dm_ai_module.ActionGenerator.generate_legal_actions
+    - dm_ai_module.IntentGenerator.generate_legal_commands
+    - dm_ai_module.IntentGenerator.generate_legal_commands
     - instance.generate(state, player_id)
     """
     # Allow disabling native engine calls when running tests or debugging
@@ -52,11 +52,11 @@ def _call_native_action_generator(state: Any, card_db: Any) -> List[Any]:
     if AG is None:
         return []
 
-    # 2) Try static/classmethod generate_legal_actions (preferred)
+    # 2) Try static/classmethod generate_legal_commands (preferred)
     try:
-        if hasattr(AG, 'generate_legal_actions'):
+        if hasattr(AG, 'generate_legal_commands'):
             try:
-                return AG.generate_legal_actions(state, native_db) or []
+                return AG.generate_legal_commands(state, native_db) or []
             except Exception:
                 pass
     except Exception:
@@ -227,7 +227,7 @@ def wrap_action(action: Any) -> Optional[ICommand]:
 def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
     """Compatibility helper: generate legal actions and return wrapped commands.
 
-    Calls `dm_ai_module.ActionGenerator.generate_legal_actions` and maps each
+    Calls `dm_ai_module.IntentGenerator.generate_legal_commands` and maps each
     `Action` (or its attached `command`) to an `ICommand` via `wrap_action`.
     """
     try:
@@ -245,7 +245,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
             # Prefer command-first generator when available (returns command dicts)
             # Use robust native action generator helper that supports several
             # historical names and generator shapes (generate_commands, 
-            # generate_legal_commands, generate_legal_actions, instance.generate).
+            # generate_legal_commands, generate_legal_commands, instance.generate).
             try:
                 actions = _call_native_action_generator(state, card_db) or []
             except Exception:
@@ -258,7 +258,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
                         sample.append((type(a).__name__, repr(a)))
                     except Exception:
                         sample.append((type(a).__name__, str(a)))
-                logger.debug(f"Debug generate_legal_actions -> count={len(actions)}, samples={sample}")
+                logger.debug(f"Debug generate_legal_commands -> count={len(actions)}, samples={sample}")
 
                 # Additional diagnostics: when in ATTACK phase, log battle-zone creatures
                 try:
@@ -404,7 +404,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
         except Exception as e:
             # If it fails, we may have a format mismatch
             # Log for debugging but don't fail - just return empty list
-            print(f"Warning: generate_legal_actions raised: {e}")
+            print(f"Warning: generate_legal_commands raised: {e}")
             pass
 
         # If C++ returned no actions, call fast_forward to progress game

@@ -63,7 +63,7 @@ def to_command_dict(obj: Any) -> Dict[str, Any]:
     """
     # 0. If the object exposes a precomputed `command` attribute, prefer it.
     # This allows Action instances to carry a canonical command dict produced
-    # by generators (see dm_ai_module.ActionGenerator.command). Support
+    # by generators (see dm_ai_module.IntentGenerator.command). Support
     # both dicts and objects that can be mapped via map_action.
     try:
         if obj is not None and hasattr(obj, 'command'):

@@ -48,7 +48,7 @@ namespace dm::ai {
 
         // Generate actions from root to initialize first step policy
         // Dereference shared_ptr
-        auto root_actions = IntentGenerator::generate_legal_actions(root_state, *card_db_);
+        auto root_actions = IntentGenerator::generate_legal_commands(root_state, *card_db_);
         if (root_actions.empty()) {
             return -1.0f; // Loss (No moves)
         }
@@ -56,8 +56,8 @@ namespace dm::ai {
         // Initialize beam with root children
         for (const auto& action : root_actions) {
             GameState next_state = root_state.clone();
-            GameLogicSystem::resolve_action(next_state, action, *card_db_);
-            if (action.type == PlayerIntent::PASS || action.type == PlayerIntent::MANA_CHARGE) {
+            GameLogicSystem::resolve_command_oneshot(next_state, action, *card_db_);
+            if (action.type == CommandType::PASS || action.type == CommandType::MANA_CHARGE) {
                 PhaseManager::next_phase(next_state, *card_db_);
             }
             PhaseManager::fast_forward(next_state, *card_db_);
@@ -99,11 +99,11 @@ namespace dm::ai {
                     continue;
                 }
 
-                auto actions = IntentGenerator::generate_legal_actions(base_state, *card_db_);
+                auto actions = IntentGenerator::generate_legal_commands(base_state, *card_db_);
                 for (const auto& action : actions) {
                     GameState next_state = base_state.clone();
-                    GameLogicSystem::resolve_action(next_state, action, *card_db_);
-                    if (action.type == PlayerIntent::PASS || action.type == PlayerIntent::MANA_CHARGE) {
+                    GameLogicSystem::resolve_command_oneshot(next_state, action, *card_db_);
+                    if (action.type == CommandType::PASS || action.type == CommandType::MANA_CHARGE) {
                         PhaseManager::next_phase(next_state, *card_db_);
                     }
                     PhaseManager::fast_forward(next_state, *card_db_);

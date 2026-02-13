@@ -2,7 +2,7 @@
 import unittest
 import pytest
 import dm_ai_module
-from dm_ai_module import GameInstance, ActionType, CardStub, GameState, Action, CardType
+from dm_ai_module import GameInstance, CommandType, CardStub, GameState, CommandDef, CardType
 
 @pytest.mark.skipif(not getattr(dm_ai_module, 'IS_NATIVE', False), reason="Requires native engine")
 class TestSpellAndStack(unittest.TestCase):
@@ -23,19 +23,17 @@ class TestSpellAndStack(unittest.TestCase):
         self.assertEqual(hand_card.card_id, spell_card_id)
 
         # Action: Play Card (Cast Spell)
-        action = Action()
-        action.type = ActionType.PLAY_CARD
-        action.card_id = spell_card_id
-        action.source_instance_id = hand_card.instance_id
-        action.target_player = 0
+        cmd = CommandDef()
+        cmd.type = CommandType.PLAY_FROM_ZONE
+        cmd.instance_id = hand_card.instance_id
 
         # Execute via compat wrapper when available, fallback to instance method
         try:
             from dm_toolkit.compat_wrappers import execute_action_compat
-            execute_action_compat(self.game.state, action, None)
+            execute_action_compat(self.game.state, cmd, None)
         except Exception:
             try:
-                self.game.execute_action(action)
+                self.game.execute_command(cmd)
             except Exception:
                 pass
 
@@ -51,14 +49,16 @@ class TestSpellAndStack(unittest.TestCase):
         self.assertEqual(cid, spell_card_id)
 
         # Verification 3: Resolve Stack
-        resolve_action = Action()
-        resolve_action.type = ActionType.RESOLVE_EFFECT
+        resolve_cmd = CommandDef()
+        resolve_cmd.type = CommandType.RESOLVE_EFFECT
+        resolve_cmd.amount = 0 # slot index
+
         try:
             from dm_toolkit.compat_wrappers import execute_action_compat
-            execute_action_compat(self.game.state, resolve_action, None)
+            execute_action_compat(self.game.state, resolve_cmd, None)
         except Exception:
             try:
-                self.game.execute_action(resolve_action)
+                self.game.execute_command(resolve_cmd)
             except Exception:
                 pass
 
@@ -80,17 +80,16 @@ class TestSpellAndStack(unittest.TestCase):
         hand_card_B = self.p0.hand[-1]
 
         # 2. Play Spell A
-        action_A = Action()
-        action_A.type = ActionType.PLAY_CARD
-        action_A.card_id = card_id_A
-        action_A.source_instance_id = hand_card_A.instance_id
-        action_A.target_player = 0
+        cmd_A = CommandDef()
+        cmd_A.type = CommandType.PLAY_FROM_ZONE
+        cmd_A.instance_id = hand_card_A.instance_id
+
         try:
             from dm_toolkit.compat_wrappers import execute_action_compat
-            execute_action_compat(self.game.state, action_A, None)
+            execute_action_compat(self.game.state, cmd_A, None)
         except Exception:
             try:
-                self.game.execute_action(action_A)
+                self.game.execute_command(cmd_A)
             except Exception:
                 pass
 
@@ -98,17 +97,16 @@ class TestSpellAndStack(unittest.TestCase):
         # For this test, we simulate adding another effect to the stack
         # as if Spell A triggered Spell B or we are in a chain.
         # Since we can't easily chain in stub, we just Play B.
-        action_B = Action()
-        action_B.type = ActionType.PLAY_CARD
-        action_B.card_id = card_id_B
-        action_B.source_instance_id = hand_card_B.instance_id
-        action_B.target_player = 0
+        cmd_B = CommandDef()
+        cmd_B.type = CommandType.PLAY_FROM_ZONE
+        cmd_B.instance_id = hand_card_B.instance_id
+
         try:
             from dm_toolkit.compat_wrappers import execute_action_compat
-            execute_action_compat(self.game.state, action_B, None)
+            execute_action_compat(self.game.state, cmd_B, None)
         except Exception:
             try:
-                self.game.execute_action(action_B)
+                self.game.execute_command(cmd_B)
             except Exception:
                 pass
 
@@ -117,15 +115,23 @@ class TestSpellAndStack(unittest.TestCase):
         self.assertEqual(getattr(self.game.state.pending_effects[0], 'card_id'), card_id_A)
         self.assertEqual(getattr(self.game.state.pending_effects[1], 'card_id'), card_id_B)
 
-        # 4. Resolve First (Should be B)
-        resolve_action = Action()
-        resolve_action.type = ActionType.RESOLVE_EFFECT
+        # 4. Resolve First (Should be B - index 1)
+        # Note: RESOLVE_EFFECT with slot_index=1 (Top of stack if A is 0, B is 1)
+        # But wait, pending_effects order: pushed back. 0 is first, 1 is second.
+        # If LIFO, we resolve last one first?
+        # Usually Stack is popped from back.
+        # But `pending_effects` is vector. `resolve_effect` takes slot_index.
+        # We manually target the last one.
+        resolve_cmd = CommandDef()
+        resolve_cmd.type = CommandType.RESOLVE_EFFECT
+        resolve_cmd.amount = 1 # slot_index 1 (B)
+
         try:
             from dm_toolkit.compat_wrappers import execute_action_compat
-            execute_action_compat(self.game.state, resolve_action, None)
+            execute_action_compat(self.game.state, resolve_cmd, None)
         except Exception:
             try:
-                self.game.execute_action(resolve_action)
+                self.game.execute_command(resolve_cmd)
             except Exception:
                 pass
 
@@ -133,13 +139,14 @@ class TestSpellAndStack(unittest.TestCase):
         self.assertEqual(len(self.game.state.pending_effects), 1)
         self.assertEqual(getattr(self.game.state.pending_effects[0], 'card_id'), card_id_A)
 
-        # 5. Resolve Second (Should be A)
+        # 5. Resolve Second (Should be A - index 0)
+        resolve_cmd.amount = 0
         try:
             from dm_toolkit.compat_wrappers import execute_action_compat
-            execute_action_compat(self.game.state, resolve_action, None)
+            execute_action_compat(self.game.state, resolve_cmd, None)
         except Exception:
             try:
-                self.game.execute_action(resolve_action)
+                self.game.execute_command(resolve_cmd)
             except Exception:
                 pass
 

@@ -173,8 +173,8 @@ class EvolutionEcosystem:
                  current_mana = len(instance.state.get_zone(instance.state.active_player_id, dm_ai_module.Zone.MANA))
                  if current_mana < 7:
                     # Use getattr guards for ActionType members to satisfy mypy
-                    _MANA_CHARGE = getattr(dm_ai_module.ActionType, 'MANA_CHARGE', None)
-                    _MOVE_CARD = getattr(dm_ai_module.ActionType, 'MOVE_CARD', None)
+                    _MANA_CHARGE = getattr(dm_ai_module.CommandType, 'MANA_CHARGE', None)
+                    _MOVE_CARD = getattr(dm_ai_module.CommandType, 'MOVE_CARD', None)
                     for act in legal_actions:
                         # Check for MANA_CHARGE or MOVE_CARD in Mana Phase
                         if dm_ai_module.is_action_type(act, _MANA_CHARGE):
@@ -188,14 +188,14 @@ class EvolutionEcosystem:
 
                  if not found:
                      for act in legal_actions:
-                         if dm_ai_module.is_action_type(act, dm_ai_module.ActionType.PLAY_CARD):
+                         if dm_ai_module.is_action_type(act, dm_ai_module.CommandType.PLAY_CARD):
                              best_action = act
                              found = True
                              break
 
                  if not found:
                      for act in legal_actions:
-                         if dm_ai_module.is_action_type(act, dm_ai_module.ActionType.ATTACK_PLAYER):
+                         if dm_ai_module.is_action_type(act, dm_ai_module.CommandType.ATTACK_PLAYER):
                              best_action = act
                              found = True
                              break

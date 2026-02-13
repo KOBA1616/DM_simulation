@@ -135,7 +135,7 @@ class SolitaireRunner:
             if best_action is None:
                 dm_ai_module.PhaseManager.next_phase(state, self.card_db)
             else:
-                if best_action.type == dm_ai_module.ActionType.PASS:
+                if best_action.type == dm_ai_module.CommandType.PASS:
                     dm_ai_module.PhaseManager.next_phase(state, self.card_db)
                 else:
                     try:
@@ -161,10 +161,10 @@ class SolitaireRunner:
         # 3. Attack (Player)
         # 4. Pass
 
-        charge_actions = [a for a in actions if a.type == dm_ai_module.ActionType.MANA_CHARGE]
-        play_actions = [a for a in actions if a.type == dm_ai_module.ActionType.PLAY_CARD]
-        attack_actions = [a for a in actions if a.type == dm_ai_module.ActionType.ATTACK_PLAYER or a.type == dm_ai_module.ActionType.ATTACK_CREATURE]
-        pass_actions = [a for a in actions if a.type == dm_ai_module.ActionType.PASS]
+        charge_actions = [a for a in actions if a.type == dm_ai_module.CommandType.MANA_CHARGE]
+        play_actions = [a for a in actions if a.type == dm_ai_module.CommandType.PLAY_CARD]
+        attack_actions = [a for a in actions if a.type == dm_ai_module.CommandType.ATTACK_PLAYER or a.type == dm_ai_module.CommandType.ATTACK_CREATURE]
+        pass_actions = [a for a in actions if a.type == dm_ai_module.CommandType.PASS]
 
         if charge_actions:
             return random.choice(charge_actions)

@@ -19,18 +19,33 @@ namespace dm::ai {
         return nullptr;
     }
 
-    dm::core::Action HeuristicAgent::get_action(const dm::core::GameState& state,
-                                                const std::vector<dm::core::Action>& legal_actions) {
+    dm::core::CardID HeuristicAgent::get_card_id(const dm::core::GameState& state, int instance_id) const {
+        // Safe access (const method assumed on GameState)
+        // If get_card_instance is not const, we might need const_cast or rely on API
+        // Assuming const auto* get_card_instance(int) const exists.
+        // If not, we might have issues. Let's assume standard const access.
+        // Actually, state.players is public, we can scan. But get_card_instance is better.
+        // Based on other files, it seems to return pointer.
+        // The implementation in GameState likely supports const.
+        // If compilation fails, we fix it.
+        const auto* ptr = state.get_card_instance(instance_id);
+        if (ptr) return ptr->card_id;
+        return 0;
+    }
+
+    dm::core::CommandDef HeuristicAgent::get_action(const dm::core::GameState& state,
+                                                const std::vector<dm::core::CommandDef>& legal_actions) {
         if (legal_actions.empty()) {
-            return dm::core::Action(); // Should not happen if game is not over
+            return dm::core::CommandDef(); // Should not happen if game is not over
         }
 
         using namespace dm::core;
 
         // 1. Mana Charge
-        std::vector<Action> mana_actions;
+        std::vector<CommandDef> mana_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == PlayerIntent::MANA_CHARGE || action.type == PlayerIntent::MOVE_CARD) {
+            if (action.type == CommandType::MANA_CHARGE ||
+               (action.type == CommandType::MOVE_CARD && action.to_zone == "MANA_ZONE")) {
                 mana_actions.push_back(action);
             }
         }
@@ -45,18 +60,22 @@ namespace dm::ai {
         }
 
         // 2. Play Card
-        std::vector<Action> play_actions;
+        std::vector<CommandDef> play_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == PlayerIntent::PLAY_CARD) {
+            if (action.type == CommandType::PLAY_FROM_ZONE ||
+                action.type == CommandType::CAST_SPELL ||
+                action.type == CommandType::SUMMON_TOKEN) {
                 play_actions.push_back(action);
             }
         }
 
         if (!play_actions.empty()) {
             // Play the most expensive card possible
-            std::sort(play_actions.begin(), play_actions.end(), [&](const Action& a, const Action& b) {
-                const auto* def_a = get_def(a.card_id);
-                const auto* def_b = get_def(b.card_id);
+            std::sort(play_actions.begin(), play_actions.end(), [&](const CommandDef& a, const CommandDef& b) {
+                CardID cid_a = get_card_id(state, a.instance_id);
+                CardID cid_b = get_card_id(state, b.instance_id);
+                const auto* def_a = get_def(cid_a);
+                const auto* def_b = get_def(cid_b);
                 int cost_a = def_a ? def_a->cost : 0;
                 int cost_b = def_b ? def_b->cost : 0;
                 return cost_a > cost_b; // Descending
@@ -65,9 +84,9 @@ namespace dm::ai {
         }
 
         // 3. Attack Player (Aggro)
-        std::vector<Action> attack_player_actions;
+        std::vector<CommandDef> attack_player_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == PlayerIntent::ATTACK_PLAYER) {
+            if (action.type == CommandType::ATTACK_PLAYER) {
                 attack_player_actions.push_back(action);
             }
         }
@@ -78,9 +97,9 @@ namespace dm::ai {
         }
 
         // 4. Attack Creature
-        std::vector<Action> attack_creature_actions;
+        std::vector<CommandDef> attack_creature_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == PlayerIntent::ATTACK_CREATURE) {
+            if (action.type == CommandType::ATTACK_CREATURE) {
                 attack_creature_actions.push_back(action);
             }
         }
@@ -91,9 +110,9 @@ namespace dm::ai {
         }
 
         // 5. Block
-        std::vector<Action> block_actions;
+        std::vector<CommandDef> block_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == PlayerIntent::BLOCK) {
+            if (action.type == CommandType::BLOCK) {
                 block_actions.push_back(action);
             }
         }
@@ -118,9 +137,9 @@ namespace dm::ai {
         }
 
         // 6. Select Target
-        std::vector<Action> select_actions;
+        std::vector<CommandDef> select_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == PlayerIntent::SELECT_TARGET) {
+            if (action.type == CommandType::SELECT_TARGET) {
                 select_actions.push_back(action);
             }
         }
@@ -131,9 +150,9 @@ namespace dm::ai {
         }
 
         // 7. Shield Trigger
-        std::vector<Action> st_actions;
+        std::vector<CommandDef> st_actions;
         for (const auto& action : legal_actions) {
-            if (action.type == PlayerIntent::USE_SHIELD_TRIGGER) {
+            if (action.type == CommandType::SHIELD_TRIGGER) {
                 st_actions.push_back(action);
             }
         }

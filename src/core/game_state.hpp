@@ -159,7 +159,7 @@ namespace dm::core {
         StateSnapshot create_snapshot() const;
         void restore_snapshot(const StateSnapshot& snap);
 
-        void make_move(const Action& action);
+        void make_move(const CommandDef& cmd);
         void execute_turn_command(const CommandDef& cmd);
         void unmake_move();
 

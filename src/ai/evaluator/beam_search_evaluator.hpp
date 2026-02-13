@@ -1,6 +1,7 @@
 #pragma once
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
+#include "core/card_json_types.hpp"
 #include "ai/encoders/action_encoder.hpp"
 #include <vector>
 #include <map>
@@ -31,8 +32,8 @@ namespace dm::ai {
         struct BeamNode {
             dm::core::GameState state;
             float score;
-            std::vector<dm::core::Action> path;
-            dm::core::Action first_action;
+            std::vector<dm::core::CommandDef> path;
+            dm::core::CommandDef first_action;
             bool is_root = false;
 
             // Explicit Move Constructor

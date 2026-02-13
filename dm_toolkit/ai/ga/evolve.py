@@ -118,7 +118,7 @@ class DeckEvolution:
                     actions = legacy_commands._call_native_action_generator(gs, self.card_db) or []
                 except Exception:
                     try:
-                        actions = dm_ai_module.ActionGenerator.generate_legal_commands(gs, self.card_db) or []
+                        actions = dm_ai_module.IntentGenerator.generate_legal_commands(gs, self.card_db) or []
                     except Exception:
                         actions = []
 
@@ -189,7 +189,7 @@ class DeckEvolution:
                             except Exception:
                                 pass
                 try:
-                    if action.type == dm_ai_module.ActionType.PASS:
+                    if action.type == dm_ai_module.CommandType.PASS:
                         dm_ai_module.PhaseManager.next_phase(gs)
                 except Exception:
                     pass

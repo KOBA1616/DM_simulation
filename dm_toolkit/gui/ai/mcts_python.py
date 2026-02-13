@@ -65,7 +65,7 @@ class PythonMCTS:
             # Detect PASS for either Action or Command
             try:
                 if hasattr(obj, 'type'):
-                    return getattr(obj, 'type') == dm_ai_module.ActionType.PASS
+                    return getattr(obj, 'type') == dm_ai_module.CommandType.PASS
             except Exception:
                 pass
             try:
@@ -84,25 +84,25 @@ class PythonMCTS:
 
         # Rule: Always charge mana until turn 5
         if self.root.state.current_phase == dm_ai_module.Phase.MANA and self.root.state.turn_number <= 5:
-            has_charge = any((getattr(a, 'type', None) == dm_ai_module.ActionType.MANA_CHARGE) for a in legal_actions) or any((getattr(c, 'payload', {}).get('add_mana') is not None) for c in legal_commands)
+            has_charge = any((getattr(a, 'type', None) == dm_ai_module.CommandType.MANA_CHARGE) for a in legal_actions) or any((getattr(c, 'payload', {}).get('add_mana') is not None) for c in legal_commands)
             if has_charge:
                 # Remove PASS action to force charge
-                legal_actions = [a for a in legal_actions if not (getattr(a, 'type', None) == dm_ai_module.ActionType.PASS)]
+                legal_actions = [a for a in legal_actions if not (getattr(a, 'type', None) == dm_ai_module.CommandType.PASS)]
                 # also filter commands similarly by payload
                 legal_commands = [c for c in legal_commands if not (getattr(c, 'payload', {}).get('pass'))]
 
         # Rule: Prioritize playing cards in Main Phase (80% chance to force play if possible)
         elif self.root.state.current_phase == dm_ai_module.Phase.MAIN:
-            has_play = any((getattr(a, 'type', None) == dm_ai_module.ActionType.PLAY_CARD) for a in legal_actions) or any((getattr(c, 'payload', {}).get('play')) for c in legal_commands)
+            has_play = any((getattr(a, 'type', None) == dm_ai_module.CommandType.PLAY_CARD) for a in legal_actions) or any((getattr(c, 'payload', {}).get('play')) for c in legal_commands)
             if has_play and random.random() < 0.8:
-                 legal_actions = [a for a in legal_actions if not (getattr(a, 'type', None) == dm_ai_module.ActionType.PASS)]
+                 legal_actions = [a for a in legal_actions if not (getattr(a, 'type', None) == dm_ai_module.CommandType.PASS)]
                  legal_commands = [c for c in legal_commands if not (getattr(c, 'payload', {}).get('pass'))]
 
         # Rule: Prioritize attacking in Attack Phase (80% chance to force attack if possible)
         elif self.root.state.current_phase == dm_ai_module.Phase.ATTACK:
-            has_attack = any((getattr(a, 'type', None) in (dm_ai_module.ActionType.ATTACK_PLAYER, dm_ai_module.ActionType.ATTACK_CREATURE)) for a in legal_actions) or any((getattr(c, 'payload', {}).get('attack')) for c in legal_commands)
+            has_attack = any((getattr(a, 'type', None) in (dm_ai_module.CommandType.ATTACK_PLAYER, dm_ai_module.CommandType.ATTACK_CREATURE)) for a in legal_actions) or any((getattr(c, 'payload', {}).get('attack')) for c in legal_commands)
             if has_attack and random.random() < 0.8:
-                 legal_actions = [a for a in legal_actions if not (getattr(a, 'type', None) == dm_ai_module.ActionType.PASS)]
+                 legal_actions = [a for a in legal_actions if not (getattr(a, 'type', None) == dm_ai_module.CommandType.PASS)]
                  legal_commands = [c for c in legal_commands if not (getattr(c, 'payload', {}).get('pass'))]
 
         # Prefer to store Action objects (for EffectResolver compatibility); if absent, store command objects
@@ -174,7 +174,7 @@ class PythonMCTS:
         is_pass_action = False
         try:
             if hasattr(action, 'type'):
-                is_pass_action = (getattr(action, 'type') == dm_ai_module.ActionType.PASS or getattr(action, 'type') == dm_ai_module.ActionType.MANA_CHARGE)
+                is_pass_action = (getattr(action, 'type') == dm_ai_module.CommandType.PASS or getattr(action, 'type') == dm_ai_module.CommandType.MANA_CHARGE)
             else:
                 payload = getattr(action, 'payload', {}) or {}
                 is_pass_action = bool(payload.get('pass') or payload.get('add_mana'))
@@ -254,7 +254,7 @@ class PythonMCTS:
                 # Heuristics for Random Rollout
                 
                 # 1. Mana Charge (Turn <= 3)
-                mana_charges = [a for a in actions if a.type == dm_ai_module.ActionType.MANA_CHARGE]
+                mana_charges = [a for a in actions if a.type == dm_ai_module.CommandType.MANA_CHARGE]
                 should_charge = False
                 if mana_charges:
                     if current_state.turn_number <= 3:
@@ -266,12 +266,12 @@ class PythonMCTS:
                     action = random.choice(mana_charges)
                 else:
                     # 2. Play Card (Main Phase)
-                    play_cards = [a for a in actions if a.type == dm_ai_module.ActionType.PLAY_CARD]
+                    play_cards = [a for a in actions if a.type == dm_ai_module.CommandType.PLAY_CARD]
                     if play_cards and random.random() < 0.8: # 80% chance to play card
                         action = random.choice(play_cards)
                     else:
                         # 3. Attack (Attack Phase)
-                        attacks = [a for a in actions if a.type in (dm_ai_module.ActionType.ATTACK_PLAYER, dm_ai_module.ActionType.ATTACK_CREATURE)]
+                        attacks = [a for a in actions if a.type in (dm_ai_module.CommandType.ATTACK_PLAYER, dm_ai_module.CommandType.ATTACK_CREATURE)]
                         if attacks and random.random() < 0.8: # 80% chance to attack
                             action = random.choice(attacks)
                         else:
@@ -295,7 +295,7 @@ class PythonMCTS:
                             pass
                 # Phase advancement: detect both Action and ICommand representations
                 try:
-                    if hasattr(action, 'type') and getattr(action, 'type', None) in (dm_ai_module.ActionType.PASS, dm_ai_module.ActionType.MANA_CHARGE):
+                    if hasattr(action, 'type') and getattr(action, 'type', None) in (dm_ai_module.CommandType.PASS, dm_ai_module.CommandType.MANA_CHARGE):
                         dm_ai_module.PhaseManager.next_phase(current_state, self.card_db)
                     else:
                         payload = getattr(action, 'payload', {}) or {}

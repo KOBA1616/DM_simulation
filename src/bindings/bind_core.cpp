@@ -6,7 +6,6 @@
 #include "core/card_json_types.hpp"
 #include "core/card_stats.hpp"
 #include "core/instruction.hpp"
-#include "core/action.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/command_system.hpp" // Added include for CommandSystem
 #include <pybind11/stl.h>
@@ -104,32 +103,6 @@ void bind_core(py::module& m) {
         .value("BLOCK", Phase::BLOCK)
         .value("END_OF_TURN", Phase::END_OF_TURN)
         .export_values();
-
-    py::enum_<PlayerIntent>(m, "PlayerIntent")
-        .value("PASS", PlayerIntent::PASS)
-        .value("PLAY_CARD", PlayerIntent::PLAY_CARD)
-        .value("MANA_CHARGE", PlayerIntent::MANA_CHARGE)
-        .value("ATTACK_CREATURE", PlayerIntent::ATTACK_CREATURE)
-        .value("ATTACK_PLAYER", PlayerIntent::ATTACK_PLAYER)
-        .value("BLOCK", PlayerIntent::BLOCK)
-        .value("USE_SHIELD_TRIGGER", PlayerIntent::USE_SHIELD_TRIGGER)
-        .value("RESOLVE_EFFECT", PlayerIntent::RESOLVE_EFFECT)
-        .value("SELECT_TARGET", PlayerIntent::SELECT_TARGET)
-        .value("USE_ABILITY", PlayerIntent::USE_ABILITY)
-        .value("DECLARE_REACTION", PlayerIntent::DECLARE_REACTION)
-        .value("PLAY_CARD_INTERNAL", PlayerIntent::PLAY_CARD_INTERNAL)
-        .value("RESOLVE_BATTLE", PlayerIntent::RESOLVE_BATTLE)
-        .value("BREAK_SHIELD", PlayerIntent::BREAK_SHIELD)
-        .value("MOVE_CARD", PlayerIntent::MOVE_CARD)
-        .value("DECLARE_PLAY", PlayerIntent::DECLARE_PLAY)
-        .value("PAY_COST", PlayerIntent::PAY_COST)
-        .value("RESOLVE_PLAY", PlayerIntent::RESOLVE_PLAY)
-        .value("SELECT_OPTION", PlayerIntent::SELECT_OPTION)
-        .value("SELECT_NUMBER", PlayerIntent::SELECT_NUMBER)
-        .export_values();
-
-    // Alias for backward compatibility
-    m.attr("ActionType") = m.attr("PlayerIntent");
 
     py::enum_<GameResult>(m, "GameResult")
         .value("NONE", GameResult::NONE)
@@ -981,15 +954,4 @@ void bind_core(py::module& m) {
             throw std::runtime_error("Unknown error in get_card_stats");
         }
     });
-
-    py::class_<Action>(m, "Action")
-        .def(py::init<>())
-        .def_readwrite("type", &Action::type)
-        .def_readwrite("card_id", &Action::card_id)
-        .def_readwrite("source_instance_id", &Action::source_instance_id)
-        .def_readwrite("target_instance_id", &Action::target_instance_id)
-        .def_readwrite("target_player", &Action::target_player)
-        .def_readwrite("slot_index", &Action::slot_index)
-        .def_readwrite("target_slot_index", &Action::target_slot_index)
-        .def("to_string", &Action::to_string);
 }

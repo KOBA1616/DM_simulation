@@ -65,7 +65,7 @@ if play_cmd is not None:
 # pay cost
 actions = generate_legal_commands(game, card_db) if generate_legal_commands else []
 print('after declare, actions:', [(getattr(a,'type',None), getattr(a,'card_id',None)) for a in actions])
-pay = next((a for a in actions if a.type == dm_ai_module.ActionType.PAY_COST), None)
+pay = next((a for a in actions if a.type == dm_ai_module.CommandType.PAY_COST), None)
 print('pay', pay)
 pay_cmd = getattr(pay, 'command', None) if pay is not None else None
 if pay_cmd is not None:
@@ -93,7 +93,7 @@ else:
 # resolve
 actions = generate_legal_commands(game, card_db) if generate_legal_commands else []
 print('before resolve, actions:', [(getattr(a,'type',None), getattr(a,'card_id',None)) for a in actions])
-res = next((a for a in actions if a.type == dm_ai_module.ActionType.RESOLVE_PLAY), None)
+res = next((a for a in actions if a.type == dm_ai_module.CommandType.RESOLVE_PLAY), None)
 print('resolve', res)
 res_cmd = getattr(res, 'command', None) if res is not None else None
 if res_cmd is not None:

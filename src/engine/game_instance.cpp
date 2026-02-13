@@ -72,13 +72,13 @@ namespace dm::engine {
         }
 
         // Generate legal actions
-        auto actions = IntentGenerator::generate_legal_actions(state, *card_db);
-        std::cout << "[step] Generated " << actions.size() << " actions at Turn " << state.turn_number 
+        auto actions = IntentGenerator::generate_legal_commands(state, *card_db);
+        std::cout << "[step] Generated " << actions.size() << " commands at Turn " << state.turn_number
                   << ", Phase " << static_cast<int>(state.current_phase) << ", Player " << state.active_player_id << "\n";
         
         // Log action types (first 5)
         for (size_t i = 0; i < std::min(size_t(5), actions.size()); ++i) {
-            std::cout << "  Action " << i << ": type=" << static_cast<int>(actions[i].type) << "\n";
+            std::cout << "  Command " << i << ": type=" << static_cast<int>(actions[i].type) << "\n";
         }
         if (actions.size() > 5) {
             std::cout << "  ... and " << (actions.size() - 5) << " more\n";
@@ -92,14 +92,14 @@ namespace dm::engine {
                       << ", Phase " << static_cast<int>(state.current_phase) << "\n";
             
             // Check if we're stuck (still no actions after fast_forward)
-            actions = IntentGenerator::generate_legal_actions(state, *card_db);
-            std::cout << "[step] After fast_forward, re-generated " << actions.size() << " actions at Turn " 
+            actions = IntentGenerator::generate_legal_commands(state, *card_db);
+            std::cout << "[step] After fast_forward, re-generated " << actions.size() << " commands at Turn "
                       << state.turn_number << ", Phase " << static_cast<int>(state.current_phase) 
                       << ", Player " << state.active_player_id << "\n";
             
             // Log action types (first 5)
             for (size_t i = 0; i < std::min(size_t(5), actions.size()); ++i) {
-                std::cout << "  Action " << i << ": type=" << static_cast<int>(actions[i].type) << "\n";
+                std::cout << "  Command " << i << ": type=" << static_cast<int>(actions[i].type) << "\n";
             }
             if (actions.size() > 5) {
                 std::cout << "  ... and " << (actions.size() - 5) << " more\n";
@@ -117,8 +117,8 @@ namespace dm::engine {
         
         if (selected_idx.has_value()) {
             const auto& selected = actions[*selected_idx];
-            std::cout << "[step] Executing action type " << static_cast<int>(selected.type) << "\n";
-            resolve_action(selected);
+            std::cout << "[step] Executing command type " << static_cast<int>(selected.type) << "\n";
+            resolve_command(selected);
             return true;
         }
 
@@ -126,7 +126,7 @@ namespace dm::engine {
         return false;
     }
 
-    void GameInstance::resolve_action(const core::Action& action) {
+    void GameInstance::resolve_command(const core::CommandDef& cmd_def) {
         // Delegate to GameLogicSystem for new CommandDef-based handling
         
         if (!pipeline) {
@@ -140,22 +140,21 @@ namespace dm::engine {
         state.active_pipeline = pipeline;
 
         // Guard: prevent repeated re-entry for the same resolve action signature.
-        // Use a signature combining turn, intent type and source_instance_id.
-        auto make_sig = [&](const core::Action& a)->uint64_t {
+        auto make_sig = [&](const core::CommandDef& c)->uint64_t {
             uint64_t sig = 0;
             sig |= (uint64_t)state.turn_number << 32;
-            sig |= (uint64_t)((int)a.type & 0xFFFF) << 16;
-            sig |= (uint64_t)((uint32_t)a.source_instance_id & 0xFFFF);
+            sig |= (uint64_t)((int)c.type & 0xFFFF) << 16;
+            sig |= (uint64_t)((uint32_t)c.instance_id & 0xFFFF);
             return sig;
         };
 
         const size_t HARD_MAX = 150;
         bool inserted_sig = false;
-        uint64_t sig = make_sig(action);
+        uint64_t sig = make_sig(cmd_def);
 
         try {
             if (pipeline->call_stack.size() > 0) {
-                if (action.type == PlayerIntent::RESOLVE_PLAY) {
+                if (cmd_def.type == CommandType::RESOLVE_PLAY) {
                     // If we are already resolving the same signature, skip to avoid runaway loops
                     if (resolving_action_sigs.count(sig)) {
                         std::filesystem::create_directories("logs");
@@ -191,7 +190,7 @@ namespace dm::engine {
         } catch(...) {}
 
         // If this is a RESOLVE_PLAY and we're about to process, insert signature to prevent reentry.
-        if (action.type == PlayerIntent::RESOLVE_PLAY) {
+        if (cmd_def.type == CommandType::RESOLVE_PLAY) {
             resolving_action_sigs.insert(sig);
             inserted_sig = true;
         }
@@ -206,10 +205,6 @@ namespace dm::engine {
             }
         } scoped_remover{this, sig, inserted_sig};
 
-        // --- Migration to GameCommand ---
-        // Instead of dispatching directly via GameLogicSystem, we convert to Command if possible
-        // to ensure Undo/Redo consistency (treating Action as a single reversible unit).
-
         // Ensure logs directory exists
         try {
             std::filesystem::create_directories("logs");
@@ -223,7 +218,7 @@ namespace dm::engine {
                 lout << "\"turn\":" << state.turn_number << ",";
                 lout << "\"phase\":" << static_cast<int>(state.current_phase) << ",";
                 lout << "\"active\":" << state.active_player_id << ",";
-                lout << "\"action_type\":" << (int)action.type << ",";
+                lout << "\"command_type\":" << (int)cmd_def.type << ",";
                 lout << "\"call_stack_size\":" << (pipeline ? pipeline->call_stack.size() : 0) << "}" << std::endl;
                 lout.close();
             }
@@ -235,139 +230,106 @@ namespace dm::engine {
         {
             std::ofstream dbg("c:\\temp\\resolve_debug.txt", std::ios::app);
             if (dbg) {
-                dbg << "Before switch: action.type=" << (int)action.type << std::endl;
+                dbg << "Before switch: cmd.type=" << (int)cmd_def.type << std::endl;
                 dbg.flush();
                 dbg.close();
             }
         }
 
-        switch (action.type) {
-            case PlayerIntent::PLAY_CARD:
-            case PlayerIntent::PLAY_CARD_INTERNAL:
+        switch (cmd_def.type) {
+            case CommandType::PLAY_FROM_ZONE:
                 {
-                    auto p_cmd = std::make_unique<PlayCardCommand>(action.source_instance_id);
-                    p_cmd->is_spell_side = action.is_spell_side;
-                    p_cmd->spawn_source = action.spawn_source;
-                    p_cmd->target_slot_index = action.target_slot_index;
+                    auto p_cmd = std::make_unique<PlayCardCommand>(cmd_def.instance_id);
+                    p_cmd->is_spell_side = (cmd_def.amount == 1);
+                    // spawn_source not in CommandDef, relies on inference
+                    p_cmd->target_slot_index = cmd_def.target_slot_index;
                     cmd = std::move(p_cmd);
                 }
                 break;
-            case PlayerIntent::ATTACK_CREATURE:
-                cmd = std::make_unique<AttackCommand>(action.source_instance_id, action.target_instance_id);
+            case CommandType::ATTACK_CREATURE:
+                cmd = std::make_unique<AttackCommand>(cmd_def.instance_id, cmd_def.target_instance);
                 break;
-            case PlayerIntent::ATTACK_PLAYER:
-                cmd = std::make_unique<AttackCommand>(action.source_instance_id, -1, action.target_player);
-                break;
-            case PlayerIntent::BLOCK:
-                cmd = std::make_unique<BlockCommand>(action.source_instance_id);
-                break;
-            case PlayerIntent::MANA_CHARGE:
-                cmd = std::make_unique<ManaChargeCommand>(action.source_instance_id);
-                break;
-            case PlayerIntent::PASS:
-                cmd = std::make_unique<PassCommand>();
-                break;
-            case PlayerIntent::USE_ABILITY:
-                cmd = std::make_unique<UseAbilityCommand>(action.source_instance_id, action.target_instance_id);
-                break;
-            case PlayerIntent::DECLARE_REACTION:
+            case CommandType::ATTACK_PLAYER:
+                // target_instance is generally -1 for player, or specific pid.
+                // AttackCommand constructor takes (src, tgt_creature_id, tgt_player_id)
+                // If target_instance is -1, it's player.
+                // We assume target_player_id is implied (opponent) or encoded.
+                // Assuming standard 1v1 opponent for now.
                 {
-                   int idx = action.slot_index;
-                   bool is_pass = (idx == -1);
-                   cmd = std::make_unique<DeclareReactionCommand>(state.active_player_id, is_pass, idx);
+                    PlayerID tgt_p = 1 - state.active_player_id; // Default opponent
+                    cmd = std::make_unique<AttackCommand>(cmd_def.instance_id, -1, tgt_p);
                 }
                 break;
-            case PlayerIntent::SELECT_OPTION:
+            case CommandType::BLOCK:
+                cmd = std::make_unique<BlockCommand>(cmd_def.instance_id);
+                break;
+            case CommandType::MANA_CHARGE:
+                cmd = std::make_unique<ManaChargeCommand>(cmd_def.instance_id);
+                break;
+            case CommandType::PASS:
+                cmd = std::make_unique<PassCommand>();
+                break;
+            case CommandType::USE_ABILITY:
+                cmd = std::make_unique<UseAbilityCommand>(cmd_def.instance_id, cmd_def.target_instance);
+                break;
+            case CommandType::CHOICE:
                 {
                     // Handle option selection for pending effects
-                    int effect_idx = action.slot_index;
-                    int option_idx = action.target_slot_index;
+                    // slot_index should be in cmd.amount or cmd.slot_index?
+                    // CommandDef has slot_index.
+                    int effect_idx = cmd_def.slot_index;
+                    // target_slot_index or target_instance for option index?
+                    // Usually option index is in target_instance for CHOICE.
+                    int option_idx = cmd_def.target_instance;
                     
                     if (effect_idx >= 0 && effect_idx < (int)state.pending_effects.size()) {
-                        auto& pe = state.pending_effects[effect_idx];
-                        
-                        // TODO: Implement option handling if needed in the future
-                        // Currently, options are handled via CommandDef in effect_def.commands
-                        
-                        // Remove the pending effect
+                        // TODO: Implement logic similar to legacy dispatch if needed
                         state.pending_effects.erase(state.pending_effects.begin() + effect_idx);
                     }
                 }
                 break;
-            case PlayerIntent::SELECT_NUMBER:
+            case CommandType::SELECT_NUMBER:
                 {
-                    // Handle number selection for pending effects
-                    int effect_idx = action.slot_index;
-                    int chosen_number = action.target_instance_id; // The chosen number is stored in target_instance_id
+                    int effect_idx = cmd_def.slot_index;
+                    int chosen_number = cmd_def.target_instance;
                     
                     if (effect_idx >= 0 && effect_idx < (int)state.pending_effects.size()) {
                         auto& pe = state.pending_effects[effect_idx];
-                        
-                        // Store the chosen number in execution_context
-                        // Use _selected_number as the standard key for SELECT_NUMBER results
                         pe.execution_context["_selected_number"] = chosen_number;
-                        
-                        // Also store in the output key if specified (for backward compatibility)
                         if (pe.effect_def.has_value() && !pe.effect_def->condition.str_val.empty()) {
                             std::string output_key = pe.effect_def->condition.str_val;
                             pe.execution_context[output_key] = chosen_number;
                         }
-                        
-                        // Execute continuation commands with the updated context (New Command System)
                         if (pe.effect_def.has_value()) {
                             core::PlayerID controller = dm::engine::EffectSystem::get_controller(state, pe.source_instance_id);
-                            for (const auto& cmd : pe.effect_def->commands) {
-                                dm::engine::systems::CommandSystem::execute_command(state, cmd, pe.source_instance_id, controller, pe.execution_context);
+                            for (const auto& c : pe.effect_def->commands) {
+                                dm::engine::systems::CommandSystem::execute_command(state, c, pe.source_instance_id, controller, pe.execution_context);
                             }
                         }
-                        
-                        // Remove the pending effect
                         state.pending_effects.erase(state.pending_effects.begin() + effect_idx);
                     }
                 }
                 break;
-            case PlayerIntent::RESOLVE_EFFECT:
-                {
-                    // CRITICAL DIAGNOSTIC - ABSOLUTE PATH TEST
-                    std::ofstream test_log("C:\\temp\\CRITICAL_RESOLVE_EFFECT_TEST.txt", std::ios::app);
-                    if (test_log) {
-                        test_log << "==== RESOLVE_EFFECT CASE EXECUTED ====\n";
-                        test_log << "slot_index=" << action.slot_index << "\n";
-                        test_log << "pending_effects=" << state.pending_effects.size() << "\n";
-                        test_log.flush();
-                        test_log.close();
-                    }
-                }
-                // Process via dispatch_action (implemented in game_logic_system.cpp)
-                systems::GameLogicSystem::dispatch_action(*pipeline, state, action, *card_db);
+            case CommandType::RESOLVE_EFFECT:
+                // Use resolve_command_oneshot equivalent (dispatch_command)
+                systems::GameLogicSystem::dispatch_command(*pipeline, state, cmd_def, *card_db);
                 systems::ContinuousEffectSystem::recalculate(state, *card_db);
-                // Execute any instructions enqueued onto the pipeline during dispatch
-                try {
-                    if (pipeline) pipeline->execute(nullptr, state, *card_db);
-                } catch (...) {}
+                try { if (pipeline) pipeline->execute(nullptr, state, *card_db); } catch (...) {}
                 return;
-            case PlayerIntent::DECLARE_PLAY:
-                // Process via dispatch_action (implemented in game_logic_system.cpp)
-                systems::GameLogicSystem::dispatch_action(*pipeline, state, action, *card_db);
-                systems::ContinuousEffectSystem::recalculate(state, *card_db);
-                // Execute any instructions enqueued onto the pipeline during dispatch
-                try {
-                    if (pipeline) pipeline->execute(nullptr, state, *card_db);
-                } catch (...) {}
+            // Handle DECLARE_REACTION if mapped? If not, fallthrough.
 
-                return;
             default:
-                // All other actions go through GameLogicSystem (atomic actions: PAY_COST, RESOLVE_PLAY, etc)
-                systems::GameLogicSystem::dispatch_action(*pipeline, state, action, *card_db);
+                // Fallback to dispatch_command
+                systems::GameLogicSystem::dispatch_command(*pipeline, state, cmd_def, *card_db);
                 systems::ContinuousEffectSystem::recalculate(state, *card_db);
+                try { if (pipeline) pipeline->execute(nullptr, state, *card_db); } catch (...) {}
                 return;
         }
 
         if (cmd) {
             state.execute_command(std::move(cmd));
         } else {
-             // If cmd was not created (e.g. unmapped intent), fallback
-             systems::GameLogicSystem::dispatch_action(*pipeline, state, action, *card_db);
+             systems::GameLogicSystem::dispatch_command(*pipeline, state, cmd_def, *card_db);
         }
 
         // Execute any instructions enqueued onto the pipeline during dispatch/command

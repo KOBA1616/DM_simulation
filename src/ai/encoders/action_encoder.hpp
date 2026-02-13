@@ -1,5 +1,5 @@
 #pragma once
-#include "core/action.hpp"
+#include "core/card_json_types.hpp"
 #include "core/constants.hpp"
 
 namespace dm::ai {
@@ -15,12 +15,8 @@ namespace dm::ai {
             dm::core::ACTION_PASS_SIZE + 
             10; // Extra buffer for RESOLVE, USE_SHIELD_TRIGGER etc.
 
-        // Maps an Action to a unique index in the policy vector
-        static int action_to_index(const dm::core::Action& action);
-
-        // Maps an index back to an Action (Partial, might need context to fully reconstruct)
-        // Actually, for MCTS we usually just need Action -> Index to map policy logits to edges.
-        // We don't necessarily need Index -> Action if we generate legal actions first and then map them.
+        // Maps a CommandDef to a unique index in the policy vector
+        static int action_to_index(const dm::core::CommandDef& cmd);
     };
 
 }

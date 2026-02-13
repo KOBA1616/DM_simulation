@@ -5,7 +5,7 @@
 #include "core/card_def.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include "engine/systems/trigger_system/trigger_manager.hpp" // Added
-#include "core/action.hpp" // Ensure Action is defined
+#include "core/card_json_types.hpp" // Ensure CommandDef is defined
 #include "core/scenario_config.hpp" // Ensure ScenarioConfig is defined
 #include <map>
 #include <vector>
@@ -44,7 +44,7 @@ namespace dm::engine {
 
         // Core API
         void start_game();
-        void resolve_action(const core::Action& action);
+        void resolve_command(const core::CommandDef& cmd);
         
         // Auto-step: generate actions, select first viable action, execute, and progress
         // Returns true if an action was executed, false if game is over or stuck
