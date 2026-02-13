@@ -1,5 +1,6 @@
 #include "bindings/bindings.hpp"
 #include "bindings/types.hpp"
+#include "ai/mcts/mcts_decision_maker.hpp"
 #include <pybind11/stl_bind.h>
 #include "ai/mcts/mcts.hpp"
 #include "ai/evaluator/heuristic_evaluator.hpp"
@@ -81,6 +82,9 @@ void bind_ai(py::module& m) {
             }
             return children_ptrs;
         }, py::return_value_policy::reference);
+
+    py::class_<dm::ai::mcts::MCTSDecisionMaker, dm::engine::systems::DecisionMaker>(m, "MCTSDecisionMaker")
+        .def(py::init<int>(), py::arg("simulations") = 50);
 
     py::class_<MCTS>(m, "MCTS")
         .def(py::init<const std::map<CardID, CardDefinition>&, float, float, float, int, float>())

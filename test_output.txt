@@ -1,0 +1,15 @@
+[DEBUG] bind_common enter
+[DEBUG] calling bind_map for CardDatabase (DISABLED)
+[DEBUG] bind_map skipped
+[DEBUG] bind_common exit
+Error loading card JSON: [json.exception.parse_error.101] parse error at line 1, column 1: syntax error while parsing value - invalid literal; last read: 'C'
+Traceback (most recent call last):
+  File "C:\Users\ichirou\DM_simulation\tests\test_ai_selection.py", line 125, in <module>
+    test_ai_selection()
+  File "C:\Users\ichirou\DM_simulation\tests\test_ai_selection.py", line 100, in test_ai_selection
+    cmd.target_group = 0 # Player 0
+    ^^^^^^^^^^^^^^^^
+TypeError: (): incompatible function arguments. The following argument types are supported:
+    1. (self: dm_ai_module.CommandDef, arg0: dm_ai_module.TargetScope) -> None
+
+Invoked with: <dm_ai_module.CommandDef object at 0x00000187AFAF5B70>, 0

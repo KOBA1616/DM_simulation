@@ -9,6 +9,7 @@
 #include "core/action.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/command_system.hpp" // Added include for CommandSystem
+#include "engine/systems/decision_maker.hpp"
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 
@@ -742,6 +743,9 @@ void bind_core(py::module& m) {
         )
         .def_readwrite("players", &GameState::players)
         .def_readwrite("player_modes", &GameState::player_modes)
+        .def("set_decision_maker", [](GameState& s, dm::engine::systems::DecisionMaker* dm) {
+            s.decision_maker = dm;
+        }, py::keep_alive<1, 2>()) // Keep decision_maker alive as long as GameState (wrapper) is alive
         .def("is_human_player", &GameState::is_human_player)
         .def_readwrite("game_over", &GameState::game_over)
         .def_readwrite("winner", &GameState::winner)

@@ -11,6 +11,7 @@
 #include <fstream>
 #include <filesystem>
 #include <set>
+#include "engine/systems/decision_maker.hpp"
 
 namespace dm::engine::systems {
 
@@ -642,9 +643,46 @@ namespace dm::engine::systems {
         if (filter.count.has_value()) {
             int n = filter.count.value();
             if (targets.size() > (size_t)n) {
-                // For now, naive truncation (first N).
-                // Ideally this should be random or selected, but CommandSystem executes outcome.
+                // If filter has explicit count, we might still want AI selection, 
+                // but usually filter.count implies "first N" or "random N" in some contexts.
+                // For now, let's allow AI selection if DecisionMaker is present.
+                
+                if (state.decision_maker) {
+                     // Create a temporary CommandDef for the selection if needed, or pass current cmd
+                     // But wait, filter.count is a hard limit on the *filter*, not necessarily the command's operation amount.
+                     // The logic below for command amount is more important.
+                }
+                
+                // Fallback to naive truncation if no AI decision
                 targets.resize(n);
+            }
+        }
+        
+        // AI Selection for Command Amount
+        // If the command specifies an amount (e.g. Discard 2), and we have more targets (e.g. Hand 5),
+        // we should let the AI decide which ones to pick.
+        int amount = cmd.amount; 
+        // Note: resolving amount here is tricky because resolve_targets is called before/during execution.
+        // But we passed execution_context, so we can try resolving it.
+        // However, resolve_targets doesn't call resolve_amount currently inside itself except for specific logic.
+        // In execute_primitive/macro, resolve_amount is called. 
+        // We should probably rely on the caller to handle selection?
+        // BUT, `execute_primitive` takes `targets` from `resolve_targets` and iterates them all.
+        // So `resolve_targets` MUST return only the selected ones if we want to enforce the limit.
+        
+        // Let's resolve amount again for selection logic
+        if (cmd.amount > 0 && !cmd.input_value_key.empty()) {
+             auto it = execution_context.find(cmd.input_value_key);
+             if (it != execution_context.end()) amount = it->second;
+        }
+
+        if (amount > 0 && targets.size() > (size_t)amount) {
+            if (state.decision_maker) {
+                targets = state.decision_maker->select_targets(state, cmd, targets, amount);
+            } else {
+                 // Naive fallback: take first N (or random if we implemented shuffle)
+                 // This matches previous behavior
+                 targets.resize(amount);
             }
         }
 

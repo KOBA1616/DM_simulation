@@ -21,6 +21,7 @@
 // Forward declarations
 namespace dm::engine::systems {
     class PipelineExecutor;
+    class DecisionMaker; // Forward declaration
 }
 
 namespace dm::engine::game_command {
@@ -116,6 +117,10 @@ namespace dm::core {
         QueryContext pending_query;
 
         std::shared_ptr<dm::engine::systems::PipelineExecutor> active_pipeline;
+        
+        // AI Decision Maker (Observer/Strategy pattern)
+        // Not owning, usually managed by Game or AI module
+        dm::engine::systems::DecisionMaker* decision_maker = nullptr;
 
         // Event Dispatcher callback
         std::function<void(const GameEvent&)> event_dispatcher;

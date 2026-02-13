@@ -15,12 +15,33 @@
 #include "engine/game_command/action_commands.hpp"
 #include "engine/utils/dev_tools.hpp"
 #include "bindings/bind_command_generator.hpp"
+#include "engine/systems/decision_maker.hpp"
 #include <pybind11/stl.h>
 #include <fstream>
 
 using namespace dm;
 using namespace dm::core;
 using namespace dm::engine;
+
+// Trampoline for DecisionMaker
+class PyDecisionMaker : public dm::engine::systems::DecisionMaker {
+public:
+    using dm::engine::systems::DecisionMaker::DecisionMaker;
+    
+    std::vector<int> select_targets(
+        const dm::core::GameState& state, 
+        const dm::engine::game_command::CommandDef& cmd, 
+        const std::vector<int>& candidates, 
+        int amount
+    ) override {
+        PYBIND11_OVERRIDE_PURE(
+            std::vector<int>,
+            dm::engine::systems::DecisionMaker,
+            select_targets,
+            state, cmd, candidates, amount
+        );
+    }
+};
 
 // A minimal concrete GameCommand implementation usable from Python tests.
 // The project GameCommand is abstract; exposing a concrete trivial implementation
@@ -86,6 +107,11 @@ void bind_engine(py::module& m) {
         .value("RESOLVE_PENDING_EFFECT", dm::engine::game_command::CommandType::RESOLVE_PENDING_EFFECT)
         .value("PASS_TURN", dm::engine::game_command::CommandType::PASS_TURN)
         .export_values();
+
+    // Bind DecisionMaker
+    py::class_<dm::engine::systems::DecisionMaker, PyDecisionMaker>(m, "DecisionMaker")
+        .def(py::init<>())
+        .def("select_targets", &dm::engine::systems::DecisionMaker::select_targets);
 
     py::class_<dm::engine::game_command::TransitionCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::TransitionCommand>>(m, "TransitionCommand")
         .def(py::init<int, Zone, Zone, PlayerID, int>(),

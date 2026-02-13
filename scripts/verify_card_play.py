@@ -36,7 +36,7 @@ def run_verification(max_steps=200):
     # Run game steps
     steps = 0
     
-    logger.info(f"{'Step':<5} | {'Turn':<5} | {'Phase':<15} | {'P0 Mana':<7} | {'P0 Battle':<9} | {'P1 Mana':<7} | {'P1 Battle':<9} | {'Action'}")
+    logger.info(f"{'Step':<5} | {'Turn':<5} | {'Phase':<15} | {'P0 Mana':<7} | {'P0 Battle':<9} | {'P1 Mana':<7} | {'P1 Battle':<9} | {'Command'}")
     logger.info("-" * 100)
 
     cards_played_count = 0
@@ -46,11 +46,11 @@ def run_verification(max_steps=200):
             # Capture action if possible (by hooking or just observing state change)
             # headless.py or game_session.py doesn't easily expose the *last* action unless we hook callback
             
-            last_action_str = ""
+            last_command_str = ""
             def log_callback(msg):
-                nonlocal last_action_str
+                nonlocal last_command_str
                 if "P0:" in msg or "P1:" in msg:
-                    last_action_str = msg
+                    last_command_str = msg
             
             sess.callback_log = log_callback
             
@@ -75,13 +75,13 @@ def run_verification(max_steps=200):
                 battle_counts[0].append(p0_battle)
                 battle_counts[1].append(p1_battle)
                 
-                if "PLAY" in last_action_str:
+                if "PLAY" in last_command_str:
                     cards_played_count += 1
-                    logger.info(f"{steps:<5} | {turn:<5} | {phase_name:<15} | {p0_mana:<7} | {p0_battle:<9} | {p1_mana:<7} | {p1_battle:<9} | {last_action_str}")
+                    logger.info(f"{steps:<5} | {turn:<5} | {phase_name:<15} | {p0_mana:<7} | {p0_battle:<9} | {p1_mana:<7} | {p1_battle:<9} | {last_command_str}")
                 elif steps % 10 == 0: # Log every 10 steps to keep it clean, unless action happened
-                     logger.info(f"{steps:<5} | {turn:<5} | {phase_name:<15} | {p0_mana:<7} | {p0_battle:<9} | {p1_mana:<7} | {p1_battle:<9} | {last_action_str}")
+                     logger.info(f"{steps:<5} | {turn:<5} | {phase_name:<15} | {p0_mana:<7} | {p0_battle:<9} | {p1_mana:<7} | {p1_battle:<9} | {last_command_str}")
 
-                last_action_str = "" # Reset
+                last_command_str = "" # Reset
 
             except Exception as e:
                 logger.error(f"Error accessing state at step {steps}: {e}")

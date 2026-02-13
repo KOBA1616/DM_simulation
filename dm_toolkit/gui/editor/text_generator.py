@@ -556,6 +556,8 @@ class CardTextGenerator:
                     zone_names.append("手札")
                 elif z == "GRAVEYARD":
                     zone_names.append("墓地")
+                elif z == "SHIELD_ZONE":
+                    zone_names.append("シールドゾーン")
                 else:
                     zone_names.append(tr(z))
             
@@ -735,7 +737,7 @@ class CardTextGenerator:
         full_action_text = cls._merge_action_texts(raw_items, action_texts)
 
         # If it's a Spell's main effect (ON_PLAY), we can often omit the trigger text "Played/Cast"
-        if is_spell and trigger == "ON_PLAY":
+        if is_spell and (trigger == "ON_PLAY" or trigger == "ON_CAST_SPELL"):
             trigger_text = ""
 
         if trigger_text and trigger != "NONE" and trigger != "PASSIVE_CONST":
@@ -1426,12 +1428,6 @@ class CardTextGenerator:
             if action.get("explicit_self"):
                 target_str = "このカード"
 
-            # If the filter explicitly targets shields, prefer generic "カード" phrasing
-            # to match expected UI wording (e.g. シールドに付与 -> カードに付与)
-            filt = action.get("filter") or action.get("target_filter") or {}
-            if isinstance(filt, dict) and "zones" in filt and filt.get("zones"):
-                if "SHIELD_ZONE" in filt.get("zones") or "SHIELD" in filt.get("zones"):
-                    target_str = "カード"
 
             amt = action.get('amount', 1)
             return cls._format_keyword_grant_text(target_str, str_val, keyword, duration_text, amt, skip_selection=is_target_linked)
@@ -1966,8 +1962,10 @@ class CardTextGenerator:
             is_self_ref = scope == "SELF"
 
             if input_key:
-                up_to_text = "まで" if up_to_flag else ""
-                template = f"そのカードをその同じ数だけ{up_to_text}選び、{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+                # If we have an input key, it typically refers to the cards being moved (Target)
+                # rather than a count to select, especially for replacement effects.
+                # "そのカード" (Those cards) is accurate for replacing the move of specific cards.
+                template = f"そのカードを{orig_zone_str}に置くかわりに、{zone_str}に置く。"
             else:
                 if is_self_ref:
                     # target_str = "このカード" # Handled by caller or substitution

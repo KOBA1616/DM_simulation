@@ -198,7 +198,7 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
                     _native.CommandType = _CommandType
                     _native.Command = _Command
                     _native.CommandGenerator = _CommandGenerator
-                    print("headless: injected dm_ai_module stubs for Action/Command and generators")
+                    print("headless: injected dm_ai_module stubs for Command (and legacy Action) generators")
                 except Exception:
                     pass
         except Exception:
