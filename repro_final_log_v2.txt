@@ -1,0 +1,18 @@
+[DEBUG] bind_common enter
+[DEBUG] calling bind_map for CardDatabase (DISABLED)
+[DEBUG] bind_map skipped
+[DEBUG] bind_common exit
+
+
+
+
+### GAME_LOGIC_SYSTEM::resolve_action_oneshot CALLED ###
+### Action type: 0
+### Slot index: -1
+### GAME_LOGIC_SYSTEM::resolve_action_oneshot CALLED ###
+### Action type: 0
+### Slot index: -1
+
+=== dispatch_action called ===
+Action type: 0
+Action slot_index: -1

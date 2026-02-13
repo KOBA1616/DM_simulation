@@ -66,6 +66,19 @@ namespace dm::engine {
             pass.type = PlayerIntent::PASS;
             actions.push_back(pass);
         }
+        
+        // Final check: if actions empty (should not happen due to PASS), force PASS
+        if (actions.empty()) {
+             try {
+                std::ofstream ofs("logs/mana_phase_debug.txt", std::ios::app);
+                if (ofs) {
+                    ofs << "[ManaPhaseStrategy] CRITICAL: Actions empty, forcing PASS. Player=" << (int)game_state.active_player_id << "\n";
+                }
+            } catch(...) {}
+            Action pass;
+            pass.type = PlayerIntent::PASS;
+            actions.push_back(pass);
+        }
 
         return actions;
     }

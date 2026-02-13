@@ -504,6 +504,11 @@ namespace dm::engine {
             enemy.battle_zone.push_back(c);
         }
 
+        // Enemy Hand (Added)
+        for (int cid : config.enemy_hand_cards) {
+             enemy.hand.emplace_back((CardID)cid, instance_id_counter++, enemy.id);
+        }
+
         // Enemy Shields
         for (int i = 0; i < config.enemy_shield_count; ++i) {
              enemy.shield_zone.emplace_back(1, instance_id_counter++, enemy.id);

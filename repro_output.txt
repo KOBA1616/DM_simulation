@@ -1,0 +1,179 @@
+The requested API version [20] is not available, only API versions [1, 17] are supported in this build. Current ORT Version is: 1.17.1
+[DEBUG] bind_common enter
+[DEBUG] calling bind_map for CardDatabase (DISABLED)
+[DEBUG] bind_map skipped
+[DEBUG] bind_common exit
+The requested API version [20] is not available, only API versions [1, 17] are supported in this build. Current ORT Version is: 1.17.1
+Initializing Game for Reproduction...
+Loaded dm_ai_module from: C:\Users\ichirou\DM_simulation\dm_ai_module.py
+Dir(dm_ai_module): ['Action', 'ActionEncoder', 'ActionType', 'Any', 'CardRegistry', 'CardStub', 'CardType', 'CommandDef', 'CommandEncoder', 'CommandSystem', 'CommandType', 'DataCollector', 'DeckEvolution', 'DeckEvolutionConfig', 'DevTools', 'EffectResolver', 'ExecuteActionCompat', 'FilterDef', 'FlowCommand', 'FlowType', 'GameCommand', 'GameInstance', 'GameResult', 'GameState', 'HeuristicEvaluator', 'IS_NATIVE', 'IntEnum', 'JsonLoader', 'List', 'MCTS', 'MCTSNode', 'MutateCommand', 'MutationType', 'Optional', 'ParallelRunner', 'Path', 'Phase', 'PhaseManager', 'Player', 'PlayerIntent', 'PlayerMode', 'ScenarioConfig', 'TensorConverter', 'TokenConverter', 'TransitionCommand', 'Zone', '__all__', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', '_actions_to_commands', '_candidates', '_capi_dir', '_disable_native', '_fallback_generate_legal_actions', '_loaded_native', '_mod', '_native_CommandEncoder', '_ort', '_ort_dll', '_p', '_root', '_sys', 'annotations', 'apply_command', 'commands_from_actions', 'copy', 'create_parallel_runner', 'ctypes', 'generate_commands', 'generate_legal_actions', 'generate_legal_commands', 'get_card_stats', 'importlib', 'index_to_command', 'json', 'loader', 'math', 'native_override', 'np', 'os', 'run_mcts_and_get_command', 'spec', 'sys', 'torch', 'uuid']
+
+--- Game Start ---
+Calling PhaseManager.setup_scenario...
+Calling game.start_game()...
+Card DB size: 14
+
+--- Manual Check: MANA Phase ---
+IS_NATIVE: False
+Player 0 Hand Size: 0
+Using module-level generate_legal_actions (Shim or bound function)
+Generated 1 actions in MANA phase.
+  - Action Type: 1
+MANA Phase actions generation works.
+
+=== Turn 1 (Active: Player 0) ===
+Start Mana: P0=0, P1=0
+Debug: Phase: 2, Hand: 0
+Debug: Actions count: 1
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+End Mana: P0=0, P1=0
+
+=== Turn 1 (Active: Player 0) ===
+Start Mana: P0=0, P1=0
+Debug: Phase: 2, Hand: 0
+Debug: Actions count: 1
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+End Mana: P0=0, P1=0
+
+=== Turn 1 (Active: Player 0) ===
+Start Mana: P0=0, P1=0
+Debug: Phase: 2, Hand: 0
+Debug: Actions count: 1
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+End Mana: P0=0, P1=0
+
+=== Turn 1 (Active: Player 0) ===
+Start Mana: P0=0, P1=0
+Debug: Phase: 2, Hand: 0
+Debug: Actions count: 1
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+End Mana: P0=0, P1=0
+
+=== Turn 1 (Active: Player 0) ===
+Start Mana: P0=0, P1=0
+Debug: Phase: 2, Hand: 0
+Debug: Actions count: 1
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+End Mana: P0=0, P1=0
+
+=== Turn 1 (Active: Player 0) ===
+Start Mana: P0=0, P1=0
+Debug: Phase: 2, Hand: 0
+Debug: Actions count: 1
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+No action chosen explicitly, taking first available.
+End Mana: P0=0, P1=0
+Reproduction complete.

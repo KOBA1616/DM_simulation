@@ -563,7 +563,10 @@ namespace dm::engine::game_command {
                     std::ofstream ofs("logs/reset_turn_stats_debug.txt", std::ios::app);
                     if (ofs) {
                         ofs << "[FlowCommand] RESET_TURN_STATS turn=" << state.turn_number
-                            << " active_pid=" << state.active_player_id << "\n";
+                            << " active_pid=" << (int)state.active_player_id
+                            << " mana_charged_p0=" << (state.turn_stats.mana_charged_by_player[0]?"1":"0")
+                            << " mana_charged_p1=" << (state.turn_stats.mana_charged_by_player[1]?"1":"0")
+                            << "\n";
                     }
                 } catch(...) {}
                 break;

@@ -51,11 +51,8 @@ void bind_engine(py::module& m) {
         .def("get_type", &dm::engine::game_command::GameCommand::get_type)
         .def("invert", &dm::engine::game_command::GameCommand::invert);
 
-    // Provide a Python-callable factory that returns a concrete, trivial GameCommand
-    // instance so tests can call `GameCommand()` to obtain a constructible command.
-    m.def("GameCommand", []() {
-        return std::shared_ptr<dm::engine::game_command::GameCommand>(std::make_shared<PyGameCommandImpl>());
-    });
+    // Factory function removed to avoid name collision with GameCommand class.
+    // Use specific command subclasses or a different factory name if needed.
 
     // Removed CommandType binding here to avoid conflict with bind_core.cpp
     // The core CommandType (card_json_types.hpp) is now the primary one exposed.

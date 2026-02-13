@@ -87,10 +87,15 @@ if not _disable_native:
             os.path.join(_root, 'build-msvc', 'Release', 'dm_ai_module.cp312-win_amd64.pyd'),
             os.path.join(_root, 'build-msvc', 'dm_ai_module.cp312-win_amd64.pyd'),
         ]
+        
+        print(f"DEBUG: Native candidates: {_candidates}")
+        
         _loaded_native = False
         for _p in _candidates:
             try:
+                print(f"DEBUG: Checking candidate: {_p}")
                 if _p and os.path.exists(_p):
+                    print(f"DEBUG: Found candidate at {_p}, attempting load...")
                     # Load with the canonical module name so the pyd's PyInit symbol matches
                     loader = importlib.machinery.ExtensionFileLoader('dm_ai_module', _p)
                     spec = importlib.util.spec_from_loader('dm_ai_module', loader)
@@ -107,15 +112,21 @@ if not _disable_native:
                     # defined later in this file to augment the native extension.
                     IS_NATIVE = True
                     _loaded_native = True
+                    print(f"DEBUG: Successfully loaded native module from {_p}")
                     break
-            except Exception:
+                else:
+                    print(f"DEBUG: Candidate not found: {_p}")
+            except Exception as e:
+                print(f"DEBUG: Error loading candidate {_p}: {e}")
                 continue
         # Continue execution even if native loaded; Python fallbacks below
         # will augment the native extension with additional helpers.
-    except Exception:
+    except Exception as e:
+        print(f"DEBUG: Top-level error in native loading block: {e}")
         IS_NATIVE = False
 else:
     # DM_DISABLE_NATIVE is set; skip native module loading
+    print("DEBUG: DM_DISABLE_NATIVE is set, skipping native load.")
     IS_NATIVE = False
 
 
@@ -381,7 +392,7 @@ class CommandSystem:
     @staticmethod
     def execute_command(state: Any, cmd: Any, source_id: int = -1, player_id: int = 0, ctx: Any = None) -> None:
         # Minimal wrapper: attempt to call `execute` on cmd or treat as Action
-        print(f"DEBUG: CommandSystem.execute_command CALLED with {cmd}")
+        # print(f"DEBUG: CommandSystem.execute_command CALLED with {cmd}")
         try:
             if hasattr(cmd, 'execute') and callable(getattr(cmd, 'execute')):
                 try:
@@ -690,7 +701,8 @@ class GameState:
         self.winner = -1
         # C++ Engine Side Flag Management:
         self._mana_charged_flags = {0: False, 1: False}
-         self._last_turn_mana_charged = -1
+        # C++ Engine Side Flag Management:
+        self._mana_charged_flags = {0: False, 1: False}
     
     def initialize(self):
         """Compatibility alias for older tests/scripts: initialize the test duel."""
@@ -936,6 +948,7 @@ class GameInstance:
     def __init__(self, seed: int = 0, card_db: Any = None):
         self.state = GameState()
         self.card_db = card_db
+        self._last_turn_mana_charged = -1
 
     def start_game(self):
         """Initialize game to starting state."""
@@ -1088,9 +1101,12 @@ class GameInstance:
         current_turn = getattr(self.state, 'turn_number', -1)
         
         # Filter out MANA_CHARGE if we already charged this turn
+        print(f"DEBUG: Turn {current_turn}, Last Charged {self._last_turn_mana_charged}")
         if self._last_turn_mana_charged == current_turn:
             non_pass_actions = [a for a in non_pass_actions 
                                 if (a.get('type') if isinstance(a, dict) else getattr(a, 'type', '')) not in ('MANA_CHARGE', 2)]
+        
+        print(f"DEBUG: Actions available: {[a.get('type') if isinstance(a, dict) else getattr(a, 'type', '') for a in non_pass_actions]}")
 
         def get_action_priority(act):
             t = act.get('type') if isinstance(act, dict) else getattr(act, 'type', '')
@@ -1103,6 +1119,8 @@ class GameInstance:
             non_pass_actions.sort(key=get_action_priority, reverse=True)
             action_to_execute = non_pass_actions[0]
             
+            # print(f"DEBUG: Executing {action_to_execute.get('type') if isinstance(action_to_execute, dict) else getattr(action_to_execute, 'type', '')}")
+
             # If we chose MANA_CHARGE, update our tracker
             at = action_to_execute.get('type') if isinstance(action_to_execute, dict) else getattr(action_to_execute, 'type', '')
             if at in ('MANA_CHARGE', 2):
@@ -1225,6 +1243,7 @@ def _fallback_generate_legal_actions(state: GameState, card_db: Any = None) -> L
         out.append(a)
 
         phase = getattr(state, 'current_phase', Phase.MANA)
+        # print(f"DEBUG: fallback_gen phase={phase}, hand={len(p.hand)}")
 
         if phase == Phase.MANA:
             for c in list(p.hand):
@@ -1555,13 +1574,16 @@ class PhaseManager:
             while steps < max_steps:
                 PhaseManager.next_phase(state, card_db)
                 steps += 1
-                # Stop early if we reach MAIN phase so active player can act
-                if getattr(state, 'current_phase', None) == Phase.MAIN:
+                cp = getattr(state, 'current_phase', None)
+                cp = getattr(state, 'current_phase', None)
+                # print(f"DEBUG: fast_forward step {steps}, phase={cp}")
+                if cp == Phase.MAIN or cp == Phase.MANA:
                     break
                 # If pending effects appeared during transitions, stop
                 if getattr(state, 'pending_effects', None):
                     break
-        except Exception:
+        except Exception as e:
+            # print(f"DEBUG: fast_forward error: {e}")
             # Be defensive in test/fallback environments
             pass
 

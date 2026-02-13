@@ -1,0 +1,19 @@
+MSBuild 縺ｮ繝舌・繧ｸ繝ｧ繝ｳ 17.14.23+b0019275e (.NET Framework)
+
+  game_logic_system.cpp
+C:\Users\ichirou\DM_simulation\src\engine\systems\game_logic_system.cpp(514,170): warning C4100: 'controller': 蜿ら・縺輔ｌ縺ｪ縺・ヱ繝ｩ繝｡繝ｼ繧ｿ繝ｼ [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\game_logic_system.cpp(624,29): warning C4456: 'before_size' 繧貞ｮ｣險縺吶ｋ縺ｨ縲∽ｻ･蜑阪・繝ｭ繝ｼ繧ｫ繝ｫ螳｣險縺碁國阡ｽ縺輔ｌ縺ｾ縺・[C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\game_logic_system.cpp(615,25):
+      'before_size' 縺ｮ螳｣險繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\game_logic_system.cpp(625,26): warning C4456: 'parent_idx' 繧貞ｮ｣險縺吶ｋ縺ｨ縲∽ｻ･蜑阪・繝ｭ繝ｼ繧ｫ繝ｫ螳｣險縺碁國阡ｽ縺輔ｌ縺ｾ縺・[C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\game_logic_system.cpp(616,22):
+      'parent_idx' 縺ｮ螳｣險繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\game_logic_system.cpp(626,26): warning C4456: 'parent_pc' 繧貞ｮ｣險縺吶ｋ縺ｨ縲∽ｻ･蜑阪・繝ｭ繝ｼ繧ｫ繝ｫ螳｣險縺碁國阡ｽ縺輔ｌ縺ｾ縺・[C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\game_logic_system.cpp(617,22):
+      'parent_pc' 縺ｮ螳｣險繧堤｢ｺ隱阪＠縺ｦ縺上□縺輔＞
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\game_logic_system.cpp(700,103): warning C4100: 'card_db': 蜿ら・縺輔ｌ縺ｪ縺・ヱ繝ｩ繝｡繝ｼ繧ｿ繝ｼ [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\game_logic_system.cpp(1252,27): error C2065: 'card_ptr': 螳夂ｾｩ縺輔ｌ縺ｦ縺・↑縺・ｭ伜挨蟄舌〒縺吶・[C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\game_logic_system.cpp(1444,68): warning C4244: '蠑墓焚': 'int' 縺九ｉ 'dm::core::PlayerID' 縺ｸ縺ｮ螟画鋤縺ｧ縺吶ゅョ繝ｼ繧ｿ縺悟､ｱ繧上ｌ繧句庄閭ｽ諤ｧ縺後≠繧翫∪縺吶・[C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]

@@ -240,6 +240,7 @@ void bind_ai(py::module& m) {
         .def_readwrite("my_grave_yard", &ScenarioConfig::my_grave_yard)
         .def_readwrite("my_shields", &ScenarioConfig::my_shields)
         .def_readwrite("my_deck", &ScenarioConfig::my_deck)
+        .def_readwrite("enemy_hand_cards", &ScenarioConfig::enemy_hand_cards) // Added
         .def_readwrite("enemy_shield_count", &ScenarioConfig::enemy_shield_count)
         .def_readwrite("enemy_deck", &ScenarioConfig::enemy_deck)
         .def_readwrite("enemy_battle_zone", &ScenarioConfig::enemy_battle_zone)

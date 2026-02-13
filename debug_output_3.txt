@@ -1,0 +1,1033 @@
+The requested API version [20] is not available, only API versions [1, 17] are supported in this build. Current ORT Version is: 1.17.1
+Starting Card Play Verification...
+EngineCompat: Native CardDB cached successfully.
+Session created.
+Step  | Turn  | Phase           | P0 Mana | P0 Battle | P1 Mana | P1 Battle | Action
+----------------------------------------------------------------------------------------------------
+0     | 1     | MANA            | 2       | 0         | 0       | 0         | 
+10    | 4     | MANA            | 6       | 2         | 0       | 0         | 
+20    | 6     | MANA            | 12      | 4         | 0       | 0         | 
+30    | 9     | MANA            | 16      | 4         | 0       | 0         | 
+40    | 11    | MANA            | 22      | 4         | 0       | 0         | 
+50    | 14    | MANA            | 26      | 4         | 0       | 0         | 
+60    | 16    | MANA            | 32      | 4         | 0       | 0         | 
+70    | 19    | MANA            | 36      | 4         | 0       | 0         | 
+80    | 21    | MANA            | 42      | 4         | 0       | 0         | 
+headless: injected dm_ai_module stubs for Action/Command and generators
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 1, Last Charged -1
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 1, Last Charged 1
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 1, Last Charged 1
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 2, Last Charged 1
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 2, Last Charged 2
+DEBUG: Actions available: ['PLAY_FROM_ZONE', 'PASS']
+DEBUG: Executing PLAY_FROM_ZONE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 2, Last Charged 2
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 2, Last Charged 2
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 3, Last Charged 2
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 3, Last Charged 3
+DEBUG: Actions available: ['PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'PASS']
+DEBUG: Executing PLAY_FROM_ZONE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 3, Last Charged 3
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 3, Last Charged 3
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 4, Last Charged 3
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 4, Last Charged 4
+DEBUG: Actions available: ['PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing PLAY_FROM_ZONE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 4, Last Charged 4
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 4, Last Charged 4
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 5, Last Charged 4
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 5, Last Charged 5
+DEBUG: Actions available: ['PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing PLAY_FROM_ZONE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 5, Last Charged 5
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 5, Last Charged 5
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 6, Last Charged 5
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 6, Last Charged 6
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 6, Last Charged 6
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 6, Last Charged 6
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 7, Last Charged 6
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 7, Last Charged 7
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 7, Last Charged 7
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 7, Last Charged 7
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 8, Last Charged 7
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 8, Last Charged 8
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 8, Last Charged 8
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 8, Last Charged 8
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 9, Last Charged 8
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 9, Last Charged 9
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 9, Last Charged 9
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 9, Last Charged 9
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 10, Last Charged 9
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 10, Last Charged 10
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 10, Last Charged 10
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 10, Last Charged 10
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 11, Last Charged 10
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 11, Last Charged 11
+90    | 24    | MANA            | 46      | 4         | 0       | 0         | 
+100   | 26    | MANA            | 52      | 4         | 0       | 0         | 
+110   | 29    | MANA            | 56      | 4         | 0       | 0         | 
+120   | 31    | MANA            | 62      | 4         | 0       | 0         | 
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 11, Last Charged 11
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 11, Last Charged 11
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 12, Last Charged 11
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 12, Last Charged 12
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 12, Last Charged 12
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 12, Last Charged 12
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 13, Last Charged 12
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 13, Last Charged 13
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 13, Last Charged 13
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 13, Last Charged 13
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 14, Last Charged 13
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 14, Last Charged 14
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 14, Last Charged 14
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 14, Last Charged 14
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 15, Last Charged 14
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 15, Last Charged 15
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 15, Last Charged 15
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 15, Last Charged 15
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 16, Last Charged 15
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 16, Last Charged 16
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 16, Last Charged 16
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 16, Last Charged 16
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 17, Last Charged 16
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 17, Last Charged 17
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 17, Last Charged 17
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 17, Last Charged 17
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 18, Last Charged 17
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 18, Last Charged 18
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 18, Last Charged 18
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 18, Last Charged 18
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 19, Last Charged 18
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 19, Last Charged 19
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 19, Last Charged 19
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 19, Last Charged 19
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 20, Last Charged 19
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 20, Last Charged 20
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 20, Last Charged 20
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 20, Last Charged 20
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 21, Last Charged 20
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 21, Last Charged 21
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 21, Last Charged 21
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 21, Last Charged 21
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 22, Last Charged 21
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 22, Last Charged 22
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 22, Last Charged 22
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 22, Last Charged 22
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 23, Last Charged 22
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 23, Last Charged 23
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 23, Last Charged 23
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 23, Last Charged 23
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 24, Last Charged 23
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 24, Last Charged 24
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 24, Last Charged 24
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 24, Last Charged 24
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 25, Last Charged 24
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 25, Last Charged 25
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 25, Last Charged 25
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+130   | 34    | MANA            | 62      | 4         | 4       | 4         | 
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 25, Last Charged 25
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 26, Last Charged 25
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 26, Last Charged 26
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 26, Last Charged 26
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 26, Last Charged 26
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+140   | 36    | MANA            | 62      | 4         | 8       | 8         | 
+DEBUG: Turn 27, Last Charged 26
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 27, Last Charged 27
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 27, Last Charged 27
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 27, Last Charged 27
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 28, Last Charged 27
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 28, Last Charged 28
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 28, Last Charged 28
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 28, Last Charged 28
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 29, Last Charged 28
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 29, Last Charged 29
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 29, Last Charged 29
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 29, Last Charged 29
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 30, Last Charged 29
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 30, Last Charged 30
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 30, Last Charged 30
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 30, Last Charged 30
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 31, Last Charged 30
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 31, Last Charged 31
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 31, Last Charged 31
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 31, Last Charged 31
+DEBUG: Actions available: ['PASS']
+DEBUG: Executing PASS
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 32, Last Charged 31
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+150   | 39    | MANA            | 62      | 4         | 14      | 14        | 
+160   | 41    | MANA            | 62      | 4         | 18      | 16        | 
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 32, Last Charged 31
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 32, Last Charged 31
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 32, Last Charged 32
+DEBUG: Actions available: ['PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PASS']
+DEBUG: Executing PLAY_FROM_ZONE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 33, Last Charged 32
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 33, Last Charged 32
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 33, Last Charged 32
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 33, Last Charged 33
+DEBUG: Actions available: ['PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing PLAY_FROM_ZONE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 34, Last Charged 33
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 34, Last Charged 33
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 34, Last Charged 33
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 34, Last Charged 34
+DEBUG: Actions available: ['PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing PLAY_FROM_ZONE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 35, Last Charged 34
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 35, Last Charged 34
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 35, Last Charged 34
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 35, Last Charged 35
+DEBUG: Actions available: ['PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing PLAY_FROM_ZONE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 36, Last Charged 35
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 36, Last Charged 35
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 36, Last Charged 35
+170   | 44    | MANA            | 62      | 4         | 22      | 17        | 
+180   | 46    | MANA            | 62      | 4         | 22      | 17        | 
+190   | 49    | MANA            | 62      | 4         | 22      | 17        | 
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 36, Last Charged 36
+DEBUG: Actions available: ['PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing PLAY_FROM_ZONE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 37, Last Charged 36
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 37, Last Charged 36
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 37, Last Charged 36
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 37, Last Charged 37
+DEBUG: Actions available: ['PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing PLAY_FROM_ZONE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 38, Last Charged 37
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 38, Last Charged 37
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 38, Last Charged 37
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 38, Last Charged 38
+DEBUG: Actions available: ['PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing PLAY_FROM_ZONE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 39, Last Charged 38
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 39, Last Charged 38
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 39, Last Charged 38
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 39, Last Charged 39
+DEBUG: Actions available: ['PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing PLAY_FROM_ZONE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 40, Last Charged 39
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 40, Last Charged 39
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 40, Last Charged 39
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 40, Last Charged 40
+DEBUG: Actions available: ['PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing PLAY_FROM_ZONE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 41, Last Charged 40
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 41, Last Charged 40
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 41, Last Charged 40
+DEBUG: Actions available: ['MANA_CHARGE', 'MANA_CHARGE', 'MANA_CHARGE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 41, Last Charged 41
+----------------------------------------------------------------------------------------------------
+Verification Complete.
+Final Battle Zone - P0: 4, P1: 17
+Total 'PLAY' actions detected: 0
+SUCCESS: Cards were played.
+DEBUG: Actions available: ['PLAY_FROM_ZONE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing PLAY_FROM_ZONE
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 42, Last Charged 41
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 42, Last Charged 41
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 42, Last Charged 41
+DEBUG: Actions available: ['MANA_CHARGE', 'PLAY_FROM_ZONE', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing MANA_CHARGE
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 42, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 43, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 43, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 43, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 43, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 44, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 44, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 44, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 44, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 45, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 45, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 45, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 45, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 46, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 46, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 46, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 46, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 47, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 47, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 47, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 47, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 48, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 48, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 48, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 48, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 49, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 49, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 49, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 49, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 50, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 50, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 50, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3
+DEBUG: Turn 50, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=4
+DEBUG: fast_forward step 2, phase=5
+DEBUG: fast_forward step 3, phase=2
+DEBUG: Turn 51, Last Charged 42
+DEBUG: Actions available: ['ATTACK', 'ATTACK', 'ATTACK', 'ATTACK', 'PASS']
+DEBUG: Executing ATTACK
+DEBUG: fast_forward step 1, phase=3

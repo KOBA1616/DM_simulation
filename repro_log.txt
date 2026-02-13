@@ -1,0 +1,32 @@
+[DEBUG] bind_common enter
+[DEBUG] calling bind_map for CardDatabase (DISABLED)
+[DEBUG] bind_map skipped
+[DEBUG] bind_common exit
+Initializing Game for Reproduction...
+Loaded dm_ai_module from: C:\Users\ichirou\DM_simulation\dm_ai_module.py
+Dir(dm_ai_module): ['Action', 'ActionEncoder', 'ActionType', 'Any', 'CardRegistry', 'CardStub', 'CardType', 'CommandDef', 'CommandEncoder', 'CommandSystem', 'CommandType', 'DataCollector', 'DeckEvolution', 'DeckEvolutionConfig', 'DevTools', 'EffectResolver', 'ExecuteActionCompat', 'FilterDef', 'FlowCommand', 'FlowType', 'GameCommand', 'GameInstance', 'GameResult', 'GameState', 'HeuristicEvaluator', 'IS_NATIVE', 'IntEnum', 'JsonLoader', 'List', 'MCTS', 'MCTSNode', 'MutateCommand', 'MutationType', 'Optional', 'ParallelRunner', 'Path', 'Phase', 'PhaseManager', 'Player', 'PlayerIntent', 'PlayerMode', 'ScenarioConfig', 'TensorConverter', 'TokenConverter', 'TransitionCommand', 'Zone', '__all__', '__builtins__', '__cached__', '__doc__', '__file__', '__loader__', '__name__', '__package__', '__spec__', '_actions_to_commands', '_candidates', '_capi_dir', '_disable_native', '_fallback_generate_legal_actions', '_loaded_native', '_mod', '_native_CommandEncoder', '_ort', '_ort_dll', '_p', '_root', '_sys', 'annotations', 'apply_command', 'commands_from_actions', 'copy', 'create_parallel_runner', 'ctypes', 'generate_commands', 'generate_legal_actions', 'generate_legal_commands', 'get_card_stats', 'importlib', 'index_to_command', 'json', 'loader', 'math', 'native_override', 'np', 'os', 'run_mcts_and_get_command', 'spec', 'sys', 'torch', 'uuid']
+
+--- Game Start ---
+Setting up scenario...
+Forcing MANA phase for reproduction...
+Player 0 Hand: 0
+Player 0 Mana: 0
+
+--- Turn 1 ---
+Start Mana: P0=0, P1=0
+Phase: 2, Active Player: 0
+Error generating actions: module 'dm_ai_module' has no attribute 'IntentGenerator'
+End Mana: P0=0, P1=0
+
+--- Turn 2 ---
+Start Mana: P0=0, P1=0
+Phase: 2, Active Player: 0
+Error generating actions: module 'dm_ai_module' has no attribute 'IntentGenerator'
+End Mana: P0=0, P1=0
+
+--- Turn 3 ---
+Start Mana: P0=0, P1=0
+Phase: 2, Active Player: 0
+Error generating actions: module 'dm_ai_module' has no attribute 'IntentGenerator'
+End Mana: P0=0, P1=0
+Reproduction script finished.

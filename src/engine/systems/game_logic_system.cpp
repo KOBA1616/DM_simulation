@@ -1245,16 +1245,17 @@ namespace dm::engine::systems {
          if (card_id < 0) return;
 
          // DM Rule: Check if mana was already charged this turn (max 1 per turn per player)
-         const CardInstance* card_ptr = state.get_card_instance(card_id);
-         if (!card_ptr) return;
-         
-         PlayerID owner = card_ptr->owner;
-         if (state.turn_stats.mana_charged_by_player[owner]) {
+         // DM Rule: Check if mana was already charged this turn (max 1 per turn per player)
+         // FIX: Use active_player_id to check the flag, as mana charge is an active player action.
+         // But importantly, the turn_stats trigger is based on the player whose turn it is.
+         PlayerID active_player = state.active_player_id;
+
+         if (state.turn_stats.mana_charged_by_player[active_player]) {
              // Already charged this turn, skip
              try {
                  std::ofstream lout("logs/manacharge_trace.txt", std::ios::app);
                  if (lout) {
-                     lout << "handle_mana_charge BLOCKED: already charged this turn for player " << (int)owner << "\n";
+                     lout << "handle_mana_charge BLOCKED: already charged this turn for player " << (int)active_player << "\n";
                      lout.close();
                  }
              } catch(...) {}
@@ -1276,7 +1277,7 @@ namespace dm::engine::systems {
          try {
              std::ofstream lout("logs/manacharge_trace.txt", std::ios::app);
              if (lout) {
-                 lout << "handle_mana_charge SUCCESS: card_id=" << card_id << " player=" << (int)owner << "\n";
+                 lout << "handle_mana_charge SUCCESS: card_id=" << card_id << " player=" << (int)state.active_player_id << "\n";
                  lout.close();
              }
          } catch(...) {}

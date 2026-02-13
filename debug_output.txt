@@ -1,0 +1,432 @@
+The requested API version [20] is not available, only API versions [1, 17] are supported in this build. Current ORT Version is: 1.17.1
+Starting Card Play Verification...
+EngineCompat: Native CardDB cached successfully.
+Session created.
+Step  | Turn  | Phase           | P0 Mana | P0 Battle | P1 Mana | P1 Battle | Action
+----------------------------------------------------------------------------------------------------
+0     | 1     | MAIN            | 2       | 0         | 0       | 0         | 
+10    | 6     | MAIN            | 12      | 0         | 0       | 0         | 
+20    | 11    | MAIN            | 22      | 0         | 0       | 0         | 
+30    | 16    | MAIN            | 32      | 0         | 0       | 0         | 
+40    | 21    | MAIN            | 42      | 0         | 0       | 0         | 
+50    | 26    | MAIN            | 52      | 0         | 0       | 0         | 
+60    | 31    | MAIN            | 62      | 0         | 0       | 0         | 
+headless: injected dm_ai_module stubs for Action/Command and generators
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 7, 'instance_id': 10034, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 7, 'instance_id': 10034, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 6, 'instance_id': 10033, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 6, 'instance_id': 10033, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 5, 'instance_id': 10032, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 5, 'instance_id': 10032, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 4, 'instance_id': 10031, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 4, 'instance_id': 10031, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 3, 'instance_id': 10030, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 3, 'instance_id': 10030, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 2, 'instance_id': 10029, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 2, 'instance_id': 10029, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 1, 'instance_id': 10028, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 1, 'instance_id': 10028, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 14, 'instance_id': 10027, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 14, 'instance_id': 10027, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 13, 'instance_id': 10026, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 13, 'instance_id': 10026, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 12, 'instance_id': 10025, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 12, 'instance_id': 10025, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 11, 'instance_id': 10024, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 11, 'instance_id': 10024, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 10, 'instance_id': 10023, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 10, 'instance_id': 10023, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 9, 'instance_id': 10022, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 9, 'instance_id': 10022, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 8, 'instance_id': 10021, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 8, 'instance_id': 10021, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 7, 'instance_id': 10020, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 7, 'instance_id': 10020, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 6, 'instance_id': 10019, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+70    | 36    | MAIN            | 70      | 0         | 0       | 0         | 
+80    | 41    | MAIN            | 70      | 0         | 10      | 0         | 
+90    | 46    | MAIN            | 70      | 0         | 20      | 0         | 
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 6, 'instance_id': 10019, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 5, 'instance_id': 10018, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 5, 'instance_id': 10018, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 4, 'instance_id': 10017, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 4, 'instance_id': 10017, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 3, 'instance_id': 10016, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 3, 'instance_id': 10016, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 2, 'instance_id': 10015, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 2, 'instance_id': 10015, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 1, 'instance_id': 10014, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 1, 'instance_id': 10014, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 14, 'instance_id': 10013, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 14, 'instance_id': 10013, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 13, 'instance_id': 10012, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 13, 'instance_id': 10012, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 12, 'instance_id': 10011, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 12, 'instance_id': 10011, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 11, 'instance_id': 10010, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 11, 'instance_id': 10010, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 10, 'instance_id': 10009, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 10, 'instance_id': 10009, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 9, 'instance_id': 10008, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 9, 'instance_id': 10008, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 8, 'instance_id': 10007, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 8, 'instance_id': 10007, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 7, 'instance_id': 10006, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 7, 'instance_id': 10006, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 6, 'instance_id': 10005, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 6, 'instance_id': 10005, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 5, 'instance_id': 10004, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 5, 'instance_id': 10004, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+100   | 51    | MAIN            | 70      | 0         | 30      | 0         | 
+110   | 56    | MAIN            | 70      | 0         | 40      | 0         | 
+120   | 61    | MAIN            | 70      | 0         | 42      | 0         | 
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 4, 'instance_id': 10003, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 4, 'instance_id': 10003, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 3, 'instance_id': 10002, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 3, 'instance_id': 10002, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 2, 'instance_id': 10001, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 2, 'instance_id': 10001, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 1, 'instance_id': 10000, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 1, 'instance_id': 10000, 'player_id': 0, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 6, 'instance_id': 11034, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 6, 'instance_id': 11034, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 7, 'instance_id': 11033, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 7, 'instance_id': 11033, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 8, 'instance_id': 11032, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 8, 'instance_id': 11032, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 9, 'instance_id': 11031, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 9, 'instance_id': 11031, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 10, 'instance_id': 11030, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 10, 'instance_id': 11030, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 11, 'instance_id': 11029, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 11, 'instance_id': 11029, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 12, 'instance_id': 11028, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 12, 'instance_id': 11028, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 13, 'instance_id': 11027, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 13, 'instance_id': 11027, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 14, 'instance_id': 11026, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 14, 'instance_id': 11026, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 1, 'instance_id': 11025, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 1, 'instance_id': 11025, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 2, 'instance_id': 11024, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 2, 'instance_id': 11024, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+130   | 66    | MAIN            | 70      | 0         | 42      | 0         | 
+140   | 71    | MAIN            | 70      | 0         | 42      | 0         | 
+150   | 76    | MAIN            | 70      | 0         | 42      | 0         | 
+160   | 81    | MAIN            | 70      | 0         | 42      | 0         | 
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 3, 'instance_id': 11023, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 3, 'instance_id': 11023, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 4, 'instance_id': 11022, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 4, 'instance_id': 11022, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 5, 'instance_id': 11021, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 5, 'instance_id': 11021, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 6, 'instance_id': 11006, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 6, 'instance_id': 11006, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 7, 'instance_id': 11005, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 7, 'instance_id': 11005, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 8, 'instance_id': 11004, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 8, 'instance_id': 11004, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 9, 'instance_id': 11003, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 9, 'instance_id': 11003, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 10, 'instance_id': 11002, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 10, 'instance_id': 11002, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 11, 'instance_id': 11001, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 11, 'instance_id': 11001, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 12, 'instance_id': 11000, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'MANA_CHARGE', 'card_id': 12, 'instance_id': 11000, 'player_id': 1, 'unified_type': 'MANA_CHARGE'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+170   | 86    | MAIN            | 70      | 0         | 42      | 0         | 
+180   | 91    | MAIN            | 70      | 0         | 42      | 0         | 
+190   | 96    | MAIN            | 70      | 0         | 42      | 0         | 
+----------------------------------------------------------------------------------------------------
+Verification Complete.
+Final Battle Zone - P0: 0, P1: 0
+Total 'PLAY' actions detected: 0
+FAILURE: No cards seem to have been played.
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 0, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}
+DEBUG: CommandSystem.execute_command CALLED with {'type': 'PASS', 'player_id': 1, 'unified_type': 'PASS'}

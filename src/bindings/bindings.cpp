@@ -4,6 +4,7 @@
 #include <pybind11/stl_bind.h>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <chrono>
 #include <thread>
 
