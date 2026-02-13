@@ -21,14 +21,13 @@ except ImportError:
     except ImportError:
         dm_ai_module = None
 
-from dm_toolkit.dm_types import GameState, CardDB, Action, PlayerID, Tensor, NPArray
+from dm_toolkit.dm_types import GameState, CardDB, PlayerID, Tensor, NPArray
 
 # At runtime, prefer concrete engine types from dm_ai_module when available
 try:
     if dm_ai_module is not None:
         try:
             GameState = getattr(dm_ai_module, 'GameState', GameState)
-            Action = getattr(dm_ai_module, 'Action', Action)
         except Exception:
             pass
 except Exception:
@@ -423,11 +422,11 @@ class EngineCompat:
     # -------------------------------------------------------------------------
 
     @staticmethod
-    def get_action_slot_index(action: Action) -> int:
+    def get_action_slot_index(action: Any) -> int:
         return getattr(action, 'slot_index', -1)
 
     @staticmethod
-    def get_action_source_id(action: Action) -> int:
+    def get_action_source_id(action: Any) -> int:
         return getattr(action, 'source_instance_id', -1)
 
     # -------------------------------------------------------------------------
@@ -445,7 +444,7 @@ class EngineCompat:
             logger.warning("dm_ai_module.EffectResolver.resume not found.")
 
     @staticmethod
-    def EffectResolver_resolve_action(state: GameState, action: Action, card_db: CardDB) -> None:
+    def EffectResolver_resolve_action(state: GameState, action: Any, card_db: CardDB) -> None:
         # Improved logging with structured data
         log_data: Dict[str, Any] = {"action_str": str(action)}
         try:
@@ -833,7 +832,7 @@ class EngineCompat:
             return False, None
 
     @staticmethod
-    def ActionGenerator_generate_legal_commands(state: GameState, card_db: CardDB) -> List[Action]:
+    def ActionGenerator_generate_legal_commands(state: GameState, card_db: CardDB) -> List[Any]:
         """
         Deprecated: Prefer ActionGenerator_generate_legal_commands for new code.
         Returns raw Actions from the engine.

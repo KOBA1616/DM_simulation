@@ -49,6 +49,47 @@ from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.action_to_command import map_action
 from dm_toolkit import commands_v2 as commands
 
+# Robustly ensure ActionEncoder availability
+try:
+    if not hasattr(dm, 'ActionEncoder'):
+        from dm_toolkit.ai.agent.tokenization import ActionEncoder
+        dm.ActionEncoder = ActionEncoder
+except ImportError:
+    pass
+
+def is_command_type(cmd, target_type):
+    """Robustly check if a command matches a target type (enum/int/str)."""
+    try:
+        if isinstance(cmd, dict):
+            t = cmd.get('type')
+        else:
+            t = getattr(cmd, 'type', None)
+
+        # Exact match
+        if t == target_type: return True
+
+        # String match
+        t_str = str(t).upper() if isinstance(t, str) else None
+        if hasattr(t, 'name'): t_str = t.name.upper()
+
+        target_str = str(target_type).upper() if isinstance(target_type, str) else None
+        if hasattr(target_type, 'name'): target_str = target_type.name.upper()
+
+        if t_str and target_str and t_str == target_str: return True
+
+        # Integer match
+        try:
+            if int(t) == int(target_type): return True
+        except Exception:
+            pass
+
+        return False
+    except Exception:
+        return False
+
+# Backward compatibility alias
+dm.is_action_type = is_command_type
+
 CARD_DB = dm.JsonLoader.load_cards('data/cards.json')
 
 
@@ -652,7 +693,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 score = float(policy_masked[int(idx)]) if not np.isneginf(policy_masked[int(idx)]) else -np.inf
                 # apply small penalty to PASS actions if configured
                 try:
-                    is_pass_act = dm.is_action_type(act, dm.ActionType.PASS)
+                    is_pass_act = is_command_type(act, dm.CommandType.PASS)
                 except Exception:
                     is_pass_act = False
                 if is_pass_act and pass_penalty:
@@ -683,11 +724,11 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 try:
                     is_chosen_pass = False
                     try:
-                        is_chosen_pass = dm.is_action_type(last_chosen[game_idx], dm.ActionType.PASS) or dm.is_action_type(chosen, dm.ActionType.PASS)
+                        is_chosen_pass = is_command_type(last_chosen[game_idx], dm.CommandType.PASS) or is_command_type(chosen, dm.CommandType.PASS)
                     except Exception:
-                        is_chosen_pass = dm.is_action_type(chosen, dm.ActionType.PASS)
+                        is_chosen_pass = is_command_type(chosen, dm.CommandType.PASS)
                     if is_chosen_pass:
-                        non_pass_candidates = [a for a in legal if not dm.is_action_type(a, dm.ActionType.PASS)]
+                        non_pass_candidates = [a for a in legal if not is_command_type(a, dm.CommandType.PASS)]
                         if non_pass_candidates:
                             try:
                                 print("H2H_JSON: " + __import__('json').dumps({'event': 'fallback_non_pass_selected', 'index': game_idx, 'reason': 'model_chose_pass_but_nonpass_available'}, ensure_ascii=False))
@@ -728,7 +769,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 if act_type == None:
                     act_type = 'UNKNOWN'
                 # pass count
-                if act_type == 'PASS' or dm.is_action_type(chosen, dm.ActionType.PASS):
+                if act_type == 'PASS' or is_command_type(chosen, dm.CommandType.PASS):
                     pass_count[game_idx] += 1
                 # turn distribution
                 tb = action_by_turn[game_idx].setdefault(str(turn_no), {})
@@ -744,7 +785,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 except Exception:
                     pass
             try:
-                if dm.is_action_type(chosen, dm.ActionType.PASS):
+                if is_command_type(chosen, dm.CommandType.PASS):
                     dm.PhaseManager.next_phase(instances[game_idx].state, CARD_DB)
             except Exception:
                 pass
@@ -752,9 +793,9 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
             try:
                 is_pass = False
                 try:
-                    is_pass = ( (isinstance(last_chosen[game_idx], dict) and last_chosen[game_idx].get('type') == 'PASS') or dm.is_action_type(chosen, dm.ActionType.PASS) )
+                    is_pass = ( (isinstance(last_chosen[game_idx], dict) and last_chosen[game_idx].get('type') == 'PASS') or is_command_type(chosen, dm.CommandType.PASS) )
                 except Exception:
-                    is_pass = dm.is_action_type(chosen, dm.ActionType.PASS)
+                    is_pass = is_command_type(chosen, dm.CommandType.PASS)
                 if is_pass and len(legals_a[k]) == 1:
                     consecutive_pass_count[game_idx] += 1
                 else:
@@ -852,7 +893,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 score = float(policy_masked[int(idx)]) if not np.isneginf(policy_masked[int(idx)]) else -np.inf
                 # apply small penalty to PASS actions if configured
                 try:
-                    is_pass_act = dm.is_action_type(act, dm.ActionType.PASS)
+                    is_pass_act = is_command_type(act, dm.CommandType.PASS)
                 except Exception:
                     is_pass_act = False
                 if is_pass_act and pass_penalty:
@@ -907,7 +948,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                         act_type = 'UNKNOWN'
                 if act_type == None:
                     act_type = 'UNKNOWN'
-                if act_type == 'PASS' or dm.is_action_type(chosen, dm.ActionType.PASS):
+                if act_type == 'PASS' or is_command_type(chosen, dm.CommandType.PASS):
                     pass_count[game_idx] += 1
                 tb = action_by_turn[game_idx].setdefault(str(turn_no), {})
                 tb[act_type] = tb.get(act_type, 0) + 1
@@ -915,8 +956,6 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 pass
             try:
                 from dm_toolkit.compat_wrappers import execute_action_compat
-                # Prefer instance-level API when available, but route through
-                # compatibility helper to ensure command path execution.
                 execute_action_compat(instances[game_idx].state, chosen, CARD_DB)
             except Exception:
                 try:
@@ -924,7 +963,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 except Exception:
                     pass
             try:
-                if dm.is_action_type(chosen, dm.ActionType.PASS):
+                if is_command_type(chosen, dm.CommandType.PASS):
                     dm.PhaseManager.next_phase(instances[game_idx].state, CARD_DB)
             except Exception:
                 pass
@@ -932,9 +971,9 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
             try:
                 is_pass = False
                 try:
-                    is_pass = ( (isinstance(last_chosen[game_idx], dict) and last_chosen[game_idx].get('type') == 'PASS') or dm.is_action_type(chosen, dm.ActionType.PASS) )
+                    is_pass = ( (isinstance(last_chosen[game_idx], dict) and last_chosen[game_idx].get('type') == 'PASS') or is_command_type(chosen, dm.CommandType.PASS) )
                 except Exception:
-                    is_pass = dm.is_action_type(chosen, dm.ActionType.PASS)
+                    is_pass = is_command_type(chosen, dm.CommandType.PASS)
                 if is_pass and len(legals_b[k]) == 1:
                     consecutive_pass_count[game_idx] += 1
                 else:
@@ -980,22 +1019,22 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
         for i, inst in enumerate(instances):
             if finished[i]:
                 continue
+            try:
                 try:
-                    try:
-                        legal = commands.generate_legal_commands(inst.state, CARD_DB, strict=False) or []
-                    except Exception:
-                        legal = []
-                    if not legal:
-                        try:
-                            from dm_toolkit import commands as legacy_commands
-                            legal = legacy_commands._call_native_action_generator(inst.state, CARD_DB) or []
-                        except Exception:
-                            try:
-                                legal = dm.IntentGenerator.generate_legal_commands(inst.state, CARD_DB) or []
-                            except Exception:
-                                legal = []
+                    legal = commands.generate_legal_commands(inst.state, CARD_DB, strict=False) or []
                 except Exception:
                     legal = []
+                if not legal:
+                    try:
+                        from dm_toolkit import commands as legacy_commands
+                        legal = legacy_commands._call_native_action_generator(inst.state, CARD_DB) or []
+                    except Exception:
+                        try:
+                            legal = dm.IntentGenerator.generate_legal_commands(inst.state, CARD_DB) or []
+                        except Exception:
+                            legal = []
+            except Exception:
+                legal = []
                 pending = EngineCompat.get_pending_effects_info(inst.state)
                 # turn number and simple player zone summaries
                 turn = EngineCompat.get_turn_number(inst.state)
