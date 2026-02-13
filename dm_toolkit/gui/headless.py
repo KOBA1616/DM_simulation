@@ -149,8 +149,10 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
                                 # Prefer command-first generator when possible, else adapt from ActionGenerator
                                 acts = []
                                 try:
+                                    from dm_toolkit import commands_v2 as _commands
                                     try:
-                                        from dm_toolkit import commands as _commands
+                                        acts = _commands.generate_legal_commands(state, card_db, strict=False) or []
+                                    except TypeError:
                                         acts = _commands.generate_legal_commands(state, card_db) or []
                                     except Exception:
                                         acts = []
@@ -158,15 +160,15 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
                                     acts = []
                                 if not acts:
                                     try:
-                                        # Centralized native fallback helper
-                                        from dm_toolkit import commands as _commands
-                                        acts = _commands._call_native_action_generator(state, card_db) or []
-                                    except Exception:
+                                        # Final fallback to centralized legacy helper
+                                        from dm_toolkit import commands as legacy_commands
                                         try:
-                                            if hasattr(_native, 'ActionGenerator'):
-                                                acts = _native.ActionGenerator.generate_legal_commands(state, card_db)
+                                            from dm_toolkit.training.command_compat import generate_legal_commands as compat_generate
+                                            acts = compat_generate(state, card_db, strict=False) or []
                                         except Exception:
                                             acts = []
+                                    except Exception:
+                                        acts = []
 
                                 if acts:
                                     for a in acts:
@@ -363,6 +365,23 @@ def play_instance(sess: GameSession, instance_id: int) -> bool:
         play_cmd = cmds[0]
 
     try:
+        # Prefer command-first execution. If play_cmd looks like a legacy Action,
+        # map it to a Command before executing.
+        try:
+            if play_cmd is None:
+                return False
+            if not hasattr(play_cmd, 'to_dict') and hasattr(play_cmd, 'type'):
+                from dm_toolkit.action_to_command import map_action
+                try:
+                    mapped = map_action(play_cmd)
+                    sess.execute_action(mapped)
+                    return True
+                except Exception:
+                    # fall back to original object
+                    pass
+        except Exception:
+            pass
+
         sess.execute_action(play_cmd)
         return True
     except Exception:

@@ -20,7 +20,8 @@ class TestActionGenerator(unittest.TestCase):
         }
 
     def test_generator_exists(self):
-        self.assertTrue(hasattr(dm_ai_module, 'ActionGenerator'), "ActionGenerator class is missing")
+        # Require command-first API to be present on the module
+        self.assertTrue(callable(getattr(dm_ai_module, 'generate_commands', None)), "dm_ai_module.generate_commands not found")
 
     def test_mana_phase_actions(self):
         # Phase 2 = Mana

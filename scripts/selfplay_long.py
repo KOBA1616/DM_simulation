@@ -41,7 +41,7 @@ from dm_toolkit.gui.headless import create_session
 from dm_toolkit import commands_v2
 import dm_ai_module
 
-# Prefer command-first wrapper; provide safe fallback to legacy ActionGenerator
+# Prefer command-first wrapper; provide safe fallback to legacy compatibility shim when necessary
 def get_legal_commands(gs, card_db):
     try:
         cmds = commands_v2.generate_legal_commands(gs, card_db, strict=False) or []

@@ -393,7 +393,20 @@ class GameWindow(QMainWindow):
 
     def pass_turn(self) -> None:
         if hasattr(self, 'current_pass_action') and self.current_pass_action:
-            self.session.execute_action(self.current_pass_action)
+            try:
+                a = self.current_pass_action
+                # If this is a legacy Action object, map to Command first
+                if not hasattr(a, 'to_dict') and hasattr(a, 'type'):
+                    try:
+                        from dm_toolkit.action_to_command import map_action
+                        cmd = map_action(a)
+                        self.session.execute_action(cmd)
+                        return
+                    except Exception:
+                        pass
+                self.session.execute_action(a)
+            except Exception:
+                pass
 
     def confirm_selection(self) -> None:
         self.input_handler.confirm_selection()
@@ -491,11 +504,23 @@ class GameWindow(QMainWindow):
             # Prefer native command-first generator via commands wrapper; only call EngineCompat fallback when empty
             try:
                 all_legal_actions = commands.generate_legal_commands(self.gs, self.card_db, strict=False) or []
+            except TypeError:
+                all_legal_actions = commands.generate_legal_commands(self.gs, self.card_db) or []
             except Exception:
                 all_legal_actions = []
+
+            if not all_legal_actions:
+                # Try calling command wrapper again with alternate signature
+                try:
+                    all_legal_actions = commands.generate_legal_commands(self.gs, self.card_db, strict=False) or []
+                except Exception:
+                    all_legal_actions = []
+
             if not all_legal_actions:
                 try:
-                    all_legal_actions = EngineCompat.ActionGenerator_generate_legal_commands(self.gs, self.card_db) or []
+                    # Final fallback: use centralized compat helper (command-first)
+                    from dm_toolkit.training.command_compat import generate_legal_commands as compat_generate
+                    all_legal_actions = compat_generate(self.gs, self.card_db, strict=False) or []
                 except Exception:
                     all_legal_actions = []
         except Exception:

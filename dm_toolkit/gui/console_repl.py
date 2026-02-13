@@ -93,7 +93,11 @@ def list_legal(sess: Any):
         try:
             d = c.to_dict()
         except Exception:
-            d = {'type': str(type(c))}
+            try:
+                from dm_toolkit.action_to_command import map_action
+                d = map_action(c)
+            except Exception:
+                d = {'type': str(type(c))}
         print(f"[{i}] {d}")
     print(f"total legal commands: {len(cmds)}")
     return cmds

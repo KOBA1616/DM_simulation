@@ -40,7 +40,7 @@
 | `GameInstance.start_game()` | dm_ai_module.py | 495 | テスト用 |
 | `GameInstance.initialize_card_stats()` | dm_ai_module.py | 497 | テスト用 |
 | `PhaseManager.setup_scenario()` | dm_ai_module.py | 687 | テスト用（空実装） |
-| `ActionGenerator` クラス/メソッド群 | dm_ai_module.py | 530+ | テスト・デバッグ用 |
+| `ActionGenerator` (removed) | dm_ai_module.py | --- | 削除済み — モジュール関数 `generate_legal_commands` を使用してください |
 
 ---
 

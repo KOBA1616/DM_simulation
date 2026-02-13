@@ -83,6 +83,7 @@ def train_simple(data_path: str = "data/transformer_training_data.npz", epochs: 
         # Warn if dataset policies size differs
         if policies.shape[1] != action_dim:
             print(f"  Warning: dataset policy dim ({policies.shape[1]}) != CommandEncoder size ({action_dim})")
+            print("  Suggestion: run training/convert_training_policies.py to convert datasets to the canonical CommandEncoder mapping.")
     else:
         action_dim = int(policies.shape[1])
         print(f"  Using action_dim derived from dataset: {action_dim}")

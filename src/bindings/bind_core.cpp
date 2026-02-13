@@ -680,8 +680,20 @@ void bind_core(py::module& m) {
         .def_readwrite("commands_since_snapshot", &GameState::StateSnapshot::commands_since_snapshot)
         .def_readwrite("hash_at_snapshot", &GameState::StateSnapshot::hash_at_snapshot);
 
+    // Expose a small CardStub factory to provide C++ CardInstance objects
+    // for Python tests that append stub cards directly to zone lists.
+    m.def("CardStub", [](int card_id) {
+        static int _next_iid = 1000;
+        _next_iid += 1;
+        return dm::core::CardInstance(card_id, _next_iid, 0);
+    }, py::arg("card_id"));
+
+    m.def("CardStub", [](int card_id, int instance_id) {
+        return dm::core::CardInstance(card_id, instance_id, 0);
+    }, py::arg("card_id"), py::arg("instance_id"));
+
     py::class_<GameState, std::shared_ptr<GameState>>(m, "GameState")
-        .def(py::init<int>())
+        .def(py::init<int>(), py::arg("seed") = 0)
         .def("setup_test_duel", &GameState::setup_test_duel)
         .def("execute_command", &GameState::execute_command)
         .def("apply_move", [](GameState& s, const CommandDef& c) {
@@ -721,7 +733,21 @@ void bind_core(py::module& m) {
         .def_readonly("command_history", &GameState::command_history)
         .def_readwrite("turn_number", &GameState::turn_number)
         .def_readwrite("active_player_id", &GameState::active_player_id)
-        .def_readwrite("current_phase", &GameState::current_phase)
+        .def_property("current_phase",
+            [](const GameState &s) { return s.current_phase; },
+            [](GameState &s, py::object v) {
+                try {
+                    if (py::isinstance<py::int_>(v)) {
+                        int iv = v.cast<int>();
+                        s.current_phase = static_cast<Phase>(iv);
+                        return;
+                    }
+                    s.current_phase = v.cast<Phase>();
+                } catch (...) {
+                    // ignore invalid assignments
+                }
+            }
+        )
         .def_readwrite("players", &GameState::players)
         .def_readwrite("player_modes", &GameState::player_modes)
         .def("is_human_player", &GameState::is_human_player)
@@ -753,6 +779,19 @@ void bind_core(py::module& m) {
             }
         }, py::return_value_policy::reference)
         .def("get_zone", &GameState::get_zone)
+        .def("get_next_instance_id", [](GameState& s) {
+            int max_instance_id = -1;
+            for (int p = 0; p < (int)s.players.size(); ++p) {
+                auto& pl = s.players[p];
+                for (const auto& c : pl.deck) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                for (const auto& c : pl.hand) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                for (const auto& c : pl.battle_zone) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                for (const auto& c : pl.mana_zone) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                for (const auto& c : pl.shield_zone) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                for (const auto& c : pl.graveyard) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+            }
+            return max_instance_id + 1;
+        })
         .def("set_deck", [](GameState& s, PlayerID pid, std::vector<int> ids) {
             try {
                  // Find maximum instance_id across all zones BEFORE clearing
@@ -825,6 +864,31 @@ void bind_core(py::module& m) {
                 throw std::runtime_error("Unknown error in add_card_to_hand");
             }
         })
+        .def("add_card_to_hand", [](GameState& s, PlayerID pid, int cid) {
+            try {
+                // find max existing instance id
+                int max_instance_id = -1;
+                for (int p = 0; p < 2; ++p) {
+                    auto& pl = s.players[p];
+                    for (auto& c : pl.deck) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                    for (auto& c : pl.hand) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                    for (auto& c : pl.battle_zone) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                    for (auto& c : pl.mana_zone) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                    for (auto& c : pl.shield_zone) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                    for (auto& c : pl.graveyard) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                }
+                int iid = max_instance_id + 1;
+                CardInstance c(cid, iid, pid);
+                s.players[pid].hand.push_back(c);
+                s.set_card_owner(iid, pid);
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error(std::string("Error in add_card_to_hand (auto iid): ") + e.what());
+            } catch (...) {
+                throw std::runtime_error("Unknown error in add_card_to_hand (auto iid)");
+            }
+        })
         .def("add_card_to_mana", [](GameState& s, PlayerID pid, int cid, int iid) {
             try {
                  CardInstance c(cid, iid, pid);
@@ -837,7 +901,7 @@ void bind_core(py::module& m) {
                 throw std::runtime_error("Unknown error in add_card_to_mana");
             }
         })
-        .def("add_card_to_deck", [](GameState& s, PlayerID pid, int cid, int iid) {
+        .def("add_card_to_mana", [](GameState& s, PlayerID pid, int cid, int iid) {
             try {
                  CardInstance c(cid, iid, pid);
                  s.add_card_to_zone(c, Zone::DECK, pid);
@@ -847,6 +911,30 @@ void bind_core(py::module& m) {
                 throw std::runtime_error("Error in add_card_to_deck: " + std::string(e.what()));
             } catch (...) {
                 throw std::runtime_error("Unknown error in add_card_to_deck");
+            }
+        })
+        .def("add_card_to_mana", [](GameState& s, PlayerID pid, int cid) {
+            try {
+                int max_instance_id = -1;
+                for (int p = 0; p < 2; ++p) {
+                    auto& pl = s.players[p];
+                    for (auto& c : pl.deck) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                    for (auto& c : pl.hand) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                    for (auto& c : pl.battle_zone) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                    for (auto& c : pl.mana_zone) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                    for (auto& c : pl.shield_zone) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                    for (auto& c : pl.graveyard) if (c.instance_id > max_instance_id) max_instance_id = c.instance_id;
+                }
+                int iid = max_instance_id + 1;
+                CardInstance c(cid, iid, pid);
+                s.add_card_to_zone(c, Zone::MANA, pid);
+                s.set_card_owner(iid, pid);
+            } catch (const py::error_already_set& e) {
+                throw;
+            } catch (const std::exception& e) {
+                throw std::runtime_error(std::string("Error in add_card_to_mana (auto iid): ") + e.what());
+            } catch (...) {
+                throw std::runtime_error("Unknown error in add_card_to_mana (auto iid)");
             }
         })
         .def("add_card_to_shield", [](GameState& s, PlayerID pid, int cid, int iid) {

@@ -6,7 +6,6 @@ from enum import IntEnum
 # most types as Any for now; refine gradually.
 
 PhaseManager: Any
-ActionGenerator: Any
 EffectResolver: Any
 JsonLoader: Any
 

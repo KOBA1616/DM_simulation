@@ -22,11 +22,8 @@ def test_play_heuristic_with_mocked_dm_ai_module():
         def __repr__(self):
             return f"<Action type={self.type}>"
 
-    # ActionGenerator returns no native actions to force Python fallback.
-    class ActionGenerator:
-        @staticmethod
-        def generate_legal_commands(state, card_db=None):
-            return []
+    # dm_ai_module.generate_commands returns no native commands to force Python fallback.
+    fake.generate_commands = staticmethod(lambda state, card_db=None: [])
 
     class PhaseManager:
         @staticmethod
@@ -35,7 +32,7 @@ def test_play_heuristic_with_mocked_dm_ai_module():
 
     fake.Action = Action
     fake.ActionType = ActionType
-    fake.ActionGenerator = ActionGenerator
+    fake.generate_commands = fake.generate_commands
     fake.PhaseManager = PhaseManager
 
     sys.modules['dm_ai_module'] = fake

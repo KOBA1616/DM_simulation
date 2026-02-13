@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit import commands_v2 as commands
+from dm_toolkit.training.command_compat import generate_legal_commands, command_to_index, normalize_to_command
 try:
     import dm_ai_module
 except Exception:
@@ -23,30 +24,16 @@ except Exception:
 
 
 def dump_mapped_commands(state, card_db, note: str):
-    try:
-        cmds = commands.generate_legal_commands(state, card_db, strict=False) or []
-    except Exception:
-        try:
-            cmds = commands.generate_legal_commands(state, card_db) or []
-        except Exception:
-            cmds = []
+    # Prefer command-first generator via compatibility helper
+    cmds = generate_legal_commands(state, card_db, strict=False) or []
 
     out = []
     for w in cmds:
         try:
-            d = w.to_dict()
+            d = normalize_to_command(w)
         except Exception:
-            try:
-                d = {"_repr": repr(w)}
-            except Exception:
-                d = {"_repr": str(w)}
-        try:
-            idx = dm_ai_module.CommandEncoder.command_to_index(d)
-        except Exception:
-            try:
-                idx = dm_ai_module.CommandEncoder.command_to_index(w.to_dict() if hasattr(w, 'to_dict') else d)
-            except Exception:
-                idx = None
+            d = {"_repr": repr(w)}
+        idx = command_to_index(w)
         out.append({'cmd': d, 'index': idx})
 
     print(json.dumps({'note': note, 'players': [len(getattr(p, 'hand', [])) for p in state.players], 'phase': str(getattr(state, 'current_phase', None)), 'mapped': out}, ensure_ascii=False, indent=2))

@@ -90,7 +90,18 @@ class GameSession:
         # Create GameInstance (replaces GameState)
         self.game_instance = dm_ai_module.GameInstance(seed, self.native_card_db)
         self.gs = self.game_instance.state  # Alias for compatibility
-        self.gs.setup_test_duel()
+        # Ensure compatibility initialization (sets player_modes, execution_context, etc.)
+        try:
+            if hasattr(self.gs, 'initialize'):
+                self.gs.initialize()
+            else:
+                # fallback to older setup method
+                self.gs.setup_test_duel()
+        except Exception:
+            try:
+                self.gs.setup_test_duel()
+            except Exception:
+                pass
 
         # Set decks
         deck0 = list(self.DEFAULT_DECK) if self.DEFAULT_DECK else self._build_default_deck()
@@ -140,7 +151,17 @@ class GameSession:
         # Create GameInstance (not just GameState)
         self.game_instance = dm_ai_module.GameInstance(seed, self.native_card_db)
         self.gs = self.game_instance.state  # Alias for compatibility
-        self.gs.setup_test_duel()
+        # Initialize GameState compatibility fields
+        try:
+            if hasattr(self.gs, 'initialize'):
+                self.gs.initialize()
+            else:
+                self.gs.setup_test_duel()
+        except Exception:
+            try:
+                self.gs.setup_test_duel()
+            except Exception:
+                pass
 
         deck0 = p0_deck if p0_deck else list(self.DEFAULT_DECK)
         deck1 = p1_deck if p1_deck else list(self.DEFAULT_DECK)
@@ -364,10 +385,15 @@ class GameSession:
 
         if not cmds:
             try:
-                # Legacy fallback via EngineCompat/ActionGenerator
-                return EngineCompat.ActionGenerator_generate_legal_commands(self.gs, self.card_db)
+                # Fallback to command-first generator (commands_v2) if native returned none
+                try:
+                    return _generate_legal_commands(self.gs, self.card_db, strict=False) or []
+                except TypeError:
+                    return _generate_legal_commands(self.gs, self.card_db) or []
             except Exception:
-                return []
+                # Final fallback to legacy ActionGenerator for compatibility
+                    from dm_toolkit.training.command_compat import generate_legal_commands as compat_generate
+                    return compat_generate(self.gs, self.card_db, strict=False) or []
 
         return cmds
 

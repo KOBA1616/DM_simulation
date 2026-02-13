@@ -86,7 +86,7 @@
 - **目的**: `_ai_select_action()`をC++に移行
 - **現状**:
   - Python: AIがアクション選択
-  - C++: `ActionGenerator`が合法手生成のみ
+  - C++: `IntentGenerator` / コマンド優先ジェネレータが合法手生成の責務を持つ
 - **作業**:
   1. `AIController`クラス作成
   2. MCTSエンジンとの統合

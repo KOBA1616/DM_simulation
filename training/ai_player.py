@@ -12,6 +12,9 @@ if str(project_root) not in sys.path:
 from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 from dm_toolkit.ai.agent.tokenization import StateTokenizer, ActionEncoder
 from dm_ai_module import GameCommand
+from dm_toolkit.action_to_command import map_action
+from dm_toolkit.training.command_compat import normalize_to_command as _cc_normalize
+import dm_ai_module as dm
 
 class AIPlayer:
     def __init__(self, model_path: str, device='cpu', config=None):
@@ -96,6 +99,100 @@ class AIPlayer:
         # 4. Decode
         action_idx = torch.argmax(policy_logits, dim=1).item()
 
-        # 5. Map to GameCommand
-        command = self.action_encoder.decode_action(action_idx, game_state, player_id)
-        return command
+        # 5. Map to GameCommand (prefer Command representation)
+        act = self.action_encoder.decode_action(action_idx, game_state, player_id)
+
+        def _normalize_to_command(obj):
+            try:
+                if isinstance(obj, dict):
+                    # Wrap dict into an object with attribute access to satisfy callers
+                    d = obj
+                    class _CmdObj:
+                        pass
+                    co = _CmdObj()
+                    for k, v in d.items():
+                        setattr(co, k, v)
+                    # Normalize `type` to engine ActionType when possible
+                    t = d.get('type')
+                    try:
+                        if isinstance(t, str):
+                            at = getattr(dm.ActionType, t, None)
+                            if at is None:
+                                at = getattr(dm.ActionType, t.upper(), None)
+                            co.type = at if at is not None else t
+                        else:
+                            co.type = t
+                    except Exception:
+                        co.type = t
+                    # Ensure source_instance_id alias exists for compatibility
+                    try:
+                        if not hasattr(co, 'source_instance_id') and hasattr(co, 'instance_id'):
+                            setattr(co, 'source_instance_id', getattr(co, 'instance_id'))
+                    except Exception:
+                        pass
+                    return co
+                if hasattr(obj, 'to_dict'):
+                    try:
+                        d = obj.to_dict()
+                        if isinstance(d, dict):
+                            # wrap dict as command object
+                            dd = d
+                            class _CmdObj2:
+                                pass
+                            co2 = _CmdObj2()
+                            for k, v in dd.items():
+                                setattr(co2, k, v)
+                            t = dd.get('type')
+                            try:
+                                if isinstance(t, str):
+                                    at = getattr(dm.ActionType, t, None)
+                                    if at is None:
+                                        at = getattr(dm.ActionType, t.upper(), None)
+                                    co2.type = at if at is not None else t
+                                else:
+                                    co2.type = t
+                            except Exception:
+                                co2.type = t
+                                try:
+                                    if not hasattr(co2, 'source_instance_id') and hasattr(co2, 'instance_id'):
+                                        setattr(co2, 'source_instance_id', getattr(co2, 'instance_id'))
+                                except Exception:
+                                    pass
+                            return co2
+                        return d
+                    except Exception:
+                        pass
+                try:
+                    m = _cc_normalize(obj)
+                    if isinstance(m, dict):
+                        dd = m
+                        class _CmdObj3:
+                            pass
+                        co3 = _CmdObj3()
+                        for k, v in dd.items():
+                            setattr(co3, k, v)
+                        t = dd.get('type')
+                        try:
+                            if isinstance(t, str):
+                                at = getattr(dm.ActionType, t, None)
+                                if at is None:
+                                    at = getattr(dm.ActionType, t.upper(), None)
+                                co3.type = at if at is not None else t
+                            else:
+                                co3.type = t
+                        except Exception:
+                            co3.type = t
+                        try:
+                            if not hasattr(co3, 'source_instance_id') and hasattr(co3, 'instance_id'):
+                                setattr(co3, 'source_instance_id', getattr(co3, 'instance_id'))
+                        except Exception:
+                            pass
+                        return co3
+                    return m
+                except Exception:
+                    return None
+            except Exception:
+                return None
+
+        cmd = _normalize_to_command(act)
+        return cmd if cmd is not None else act

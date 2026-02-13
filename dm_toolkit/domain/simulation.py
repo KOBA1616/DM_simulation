@@ -150,11 +150,21 @@ class SimulationRunner:
                                 legal_actions = []
 
                         mask = np.zeros(reserved_dim, dtype=bool)
+                        from dm_toolkit.action_to_command import map_action
                         for action in (legal_actions or []):
                             try:
-                                # action may be CommandDef or dict-like
-                                d = action.to_dict() if hasattr(action, 'to_dict') else (action if isinstance(action, dict) else None)
-                                idx = dm_ai_module.CommandEncoder.command_to_index(d if d is not None else action)
+                                # Normalize to a command-dict if possible
+                                if hasattr(action, 'to_dict'):
+                                    d = action.to_dict()
+                                elif isinstance(action, dict):
+                                    d = action
+                                else:
+                                    try:
+                                        d = map_action(action)
+                                    except Exception:
+                                        d = None
+
+                                idx = dm_ai_module.CommandEncoder.command_to_index(d if d is not None else (action if isinstance(action, dict) else None))
                                 if idx is not None and 0 <= idx < reserved_dim:
                                     mask[idx] = True
                             except Exception:

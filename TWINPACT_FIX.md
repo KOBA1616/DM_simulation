@@ -216,11 +216,11 @@ card_db = dm.JsonLoader.load_cards('data/cards.json')
 # ツインパクトを手札に追加
 # ... (手札・マナ配置)
 
-# アクション生成
-actions = dm.ActionGenerator.generate_legal_actions(gs, card_db)
+# コマンド生成（コマンド方式を優先）
+cmds = dm.generate_commands(gs, card_db)
 
-# 検証: ツインパクトカードから2つのDECLARE_PLAYが生成されているか
-twinpact_actions = [a for a in actions if a.type == dm.PlayerIntent.DECLARE_PLAY and a.source_instance_id == 100]
+# 検証: ツインパクトカードから2つのPLAY系コマンドが生成されているか
+twinpact_actions = [c for c in cmds if getattr(c, 'type', None) in ('PLAY_CARD','PLAY','PLAY_FROM_ZONE') and getattr(c, 'source_instance_id', None) == 100]
 assert len(twinpact_actions) == 2
 assert any(a.is_spell_side for a in twinpact_actions)
 assert any(not a.is_spell_side for a in twinpact_actions)

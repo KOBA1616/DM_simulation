@@ -212,9 +212,8 @@
       - execute_action()
       - initialize_card_stats()
   
-  - ActionGenerator
-    メソッド:
-      - generate_legal_actions(state, card_db)
+  - ActionGenerator (removed)
+    note: 既に削除済み。互換性のためモジュール関数 `generate_legal_commands(state, card_db)` を利用してください。
 
 責務:
   ✓ C++ 拡張が利用不可の場合のフォールバック実装

@@ -20,7 +20,9 @@ from dm_toolkit.ai.agent.transformer_model import DuelTransformer
 from dm_toolkit.ai.agent.tokenization import StateTokenizer
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit import commands_v2 as commands
+from dm_toolkit.training.command_compat import generate_legal_commands, normalize_to_command, command_to_index
 import dm_ai_module
+from dm_toolkit.action_to_command import map_action
 
 
 def make_synthetic_examples(n_each: int = 100):
@@ -35,21 +37,30 @@ def make_synthetic_examples(n_each: int = 100):
     for _ in range(n_each):
         s = emit.make_playable_state()
         toks = tokenizer.encode_state(s, 0)
-        # legal indices (prefer command-first; fallback to ActionGenerator when empty)
-        try:
-            cmds = commands.generate_legal_commands(s, card_db, strict=False) or []
-        except Exception:
-            try:
-                cmds = commands.generate_legal_commands(s, card_db) or []
-            except Exception:
-                cmds = []
+        # legal indices (prefer command-first via central helper)
+        cmds = generate_legal_commands(s, card_db, strict=False) or []
         legal = [False] * dm_ai_module.CommandEncoder.TOTAL_COMMAND_SIZE
         chosen = None
-        for c in cmds:
+        from dm_toolkit.action_to_command import map_action
+        from dm_toolkit.training.command_compat import normalize_to_command
+        def _normalize_to_command(obj):
             try:
-                d = c.to_dict()
+                if isinstance(obj, dict):
+                    return obj
+                if hasattr(obj, 'to_dict'):
+                    try:
+                        return obj.to_dict()
+                    except Exception:
+                        pass
+                try:
+                    return normalize_to_command(obj)
+                except Exception:
+                    return {'_repr': repr(obj)}
             except Exception:
-                d = {'_repr': repr(c)}
+                return {'_repr': repr(obj)}
+
+        for c in cmds:
+            d = _normalize_to_command(c)
             idx = dm_ai_module.CommandEncoder.command_to_index(d)
             if idx is not None and 0 <= idx < len(legal):
                 legal[idx] = True
@@ -71,20 +82,12 @@ def make_synthetic_examples(n_each: int = 100):
     for _ in range(n_each):
         s = emit.make_attack_state()
         toks = tokenizer.encode_state(s, 0)
-        try:
-            cmds = commands.generate_legal_commands(s, card_db, strict=False) or []
-        except Exception:
-            try:
-                cmds = commands.generate_legal_commands(s, card_db) or []
-            except Exception:
-                cmds = []
+        cmds = generate_legal_commands(s, card_db, strict=False) or []
         legal = [False] * dm_ai_module.CommandEncoder.TOTAL_COMMAND_SIZE
         chosen = None
+        from dm_toolkit.action_to_command import map_action
         for c in cmds:
-            try:
-                d = c.to_dict()
-            except Exception:
-                d = {'_repr': repr(c)}
+            d = _normalize_to_command(c)
             idx = dm_ai_module.CommandEncoder.command_to_index(d)
             if idx is not None and 0 <= idx < len(legal):
                 legal[idx] = True

@@ -3,6 +3,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import dm_ai_module
 from dm_toolkit import commands
+from dm_toolkit.action_to_command import map_action
 
 
 def run():
@@ -55,7 +56,20 @@ def run():
         cmds = []
     if not cmds:
         try:
-            cmds = commands.generate_legal_commands(state, card_db) or []
+            # Try legacy action generation and map to commands where possible
+            try:
+                actions = commands.generate_legal_commands(state, card_db) or []
+            except Exception:
+                actions = []
+            mapped = []
+            for a in actions:
+                try:
+                    m = map_action(a) if not isinstance(a, dict) else a
+                    if m:
+                        mapped.append(m)
+                except Exception:
+                    continue
+            cmds = mapped or []
         except Exception:
             cmds = []
     print('Generated', len(cmds), 'commands')
