@@ -1,7 +1,0 @@
-MSBuild のバージョン 17.14.23+b0019275e (.NET Framework)
-
-  command_system.cpp
-C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(258,21): error C2561: 'dm::engine::systems::CommandSystem::execute_primitive': 関数が値を戻すように宣言されていますが、関数定義に 'return' ステートメントがありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
-      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(140,25):
-      'dm::engine::systems::CommandSystem::execute_primitive' の宣言を確認してください
-  

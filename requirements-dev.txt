@@ -1,5 +1,0 @@
--r requirements.txt
-pytest
-pybind11
-typing-extensions
-types-PyYAML
