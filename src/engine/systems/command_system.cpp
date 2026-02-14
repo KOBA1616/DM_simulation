@@ -83,7 +83,7 @@ namespace dm::engine::systems {
     }
 
     Zone parse_zone_string(const std::string& zone_str) {
-        if (zone_str == "DECK") return Zone::DECK;
+        if (zone_str == "DECK" || zone_str == "DECK_BOTTOM") return Zone::DECK;
         if (zone_str == "HAND") return Zone::HAND;
         if (zone_str == "MANA" || zone_str == "MANA_ZONE") return Zone::MANA;
         if (zone_str == "BATTLE" || zone_str == "BATTLE_ZONE") return Zone::BATTLE;
@@ -102,7 +102,7 @@ namespace dm::engine::systems {
         return cmd.amount;
     }
 
-    void CommandSystem::execute_command(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, std::map<std::string, int>& execution_context) {
+    bool CommandSystem::execute_command(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, std::map<std::string, int>& execution_context) {
         // Ensure defaults are loaded (singleton lazy init might need explicit call if not done elsewhere)
         ConditionSystem::instance().initialize_defaults();
 
@@ -113,8 +113,7 @@ namespace dm::engine::systems {
             case core::CommandType::FLOW:
             case core::CommandType::QUERY:
             case core::CommandType::SHUFFLE_DECK:
-                execute_primitive(state, cmd, source_instance_id, player_id, execution_context);
-                break;
+                return execute_primitive(state, cmd, source_instance_id, player_id, execution_context);
 
             // Macro Commands
             case core::CommandType::DRAW_CARD:
@@ -130,15 +129,15 @@ namespace dm::engine::systems {
             case core::CommandType::ADD_KEYWORD:
             case core::CommandType::SEARCH_DECK:
             case core::CommandType::SEND_TO_MANA: // Handled as macro/transition
-                expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
-                break;
+                return expand_and_execute_macro(state, cmd, source_instance_id, player_id, execution_context);
 
             default:
                 break;
         }
+        return true;
     }
 
-    void CommandSystem::execute_primitive(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, std::map<std::string, int>& execution_context) {
+    bool CommandSystem::execute_primitive(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, std::map<std::string, int>& execution_context) {
         if (cmd.type == core::CommandType::FLOW) {
             // FLOW Primitive: Evaluate condition and execute branch
             bool cond_result = true;
@@ -152,7 +151,9 @@ namespace dm::engine::systems {
 
             const auto& branch = cond_result ? cmd.if_true : cmd.if_false;
             for (const auto& child_cmd : branch) {
-                execute_command(state, child_cmd, source_instance_id, player_id, execution_context);
+                if (!execute_command(state, child_cmd, source_instance_id, player_id, execution_context)) {
+                    return false; // Suspended in flow branch
+                }
             }
 
         } else if (cmd.type == core::CommandType::TRANSITION) {
@@ -195,7 +196,13 @@ namespace dm::engine::systems {
                         else if (ZoneUtils::card_in_zone(state.players[inst->owner].hand, target_id)) actual_from = Zone::HAND;
                     }
 
-                    TransitionCommand trans(target_id, actual_from, to_z, inst->owner);
+                    int dest_idx = -1;
+                    if (cmd.to_zone == "DECK_BOTTOM") {
+                         to_z = Zone::DECK;
+                         dest_idx = 0;
+                    }
+
+                    TransitionCommand trans(target_id, actual_from, to_z, inst->owner, dest_idx);
                     trans.execute(state);
                     moved_count++;
                     moved_ids.push_back(target_id);
@@ -248,7 +255,7 @@ namespace dm::engine::systems {
                     if (!cmd.output_value_key.empty()) {
                         execution_context[cmd.output_value_key] = 0;
                     }
-                    return;
+                    return true;
                 }
 
                 std::map<std::string, int> params;
@@ -256,6 +263,14 @@ namespace dm::engine::systems {
 
                 QueryCommand query(query_type, targets, params);
                 query.execute(state);
+                // Queries that require user input (like SELECT_TARGET) are typically handled via PendingEffect or
+                // immediately resolved if AI/Random.
+                // However, currently QueryCommand might set waiting_for_user_input.
+                // If it does, we should interpret that as suspension?
+                // Actually, existing Query logic in GameState might set 'waiting_for_user_input'
+                // But let's check if we have a robust way to detect async. 
+                // For now, assuming basic queries might be sync for AI or handled elsewhere.
+                // But the critical fix is for DRAW_CARD optional which explicitly creates PendingEffect.
             }
 
         } else if (cmd.type == core::CommandType::MUTATE) {
@@ -284,15 +299,16 @@ namespace dm::engine::systems {
                     mutate.execute(state);
                 }
             } else {
-                std::cerr << "Warning: Unknown mutation kind: " << cmd.mutation_kind << std::endl;
+                // std::cerr << "Warning: Unknown mutation kind: " << cmd.mutation_kind << std::endl;
             }
         } else if (cmd.type == core::CommandType::SHUFFLE_DECK) {
              ShuffleCommand shuffle(player_id);
              shuffle.execute(state);
         }
+        return true;
     }
 
-    void CommandSystem::expand_and_execute_macro(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, std::map<std::string, int>& execution_context) {
+    bool CommandSystem::expand_and_execute_macro(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, std::map<std::string, int>& execution_context) {
         int count = resolve_amount(cmd, execution_context);
 
         switch (cmd.type) {
@@ -332,7 +348,7 @@ namespace dm::engine::systems {
                     }
                     
                     state.pending_effects.push_back(pending);
-                    std::cerr << "[CommandSystem] DRAW_CARD optional: Created SELECT_NUMBER pending effect (0-" << count << ")" << std::endl;
+                    // std::cerr << "[CommandSystem] DRAW_CARD optional: Created SELECT_NUMBER pending effect (0-" << count << ")" << std::endl;
                     
                     // DEBUG: Log to file
                     try {
@@ -345,7 +361,7 @@ namespace dm::engine::systems {
                         }
                     } catch(...) {}
                     
-                    return; // Don't draw now, wait for player input
+                    return false; // Don't draw now, wait for player input
                 }
                 
                 // Normal draw (non-optional or count determined by input)
@@ -576,6 +592,7 @@ namespace dm::engine::systems {
             default:
                 break;
         }
+        return true;
     }
 
     std::vector<int> CommandSystem::resolve_targets(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, std::map<std::string, int>& execution_context) {
@@ -671,7 +688,7 @@ namespace dm::engine::systems {
         // So `resolve_targets` MUST return only the selected ones if we want to enforce the limit.
         
         // Let's resolve amount again for selection logic
-        if (cmd.amount > 0 && !cmd.input_value_key.empty()) {
+        if (!cmd.input_value_key.empty()) {
              auto it = execution_context.find(cmd.input_value_key);
              if (it != execution_context.end()) amount = it->second;
         }

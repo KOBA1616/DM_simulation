@@ -63,7 +63,9 @@
             "type": "TRANSITION",
             "target_group": "PLAYER_SELF",
             "target_filter": {
-              "zones": [],
+              "zones": [
+                "HAND"
+              ],
               "civilizations": [],
               "races": [],
               "flags": []

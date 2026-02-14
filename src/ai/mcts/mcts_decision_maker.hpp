@@ -19,7 +19,7 @@ namespace dm::ai::mcts {
         std::vector<int> fixed_targets_;
     public:
         FixedDecisionMaker(std::vector<int> t) : fixed_targets_(t) {}
-        std::vector<int> select_targets(const dm::core::GameState&, const dm::engine::game_command::CommandDef&, const std::vector<int>&, int) override {
+        std::vector<int> select_targets(const dm::core::GameState&, const dm::core::CommandDef&, const std::vector<int>&, int) override {
             return fixed_targets_;
         }
     };
@@ -31,7 +31,7 @@ namespace dm::ai::mcts {
 
         std::vector<int> select_targets(
             const dm::core::GameState& state, 
-            const dm::engine::game_command::CommandDef& cmd, 
+            const dm::core::CommandDef& cmd, 
             const std::vector<int>& candidates, 
             int amount
         ) override {
@@ -52,7 +52,7 @@ namespace dm::ai::mcts {
             // We can wrap it in a shared_ptr with a no-op deleter to avoid copy, or just copy it if lightweight (it's big).
             // Better: MCTS constructor likely expects shared_ptr.
             auto card_db_ptr = std::shared_ptr<const std::map<dm::core::CardID, dm::core::CardDefinition>>(
-                &dm::engine::systems::CardRegistry::get_all_definitions(), 
+                &dm::engine::CardRegistry::get_all_definitions(), 
                 [](const void*){} // No-op deleter
             );
             
@@ -125,7 +125,7 @@ namespace dm::ai::mcts {
             }
 
             if (best_idx >= 0) {
-                std::cout << "[MCTSDecisionMaker] Selected option " << best_idx << " with WR " << best_win_rate << std::endl;
+                // std::cout << "[MCTSDecisionMaker] Selected option " << best_idx << " with WR " << best_win_rate << std::endl;
                 return combinations[best_idx];
             }
             return combinations[0]; // Fallback

@@ -4,18 +4,19 @@
 [DEBUG] bind_common exit
 [DEBUG] bind_core enter
 [DEBUG] executing bind_map in bind_core
-Traceback (most recent call last):
 DEBUG: Native candidates: ['C:\\Users\\ichirou\\DM_simulation\\bin\\Release\\dm_ai_module.cp312-win_amd64.pyd', 'C:\\Users\\ichirou\\DM_simulation\\bin\\Release\\dm_ai_module.cp312-win_amd64.pyd', 'C:\\Users\\ichirou\\DM_simulation\\build-msvc\\Release\\dm_ai_module.cp312-win_amd64.pyd', 'C:\\Users\\ichirou\\DM_simulation\\build-msvc\\dm_ai_module.cp312-win_amd64.pyd']
 DEBUG: Checking candidate: C:\Users\ichirou\DM_simulation\bin\Release\dm_ai_module.cp312-win_amd64.pyd
 DEBUG: Found candidate at C:\Users\ichirou\DM_simulation\bin\Release\dm_ai_module.cp312-win_amd64.pyd, attempting load...
 DEBUG: Successfully loaded native module from C:\Users\ichirou\DM_simulation\bin\Release\dm_ai_module.cp312-win_amd64.pyd
 Initializing Game for Card ID 1 Reproduction...
-  File "C:\Users\ichirou\DM_simulation\repro_card1.py", line 87, in <module>
+Initial Hand Size: 5
+Initial Mana: 2
+Total Actions Generated: 3
+Action: Type=PlayerIntent.DECLARE_PLAY, Source=20, CardID=1
+Traceback (most recent call last):
+  File "C:\Users\ichirou\DM_simulation\repro_card1.py", line 93, in <module>
     run_reproduction()
-  File "C:\Users\ichirou\DM_simulation\repro_card1.py", line 23, in run_reproduction
-    config.my_mana = [1, 1] # 2 Water mana
-    ^^^^^^^^^^^^^^
-TypeError: (): incompatible function arguments. The following argument types are supported:
-    1. (self: dm_ai_module.ScenarioConfig, arg0: int) -> None
-
-Invoked with: <dm_ai_module.ScenarioConfig object at 0x000001C0959F7CB0>, [1, 1]
+  File "C:\Users\ichirou\DM_simulation\repro_card1.py", line 51, in run_reproduction
+    card_instance = game.state.players[0].hand.get_card(a.source_instance_id)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'dm_ai_module.CardList' object has no attribute 'get_card'

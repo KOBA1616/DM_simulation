@@ -1,0 +1,126 @@
+The input line is too long.
+The syntax of the command is incorrect.
+Configuring (Generator=Visual Studio 17 2022, Config=Release)...
+-- pybind11 not found via find_package; fetching via FetchContent
+CMake Deprecation Warning at build-msvc/_deps/pybind11-src/CMakeLists.txt:13 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+-- pybind11 v2.13.6 
+-- LibTorch disabled (USE_LIBTORCH=OFF)
+-- ONNX Runtime enabled
+-- Configuring done (11.4s)
+-- Generating done (2.2s)
+-- Build files have been written to: C:/Users/ichirou/DM_simulation/build-msvc
+Building...
+MSBuild のバージョン 17.14.23+b0019275e (.NET Framework)
+
+  command_system.cpp
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(175,29): error C2065: 'TransitionCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(175,47): error C2146: 構文エラー: ';' が、識別子 'trans' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(175,47): error C3861: 'trans': 識別子が見つかりませんでした [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(176,29): error C2065: 'trans': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(204,21): error C2065: 'TransitionCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(204,39): error C2146: 構文エラー: ';' が、識別子 'trans' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(204,39): error C3861: 'trans': 識別子が見つかりませんでした [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(205,21): error C2065: 'trans': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(263,17): error C2065: 'QueryCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(263,30): error C2146: 構文エラー: ';' が、識別子 'query' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(263,30): error C3861: 'query': 識別子が見つかりませんでした [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(264,17): error C2065: 'query': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(272,13): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(272,28): error C2065: 'MutationType': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(272,41): error C2146: 構文エラー: ';' が、識別子 'm_type' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(272,41): error C2065: 'm_type': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(272,50): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(272,79): error C2065: 'TAP': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(274,45): error C2065: 'm_type': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(274,54): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(274,83): error C2065: 'TAP': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(275,52): error C2065: 'm_type': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(275,61): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(275,90): error C2065: 'UNTAP': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(276,56): error C2065: 'm_type': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(276,65): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(276,94): error C2065: 'POWER_MOD': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(277,58): error C2065: 'm_type': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(277,67): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(277,96): error C2065: 'ADD_KEYWORD': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(278,61): error C2065: 'm_type': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(278,70): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(278,99): error C2065: 'REMOVE_KEYWORD': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(279,65): error C2065: 'm_type': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(279,74): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(279,103): error C2065: 'ADD_PASSIVE_EFFECT': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(280,64): error C2065: 'm_type': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(280,73): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(280,102): error C2065: 'ADD_COST_MODIFIER': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(281,65): error C2065: 'm_type': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(281,74): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(281,103): error C2065: 'ADD_PENDING_EFFECT': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(282,61): error C2065: 'm_type': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(282,70): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(282,99): error C2065: 'RESET_INSTANCE': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(283,56): error C2065: 'm_type': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(283,65): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(283,94): error C2065: 'POWER_SET': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(284,51): error C2065: 'm_type': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(284,60): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(284,89): error C2065: 'HEAL': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(289,21): error C2065: 'MutateCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(289,35): error C2146: 構文エラー: ';' が、識別子 'mutate' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(289,53): error C2065: 'm_type': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(289,35): error C3861: 'mutate': 識別子が見つかりませんでした [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(290,21): error C2065: 'mutate': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(296,14): error C2065: 'ShuffleCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(296,29): error C2146: 構文エラー: ';' が、識別子 'shuffle' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(296,29): error C3861: 'shuffle': 識別子が見つかりませんでした [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(297,14): error C2065: 'shuffle': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(363,26): error C2065: 'TransitionCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(363,44): error C2146: 構文エラー: ';' が、識別子 'trans' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(363,44): error C3861: 'trans': 識別子が見つかりませんでした [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(364,26): error C2065: 'trans': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(381,26): error C2065: 'TransitionCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(381,44): error C2146: 構文エラー: ';' が、識別子 'trans' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(381,44): error C3861: 'trans': 識別子が見つかりませんでした [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(382,26): error C2065: 'trans': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(407,26): error C2065: 'TransitionCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(407,44): error C2146: 構文エラー: ';' が、識別子 'trans' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(407,44): error C3861: 'trans': 識別子が見つかりませんでした [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(419,26): error C2065: 'TransitionCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(419,44): error C2146: 構文エラー: ';' が、識別子 'real_trans' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(419,44): error C3861: 'real_trans': 識別子が見つかりませんでした [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(420,26): error C2065: 'real_trans': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(436,26): error C2065: 'TransitionCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(436,44): error C2146: 構文エラー: ';' が、識別子 'trans' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(436,44): error C3861: 'trans': 識別子が見つかりませんでした [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(437,26): error C2065: 'trans': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(464,25): error C2065: 'TransitionCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(464,43): error C2146: 構文エラー: ';' が、識別子 'trans' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(464,43): error C3861: 'trans': 識別子が見つかりませんでした [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(465,25): error C2065: 'trans': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(486,21): error C2065: 'MutateCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(486,35): error C2146: 構文エラー: ';' が、識別子 'mutate' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(486,53): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(486,82): error C2065: 'TAP': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(486,35): error C3861: 'mutate': 識別子が見つかりませんでした [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(487,21): error C2065: 'mutate': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(494,21): error C2065: 'MutateCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(494,35): error C2146: 構文エラー: ';' が、識別子 'mutate' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(494,53): error C2653: 'MutateCommand': 識別子がクラス名でも名前空間名でもありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(494,82): error C2065: 'UNTAP': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(494,35): error C3861: 'mutate': 識別子が見つかりませんでした [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(495,21): error C2065: 'mutate': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(519,26): error C2065: 'TransitionCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(519,44): error C2146: 構文エラー: ';' が、識別子 'trans' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(519,44): error C3861: 'trans': 識別子が見つかりませんでした [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(520,26): error C2065: 'trans': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(543,26): error C2065: 'TransitionCommand': 定義されていない識別子です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(543,44): error C2146: 構文エラー: ';' が、識別子 'trans' の前に必要です。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(543,44): error C1003: プログラム内のエラーが 100 個を超えました。コンパイルは中断されます。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+Build complete.

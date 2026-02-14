@@ -1,4 +1,5 @@
 #include "core/game_state.hpp"
+#include <iostream>
 #include "core/card_def.hpp"
 #include "bindings/types.hpp"      // Must be included before bindings.hpp/stl.h for opaque types to work
 #include "bindings/bindings.hpp"
@@ -17,6 +18,7 @@ using namespace dm;
 using namespace dm::core;
 
 void bind_core(py::module& m) {
+    std::cerr << "[DEBUG] bind_core enter" << std::endl;
     // Bind opaque vectors
     py::bind_vector<std::vector<dm::core::CardInstance>>(m, "CardList");
     py::bind_vector<std::vector<dm::core::Civilization>>(m, "CivilizationList");
@@ -1077,15 +1079,7 @@ void bind_core(py::module& m) {
         .def_readwrite("target_slot_index", &Action::target_slot_index)
         .def("to_string", &Action::to_string);
     // Manual binding to avoid reference/holder issues with CardDefinition
-    py::class_<dm::CardDatabase>(m, "CardDatabase")
-        .def(py::init<>())
-        .def("__len__", [](const dm::CardDatabase &v) { return v.size(); })
-        .def("__getitem__", [](const dm::CardDatabase &v, int key) -> dm::core::CardDefinition {
-            try { return v.at(key); } // Return by value (copy)
-            catch (const std::out_of_range &) { throw py::key_error("Key not found: " + std::to_string(key)); }
-        })
-        .def("__contains__", [](const dm::CardDatabase &v, int key) { return v.find(key) != v.end(); })
-        .def("__iter__", [](dm::CardDatabase &v) {
-             return py::make_key_iterator(v.begin(), v.end());
-        }, py::keep_alive<0, 1>());
+    // Manual binding check replaced with standard bind_map to ensure type casters are registered for Opaque type
+    std::cerr << "[DEBUG] executing bind_map in bind_core" << std::endl;
+    py::bind_map<dm::CardDatabase, std::shared_ptr<dm::CardDatabase>>(m, "CardDatabase");
 }

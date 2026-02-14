@@ -15,7 +15,9 @@ except ImportError as e:
 
 def test_ai_selection():
     # Load cards
-    dm.CardRegistry.load_from_json(os.path.join(PROJECT_ROOT, "data/cards.json"))
+    with open(os.path.join(PROJECT_ROOT, "data/cards.json"), 'r', encoding='utf-8') as f:
+        json_content = f.read()
+    dm.CardRegistry.load_from_json(json_content)
     
     # Setup Game
     state = dm.GameState()
@@ -97,7 +99,7 @@ def test_ai_selection():
         cmd = dm.CommandDef()
         cmd.type = dm.CommandType.DISCARD
         cmd.amount = 1
-        cmd.target_group = 0 # Player 0
+        cmd.target_group = dm.TargetScope.PLAYER_SELF # Player 0 (Self)
         
         print("Executing DISCARD command with AI...")
         

@@ -10,9 +10,7 @@ namespace dm::core {
     struct CardInstance;
 }
 
-namespace dm::engine::game_command {
-    struct CommandDef;
-}
+#include "core/card_json_types.hpp"
 
 namespace dm::engine::systems {
 
@@ -31,7 +29,7 @@ namespace dm::engine::systems {
          */
         virtual std::vector<int> select_targets(
             const dm::core::GameState& state, 
-            const dm::engine::game_command::CommandDef& cmd, 
+            const dm::core::CommandDef& cmd, 
             const std::vector<int>& candidates, 
             int amount
         ) = 0;

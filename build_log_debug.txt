@@ -1,0 +1,1025 @@
+The input line is too long.
+The syntax of the command is incorrect.
+-- pybind11 not found via find_package; fetching via FetchContent
+CMake Deprecation Warning at build-msvc/_deps/pybind11-src/CMakeLists.txt:13 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+-- pybind11 v2.13.6 
+-- LibTorch disabled (USE_LIBTORCH=OFF)
+-- ONNX Runtime enabled
+-- Configuring done (6.3s)
+-- Generating done (0.9s)
+-- Build files have been written to: C:/Users/ichirou/DM_simulation/build-msvc
+MSBuild のバージョン 17.14.23+b0019275e (.NET Framework)
+
+  1>Checking Build System
+  Building Custom Rule C:/Users/ichirou/DM_simulation/CMakeLists.txt
+  command_system.cpp
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(27,13): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(27,61): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(29,20): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(31,20): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(40,34): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(95,24): error C2511: 'int dm::engine::systems::CommandSystem::resolve_amount(const dm::engine::game_command::CommandDef &,const std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>> &)': オーバーロードされたメンバー関数が 'dm::engine::systems::CommandSystem' にありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.hpp(8,11):
+      'dm::engine::systems::CommandSystem' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(96,14): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(97,46): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(98,17): error C3536: 'it': 初期化前に使用することはできません [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(98,20): error C2446: '!=': 'std::_Tree_const_iterator<std::_Tree_val<std::_Tree_simple_types<std::pair<const std::string,int>>>>' 型から '<error type>' 型への変換ができません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(98,44):
+      この変換を実行可能なユーザー定義変換演算子がないか、または演算子を呼び出せません。
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(102,16): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(105,25): error C2511: 'void dm::engine::systems::CommandSystem::execute_command(dm::core::GameState &,const dm::engine::game_command::CommandDef &,int,dm::core::PlayerID,std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>> &)': オーバーロードされたメンバー関数が 'dm::engine::systems::CommandSystem' にありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.hpp(8,11):
+      'dm::engine::systems::CommandSystem' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(109,17): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(111,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(111,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(111,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(112,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(112,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(112,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(113,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(113,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(113,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(114,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(114,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(114,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(115,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(115,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(115,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(116,17): error C2664: 'void dm::engine::systems::CommandSystem::execute_primitive(dm::core::GameState &,const dm::core::CommandDef &,int,dm::core::PlayerID,std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>> &)': 引数 2 を 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef &' へ変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(116,42):
+      理由: 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef' へは変換できません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(116,42):
+      この変換を実行可能なユーザー定義変換演算子がないか、または演算子を呼び出せません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.hpp(18,21):
+      'dm::engine::systems::CommandSystem::execute_primitive' の宣言を確認してください
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(116,17):
+      引数リスト '(dm::core::GameState, const dm::engine::game_command::CommandDef, int, dm::core::PlayerID, std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>)' を一致させようとしているとき
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(120,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(120,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(120,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(121,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(121,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(121,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(122,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(122,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(122,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(123,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(123,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(123,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(124,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(124,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(124,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(125,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(125,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(125,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(126,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(126,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(126,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(127,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(127,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(127,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(128,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(128,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(128,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(129,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(129,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(129,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(130,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(130,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(130,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(131,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(131,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(131,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(132,37): error C2440: '型キャスト': 'dm::core::CommandType' から 'int' に変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(132,37):
+      この変換には明示的なキャスト (static_cast、C スタイル キャスト、またはかっこで囲まれた関数スタイル キャスト) が必要です
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(132,13): error C2046: 'case' が正しくありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(133,17): error C2664: 'void dm::engine::systems::CommandSystem::expand_and_execute_macro(dm::core::GameState &,const dm::core::CommandDef &,int,dm::core::PlayerID,std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>> &)': 引数 2 を 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef &' へ変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(133,49):
+      理由: 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef' へは変換できません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(133,49):
+      この変換を実行可能なユーザー定義変換演算子がないか、または演算子を呼び出せません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.hpp(15,21):
+      'dm::engine::systems::CommandSystem::expand_and_execute_macro' の宣言を確認してください
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(133,17):
+      引数リスト '(dm::core::GameState, const dm::engine::game_command::CommandDef, int, dm::core::PlayerID, std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>)' を一致させようとしているとき
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(141,25): error C2511: 'void dm::engine::systems::CommandSystem::execute_primitive(dm::core::GameState &,const dm::engine::game_command::CommandDef &,int,dm::core::PlayerID,std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>> &)': オーバーロードされたメンバー関数が 'dm::engine::systems::CommandSystem' にありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.hpp(8,11):
+      'dm::engine::systems::CommandSystem' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(142,13): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(145,17): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(149,29): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(148,60): error C2660: 'dm::engine::ConditionSystem::evaluate_def': 関数に 4 個の引数を指定できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\card\condition_system.hpp(32,14):
+      'dm::engine::ConditionSystem::evaluate_def' の宣言を確認してください
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(148,60):
+      引数リスト '(dm::core::GameState, int, const std::map<dm::core::CardID,dm::core::CardDefinition,std::less<dm::core::CardID>,std::allocator<std::pair<const dm::core::CardID,dm::core::CardDefinition>>>, std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>)' を一致させようとしているとき
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(153,48): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(153,62): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(153,32): error C2530: 'branch': 参照が初期化されずに宣言されています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(154,42): error C3536: 'branch': 初期化前に使用することはできません [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(154,42): error C3312: 型 '<error type>' に対して呼び出し可能な 'begin' 関数が見つかりません [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(154,42): error C3312: 型 '<error type>' に対して呼び出し可能な 'end' 関数が見つかりません [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(154,30): error C2530: 'child_cmd': 参照が初期化されずに宣言されています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(154,30): error C3531: 'child_cmd': 'auto' を含む型のシンボルには初期化子が必要です [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(154,40): error C2143: 構文エラー: ';' が ':' の前にありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(154,48): error C2143: 構文エラー: ';' が ')' の前にありません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(155,17): error C2664: 'void dm::engine::systems::CommandSystem::execute_command(dm::core::GameState &,const dm::core::CommandDef &,int,dm::core::PlayerID,std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>> &)': 引数 2 を '<error type>' から 'const dm::core::CommandDef &' へ変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(155,40):
+      理由: '<error type>' から 'const dm::core::CommandDef' へは変換できません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(155,40):
+      'dm::core::CommandDef::CommandDef': オーバーロードされた関数ですべての引数の型を変換できませんでした
+          C:\Users\ichirou\DM_simulation\src\core\card_json_types.hpp(310,5):
+          'dm::core::CommandDef::CommandDef(dm::core::CommandDef &&)' の可能性があります
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(155,40):
+              'dm::core::CommandDef::CommandDef(dm::core::CommandDef &&)': 引数 1 を '<error type>' から 'dm::core::CommandDef &&' へ変換できません。
+                  C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(155,40):
+                  理由: '<error type>' から 'dm::core::CommandDef' へは変換できません。
+                  C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(155,40):
+                  変換には 2 番目のユーザー定義変換演算子またはコンストラクターが必要です。
+          C:\Users\ichirou\DM_simulation\src\core\card_json_types.hpp(310,5):
+          または 'dm::core::CommandDef::CommandDef(const dm::core::CommandDef &)'
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(155,40):
+              'dm::core::CommandDef::CommandDef(const dm::core::CommandDef &)': 引数 1 を '<error type>' から 'const dm::core::CommandDef &' へ変換できません。
+                  C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(155,40):
+                  理由: '<error type>' から 'const dm::core::CommandDef' へは変換できません。
+                  C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(155,40):
+                  変換には 2 番目のユーザー定義変換演算子またはコンストラクターが必要です。
+          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(155,40):
+          引数リスト '(<error type>)' を一致させようとしているとき
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.hpp(11,21):
+      'dm::engine::systems::CommandSystem::execute_command' の宣言を確認してください
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(155,17):
+      引数リスト '(dm::core::GameState, <error type>, int, dm::core::PlayerID, std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>)' を一致させようとしているとき
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(158,20): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(159,40): error C2664: 'std::vector<int,std::allocator<int>> dm::engine::systems::CommandSystem::resolve_targets(dm::core::GameState &,const dm::core::CommandDef &,int,dm::core::PlayerID,std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>> &)': 引数 2 を 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef &' へ変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(159,63):
+      理由: 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef' へは変換できません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(159,63):
+      この変換を実行可能なユーザー定義変換演算子がないか、または演算子を呼び出せません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.hpp(21,33):
+      'dm::engine::systems::CommandSystem::resolve_targets' の宣言を確認してください
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(159,40):
+      引数リスト '(dm::core::GameState, const dm::engine::game_command::CommandDef, int, dm::core::PlayerID, std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>)' を一致させようとしているとき
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(161,45): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(162,43): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(165,36): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(167,29): error C2664: 'int dm::engine::systems::CommandSystem::resolve_amount(const dm::core::CommandDef &,const std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>> &)': 引数 1 を 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef &' へ変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(167,44):
+      理由: 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef' へは変換できません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(167,44):
+      この変換を実行可能なユーザー定義変換演算子がないか、または演算子を呼び出せません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.hpp(24,20):
+      'dm::engine::systems::CommandSystem::resolve_amount' の宣言を確認してください
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(167,29):
+      引数リスト '(const dm::engine::game_command::CommandDef, std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>)' を一致させようとしているとき
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(190,59): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(199,25): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(210,18): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,35): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55): error C7732: ']' の前に式が必要です [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,17): error C2679: 二項演算子 '[': 型 'int' の右オペランドを扱う演算子が見つかりません (または変換できません)。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\map(345,18):
+      'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](const std::basic_string<char,std::char_traits<char>,std::allocator<char>> &)' の可能性があります
+          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,17):
+          'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](const std::basic_string<char,std::char_traits<char>,std::allocator<char>> &)': 引数 2 を 'int' から 'const std::basic_string<char,std::char_traits<char>,std::allocator<char>> &' へ変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55):
+              理由: 'int' から 'const std::basic_string<char,std::char_traits<char>,std::allocator<char>>' へは変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55):
+              'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string': オーバーロードされた関数ですべての引数の型を変換できませんでした
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(768,5):
+                  'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )' の可能性があります
+          with
+          [
+              _Elem=char
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )': 引数 1 を 'int' から 'const _Elem *const ' へ変換できません。
+          with
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55):
+                          整数型からポインター型への変換には reinterpret_cast、C スタイル キャストまたはかっこで囲まれた関数スタイル キャストが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1340,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)': 引数 1 を 'int' から 'std::initializer_list<_Elem>' へ変換できません。
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+          and
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55):
+                          変換には 2 番目のユーザー定義変換演算子またはコンストラクターが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1157,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Ty &,const unsigned __int64,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(798,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(_Iter,_Iter,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(792,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const unsigned __int64,const _Elem,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(775,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(762,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55):
+                  引数リスト '(int)' を一致させようとしているとき
+      C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\map(174,18):
+      または 'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](std::basic_string<char,std::char_traits<char>,std::allocator<char>> &&)'
+          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,17):
+          'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](std::basic_string<char,std::char_traits<char>,std::allocator<char>> &&)': 引数 2 を 'int' から 'std::basic_string<char,std::char_traits<char>,std::allocator<char>> &&' へ変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55):
+              理由: 'int' から 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>' へは変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55):
+              'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string': オーバーロードされた関数ですべての引数の型を変換できませんでした
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(768,5):
+                  'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )' の可能性があります
+          with
+          [
+              _Elem=char
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )': 引数 1 を 'int' から 'const _Elem *const ' へ変換できません。
+          with
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55):
+                          整数型からポインター型への変換には reinterpret_cast、C スタイル キャストまたはかっこで囲まれた関数スタイル キャストが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1340,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)': 引数 1 を 'int' から 'std::initializer_list<_Elem>' へ変換できません。
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+          and
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55):
+                          変換には 2 番目のユーザー定義変換演算子またはコンストラクターが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1157,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Ty &,const unsigned __int64,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(798,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(_Iter,_Iter,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(792,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const unsigned __int64,const _Elem,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(775,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(762,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,55):
+                  引数リスト '(int)' を一致させようとしているとき
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(211,17):
+      引数リスト '(std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>, int)' を一致させようとしているとき
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(214,43): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(222,20): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(224,39): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(224,81): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(227,23): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,40): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60): error C7732: ']' の前に式が必要です [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,22): error C2679: 二項演算子 '[': 型 'int' の右オペランドを扱う演算子が見つかりません (または変換できません)。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\map(345,18):
+      'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](const std::basic_string<char,std::char_traits<char>,std::allocator<char>> &)' の可能性があります
+          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,22):
+          'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](const std::basic_string<char,std::char_traits<char>,std::allocator<char>> &)': 引数 2 を 'int' から 'const std::basic_string<char,std::char_traits<char>,std::allocator<char>> &' へ変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60):
+              理由: 'int' から 'const std::basic_string<char,std::char_traits<char>,std::allocator<char>>' へは変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60):
+              'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string': オーバーロードされた関数ですべての引数の型を変換できませんでした
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(768,5):
+                  'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )' の可能性があります
+          with
+          [
+              _Elem=char
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )': 引数 1 を 'int' から 'const _Elem *const ' へ変換できません。
+          with
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60):
+                          整数型からポインター型への変換には reinterpret_cast、C スタイル キャストまたはかっこで囲まれた関数スタイル キャストが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1340,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)': 引数 1 を 'int' から 'std::initializer_list<_Elem>' へ変換できません。
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+          and
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60):
+                          変換には 2 番目のユーザー定義変換演算子またはコンストラクターが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1157,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Ty &,const unsigned __int64,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(798,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(_Iter,_Iter,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(792,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const unsigned __int64,const _Elem,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(775,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(762,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60):
+                  引数リスト '(int)' を一致させようとしているとき
+      C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\map(174,18):
+      または 'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](std::basic_string<char,std::char_traits<char>,std::allocator<char>> &&)'
+          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,22):
+          'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](std::basic_string<char,std::char_traits<char>,std::allocator<char>> &&)': 引数 2 を 'int' から 'std::basic_string<char,std::char_traits<char>,std::allocator<char>> &&' へ変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60):
+              理由: 'int' から 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>' へは変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60):
+              'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string': オーバーロードされた関数ですべての引数の型を変換できませんでした
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(768,5):
+                  'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )' の可能性があります
+          with
+          [
+              _Elem=char
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )': 引数 1 を 'int' から 'const _Elem *const ' へ変換できません。
+          with
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60):
+                          整数型からポインター型への変換には reinterpret_cast、C スタイル キャストまたはかっこで囲まれた関数スタイル キャストが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1340,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)': 引数 1 を 'int' から 'std::initializer_list<_Elem>' へ変換できません。
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+          and
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60):
+                          変換には 2 番目のユーザー定義変換演算子またはコンストラクターが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1157,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Ty &,const unsigned __int64,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(798,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(_Iter,_Iter,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(792,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const unsigned __int64,const _Elem,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(775,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(762,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,60):
+                  引数リスト '(int)' を一致させようとしているとき
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(228,22):
+      引数リスト '(std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>, int)' を一致させようとしているとき
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(245,23): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,40): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60): error C7732: ']' の前に式が必要です [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,22): error C2679: 二項演算子 '[': 型 'int' の右オペランドを扱う演算子が見つかりません (または変換できません)。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\map(345,18):
+      'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](const std::basic_string<char,std::char_traits<char>,std::allocator<char>> &)' の可能性があります
+          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,22):
+          'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](const std::basic_string<char,std::char_traits<char>,std::allocator<char>> &)': 引数 2 を 'int' から 'const std::basic_string<char,std::char_traits<char>,std::allocator<char>> &' へ変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60):
+              理由: 'int' から 'const std::basic_string<char,std::char_traits<char>,std::allocator<char>>' へは変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60):
+              'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string': オーバーロードされた関数ですべての引数の型を変換できませんでした
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(768,5):
+                  'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )' の可能性があります
+          with
+          [
+              _Elem=char
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )': 引数 1 を 'int' から 'const _Elem *const ' へ変換できません。
+          with
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60):
+                          整数型からポインター型への変換には reinterpret_cast、C スタイル キャストまたはかっこで囲まれた関数スタイル キャストが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1340,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)': 引数 1 を 'int' から 'std::initializer_list<_Elem>' へ変換できません。
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+          and
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60):
+                          変換には 2 番目のユーザー定義変換演算子またはコンストラクターが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1157,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Ty &,const unsigned __int64,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(798,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(_Iter,_Iter,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(792,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const unsigned __int64,const _Elem,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(775,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(762,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60):
+                  引数リスト '(int)' を一致させようとしているとき
+      C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\map(174,18):
+      または 'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](std::basic_string<char,std::char_traits<char>,std::allocator<char>> &&)'
+          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,22):
+          'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](std::basic_string<char,std::char_traits<char>,std::allocator<char>> &&)': 引数 2 を 'int' から 'std::basic_string<char,std::char_traits<char>,std::allocator<char>> &&' へ変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60):
+              理由: 'int' から 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>' へは変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60):
+              'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string': オーバーロードされた関数ですべての引数の型を変換できませんでした
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(768,5):
+                  'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )' の可能性があります
+          with
+          [
+              _Elem=char
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )': 引数 1 を 'int' から 'const _Elem *const ' へ変換できません。
+          with
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60):
+                          整数型からポインター型への変換には reinterpret_cast、C スタイル キャストまたはかっこで囲まれた関数スタイル キャストが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1340,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)': 引数 1 を 'int' から 'std::initializer_list<_Elem>' へ変換できません。
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+          and
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60):
+                          変換には 2 番目のユーザー定義変換演算子またはコンストラクターが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1157,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Ty &,const unsigned __int64,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(798,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(_Iter,_Iter,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(792,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const unsigned __int64,const _Elem,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(775,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(762,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,60):
+                  引数リスト '(int)' を一致させようとしているとき
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(246,22):
+      引数リスト '(std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>, int)' を一致させようとしているとき
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(249,44): error C2664: 'std::vector<int,std::allocator<int>> dm::engine::systems::CommandSystem::resolve_targets(dm::core::GameState &,const dm::core::CommandDef &,int,dm::core::PlayerID,std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>> &)': 引数 2 を 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef &' へ変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(249,67):
+      理由: 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef' へは変換できません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(249,67):
+      この変換を実行可能なユーザー定義変換演算子がないか、または演算子を呼び出せません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.hpp(21,33):
+      'dm::engine::systems::CommandSystem::resolve_targets' の宣言を確認してください
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(249,44):
+      引数リスト '(dm::core::GameState, const dm::engine::game_command::CommandDef, int, dm::core::PlayerID, std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>)' を一致させようとしているとき
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(254,26): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,43): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63): error C7732: ']' の前に式が必要です [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,25): error C2679: 二項演算子 '[': 型 'int' の右オペランドを扱う演算子が見つかりません (または変換できません)。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\map(345,18):
+      'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](const std::basic_string<char,std::char_traits<char>,std::allocator<char>> &)' の可能性があります
+          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,25):
+          'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](const std::basic_string<char,std::char_traits<char>,std::allocator<char>> &)': 引数 2 を 'int' から 'const std::basic_string<char,std::char_traits<char>,std::allocator<char>> &' へ変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63):
+              理由: 'int' から 'const std::basic_string<char,std::char_traits<char>,std::allocator<char>>' へは変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63):
+              'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string': オーバーロードされた関数ですべての引数の型を変換できませんでした
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(768,5):
+                  'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )' の可能性があります
+          with
+          [
+              _Elem=char
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )': 引数 1 を 'int' から 'const _Elem *const ' へ変換できません。
+          with
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63):
+                          整数型からポインター型への変換には reinterpret_cast、C スタイル キャストまたはかっこで囲まれた関数スタイル キャストが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1340,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)': 引数 1 を 'int' から 'std::initializer_list<_Elem>' へ変換できません。
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+          and
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63):
+                          変換には 2 番目のユーザー定義変換演算子またはコンストラクターが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1157,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Ty &,const unsigned __int64,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(798,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(_Iter,_Iter,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(792,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const unsigned __int64,const _Elem,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(775,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(762,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63):
+                  引数リスト '(int)' を一致させようとしているとき
+      C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\map(174,18):
+      または 'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](std::basic_string<char,std::char_traits<char>,std::allocator<char>> &&)'
+          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,25):
+          'int &std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>::operator [](std::basic_string<char,std::char_traits<char>,std::allocator<char>> &&)': 引数 2 を 'int' から 'std::basic_string<char,std::char_traits<char>,std::allocator<char>> &&' へ変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63):
+              理由: 'int' から 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>' へは変換できません。
+              C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63):
+              'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string': オーバーロードされた関数ですべての引数の型を変換できませんでした
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(768,5):
+                  'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )' の可能性があります
+          with
+          [
+              _Elem=char
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const )': 引数 1 を 'int' から 'const _Elem *const ' へ変換できません。
+          with
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63):
+                          整数型からポインター型への変換には reinterpret_cast、C スタイル キャストまたはかっこで囲まれた関数スタイル キャストが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1340,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63):
+                      'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(std::initializer_list<_Elem>,const _Alloc &)': 引数 1 を 'int' から 'std::initializer_list<_Elem>' へ変換できません。
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+          and
+          [
+              _Elem=char
+          ]
+                          C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63):
+                          変換には 2 番目のユーザー定義変換演算子またはコンストラクターが必要です。
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(1157,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Ty &,const unsigned __int64,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(798,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(_Iter,_Iter,const _Alloc &)'
+          with
+          [
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(792,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const unsigned __int64,const _Elem,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(775,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Tools\MSVC\14.44.35207\include\xstring(762,5):
+                  または 'std::basic_string<char,std::char_traits<char>,std::allocator<char>>::basic_string(const _Elem *const ,const unsigned __int64,const _Alloc &)'
+          with
+          [
+              _Elem=char,
+              _Alloc=std::allocator<char>
+          ]
+                  C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,63):
+                  引数リスト '(int)' を一致させようとしているとき
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(255,25):
+      引数リスト '(std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>, int)' を一致させようとしているとき
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(261,36): error C2664: 'int dm::engine::systems::CommandSystem::resolve_amount(const dm::core::CommandDef &,const std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>> &)': 引数 1 を 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef &' へ変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(261,51):
+      理由: 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef' へは変換できません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(261,51):
+      この変換を実行可能なユーザー定義変換演算子がないか、または演算子を呼び出せません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.hpp(24,20):
+      'dm::engine::systems::CommandSystem::resolve_amount' の宣言を確認してください
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(261,36):
+      引数リスト '(const dm::engine::game_command::CommandDef, std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>)' を一致させようとしているとき
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(267,20): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(268,40): error C2664: 'std::vector<int,std::allocator<int>> dm::engine::systems::CommandSystem::resolve_targets(dm::core::GameState &,const dm::core::CommandDef &,int,dm::core::PlayerID,std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>> &)': 引数 2 を 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef &' へ変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(268,63):
+      理由: 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef' へは変換できません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(268,63):
+      この変換を実行可能なユーザー定義変換演算子がないか、または演算子を呼び出せません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.hpp(21,33):
+      'dm::engine::systems::CommandSystem::resolve_targets' の宣言を確認してください
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(268,40):
+      引数リスト '(dm::core::GameState, const dm::engine::game_command::CommandDef, int, dm::core::PlayerID, std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>)' を一致させようとしているとき
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(269,23): error C2664: 'int dm::engine::systems::CommandSystem::resolve_amount(const dm::core::CommandDef &,const std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>> &)': 引数 1 を 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef &' へ変換できません。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(269,38):
+      理由: 'const dm::engine::game_command::CommandDef' から 'const dm::core::CommandDef' へは変換できません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(269,38):
+      この変換を実行可能なユーザー定義変換演算子がないか、または演算子を呼び出せません。
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.hpp(24,20):
+      'dm::engine::systems::CommandSystem::resolve_amount' の宣言を確認してください
+      C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(269,23):
+      引数リスト '(const dm::engine::game_command::CommandDef, std::map<std::string,int,std::less<std::string>,std::allocator<std::pair<const std::string,int>>>)' を一致させようとしているとき
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(274,17): error C2027: 認識できない型 'dm::engine::game_command::CommandDef' が使われています。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]
+      C:\Users\ichirou\DM_simulation\src\engine\systems\decision_maker.hpp(14,12):
+      'dm::engine::game_command::CommandDef' の宣言を確認してください
+  
+C:\Users\ichirou\DM_simulation\src\engine\systems\command_system.cpp(274,17): error C1003: プログラム内のエラーが 100 個を超えました。コンパイルは中断されます。 [C:\Users\ichirou\DM_simulation\build-msvc\dm_core.vcxproj]

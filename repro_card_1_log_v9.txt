@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+Initializing Game for Card ID 1 Reproduction...
+DEBUG: Native candidates: ['C:\\Users\\ichirou\\DM_simulation\\bin\\Release\\dm_ai_module.cp312-win_amd64.pyd', 'C:\\Users\\ichirou\\DM_simulation\\build-msvc\\Release\\dm_ai_module.cp312-win_amd64.pyd', 'C:\\Users\\ichirou\\DM_simulation\\build-msvc\\dm_ai_module.cp312-win_amd64.pyd']
+DEBUG: Checking candidate: C:\Users\ichirou\DM_simulation\bin\Release\dm_ai_module.cp312-win_amd64.pyd
+DEBUG: Candidate not found: C:\Users\ichirou\DM_simulation\bin\Release\dm_ai_module.cp312-win_amd64.pyd
+DEBUG: Checking candidate: C:\Users\ichirou\DM_simulation\build-msvc\Release\dm_ai_module.cp312-win_amd64.pyd
+DEBUG: Candidate not found: C:\Users\ichirou\DM_simulation\build-msvc\Release\dm_ai_module.cp312-win_amd64.pyd
+DEBUG: Checking candidate: C:\Users\ichirou\DM_simulation\build-msvc\dm_ai_module.cp312-win_amd64.pyd
+DEBUG: Candidate not found: C:\Users\ichirou\DM_simulation\build-msvc\dm_ai_module.cp312-win_amd64.pyd
+  File "C:\Users\ichirou\DM_simulation\scripts\repro_card_1.py", line 139, in <module>
+    run_reproduction()
+  File "C:\Users\ichirou\DM_simulation\scripts\repro_card_1.py", line 23, in run_reproduction
+    from dm_ai_module import GameInstance, JsonLoader, PhaseManager, IntentGenerator, PlayerIntent, Phase, ScenarioConfig
+ImportError: cannot import name 'IntentGenerator' from 'dm_ai_module' (C:\Users\ichirou\DM_simulation\dm_ai_module.py)

@@ -1,0 +1,2175 @@
+
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=415
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=415 history_sentinel=415
+  EXEC_CMD TEXT_AFTER type=3 history_sz=415 history_sentinel=415
+  EXEC_CMD exit history_sz=416
+  EXEC_CMD TEXT_AFTER type=17 history_sz=416 history_sentinel=416
+  EXEC_CMD exit history_sz=417
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=417
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=417 history_sentinel=417
+  EXEC_CMD TEXT_AFTER type=3 history_sz=417 history_sentinel=417
+  EXEC_CMD exit history_sz=418
+  EXEC_CMD TEXT_AFTER type=17 history_sz=418 history_sentinel=418
+  EXEC_CMD exit history_sz=419
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=419
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=419 history_sentinel=419
+  EXEC_CMD TEXT_AFTER type=3 history_sz=419 history_sentinel=419
+  EXEC_CMD exit history_sz=420
+  EXEC_CMD TEXT_AFTER type=17 history_sz=420 history_sentinel=420
+  EXEC_CMD exit history_sz=421
+  INTENT_GEN entry player=1 phase=6
+  EXEC_CMD entry type=3 history_sz=421
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=421 history_sentinel=421
+  EXEC_CMD TEXT_AFTER type=3 history_sz=421 history_sentinel=421
+  EXEC_CMD exit history_sz=422
+  EXEC_CMD entry type=3 history_sz=422
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=422 history_sentinel=422
+  EXEC_CMD TEXT_AFTER type=3 history_sz=422 history_sentinel=422
+  EXEC_CMD exit history_sz=423
+  EXEC_CMD entry type=3 history_sz=423
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=423 history_sentinel=423
+  EXEC_CMD TEXT_AFTER type=3 history_sz=423 history_sentinel=423
+  EXEC_CMD exit history_sz=424
+  EXEC_CMD entry type=3 history_sz=424
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=424 history_sentinel=424
+  EXEC_CMD TEXT_AFTER type=3 history_sz=424 history_sentinel=424
+  EXEC_CMD exit history_sz=425
+  EXEC_CMD entry type=1 history_sz=425
+  EXEC_CMD TEXT_BEFORE type=1 history_sz=425 history_sentinel=425
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  EXEC_CMD TEXT_AFTER type=1 history_sz=425 history_sentinel=425
+  EXEC_CMD exit history_sz=426
+  EXEC_CMD entry type=0 history_sz=426
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=426 history_sentinel=426
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  EXEC_CMD TEXT_AFTER type=0 history_sz=426 history_sentinel=426
+  EXEC_CMD exit history_sz=427
+  EXEC_CMD entry type=3 history_sz=427
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=427 history_sentinel=427
+  EXEC_CMD TEXT_AFTER type=3 history_sz=427 history_sentinel=427
+  EXEC_CMD exit history_sz=428
+  INTENT_GEN entry player=0 phase=1
+  EXEC_CMD entry type=3 history_sz=428
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=428 history_sentinel=428
+  EXEC_CMD TEXT_AFTER type=3 history_sz=428 history_sentinel=428
+  EXEC_CMD exit history_sz=429
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=432
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=432 history_sentinel=432
+  EXEC_CMD TEXT_AFTER type=3 history_sz=432 history_sentinel=432
+  EXEC_CMD exit history_sz=433
+  EXEC_CMD TEXT_AFTER type=17 history_sz=433 history_sentinel=433
+  EXEC_CMD exit history_sz=434
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=434
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=434 history_sentinel=434
+  EXEC_CMD TEXT_AFTER type=3 history_sz=434 history_sentinel=434
+  EXEC_CMD exit history_sz=435
+  EXEC_CMD TEXT_AFTER type=17 history_sz=435 history_sentinel=435
+  EXEC_CMD exit history_sz=436
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=436
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=436 history_sentinel=436
+  EXEC_CMD TEXT_AFTER type=3 history_sz=436 history_sentinel=436
+  EXEC_CMD exit history_sz=437
+  EXEC_CMD TEXT_AFTER type=17 history_sz=437 history_sentinel=437
+  EXEC_CMD exit history_sz=438
+  INTENT_GEN entry player=0 phase=6
+  EXEC_CMD entry type=3 history_sz=438
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=438 history_sentinel=438
+  EXEC_CMD TEXT_AFTER type=3 history_sz=438 history_sentinel=438
+  EXEC_CMD exit history_sz=439
+  EXEC_CMD entry type=3 history_sz=439
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=439 history_sentinel=439
+  EXEC_CMD TEXT_AFTER type=3 history_sz=439 history_sentinel=439
+  EXEC_CMD exit history_sz=440
+  EXEC_CMD entry type=3 history_sz=440
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=440 history_sentinel=440
+  EXEC_CMD TEXT_AFTER type=3 history_sz=440 history_sentinel=440
+  EXEC_CMD exit history_sz=441
+  EXEC_CMD entry type=3 history_sz=441
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=441 history_sentinel=441
+  EXEC_CMD TEXT_AFTER type=3 history_sz=441 history_sentinel=441
+  EXEC_CMD exit history_sz=442
+  EXEC_CMD entry type=3 history_sz=442
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=442 history_sentinel=442
+  EXEC_CMD TEXT_AFTER type=3 history_sz=442 history_sentinel=442
+  EXEC_CMD exit history_sz=443
+  EXEC_CMD entry type=1 history_sz=443
+  EXEC_CMD TEXT_BEFORE type=1 history_sz=443 history_sentinel=443
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  EXEC_CMD TEXT_AFTER type=1 history_sz=443 history_sentinel=443
+  EXEC_CMD exit history_sz=444
+  EXEC_CMD entry type=0 history_sz=444
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=444 history_sentinel=444
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  EXEC_CMD TEXT_AFTER type=0 history_sz=444 history_sentinel=444
+  EXEC_CMD exit history_sz=445
+  EXEC_CMD entry type=3 history_sz=445
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=445 history_sentinel=445
+  EXEC_CMD TEXT_AFTER type=3 history_sz=445 history_sentinel=445
+  EXEC_CMD exit history_sz=446
+  INTENT_GEN entry player=1 phase=1
+  EXEC_CMD entry type=3 history_sz=446
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=446 history_sentinel=446
+  EXEC_CMD TEXT_AFTER type=3 history_sz=446 history_sentinel=446
+  EXEC_CMD exit history_sz=447
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=450
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=450 history_sentinel=450
+  EXEC_CMD TEXT_AFTER type=3 history_sz=450 history_sentinel=450
+  EXEC_CMD exit history_sz=451
+  EXEC_CMD TEXT_AFTER type=17 history_sz=451 history_sentinel=451
+  EXEC_CMD exit history_sz=452
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=452
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=452 history_sentinel=452
+  EXEC_CMD TEXT_AFTER type=3 history_sz=452 history_sentinel=452
+  EXEC_CMD exit history_sz=453
+  EXEC_CMD TEXT_AFTER type=17 history_sz=453 history_sentinel=453
+  EXEC_CMD exit history_sz=454
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=454
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=454 history_sentinel=454
+  EXEC_CMD TEXT_AFTER type=3 history_sz=454 history_sentinel=454
+  EXEC_CMD exit history_sz=455
+  EXEC_CMD TEXT_AFTER type=17 history_sz=455 history_sentinel=455
+  EXEC_CMD exit history_sz=456
+  INTENT_GEN entry player=1 phase=6
+  EXEC_CMD entry type=3 history_sz=456
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=456 history_sentinel=456
+  EXEC_CMD TEXT_AFTER type=3 history_sz=456 history_sentinel=456
+  EXEC_CMD exit history_sz=457
+  EXEC_CMD entry type=3 history_sz=457
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=457 history_sentinel=457
+  EXEC_CMD TEXT_AFTER type=3 history_sz=457 history_sentinel=457
+  EXEC_CMD exit history_sz=458
+  EXEC_CMD entry type=3 history_sz=458
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=458 history_sentinel=458
+  EXEC_CMD TEXT_AFTER type=3 history_sz=458 history_sentinel=458
+  EXEC_CMD exit history_sz=459
+  EXEC_CMD entry type=3 history_sz=459
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=459 history_sentinel=459
+  EXEC_CMD TEXT_AFTER type=3 history_sz=459 history_sentinel=459
+  EXEC_CMD exit history_sz=460
+  EXEC_CMD entry type=1 history_sz=460
+  EXEC_CMD TEXT_BEFORE type=1 history_sz=460 history_sentinel=460
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  EXEC_CMD TEXT_AFTER type=1 history_sz=460 history_sentinel=460
+  EXEC_CMD exit history_sz=461
+  EXEC_CMD entry type=0 history_sz=461
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=461 history_sentinel=461
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  EXEC_CMD TEXT_AFTER type=0 history_sz=461 history_sentinel=461
+  EXEC_CMD exit history_sz=462
+  EXEC_CMD entry type=3 history_sz=462
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=462 history_sentinel=462
+  EXEC_CMD TEXT_AFTER type=3 history_sz=462 history_sentinel=462
+  EXEC_CMD exit history_sz=463
+  INTENT_GEN entry player=0 phase=1
+  EXEC_CMD entry type=3 history_sz=463
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=463 history_sentinel=463
+  EXEC_CMD TEXT_AFTER type=3 history_sz=463 history_sentinel=463
+  EXEC_CMD exit history_sz=464
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=467
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=467 history_sentinel=467
+  EXEC_CMD TEXT_AFTER type=3 history_sz=467 history_sentinel=467
+  EXEC_CMD exit history_sz=468
+  EXEC_CMD TEXT_AFTER type=17 history_sz=468 history_sentinel=468
+  EXEC_CMD exit history_sz=469
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=469
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=469 history_sentinel=469
+  EXEC_CMD TEXT_AFTER type=3 history_sz=469 history_sentinel=469
+  EXEC_CMD exit history_sz=470
+  EXEC_CMD TEXT_AFTER type=17 history_sz=470 history_sentinel=470
+  EXEC_CMD exit history_sz=471
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=471
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=471 history_sentinel=471
+  EXEC_CMD TEXT_AFTER type=3 history_sz=471 history_sentinel=471
+  EXEC_CMD exit history_sz=472
+  EXEC_CMD TEXT_AFTER type=17 history_sz=472 history_sentinel=472
+  EXEC_CMD exit history_sz=473
+  INTENT_GEN entry player=0 phase=6
+  EXEC_CMD entry type=3 history_sz=473
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=473 history_sentinel=473
+  EXEC_CMD TEXT_AFTER type=3 history_sz=473 history_sentinel=473
+  EXEC_CMD exit history_sz=474
+  EXEC_CMD entry type=3 history_sz=474
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=474 history_sentinel=474
+  EXEC_CMD TEXT_AFTER type=3 history_sz=474 history_sentinel=474
+  EXEC_CMD exit history_sz=475
+  EXEC_CMD entry type=3 history_sz=475
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=475 history_sentinel=475
+  EXEC_CMD TEXT_AFTER type=3 history_sz=475 history_sentinel=475
+  EXEC_CMD exit history_sz=476
+  EXEC_CMD entry type=3 history_sz=476
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=476 history_sentinel=476
+  EXEC_CMD TEXT_AFTER type=3 history_sz=476 history_sentinel=476
+  EXEC_CMD exit history_sz=477
+  EXEC_CMD entry type=3 history_sz=477
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=477 history_sentinel=477
+  EXEC_CMD TEXT_AFTER type=3 history_sz=477 history_sentinel=477
+  EXEC_CMD exit history_sz=478
+  EXEC_CMD entry type=1 history_sz=478
+  EXEC_CMD TEXT_BEFORE type=1 history_sz=478 history_sentinel=478
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  EXEC_CMD TEXT_AFTER type=1 history_sz=478 history_sentinel=478
+  EXEC_CMD exit history_sz=479
+  EXEC_CMD entry type=0 history_sz=479
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=479 history_sentinel=479
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  EXEC_CMD TEXT_AFTER type=0 history_sz=479 history_sentinel=479
+  EXEC_CMD exit history_sz=480
+  EXEC_CMD entry type=3 history_sz=480
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=480 history_sentinel=480
+  EXEC_CMD TEXT_AFTER type=3 history_sz=480 history_sentinel=480
+  EXEC_CMD exit history_sz=481
+  INTENT_GEN entry player=1 phase=1
+  EXEC_CMD entry type=3 history_sz=481
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=481 history_sentinel=481
+  EXEC_CMD TEXT_AFTER type=3 history_sz=481 history_sentinel=481
+  EXEC_CMD exit history_sz=482
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=485
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=485 history_sentinel=485
+  EXEC_CMD TEXT_AFTER type=3 history_sz=485 history_sentinel=485
+  EXEC_CMD exit history_sz=486
+  EXEC_CMD TEXT_AFTER type=17 history_sz=486 history_sentinel=486
+  EXEC_CMD exit history_sz=487
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=487
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=487 history_sentinel=487
+  EXEC_CMD TEXT_AFTER type=3 history_sz=487 history_sentinel=487
+  EXEC_CMD exit history_sz=488
+  EXEC_CMD TEXT_AFTER type=17 history_sz=488 history_sentinel=488
+  EXEC_CMD exit history_sz=489
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=489
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=489 history_sentinel=489
+  EXEC_CMD TEXT_AFTER type=3 history_sz=489 history_sentinel=489
+  EXEC_CMD exit history_sz=490
+  EXEC_CMD TEXT_AFTER type=17 history_sz=490 history_sentinel=490
+  EXEC_CMD exit history_sz=491
+  INTENT_GEN entry player=1 phase=6
+  EXEC_CMD entry type=3 history_sz=491
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=491 history_sentinel=491
+  EXEC_CMD TEXT_AFTER type=3 history_sz=491 history_sentinel=491
+  EXEC_CMD exit history_sz=492
+  EXEC_CMD entry type=3 history_sz=492
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=492 history_sentinel=492
+  EXEC_CMD TEXT_AFTER type=3 history_sz=492 history_sentinel=492
+  EXEC_CMD exit history_sz=493
+  EXEC_CMD entry type=3 history_sz=493
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=493 history_sentinel=493
+  EXEC_CMD TEXT_AFTER type=3 history_sz=493 history_sentinel=493
+  EXEC_CMD exit history_sz=494
+  EXEC_CMD entry type=3 history_sz=494
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=494 history_sentinel=494
+  EXEC_CMD TEXT_AFTER type=3 history_sz=494 history_sentinel=494
+  EXEC_CMD exit history_sz=495
+  EXEC_CMD entry type=1 history_sz=495
+  EXEC_CMD TEXT_BEFORE type=1 history_sz=495 history_sentinel=495
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  EXEC_CMD TEXT_AFTER type=1 history_sz=495 history_sentinel=495
+  EXEC_CMD exit history_sz=496
+  EXEC_CMD entry type=0 history_sz=496
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=496 history_sentinel=496
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  EXEC_CMD TEXT_AFTER type=0 history_sz=496 history_sentinel=496
+  EXEC_CMD exit history_sz=497
+  EXEC_CMD entry type=3 history_sz=497
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=497 history_sentinel=497
+  EXEC_CMD TEXT_AFTER type=3 history_sz=497 history_sentinel=497
+  EXEC_CMD exit history_sz=498
+  INTENT_GEN entry player=0 phase=1
+  EXEC_CMD entry type=3 history_sz=498
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=498 history_sentinel=498
+  EXEC_CMD TEXT_AFTER type=3 history_sz=498 history_sentinel=498
+  EXEC_CMD exit history_sz=499
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=502
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=502 history_sentinel=502
+  EXEC_CMD TEXT_AFTER type=3 history_sz=502 history_sentinel=502
+  EXEC_CMD exit history_sz=503
+  EXEC_CMD TEXT_AFTER type=17 history_sz=503 history_sentinel=503
+  EXEC_CMD exit history_sz=504
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=504
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=504 history_sentinel=504
+  EXEC_CMD TEXT_AFTER type=3 history_sz=504 history_sentinel=504
+  EXEC_CMD exit history_sz=505
+  EXEC_CMD TEXT_AFTER type=17 history_sz=505 history_sentinel=505
+  EXEC_CMD exit history_sz=506
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=506
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=506 history_sentinel=506
+  EXEC_CMD TEXT_AFTER type=3 history_sz=506 history_sentinel=506
+  EXEC_CMD exit history_sz=507
+  EXEC_CMD TEXT_AFTER type=17 history_sz=507 history_sentinel=507
+  EXEC_CMD exit history_sz=508
+  INTENT_GEN entry player=0 phase=6
+  EXEC_CMD entry type=3 history_sz=508
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=508 history_sentinel=508
+  EXEC_CMD TEXT_AFTER type=3 history_sz=508 history_sentinel=508
+  EXEC_CMD exit history_sz=509
+  EXEC_CMD entry type=3 history_sz=509
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=509 history_sentinel=509
+  EXEC_CMD TEXT_AFTER type=3 history_sz=509 history_sentinel=509
+  EXEC_CMD exit history_sz=510
+  EXEC_CMD entry type=3 history_sz=510
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=510 history_sentinel=510
+  EXEC_CMD TEXT_AFTER type=3 history_sz=510 history_sentinel=510
+  EXEC_CMD exit history_sz=511
+  EXEC_CMD entry type=3 history_sz=511
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=511 history_sentinel=511
+  EXEC_CMD TEXT_AFTER type=3 history_sz=511 history_sentinel=511
+  EXEC_CMD exit history_sz=512
+  EXEC_CMD entry type=3 history_sz=512
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=512 history_sentinel=512
+  EXEC_CMD TEXT_AFTER type=3 history_sz=512 history_sentinel=512
+  EXEC_CMD exit history_sz=513
+  EXEC_CMD entry type=1 history_sz=513
+  EXEC_CMD TEXT_BEFORE type=1 history_sz=513 history_sentinel=513
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  EXEC_CMD TEXT_AFTER type=1 history_sz=513 history_sentinel=513
+  EXEC_CMD exit history_sz=514
+  EXEC_CMD entry type=0 history_sz=514
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=514 history_sentinel=514
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  EXEC_CMD TEXT_AFTER type=0 history_sz=514 history_sentinel=514
+  EXEC_CMD exit history_sz=515
+  EXEC_CMD entry type=3 history_sz=515
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=515 history_sentinel=515
+  EXEC_CMD TEXT_AFTER type=3 history_sz=515 history_sentinel=515
+  EXEC_CMD exit history_sz=516
+  INTENT_GEN entry player=1 phase=1
+  EXEC_CMD entry type=3 history_sz=516
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=516 history_sentinel=516
+  EXEC_CMD TEXT_AFTER type=3 history_sz=516 history_sentinel=516
+  EXEC_CMD exit history_sz=517
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=520
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=520 history_sentinel=520
+  EXEC_CMD TEXT_AFTER type=3 history_sz=520 history_sentinel=520
+  EXEC_CMD exit history_sz=521
+  EXEC_CMD TEXT_AFTER type=17 history_sz=521 history_sentinel=521
+  EXEC_CMD exit history_sz=522
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=522
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=522 history_sentinel=522
+  EXEC_CMD TEXT_AFTER type=3 history_sz=522 history_sentinel=522
+  EXEC_CMD exit history_sz=523
+  EXEC_CMD TEXT_AFTER type=17 history_sz=523 history_sentinel=523
+  EXEC_CMD exit history_sz=524
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=524
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=524 history_sentinel=524
+  EXEC_CMD TEXT_AFTER type=3 history_sz=524 history_sentinel=524
+  EXEC_CMD exit history_sz=525
+  EXEC_CMD TEXT_AFTER type=17 history_sz=525 history_sentinel=525
+  EXEC_CMD exit history_sz=526
+  INTENT_GEN entry player=1 phase=6
+  EXEC_CMD entry type=3 history_sz=526
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=526 history_sentinel=526
+  EXEC_CMD TEXT_AFTER type=3 history_sz=526 history_sentinel=526
+  EXEC_CMD exit history_sz=527
+  EXEC_CMD entry type=3 history_sz=527
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=527 history_sentinel=527
+  EXEC_CMD TEXT_AFTER type=3 history_sz=527 history_sentinel=527
+  EXEC_CMD exit history_sz=528
+  EXEC_CMD entry type=3 history_sz=528
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=528 history_sentinel=528
+  EXEC_CMD TEXT_AFTER type=3 history_sz=528 history_sentinel=528
+  EXEC_CMD exit history_sz=529
+  EXEC_CMD entry type=3 history_sz=529
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=529 history_sentinel=529
+  EXEC_CMD TEXT_AFTER type=3 history_sz=529 history_sentinel=529
+  EXEC_CMD exit history_sz=530
+  EXEC_CMD entry type=1 history_sz=530
+  EXEC_CMD TEXT_BEFORE type=1 history_sz=530 history_sentinel=530
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  EXEC_CMD TEXT_AFTER type=1 history_sz=530 history_sentinel=530
+  EXEC_CMD exit history_sz=531
+  EXEC_CMD entry type=0 history_sz=531
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=531 history_sentinel=531
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  EXEC_CMD TEXT_AFTER type=0 history_sz=531 history_sentinel=531
+  EXEC_CMD exit history_sz=532
+  EXEC_CMD entry type=3 history_sz=532
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=532 history_sentinel=532
+  EXEC_CMD TEXT_AFTER type=3 history_sz=532 history_sentinel=532
+  EXEC_CMD exit history_sz=533
+  INTENT_GEN entry player=0 phase=1
+  EXEC_CMD entry type=3 history_sz=533
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=533 history_sentinel=533
+  EXEC_CMD TEXT_AFTER type=3 history_sz=533 history_sentinel=533
+  EXEC_CMD exit history_sz=534
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=537
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=537 history_sentinel=537
+  EXEC_CMD TEXT_AFTER type=3 history_sz=537 history_sentinel=537
+  EXEC_CMD exit history_sz=538
+  EXEC_CMD TEXT_AFTER type=17 history_sz=538 history_sentinel=538
+  EXEC_CMD exit history_sz=539
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=539
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=539 history_sentinel=539
+  EXEC_CMD TEXT_AFTER type=3 history_sz=539 history_sentinel=539
+  EXEC_CMD exit history_sz=540
+  EXEC_CMD TEXT_AFTER type=17 history_sz=540 history_sentinel=540
+  EXEC_CMD exit history_sz=541
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=541
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=541 history_sentinel=541
+  EXEC_CMD TEXT_AFTER type=3 history_sz=541 history_sentinel=541
+  EXEC_CMD exit history_sz=542
+  EXEC_CMD TEXT_AFTER type=17 history_sz=542 history_sentinel=542
+  EXEC_CMD exit history_sz=543
+  INTENT_GEN entry player=0 phase=6
+  EXEC_CMD entry type=3 history_sz=543
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=543 history_sentinel=543
+  EXEC_CMD TEXT_AFTER type=3 history_sz=543 history_sentinel=543
+  EXEC_CMD exit history_sz=544
+  EXEC_CMD entry type=3 history_sz=544
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=544 history_sentinel=544
+  EXEC_CMD TEXT_AFTER type=3 history_sz=544 history_sentinel=544
+  EXEC_CMD exit history_sz=545
+  EXEC_CMD entry type=3 history_sz=545
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=545 history_sentinel=545
+  EXEC_CMD TEXT_AFTER type=3 history_sz=545 history_sentinel=545
+  EXEC_CMD exit history_sz=546
+  EXEC_CMD entry type=3 history_sz=546
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=546 history_sentinel=546
+  EXEC_CMD TEXT_AFTER type=3 history_sz=546 history_sentinel=546
+  EXEC_CMD exit history_sz=547
+  EXEC_CMD entry type=3 history_sz=547
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=547 history_sentinel=547
+  EXEC_CMD TEXT_AFTER type=3 history_sz=547 history_sentinel=547
+  EXEC_CMD exit history_sz=548
+  EXEC_CMD entry type=1 history_sz=548
+  EXEC_CMD TEXT_BEFORE type=1 history_sz=548 history_sentinel=548
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  EXEC_CMD TEXT_AFTER type=1 history_sz=548 history_sentinel=548
+  EXEC_CMD exit history_sz=549
+  EXEC_CMD entry type=0 history_sz=549
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=549 history_sentinel=549
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  EXEC_CMD TEXT_AFTER type=0 history_sz=549 history_sentinel=549
+  EXEC_CMD exit history_sz=550
+  EXEC_CMD entry type=3 history_sz=550
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=550 history_sentinel=550
+  EXEC_CMD TEXT_AFTER type=3 history_sz=550 history_sentinel=550
+  EXEC_CMD exit history_sz=551
+  INTENT_GEN entry player=1 phase=1
+  EXEC_CMD entry type=3 history_sz=551
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=551 history_sentinel=551
+  EXEC_CMD TEXT_AFTER type=3 history_sz=551 history_sentinel=551
+  EXEC_CMD exit history_sz=552
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=555
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=555 history_sentinel=555
+  EXEC_CMD TEXT_AFTER type=3 history_sz=555 history_sentinel=555
+  EXEC_CMD exit history_sz=556
+  EXEC_CMD TEXT_AFTER type=17 history_sz=556 history_sentinel=556
+  EXEC_CMD exit history_sz=557
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=557
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=557 history_sentinel=557
+  EXEC_CMD TEXT_AFTER type=3 history_sz=557 history_sentinel=557
+  EXEC_CMD exit history_sz=558
+  EXEC_CMD TEXT_AFTER type=17 history_sz=558 history_sentinel=558
+  EXEC_CMD exit history_sz=559
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=559
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=559 history_sentinel=559
+  EXEC_CMD TEXT_AFTER type=3 history_sz=559 history_sentinel=559
+  EXEC_CMD exit history_sz=560
+  EXEC_CMD TEXT_AFTER type=17 history_sz=560 history_sentinel=560
+  EXEC_CMD exit history_sz=561
+  INTENT_GEN entry player=1 phase=6
+  EXEC_CMD entry type=3 history_sz=561
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=561 history_sentinel=561
+  EXEC_CMD TEXT_AFTER type=3 history_sz=561 history_sentinel=561
+  EXEC_CMD exit history_sz=562
+  EXEC_CMD entry type=3 history_sz=562
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=562 history_sentinel=562
+  EXEC_CMD TEXT_AFTER type=3 history_sz=562 history_sentinel=562
+  EXEC_CMD exit history_sz=563
+  EXEC_CMD entry type=3 history_sz=563
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=563 history_sentinel=563
+  EXEC_CMD TEXT_AFTER type=3 history_sz=563 history_sentinel=563
+  EXEC_CMD exit history_sz=564
+  EXEC_CMD entry type=3 history_sz=564
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=564 history_sentinel=564
+  EXEC_CMD TEXT_AFTER type=3 history_sz=564 history_sentinel=564
+  EXEC_CMD exit history_sz=565
+  EXEC_CMD entry type=1 history_sz=565
+  EXEC_CMD TEXT_BEFORE type=1 history_sz=565 history_sentinel=565
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  EXEC_CMD TEXT_AFTER type=1 history_sz=565 history_sentinel=565
+  EXEC_CMD exit history_sz=566
+  EXEC_CMD entry type=0 history_sz=566
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=566 history_sentinel=566
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  EXEC_CMD TEXT_AFTER type=0 history_sz=566 history_sentinel=566
+  EXEC_CMD exit history_sz=567
+  EXEC_CMD entry type=3 history_sz=567
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=567 history_sentinel=567
+  EXEC_CMD TEXT_AFTER type=3 history_sz=567 history_sentinel=567
+  EXEC_CMD exit history_sz=568
+  INTENT_GEN entry player=0 phase=1
+  EXEC_CMD entry type=3 history_sz=568
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=568 history_sentinel=568
+  EXEC_CMD TEXT_AFTER type=3 history_sz=568 history_sentinel=568
+  EXEC_CMD exit history_sz=569
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=572
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=572 history_sentinel=572
+  EXEC_CMD TEXT_AFTER type=3 history_sz=572 history_sentinel=572
+  EXEC_CMD exit history_sz=573
+  EXEC_CMD TEXT_AFTER type=17 history_sz=573 history_sentinel=573
+  EXEC_CMD exit history_sz=574
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=574
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=574 history_sentinel=574
+  EXEC_CMD TEXT_AFTER type=3 history_sz=574 history_sentinel=574
+  EXEC_CMD exit history_sz=575
+  EXEC_CMD TEXT_AFTER type=17 history_sz=575 history_sentinel=575
+  EXEC_CMD exit history_sz=576
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=576
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=576 history_sentinel=576
+  EXEC_CMD TEXT_AFTER type=3 history_sz=576 history_sentinel=576
+  EXEC_CMD exit history_sz=577
+  EXEC_CMD TEXT_AFTER type=17 history_sz=577 history_sentinel=577
+  EXEC_CMD exit history_sz=578
+  INTENT_GEN entry player=0 phase=6
+  EXEC_CMD entry type=3 history_sz=578
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=578 history_sentinel=578
+  EXEC_CMD TEXT_AFTER type=3 history_sz=578 history_sentinel=578
+  EXEC_CMD exit history_sz=579
+  EXEC_CMD entry type=3 history_sz=579
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=579 history_sentinel=579
+  EXEC_CMD TEXT_AFTER type=3 history_sz=579 history_sentinel=579
+  EXEC_CMD exit history_sz=580
+  EXEC_CMD entry type=3 history_sz=580
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=580 history_sentinel=580
+  EXEC_CMD TEXT_AFTER type=3 history_sz=580 history_sentinel=580
+  EXEC_CMD exit history_sz=581
+  EXEC_CMD entry type=3 history_sz=581
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=581 history_sentinel=581
+  EXEC_CMD TEXT_AFTER type=3 history_sz=581 history_sentinel=581
+  EXEC_CMD exit history_sz=582
+  EXEC_CMD entry type=3 history_sz=582
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=582 history_sentinel=582
+  EXEC_CMD TEXT_AFTER type=3 history_sz=582 history_sentinel=582
+  EXEC_CMD exit history_sz=583
+  EXEC_CMD entry type=1 history_sz=583
+  EXEC_CMD TEXT_BEFORE type=1 history_sz=583 history_sentinel=583
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  EXEC_CMD TEXT_AFTER type=1 history_sz=583 history_sentinel=583
+  EXEC_CMD exit history_sz=584
+  EXEC_CMD entry type=0 history_sz=584
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=584 history_sentinel=584
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  EXEC_CMD TEXT_AFTER type=0 history_sz=584 history_sentinel=584
+  EXEC_CMD exit history_sz=585
+  EXEC_CMD entry type=3 history_sz=585
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=585 history_sentinel=585
+  EXEC_CMD TEXT_AFTER type=3 history_sz=585 history_sentinel=585
+  EXEC_CMD exit history_sz=586
+  INTENT_GEN entry player=1 phase=1
+  EXEC_CMD entry type=3 history_sz=586
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=586 history_sentinel=586
+  EXEC_CMD TEXT_AFTER type=3 history_sz=586 history_sentinel=586
+  EXEC_CMD exit history_sz=587
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=590
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=590 history_sentinel=590
+  EXEC_CMD TEXT_AFTER type=3 history_sz=590 history_sentinel=590
+  EXEC_CMD exit history_sz=591
+  EXEC_CMD TEXT_AFTER type=17 history_sz=591 history_sentinel=591
+  EXEC_CMD exit history_sz=592
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=592
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=592 history_sentinel=592
+  EXEC_CMD TEXT_AFTER type=3 history_sz=592 history_sentinel=592
+  EXEC_CMD exit history_sz=593
+  EXEC_CMD TEXT_AFTER type=17 history_sz=593 history_sentinel=593
+  EXEC_CMD exit history_sz=594
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=594
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=594 history_sentinel=594
+  EXEC_CMD TEXT_AFTER type=3 history_sz=594 history_sentinel=594
+  EXEC_CMD exit history_sz=595
+  EXEC_CMD TEXT_AFTER type=17 history_sz=595 history_sentinel=595
+  EXEC_CMD exit history_sz=596
+  INTENT_GEN entry player=1 phase=6
+  EXEC_CMD entry type=3 history_sz=596
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=596 history_sentinel=596
+  EXEC_CMD TEXT_AFTER type=3 history_sz=596 history_sentinel=596
+  EXEC_CMD exit history_sz=597
+  EXEC_CMD entry type=3 history_sz=597
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=597 history_sentinel=597
+  EXEC_CMD TEXT_AFTER type=3 history_sz=597 history_sentinel=597
+  EXEC_CMD exit history_sz=598
+  EXEC_CMD entry type=3 history_sz=598
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=598 history_sentinel=598
+  EXEC_CMD TEXT_AFTER type=3 history_sz=598 history_sentinel=598
+  EXEC_CMD exit history_sz=599
+  EXEC_CMD entry type=3 history_sz=599
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=599 history_sentinel=599
+  EXEC_CMD TEXT_AFTER type=3 history_sz=599 history_sentinel=599
+  EXEC_CMD exit history_sz=600
+  EXEC_CMD entry type=1 history_sz=600
+  EXEC_CMD TEXT_BEFORE type=1 history_sz=600 history_sentinel=600
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  EXEC_CMD TEXT_AFTER type=1 history_sz=600 history_sentinel=600
+  EXEC_CMD exit history_sz=601
+  EXEC_CMD entry type=0 history_sz=601
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=601 history_sentinel=601
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  EXEC_CMD TEXT_AFTER type=0 history_sz=601 history_sentinel=601
+  EXEC_CMD exit history_sz=602
+  EXEC_CMD entry type=3 history_sz=602
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=602 history_sentinel=602
+  EXEC_CMD TEXT_AFTER type=3 history_sz=602 history_sentinel=602
+  EXEC_CMD exit history_sz=603
+  INTENT_GEN entry player=0 phase=1
+  EXEC_CMD entry type=3 history_sz=603
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=603 history_sentinel=603
+  EXEC_CMD TEXT_AFTER type=3 history_sz=603 history_sentinel=603
+  EXEC_CMD exit history_sz=604
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=607
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=607 history_sentinel=607
+  EXEC_CMD TEXT_AFTER type=3 history_sz=607 history_sentinel=607
+  EXEC_CMD exit history_sz=608
+  EXEC_CMD TEXT_AFTER type=17 history_sz=608 history_sentinel=608
+  EXEC_CMD exit history_sz=609
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=609
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=609 history_sentinel=609
+  EXEC_CMD TEXT_AFTER type=3 history_sz=609 history_sentinel=609
+  EXEC_CMD exit history_sz=610
+  EXEC_CMD TEXT_AFTER type=17 history_sz=610 history_sentinel=610
+  EXEC_CMD exit history_sz=611
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=611
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=611 history_sentinel=611
+  EXEC_CMD TEXT_AFTER type=3 history_sz=611 history_sentinel=611
+  EXEC_CMD exit history_sz=612
+  EXEC_CMD TEXT_AFTER type=17 history_sz=612 history_sentinel=612
+  EXEC_CMD exit history_sz=613
+  INTENT_GEN entry player=0 phase=6
+  EXEC_CMD entry type=3 history_sz=613
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=613 history_sentinel=613
+  EXEC_CMD TEXT_AFTER type=3 history_sz=613 history_sentinel=613
+  EXEC_CMD exit history_sz=614
+  EXEC_CMD entry type=3 history_sz=614
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=614 history_sentinel=614
+  EXEC_CMD TEXT_AFTER type=3 history_sz=614 history_sentinel=614
+  EXEC_CMD exit history_sz=615
+  EXEC_CMD entry type=3 history_sz=615
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=615 history_sentinel=615
+  EXEC_CMD TEXT_AFTER type=3 history_sz=615 history_sentinel=615
+  EXEC_CMD exit history_sz=616
+  EXEC_CMD entry type=3 history_sz=616
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=616 history_sentinel=616
+  EXEC_CMD TEXT_AFTER type=3 history_sz=616 history_sentinel=616
+  EXEC_CMD exit history_sz=617
+  EXEC_CMD entry type=3 history_sz=617
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=617 history_sentinel=617
+  EXEC_CMD TEXT_AFTER type=3 history_sz=617 history_sentinel=617
+  EXEC_CMD exit history_sz=618
+  EXEC_CMD entry type=1 history_sz=618
+  EXEC_CMD TEXT_BEFORE type=1 history_sz=618 history_sentinel=618
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  EXEC_CMD TEXT_AFTER type=1 history_sz=618 history_sentinel=618
+  EXEC_CMD exit history_sz=619
+  EXEC_CMD entry type=0 history_sz=619
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=619 history_sentinel=619
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  EXEC_CMD TEXT_AFTER type=0 history_sz=619 history_sentinel=619
+  EXEC_CMD exit history_sz=620
+  EXEC_CMD entry type=3 history_sz=620
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=620 history_sentinel=620
+  EXEC_CMD TEXT_AFTER type=3 history_sz=620 history_sentinel=620
+  EXEC_CMD exit history_sz=621
+  INTENT_GEN entry player=1 phase=1
+  EXEC_CMD entry type=3 history_sz=621
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=621 history_sentinel=621
+  EXEC_CMD TEXT_AFTER type=3 history_sz=621 history_sentinel=621
+  EXEC_CMD exit history_sz=622
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=625
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=625 history_sentinel=625
+  EXEC_CMD TEXT_AFTER type=3 history_sz=625 history_sentinel=625
+  EXEC_CMD exit history_sz=626
+  EXEC_CMD TEXT_AFTER type=17 history_sz=626 history_sentinel=626
+  EXEC_CMD exit history_sz=627
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+  INTENT_GEN entry player=1 phase=3
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=627
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=627 history_sentinel=627
+  EXEC_CMD TEXT_AFTER type=3 history_sz=627 history_sentinel=627
+  EXEC_CMD exit history_sz=628
+  EXEC_CMD TEXT_AFTER type=17 history_sz=628 history_sentinel=628
+  EXEC_CMD exit history_sz=629
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+  INTENT_GEN entry player=1 phase=4
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=629
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=629 history_sentinel=629
+  EXEC_CMD TEXT_AFTER type=3 history_sz=629 history_sentinel=629
+  EXEC_CMD exit history_sz=630
+  EXEC_CMD TEXT_AFTER type=17 history_sz=630 history_sentinel=630
+  EXEC_CMD exit history_sz=631
+  INTENT_GEN entry player=1 phase=6
+  EXEC_CMD entry type=3 history_sz=631
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=631 history_sentinel=631
+  EXEC_CMD TEXT_AFTER type=3 history_sz=631 history_sentinel=631
+  EXEC_CMD exit history_sz=632
+  EXEC_CMD entry type=3 history_sz=632
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=632 history_sentinel=632
+  EXEC_CMD TEXT_AFTER type=3 history_sz=632 history_sentinel=632
+  EXEC_CMD exit history_sz=633
+  EXEC_CMD entry type=3 history_sz=633
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=633 history_sentinel=633
+  EXEC_CMD TEXT_AFTER type=3 history_sz=633 history_sentinel=633
+  EXEC_CMD exit history_sz=634
+  EXEC_CMD entry type=3 history_sz=634
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=634 history_sentinel=634
+  EXEC_CMD TEXT_AFTER type=3 history_sz=634 history_sentinel=634
+  EXEC_CMD exit history_sz=635
+  EXEC_CMD entry type=1 history_sz=635
+  EXEC_CMD TEXT_BEFORE type=1 history_sz=635 history_sentinel=635
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  EXEC_CMD TEXT_AFTER type=1 history_sz=635 history_sentinel=635
+  EXEC_CMD exit history_sz=636
+  EXEC_CMD entry type=0 history_sz=636
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=636 history_sentinel=636
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  EXEC_CMD TEXT_AFTER type=0 history_sz=636 history_sentinel=636
+  EXEC_CMD exit history_sz=637
+  EXEC_CMD entry type=3 history_sz=637
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=637 history_sentinel=637
+  EXEC_CMD TEXT_AFTER type=3 history_sz=637 history_sentinel=637
+  EXEC_CMD exit history_sz=638
+  INTENT_GEN entry player=0 phase=1
+  EXEC_CMD entry type=3 history_sz=638
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=638 history_sentinel=638
+  EXEC_CMD TEXT_AFTER type=3 history_sz=638 history_sentinel=638
+  EXEC_CMD exit history_sz=639
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+  INTENT_GEN entry player=0 phase=2
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=642
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=642 history_sentinel=642
+  EXEC_CMD TEXT_AFTER type=3 history_sz=642 history_sentinel=642
+  EXEC_CMD exit history_sz=643
+  EXEC_CMD TEXT_AFTER type=17 history_sz=643 history_sentinel=643
+  EXEC_CMD exit history_sz=644
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=644
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=644 history_sentinel=644
+  EXEC_CMD TEXT_AFTER type=3 history_sz=644 history_sentinel=644
+  EXEC_CMD exit history_sz=645
+  EXEC_CMD TEXT_AFTER type=17 history_sz=645 history_sentinel=645
+  EXEC_CMD exit history_sz=646
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+  INTENT_GEN entry player=0 phase=4
+> dispatch_action entry type=0 src=-1 tgt=-1 slot=-1
+  EXEC_CMD entry type=3 history_sz=646
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=646 history_sentinel=646
+  EXEC_CMD TEXT_AFTER type=3 history_sz=646 history_sentinel=646
+  EXEC_CMD exit history_sz=647
+  EXEC_CMD TEXT_AFTER type=17 history_sz=647 history_sentinel=647
+  EXEC_CMD exit history_sz=648
+  INTENT_GEN entry player=0 phase=6
+  EXEC_CMD entry type=3 history_sz=648
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=648 history_sentinel=648
+  EXEC_CMD TEXT_AFTER type=3 history_sz=648 history_sentinel=648
+  EXEC_CMD exit history_sz=649
+  EXEC_CMD entry type=3 history_sz=649
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=649 history_sentinel=649
+  EXEC_CMD TEXT_AFTER type=3 history_sz=649 history_sentinel=649
+  EXEC_CMD exit history_sz=650
+  EXEC_CMD entry type=3 history_sz=650
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=650 history_sentinel=650
+  EXEC_CMD TEXT_AFTER type=3 history_sz=650 history_sentinel=650
+  EXEC_CMD exit history_sz=651
+  EXEC_CMD entry type=3 history_sz=651
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=651 history_sentinel=651
+  EXEC_CMD TEXT_AFTER type=3 history_sz=651 history_sentinel=651
+  EXEC_CMD exit history_sz=652
+  EXEC_CMD entry type=3 history_sz=652
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=652 history_sentinel=652
+  EXEC_CMD TEXT_AFTER type=3 history_sz=652 history_sentinel=652
+  EXEC_CMD exit history_sz=653
+  EXEC_CMD entry type=1 history_sz=653
+  EXEC_CMD TEXT_BEFORE type=1 history_sz=653 history_sentinel=653
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  EXEC_CMD TEXT_AFTER type=1 history_sz=653 history_sentinel=653
+  EXEC_CMD exit history_sz=654
+  EXEC_CMD entry type=0 history_sz=654
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=654 history_sentinel=654
+  get_card_instance entry id=70 owner_map_sz=80
+  GET_CARD found id=70 owner=1
+  get_card_instance entry id=32 owner_map_sz=80
+  GET_CARD found id=32 owner=0
+  EXEC_CMD TEXT_AFTER type=0 history_sz=654 history_sentinel=654
+  EXEC_CMD exit history_sz=655
+  EXEC_CMD entry type=3 history_sz=655
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=655 history_sentinel=655
+  EXEC_CMD TEXT_AFTER type=3 history_sz=655 history_sentinel=655
+  EXEC_CMD exit history_sz=656
+  INTENT_GEN entry player=1 phase=1
+  EXEC_CMD entry type=3 history_sz=656
+  EXEC_CMD TEXT_BEFORE type=3 history_sz=656 history_sentinel=656
+  EXEC_CMD TEXT_AFTER type=3 history_sz=656 history_sentinel=656
+  EXEC_CMD exit history_sz=657
+> dispatch_action entry type=15 src=20 tgt=-1 slot=0
+  get_card_instance entry id=20 owner_map_sz=32
+  GET_CARD found id=20 owner=0
+  EXEC_CMD entry type=0 history_sz=0
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=0 history_sentinel=0
+  EXEC_CMD TEXT_AFTER type=0 history_sz=0 history_sentinel=0
+  EXEC_CMD exit history_sz=1
+  get_card_instance entry id=20 owner_map_sz=32
+  GET_CARD found id=20 owner=0
+  BINDING generate_legal_actions entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+> dispatch_action entry type=15 src=20 tgt=-1 slot=0
+  get_card_instance entry id=20 owner_map_sz=32
+  GET_CARD found id=20 owner=0
+  EXEC_CMD entry type=0 history_sz=0
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=0 history_sentinel=0
+  EXEC_CMD TEXT_AFTER type=0 history_sz=0 history_sentinel=0
+  EXEC_CMD exit history_sz=1
+  get_card_instance entry id=20 owner_map_sz=32
+  GET_CARD found id=20 owner=0
+  BINDING generate_legal_actions entry player=0 phase=3
+  INTENT_GEN entry player=0 phase=3
+> dispatch_action entry type=15 src=20 tgt=-1 slot=0
+  get_card_instance entry id=20 owner_map_sz=32
+  GET_CARD found id=20 owner=0
+  EXEC_CMD entry type=0 history_sz=0
+  EXEC_CMD TEXT_BEFORE type=0 history_sz=0 history_sentinel=0
+  EXEC_CMD TEXT_AFTER type=0 history_sz=0 history_sentinel=0
+  EXEC_CMD exit history_sz=1
+  get_card_instance entry id=20 owner_map_sz=32
+  GET_CARD found id=20 owner=0
+

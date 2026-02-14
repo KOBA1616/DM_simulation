@@ -30,7 +30,7 @@ public:
     
     std::vector<int> select_targets(
         const dm::core::GameState& state, 
-        const dm::engine::game_command::CommandDef& cmd, 
+        const dm::core::CommandDef& cmd, 
         const std::vector<int>& candidates, 
         int amount
     ) override {

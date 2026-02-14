@@ -112,6 +112,7 @@ if not _disable_native:
                     # defined later in this file to augment the native extension.
                     IS_NATIVE = True
                     _loaded_native = True
+                    sys._dm_ai_native_loaded = True
                     print(f"DEBUG: Successfully loaded native module from {_p}")
                     break
                 else:

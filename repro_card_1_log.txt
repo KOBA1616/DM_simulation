@@ -1,0 +1,23 @@
+The requested API version [20] is not available, only API versions [1, 17] are supported in this build. Current ORT Version is: 1.17.1
+[DEBUG] bind_common enter
+[DEBUG] calling bind_map for CardDatabase (DISABLED)
+[DEBUG] bind_map skipped
+[DEBUG] bind_common exit
+Traceback (most recent call last):
+Initializing Game for Card ID 1 Reproduction...
+DEBUG: Native candidates: ['c:\\Users\\ichirou\\DM_simulation\\dm_toolkit\\dm_ai_module.cp312-win_amd64.pyd', 'C:\\Users\\ichirou\\DM_simulation\\bin\\Release\\dm_ai_module.cp312-win_amd64.pyd', 'C:\\Users\\ichirou\\DM_simulation\\build-msvc\\Release\\dm_ai_module.cp312-win_amd64.pyd', 'C:\\Users\\ichirou\\DM_simulation\\build-msvc\\dm_ai_module.cp312-win_amd64.pyd']
+DEBUG: Checking candidate: c:\Users\ichirou\DM_simulation\dm_toolkit\dm_ai_module.cp312-win_amd64.pyd
+DEBUG: Found candidate at c:\Users\ichirou\DM_simulation\dm_toolkit\dm_ai_module.cp312-win_amd64.pyd, attempting load...
+DEBUG: Error loading candidate c:\Users\ichirou\DM_simulation\dm_toolkit\dm_ai_module.cp312-win_amd64.pyd: Cannot overload existing non-function object "GameCommand" with a function of the same name
+DEBUG: Checking candidate: C:\Users\ichirou\DM_simulation\bin\Release\dm_ai_module.cp312-win_amd64.pyd
+  File "C:\Users\ichirou\DM_simulation\scripts\repro_card_1.py", line 139, in <module>
+    run_reproduction()
+DEBUG: Found candidate at C:\Users\ichirou\DM_simulation\bin\Release\dm_ai_module.cp312-win_amd64.pyd, attempting load...
+DEBUG: Error loading candidate C:\Users\ichirou\DM_simulation\bin\Release\dm_ai_module.cp312-win_amd64.pyd: generic_type: type "EventType" is already registered!
+DEBUG: Checking candidate: C:\Users\ichirou\DM_simulation\build-msvc\Release\dm_ai_module.cp312-win_amd64.pyd
+DEBUG: Candidate not found: C:\Users\ichirou\DM_simulation\build-msvc\Release\dm_ai_module.cp312-win_amd64.pyd
+DEBUG: Checking candidate: C:\Users\ichirou\DM_simulation\build-msvc\dm_ai_module.cp312-win_amd64.pyd
+DEBUG: Candidate not found: C:\Users\ichirou\DM_simulation\build-msvc\dm_ai_module.cp312-win_amd64.pyd
+  File "C:\Users\ichirou\DM_simulation\scripts\repro_card_1.py", line 23, in run_reproduction
+    from dm_ai_module import GameInstance, JsonLoader, PhaseManager, IntentGenerator, PlayerIntent, Phase, ScenarioConfig
+ImportError: cannot import name 'IntentGenerator' from 'dm_ai_module' (C:\Users\ichirou\DM_simulation\dm_ai_module.py)
