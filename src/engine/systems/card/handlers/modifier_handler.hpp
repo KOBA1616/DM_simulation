@@ -1,7 +1,7 @@
 #pragma once
-#include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
 #include "engine/systems/effects/passive_effect_system.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
@@ -96,7 +96,7 @@ namespace dm::engine {
                         eff.value = val;
                         eff.specific_targets = std::vector<int>{id};
                         eff.source_instance_id = ctx.source_instance_id;
-                        eff.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                        eff.controller = dm::engine::effects::EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                         eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
 
                         auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
@@ -110,7 +110,7 @@ namespace dm::engine {
                     eff.value = val;
                     eff.target_filter = ctx.action.filter;
                     eff.source_instance_id = ctx.source_instance_id;
-                    eff.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                    eff.controller = dm::engine::effects::EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                     eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
 
                     auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_PASSIVE_EFFECT);
@@ -133,7 +133,7 @@ namespace dm::engine {
                  }
                  mod.condition_filter = resolved_filter;
                  mod.source_instance_id = ctx.source_instance_id;
-                 mod.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                 mod.controller = dm::engine::effects::EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                  mod.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
 
                  auto cmd = std::make_unique<MutateCommand>(-1, MutateCommand::MutationType::ADD_COST_MODIFIER);
@@ -161,7 +161,7 @@ namespace dm::engine {
                         eff.value = value;
                         eff.specific_targets = std::vector<int>{id};
                         eff.source_instance_id = ctx.source_instance_id;
-                        eff.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                        eff.controller = dm::engine::effects::EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                         eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
                         eff.target_filter = resolved_filter;
 
@@ -176,7 +176,7 @@ namespace dm::engine {
                     eff.type = PassiveType::POWER_MODIFIER;
                     eff.value = value;
                     eff.source_instance_id = ctx.source_instance_id;
-                    eff.controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                    eff.controller = dm::engine::effects::EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                     eff.turns_remaining = (ctx.action.value2 > 0) ? ctx.action.value2 : 1;
                     eff.target_filter = resolved_filter;
 

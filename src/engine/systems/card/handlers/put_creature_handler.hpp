@@ -1,9 +1,9 @@
 #pragma once
-#include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
 #include "core/card_def.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
 // #include "engine/effects/effect_resolver.hpp" // Removed
 #include "engine/systems/effects/trigger_system.hpp"
@@ -53,7 +53,7 @@ namespace dm::engine {
                             FilterDef check_filter = eff.target_filter;
                             check_filter.zones.clear();
 
-                            if (TargetUtils::is_valid_target(*existing_card, def, check_filter, ctx.game_state, eff.controller, existing_card->owner, true)) {
+                            if (dm::engine::utils::TargetUtils::is_valid_target(*existing_card, def, check_filter, ctx.game_state, eff.controller, existing_card->owner, true)) {
                                 prohibited = true;
                                 break;
                             }

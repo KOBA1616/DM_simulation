@@ -1,6 +1,6 @@
 #include "restriction_system.hpp"
 #include "engine/systems/effects/passive_effect_system.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include "core/game_state.hpp"
 
 namespace dm::engine::systems {
@@ -44,7 +44,7 @@ namespace dm::engine::systems {
                  FilterDef check_filter = eff.target_filter;
                  check_filter.zones.clear(); // Already checked
 
-                 if (TargetUtils::is_valid_target(card, def, check_filter, state, eff.controller, card.owner, true)) {
+                 if (dm::engine::utils::TargetUtils::is_valid_target(card, def, check_filter, state, eff.controller, card.owner, true)) {
                      // Prohibited
                      return true;
                  }
@@ -62,9 +62,9 @@ namespace dm::engine::systems {
 
         bool is_player_attack = (target_id == -1);
          if (is_player_attack) {
-             if (!TargetUtils::can_attack_player(attacker, def, state, card_db)) return true;
+             if (!dm::engine::utils::TargetUtils::can_attack_player(attacker, def, state, card_db)) return true;
          } else {
-             if (!TargetUtils::can_attack_creature(attacker, def, state, card_db)) return true;
+             if (!dm::engine::utils::TargetUtils::can_attack_creature(attacker, def, state, card_db)) return true;
 
              // Check if target is valid (Standard Rule: Must be tapped)
              const CardInstance* target_card = state.get_card_instance(target_id);
@@ -86,7 +86,7 @@ namespace dm::engine::systems {
                                                const CardDefinition& def,
                                                const std::map<CardID, CardDefinition>& card_db) {
 
-        if (!TargetUtils::has_keyword_simple(state, blocker, def, "BLOCKER")) return true;
+        if (!dm::engine::utils::TargetUtils::has_keyword_simple(state, blocker, def, "BLOCKER")) return true;
         if (blocker.is_tapped) return true;
         if (PassiveEffectSystem::instance().check_restriction(state, blocker, PassiveType::CANNOT_BLOCK, card_db)) return true;
 

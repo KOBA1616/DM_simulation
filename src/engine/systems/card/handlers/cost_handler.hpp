@@ -1,8 +1,8 @@
 #pragma once
-#include "engine/systems/card/effect_system.hpp"
-#include "engine/systems/card/selection_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
+#include "engine/systems/mechanics/selection_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
 #include <set>
 #include <stdexcept>
@@ -21,7 +21,7 @@ namespace dm::engine {
                          ed.trigger = TriggerType::NONE;
                          ed.condition = ConditionDef{"NONE", 0, "", "", "", std::nullopt};
                          ed.actions = { ctx.action };
-                         SelectionSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                         dm::engine::mechanics::SelectionSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                      }
                 }
             }
@@ -81,7 +81,7 @@ namespace dm::engine {
 
                  int reduction = taps * 2;
 
-                 PlayerID controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                 PlayerID controller = dm::engine::effects::EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                  GameLogicSystem::resolve_play_from_stack(ctx.game_state, ctx.source_instance_id, reduction, SpawnSource::HAND_SUMMON, controller, ctx.card_db);
              }
         }

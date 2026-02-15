@@ -1,12 +1,12 @@
 #pragma once
-#include "engine/systems/card/effect_system.hpp"
-#include "engine/systems/card/selection_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
+#include "engine/systems/mechanics/selection_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/effect_system.hpp"
-#include "engine/systems/card/selection_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
+#include "engine/systems/mechanics/selection_system.hpp"
 #include "core/card_def.hpp"
-#include "engine/systems/card/card_registry.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
+#include "engine/utils/target_utils.hpp"
 #include <iostream>
 
 namespace dm::engine {
@@ -19,7 +19,7 @@ namespace dm::engine {
              dm::core::EffectDef continuation;
              continuation.actions.push_back(ctx.action); // The same action, but next time it will have targets
 
-             SelectionSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, continuation, ctx.execution_vars);
+             dm::engine::mechanics::SelectionSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, continuation, ctx.execution_vars);
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
@@ -46,7 +46,7 @@ namespace dm::engine {
                     ctx.game_state.turn_stats.spells_cast_this_turn++;
 
                     for (const auto& effect : spell_def.effects) {
-                        EffectSystem::instance().resolve_effect_with_context(ctx.game_state, effect, ctx.source_instance_id, ctx.execution_vars, ctx.card_db);
+                        dm::engine::effects::EffectSystem::instance().resolve_effect_with_context(ctx.game_state, effect, ctx.source_instance_id, ctx.execution_vars, ctx.card_db);
                     }
                 }
             }
