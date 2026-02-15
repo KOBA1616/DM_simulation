@@ -81,10 +81,10 @@
     - 優先度マトリクス
     - 実装スケジュール
 
-12. **[DESIGN_PHASE_AWARE_AI.hpp](../DESIGN_PHASE_AWARE_AI.hpp)**
+12. **[DESIGN_PHASE_AWARE_AI.hpp](../native_prototypes/DESIGN_PHASE_AWARE_AI.hpp)**
     - フェーズ対応SimpleAIヘッダー（サンプル）
 
-13. **[DESIGN_PHASE_AWARE_AI.cpp](../DESIGN_PHASE_AWARE_AI.cpp)**
+13. **[DESIGN_PHASE_AWARE_AI.cpp](../native_prototypes/DESIGN_PHASE_AWARE_AI.cpp)**
     - フェーズ対応SimpleAI実装（サンプル）
 
 ---
@@ -165,7 +165,7 @@
 1. 📖 [PHASE_AWARE_AI_DESIGN.md](../PHASE_AWARE_AI_DESIGN.md)
    - 設計意図を理解
 
-2. 💻 [DESIGN_PHASE_AWARE_AI.cpp](../DESIGN_PHASE_AWARE_AI.cpp)
+2. 💻 [DESIGN_PHASE_AWARE_AI.cpp](../native_prototypes/DESIGN_PHASE_AWARE_AI.cpp)
    - サンプル実装を確認
 
 3. ✅ テストケース作成
