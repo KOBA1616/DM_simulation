@@ -6,7 +6,6 @@
 #include <iostream>
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/actions/intent_generator.hpp"
-#include "core/action.hpp"
 
 namespace dm::ai {
 
@@ -29,47 +28,46 @@ namespace dm::ai {
     }
 
     // Helper to check if an action is relevant for lethal
-    static bool is_aggressive_action(const Action& action, const GameState& state, const std::map<CardID, CardDefinition>& card_db) {
+    static bool is_aggressive_action(const CommandDef& action, const GameState& state, const std::map<CardID, CardDefinition>& card_db) {
         switch (action.type) {
-            case PlayerIntent::ATTACK_PLAYER:
+            case CommandType::ATTACK_PLAYER:
                 return true;
-            case PlayerIntent::ATTACK_CREATURE:
+            case CommandType::ATTACK_CREATURE:
                 // Removing blockers is good
                 return true;
-            case PlayerIntent::BREAK_SHIELD:
+            case CommandType::BREAK_SHIELD:
                 return true;
 
-            case PlayerIntent::PLAY_CARD:
-            case PlayerIntent::DECLARE_PLAY: // Atomic start of Play
-                if (card_db.count(action.card_id)) {
-                     const auto& def = card_db.at(action.card_id);
-                     if (def.type == CardType::CREATURE) {
-                         if (is_useful_creature(def)) return true;
+            case CommandType::PLAY_FROM_ZONE:
+                if (card_db.count(action.instance_id)) { // Note: card_id not directly in CommandDef? instance_id can lookup.
+                     const auto* inst = state.get_card_instance(action.instance_id);
+                     if (inst && card_db.count(inst->card_id)) {
+                         const auto& def = card_db.at(inst->card_id);
+                         if (def.type == CardType::CREATURE) {
+                             if (is_useful_creature(def)) return true;
+                         }
+                         if (def.type == CardType::SPELL) return true;
                      }
-                     if (def.type == CardType::SPELL) return true;
                 }
                 return false;
 
-            case PlayerIntent::USE_ABILITY:
+            case CommandType::USE_ABILITY:
                 return true;
 
             // Intermediate / Atomic
-            case PlayerIntent::RESOLVE_BATTLE:
-            case PlayerIntent::RESOLVE_PLAY:
-            case PlayerIntent::PAY_COST:
-            case PlayerIntent::PLAY_CARD_INTERNAL:
-            case PlayerIntent::USE_SHIELD_TRIGGER:
-            case PlayerIntent::SELECT_TARGET:
-            case PlayerIntent::RESOLVE_EFFECT:
-            case PlayerIntent::DECLARE_REACTION:
-            case PlayerIntent::SELECT_OPTION:
-            case PlayerIntent::SELECT_NUMBER:
+            case CommandType::RESOLVE_BATTLE:
+            case CommandType::RESOLVE_PLAY:
+            case CommandType::SHIELD_TRIGGER:
+            case CommandType::SELECT_TARGET:
+            case CommandType::RESOLVE_EFFECT:
+            case CommandType::SELECT_NUMBER:
+            case CommandType::CHOICE:
                 return true;
 
-            case PlayerIntent::BLOCK:
+            case CommandType::BLOCK:
                 return true;
 
-            case PlayerIntent::PASS:
+            case CommandType::PASS:
                 if (state.current_phase == Phase::MAIN) return true;
                 if (state.current_phase == Phase::BLOCK) return true; // Opponent passing block -> Good
 
@@ -96,16 +94,13 @@ namespace dm::ai {
 
             if (depth >= max_depth) return false;
 
-            std::vector<Action> actions = IntentGenerator::generate_legal_actions(state, card_db);
+            std::vector<CommandDef> actions = IntentGenerator::generate_legal_commands(state, card_db);
 
             if (actions.empty()) {
                 return false;
             }
 
             // Determine who is making the decision
-            // If Phase is BLOCK, the decision maker is the Defender (1 - active_player_id)
-            // But GameState.active_player_id points to Turn Player.
-            // So if active_player is ROOT, then in BLOCK phase, decision is OPPONENT.
             PlayerID acting_player = state.active_player_id;
             if (state.current_phase == Phase::BLOCK) {
                 acting_player = 1 - state.active_player_id;
@@ -116,12 +111,13 @@ namespace dm::ai {
 
             for (const auto& action : actions) {
                 if (is_root_decision) {
-                    if (action.type == PlayerIntent::MANA_CHARGE) continue;
+                    if (action.type == CommandType::MANA_CHARGE) continue;
 
-                    // Allow DECLARE_PLAY explicitly with check
-                    if (action.type == PlayerIntent::DECLARE_PLAY) {
-                         if (card_db.count(action.card_id)) {
-                             const auto& def = card_db.at(action.card_id);
+                    // Allow PLAY explicitly with check
+                    if (action.type == CommandType::PLAY_FROM_ZONE) {
+                         const auto* inst = state.get_card_instance(action.instance_id);
+                         if (inst && card_db.count(inst->card_id)) {
+                             const auto& def = card_db.at(inst->card_id);
                              bool aggro = false;
                              if (def.type == CardType::CREATURE) {
                                  if (is_useful_creature(def)) aggro = true;
@@ -138,7 +134,7 @@ namespace dm::ai {
                 }
 
                 GameState next_state = state.clone();
-                GameLogicSystem::resolve_action(next_state, action, card_db);
+                GameLogicSystem::resolve_command_oneshot(next_state, action, card_db);
 
                 bool result = search(std::move(next_state), depth + 1);
 

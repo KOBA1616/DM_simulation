@@ -8,6 +8,9 @@
 #include "core/instruction.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/command_system.hpp" // Added include for CommandSystem
+#include "engine/systems/pipeline_executor.hpp" // Added for PipelineExecutor
+#include "engine/systems/game_logic_system.hpp" // Added for GameLogicSystem
+#include "engine/systems/card/card_registry.hpp" // Added for CardRegistry
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 
@@ -658,7 +661,11 @@ void bind_core(py::module& m) {
         .def("setup_test_duel", &GameState::setup_test_duel)
         .def("execute_command", &GameState::execute_command)
         .def("apply_move", [](GameState& s, const CommandDef& c) {
-             s.execute_turn_command(c);
+             // Create a temporary pipeline executor for this move
+             dm::engine::systems::PipelineExecutor pipeline;
+             const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+             dm::engine::systems::GameLogicSystem::dispatch_command(pipeline, s, c, card_db);
+             pipeline.execute(nullptr, s, card_db);
         })
         .def("apply_move", [](GameState& s, py::dict d) {
              CommandDef cmd;
@@ -678,7 +685,17 @@ void bind_core(py::module& m) {
              if (d.contains("mutation_kind")) cmd.mutation_kind = d["mutation_kind"].cast<std::string>();
              if (d.contains("input_value_key")) cmd.input_value_key = d["input_value_key"].cast<std::string>();
              if (d.contains("output_value_key")) cmd.output_value_key = d["output_value_key"].cast<std::string>();
-             s.execute_turn_command(cmd);
+
+             dm::engine::systems::PipelineExecutor pipeline;
+             const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+             dm::engine::systems::GameLogicSystem::dispatch_command(pipeline, s, cmd, card_db);
+             pipeline.execute(nullptr, s, card_db);
+        })
+        .def("make_move", [](GameState& s, const CommandDef& c) {
+             dm::engine::systems::PipelineExecutor pipeline;
+             const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+             dm::engine::systems::GameLogicSystem::dispatch_command(pipeline, s, c, card_db);
+             pipeline.execute(nullptr, s, card_db);
         })
         .def("add_card_to_zone", &GameState::add_card_to_zone)
         .def("register_card_instance", &GameState::register_card_instance)
@@ -712,7 +729,7 @@ void bind_core(py::module& m) {
         .def("clone", &GameState::clone)
         .def("create_snapshot", &GameState::create_snapshot)
         .def("restore_snapshot", &GameState::restore_snapshot)
-        .def("make_move", &GameState::make_move)
+        // .def("make_move", &GameState::make_move) // Removed native make_move call
         .def("unmake_move", &GameState::unmake_move)
         .def("get_card_instance", [](GameState& s, int id) {
             try {

@@ -256,7 +256,7 @@ namespace dm::ai {
     }
 
     void MCTS::expand_node(MCTSNode* node, const std::vector<float>& policy_logits) {
-        auto actions = IntentGenerator::generate_legal_actions(node->state, *card_db_);
+        auto actions = IntentGenerator::generate_legal_commands(node->state, *card_db_);
         
         if (actions.empty()) return;
 
@@ -280,10 +280,10 @@ namespace dm::ai {
             float p = priors[i] / sum_exp;
             
             GameState next_state = node->state.clone();
-            // Replaced EffectResolver::resolve_action with GameLogicSystem::resolve_action
-            GameLogicSystem::resolve_action(next_state, action, *card_db_);
+            // Use one-shot resolution as GameState no longer has execute_turn_command
+            GameLogicSystem::resolve_command_oneshot(next_state, action, *card_db_);
 
-            if (action.type == PlayerIntent::PASS || action.type == PlayerIntent::MANA_CHARGE) {
+            if (action.type == CommandType::PASS || action.type == CommandType::MANA_CHARGE) {
                 PhaseManager::next_phase(next_state, *card_db_);
             }
             PhaseManager::fast_forward(next_state, *card_db_);

@@ -19,10 +19,6 @@
 #include <cstdint>
 
 // Forward declarations
-namespace dm::engine::systems {
-    class PipelineExecutor;
-}
-
 namespace dm::engine::game_command {
     class GameCommand;
 }
@@ -115,8 +111,6 @@ namespace dm::core {
         bool waiting_for_user_input = false;
         QueryContext pending_query;
 
-        std::shared_ptr<dm::engine::systems::PipelineExecutor> active_pipeline;
-
         // Event Dispatcher callback
         std::function<void(const GameEvent&)> event_dispatcher;
 
@@ -159,8 +153,11 @@ namespace dm::core {
         StateSnapshot create_snapshot() const;
         void restore_snapshot(const StateSnapshot& snap);
 
-        void make_move(const CommandDef& cmd);
-        void execute_turn_command(const CommandDef& cmd);
+        // NOTE: execute_turn_command removed. Execution logic must be handled by GameInstance/PipelineExecutor.
+        // make_move/unmake_move are retained but might need external executor context in future refactors.
+        // For now, make_move is deprecated or needs to be adapted.
+        // void make_move(const CommandDef& cmd);
+        // void execute_turn_command(const CommandDef& cmd);
         void unmake_move();
 
         void add_card_to_zone(const CardInstance& card, Zone zone, PlayerID pid);

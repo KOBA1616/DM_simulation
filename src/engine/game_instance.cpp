@@ -19,7 +19,7 @@
 namespace dm::engine {
 
     using namespace dm::core;
-    using namespace dm::engine::game_command; // Added
+    // using namespace dm::engine::game_command; // Removed to avoid CommandType ambiguity
 
     GameInstance::GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db)
         : state(seed), card_db(db) {
@@ -127,6 +127,7 @@ namespace dm::engine {
     }
 
     void GameInstance::resolve_command(const core::CommandDef& cmd_def) {
+        using namespace dm::engine::game_command;
         // Delegate to GameLogicSystem for new CommandDef-based handling
         
         if (!pipeline) {
@@ -137,7 +138,7 @@ namespace dm::engine {
              std::cerr << "FATAL: card_db is null!" << std::endl;
              return;
         }
-        state.active_pipeline = pipeline;
+        // state.active_pipeline = pipeline; // Removed as GameState is stateless
 
         // Guard: prevent repeated re-entry for the same resolve action signature.
         auto make_sig = [&](const core::CommandDef& c)->uint64_t {
@@ -154,7 +155,7 @@ namespace dm::engine {
 
         try {
             if (pipeline->call_stack.size() > 0) {
-                if (cmd_def.type == CommandType::RESOLVE_PLAY) {
+                if (cmd_def.type == core::CommandType::RESOLVE_PLAY) {
                     // If we are already resolving the same signature, skip to avoid runaway loops
                     if (resolving_action_sigs.count(sig)) {
                         std::filesystem::create_directories("logs");
@@ -190,7 +191,7 @@ namespace dm::engine {
         } catch(...) {}
 
         // If this is a RESOLVE_PLAY and we're about to process, insert signature to prevent reentry.
-        if (cmd_def.type == CommandType::RESOLVE_PLAY) {
+        if (cmd_def.type == core::CommandType::RESOLVE_PLAY) {
             resolving_action_sigs.insert(sig);
             inserted_sig = true;
         }
@@ -237,7 +238,7 @@ namespace dm::engine {
         }
 
         switch (cmd_def.type) {
-            case CommandType::PLAY_FROM_ZONE:
+            case core::CommandType::PLAY_FROM_ZONE:
                 {
                     auto p_cmd = std::make_unique<PlayCardCommand>(cmd_def.instance_id);
                     p_cmd->is_spell_side = (cmd_def.amount == 1);
@@ -246,49 +247,39 @@ namespace dm::engine {
                     cmd = std::move(p_cmd);
                 }
                 break;
-            case CommandType::ATTACK_CREATURE:
+            case core::CommandType::ATTACK_CREATURE:
                 cmd = std::make_unique<AttackCommand>(cmd_def.instance_id, cmd_def.target_instance);
                 break;
-            case CommandType::ATTACK_PLAYER:
-                // target_instance is generally -1 for player, or specific pid.
-                // AttackCommand constructor takes (src, tgt_creature_id, tgt_player_id)
-                // If target_instance is -1, it's player.
-                // We assume target_player_id is implied (opponent) or encoded.
-                // Assuming standard 1v1 opponent for now.
+            case core::CommandType::ATTACK_PLAYER:
                 {
                     PlayerID tgt_p = 1 - state.active_player_id; // Default opponent
                     cmd = std::make_unique<AttackCommand>(cmd_def.instance_id, -1, tgt_p);
                 }
                 break;
-            case CommandType::BLOCK:
+            case core::CommandType::BLOCK:
                 cmd = std::make_unique<BlockCommand>(cmd_def.instance_id);
                 break;
-            case CommandType::MANA_CHARGE:
+            case core::CommandType::MANA_CHARGE:
                 cmd = std::make_unique<ManaChargeCommand>(cmd_def.instance_id);
                 break;
-            case CommandType::PASS:
+            case core::CommandType::PASS:
                 cmd = std::make_unique<PassCommand>();
                 break;
-            case CommandType::USE_ABILITY:
+            case core::CommandType::USE_ABILITY:
                 cmd = std::make_unique<UseAbilityCommand>(cmd_def.instance_id, cmd_def.target_instance);
                 break;
-            case CommandType::CHOICE:
+            case core::CommandType::CHOICE:
                 {
-                    // Handle option selection for pending effects
-                    // slot_index should be in cmd.amount or cmd.slot_index?
-                    // CommandDef has slot_index.
                     int effect_idx = cmd_def.slot_index;
-                    // target_slot_index or target_instance for option index?
-                    // Usually option index is in target_instance for CHOICE.
                     int option_idx = cmd_def.target_instance;
+                    (void)option_idx; // Unused for now
                     
                     if (effect_idx >= 0 && effect_idx < (int)state.pending_effects.size()) {
-                        // TODO: Implement logic similar to legacy dispatch if needed
                         state.pending_effects.erase(state.pending_effects.begin() + effect_idx);
                     }
                 }
                 break;
-            case CommandType::SELECT_NUMBER:
+            case core::CommandType::SELECT_NUMBER:
                 {
                     int effect_idx = cmd_def.slot_index;
                     int chosen_number = cmd_def.target_instance;
@@ -310,13 +301,11 @@ namespace dm::engine {
                     }
                 }
                 break;
-            case CommandType::RESOLVE_EFFECT:
-                // Use resolve_command_oneshot equivalent (dispatch_command)
+            case core::CommandType::RESOLVE_EFFECT:
                 systems::GameLogicSystem::dispatch_command(*pipeline, state, cmd_def, *card_db);
                 systems::ContinuousEffectSystem::recalculate(state, *card_db);
                 try { if (pipeline) pipeline->execute(nullptr, state, *card_db); } catch (...) {}
                 return;
-            // Handle DECLARE_REACTION if mapped? If not, fallthrough.
 
             default:
                 // Fallback to dispatch_command
