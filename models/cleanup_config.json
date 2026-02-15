@@ -1,0 +1,6 @@
+{
+  "keep": 3,
+  "archive_dir": "models/archive",
+  "extensions": ["pth", "pt", "onnx", "bin", "h5", "ckpt", "data", "json"],
+  "dry_run": true
+}
