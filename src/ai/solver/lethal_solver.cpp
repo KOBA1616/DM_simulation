@@ -4,7 +4,7 @@
 #include <map>
 #include <cmath>
 #include <iostream>
-#include "engine/systems/game_logic_system.hpp"
+#include "engine/systems/director/game_logic_system.hpp"
 #include "engine/actions/intent_generator.hpp"
 
 namespace dm::ai {

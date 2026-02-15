@@ -2,7 +2,7 @@
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
 #include "core/instruction.hpp"
-#include "engine/systems/pipeline_executor.hpp"
+#include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 
 namespace dm::engine::systems {
 

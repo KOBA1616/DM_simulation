@@ -1,10 +1,10 @@
 #include "pipeline_executor.hpp"
-#include "engine/game_command/commands.hpp"
+#include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/systems/card/condition_system.hpp"
-#include "engine/systems/game_logic_system.hpp"
+#include "engine/systems/director/game_logic_system.hpp"
 #include <iostream>
-#include "../diag_win32.h"
+#include "engine/diag_win32.h"
 #include <cstdio>
 #include <algorithm>
 #include <random>

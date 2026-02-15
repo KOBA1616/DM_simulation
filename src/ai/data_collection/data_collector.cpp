@@ -4,7 +4,7 @@
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "engine/actions/intent_generator.hpp"
-#include "engine/systems/game_logic_system.hpp"
+#include "engine/systems/director/game_logic_system.hpp"
 #include "ai/encoders/action_encoder.hpp"
 #include "ai/encoders/token_converter.hpp"
 #include "ai/encoders/tensor_converter.hpp"

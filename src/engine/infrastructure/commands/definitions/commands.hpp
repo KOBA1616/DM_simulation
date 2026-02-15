@@ -5,7 +5,7 @@
 #include "core/types.hpp"
 #include "core/modifiers.hpp"
 #include "core/pending_effect.hpp"
-#include "engine/systems/trigger_system/reaction_window.hpp"
+#include "engine/systems/effects/reaction_window.hpp"
 
 namespace dm::engine::game_command {
 

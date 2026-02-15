@@ -4,9 +4,9 @@
 #include "core/card_def.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
-#include "engine/systems/game_logic_system.hpp"
-#include "engine/systems/pipeline_executor.hpp"
-#include "engine/game_command/commands.hpp"
+#include "engine/systems/director/game_logic_system.hpp"
+#include "engine/infrastructure/pipeline/pipeline_executor.hpp"
+#include "engine/infrastructure/commands/definitions/commands.hpp"
 
 namespace dm::engine {
 

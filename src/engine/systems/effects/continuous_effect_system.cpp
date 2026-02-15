@@ -1,4 +1,4 @@
-#include "engine/systems/continuous_effect_system.hpp"
+#include "continuous_effect_system.hpp"
 #include "engine/systems/card/condition_system.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "core/modifiers.hpp"

@@ -2,7 +2,7 @@
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
 #include "engine/systems/card/target_utils.hpp"
-#include "engine/game_command/commands.hpp"
+#include "engine/infrastructure/commands/definitions/commands.hpp"
 #include <algorithm>
 #include <iostream>
 #include <set>

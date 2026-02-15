@@ -3,7 +3,7 @@
 #include "core/game_state.hpp"
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/pipeline_executor.hpp"
+#include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 #include <algorithm>
 #include <random>
 

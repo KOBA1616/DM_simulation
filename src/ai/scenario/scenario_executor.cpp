@@ -2,7 +2,7 @@
 #include "engine/game_instance.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "engine/actions/intent_generator.hpp"
-#include "engine/systems/game_logic_system.hpp"
+#include "engine/systems/director/game_logic_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "ai/agents/heuristic_agent.hpp"
 #include <random>

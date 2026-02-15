@@ -3,8 +3,8 @@
 
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
-#include "engine/systems/pipeline_executor.hpp"
-#include "engine/systems/trigger_system/trigger_manager.hpp" // Added
+#include "engine/infrastructure/pipeline/pipeline_executor.hpp"
+#include "engine/systems/effects/trigger_manager.hpp" // Added
 #include "core/card_json_types.hpp" // Ensure CommandDef is defined
 #include "core/scenario_config.hpp" // Ensure ScenarioConfig is defined
 #include <map>

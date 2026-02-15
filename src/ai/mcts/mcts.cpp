@@ -1,7 +1,7 @@
 #include "mcts.hpp"
 #include "mcts_evaluator.hpp"
 #include "engine/actions/intent_generator.hpp"
-#include "engine/systems/game_logic_system.hpp"
+#include "engine/systems/director/game_logic_system.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
 #include "ai/encoders/action_encoder.hpp"
 #include "../inference/native_inference.hpp"

@@ -1,21 +1,21 @@
-#include "engine/systems/game_logic_system.hpp"
+#include "game_logic_system.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/systems/card/condition_system.hpp"
-#include "engine/systems/pipeline_executor.hpp"
-#include "engine/systems/card/effect_system.hpp" // Added include for EffectSystem
-#include "engine/systems/trigger_system/trigger_system.hpp" // Added for TriggerSystem
-#include "engine/systems/card/passive_effect_system.hpp" // Added for PassiveEffectSystem
-#include "engine/systems/restriction_system.hpp" // Added for RestrictionSystem
+#include "engine/infrastructure/pipeline/pipeline_executor.hpp"
+#include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/effects/trigger_system.hpp"
+#include "engine/systems/effects/passive_effect_system.hpp"
+#include "engine/systems/rules/restriction_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/game_command/commands.hpp"
-#include "engine/systems/command_system.hpp" // Added for CommandSystem
-#include "engine/systems/phase/phase_system.hpp" // Replaced PhaseManager
-#include "engine/systems/flow/phase_manager.hpp" // Kept for compatibility if needed
-#include "engine/systems/mana/mana_system.hpp" // Added for ManaSystem
-#include "engine/systems/breaker/breaker_system.hpp" // Added for BreakerSystem
-#include "engine/systems/battle/battle_system.hpp" // Added for BattleSystem
-#include "engine/systems/battle/shield_system.hpp" // Added for ShieldSystem
-#include "engine/systems/play/play_system.hpp" // Added for PlaySystem
+#include "engine/infrastructure/commands/definitions/commands.hpp"
+#include "engine/infrastructure/commands/command_system.hpp"
+#include "engine/systems/flow/phase_system.hpp"
+#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/systems/mechanics/mana_system.hpp"
+#include "engine/systems/breaker/breaker_system.hpp"
+#include "engine/systems/mechanics/battle_system.hpp"
+#include "engine/systems/mechanics/shield_system.hpp"
+#include "engine/systems/mechanics/play_system.hpp"
 #include "engine/utils/action_primitive_utils.hpp"
 #include <iostream>
 #include <algorithm>

@@ -1,5 +1,5 @@
-#include "engine/systems/restriction_system.hpp"
-#include "engine/systems/card/passive_effect_system.hpp"
+#include "restriction_system.hpp"
+#include "engine/systems/effects/passive_effect_system.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "core/game_state.hpp"
 

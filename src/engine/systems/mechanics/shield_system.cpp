@@ -1,6 +1,6 @@
 #include "shield_system.hpp"
-#include "engine/game_command/commands.hpp"
-#include "engine/systems/trigger_system/trigger_system.hpp"
+#include "engine/infrastructure/commands/definitions/commands.hpp"
+#include "engine/systems/effects/trigger_system.hpp"
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/breaker/breaker_system.hpp"
 #include <iostream>

@@ -1,8 +1,8 @@
 #include "play_system.hpp"
-#include "engine/game_command/commands.hpp"
-#include "engine/systems/mana/mana_system.hpp"
-#include "engine/systems/restriction_system.hpp"
-#include "engine/systems/trigger_system/trigger_system.hpp"
+#include "engine/infrastructure/commands/definitions/commands.hpp"
+#include "engine/systems/mechanics/mana_system.hpp"
+#include "engine/systems/rules/restriction_system.hpp"
+#include "engine/systems/effects/trigger_system.hpp"
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/utils/action_primitive_utils.hpp"
 #include <iostream>

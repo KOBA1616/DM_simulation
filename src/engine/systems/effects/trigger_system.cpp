@@ -1,7 +1,7 @@
 #include "trigger_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "core/game_event.hpp"
-#include "engine/game_command/commands.hpp"
+#include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include <iostream>
 

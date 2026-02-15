@@ -174,11 +174,11 @@ set(SRC_ENGINE
     src/engine/actions/strategies/phase_strategies.cpp
     src/engine/ai/simple_ai.cpp # AI selection logic
     src/engine/systems/flow/phase_manager.cpp
-    src/engine/systems/phase/phase_system.cpp # Added
-    src/engine/systems/battle/battle_system.cpp # Added
-    src/engine/systems/battle/shield_system.cpp # Added
-    src/engine/systems/play/play_system.cpp # Added
-    src/engine/systems/mana/mana_system.cpp
+    src/engine/systems/flow/phase_system.cpp # Added
+    src/engine/systems/mechanics/battle_system.cpp # Added
+    src/engine/systems/mechanics/shield_system.cpp # Added
+    src/engine/systems/mechanics/play_system.cpp # Added
+    src/engine/systems/mechanics/mana_system.cpp
     src/engine/systems/breaker/breaker_system.cpp # Added
     src/engine/utils/determinizer.cpp
     src/engine/utils/dev_tools.cpp
@@ -190,16 +190,16 @@ set(SRC_ENGINE
     src/engine/systems/card/keyword_expander.cpp
     src/engine/game_instance.cpp
     src/engine/diag_win32.cpp
-    src/engine/systems/mana/cost_payment_system.cpp
-    src/engine/systems/trigger_system/trigger_manager.cpp
-    src/engine/systems/trigger_system/trigger_system.cpp
-    src/engine/game_command/commands.cpp
-    src/engine/game_command/action_commands.cpp # Added
-    src/engine/systems/pipeline_executor.cpp
-    src/engine/systems/command_system.cpp
-    src/engine/systems/game_logic_system.cpp
-    src/engine/systems/restriction_system.cpp
-    src/engine/systems/continuous_effect_system.cpp
+    src/engine/systems/mechanics/cost_payment_system.cpp
+    src/engine/systems/effects/trigger_manager.cpp
+    src/engine/systems/effects/trigger_system.cpp
+    src/engine/infrastructure/commands/definitions/commands.cpp
+    src/engine/infrastructure/commands/definitions/action_commands.cpp # Added
+    src/engine/infrastructure/pipeline/pipeline_executor.cpp
+    src/engine/infrastructure/commands/command_system.cpp
+    src/engine/systems/director/game_logic_system.cpp
+    src/engine/systems/rules/restriction_system.cpp
+    src/engine/systems/effects/continuous_effect_system.cpp
 )
 
 # Utils (Phase 1)

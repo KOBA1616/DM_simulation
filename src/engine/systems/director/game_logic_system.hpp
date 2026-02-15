@@ -3,7 +3,7 @@
 #include "core/card_def.hpp"
 #include "core/instruction.hpp"
 #include "core/card_json_types.hpp"
-#include "engine/systems/pipeline_executor.hpp"
+#include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 #include <map>
 #include <vector>
 

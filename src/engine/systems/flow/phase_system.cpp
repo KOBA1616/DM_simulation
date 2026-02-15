@@ -1,8 +1,8 @@
 #include "phase_system.hpp"
-#include "engine/game_command/commands.hpp"
-#include "engine/systems/mana/mana_system.hpp"
-#include "engine/systems/trigger_system/trigger_system.hpp"
-#include "engine/systems/continuous_effect_system.hpp"
+#include "engine/infrastructure/commands/definitions/commands.hpp"
+#include "engine/systems/mechanics/mana_system.hpp"
+#include "engine/systems/effects/trigger_system.hpp"
+#include "engine/systems/effects/continuous_effect_system.hpp"
 #include "core/constants.hpp"
 #include <iostream>
 #include <fstream>

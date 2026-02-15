@@ -1,6 +1,6 @@
 #include "self_play.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
-#include "engine/systems/game_logic_system.hpp"
+#include "engine/systems/director/game_logic_system.hpp"
 #include "engine/utils/determinizer.hpp"
 #include "engine/actions/intent_generator.hpp"
 #include "ai/encoders/action_encoder.hpp"

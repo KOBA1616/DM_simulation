@@ -1,5 +1,5 @@
 #include "phase_strategies.hpp"
-#include "engine/systems/mana/mana_system.hpp"
+#include "engine/systems/mechanics/mana_system.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "core/modifiers.hpp"
 #include <iostream>

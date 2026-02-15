@@ -2,9 +2,9 @@
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/systems/card/effect_system.hpp"
-#include "engine/systems/card/passive_effect_system.hpp"
-#include "engine/game_command/commands.hpp"
-#include "engine/systems/pipeline_executor.hpp"
+#include "engine/systems/effects/passive_effect_system.hpp"
+#include "engine/infrastructure/commands/definitions/commands.hpp"
+#include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 #include <iostream>
 #include <memory>
 
