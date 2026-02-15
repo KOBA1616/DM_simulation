@@ -9,7 +9,7 @@ import gc
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QSpinBox,
     QPushButton, QProgressBar, QTextEdit, QGroupBox, QMessageBox, QFileDialog,
-    QCheckBox, QLineEdit, QDoubleSpinBox
+    QCheckBox, QLineEdit, QDoubleSpinBox, QRadioButton, QButtonGroup
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 import threading
@@ -37,10 +37,10 @@ class SimulationWorker(QThread):
     progress_signal = pyqtSignal(int, str) # progress %, log message
     finished_signal = pyqtSignal(float, str) # win_rate, summary
 
-    def __init__(self, card_db, scenario_name, episodes, threads, sims, evaluator_type, model_path=None):
+    def __init__(self, card_db, scenario_name, episodes, threads, sims, evaluator_type, model_path=None, deck_lists=None):
         super().__init__()
         self.runner = SimulationRunner(
-            card_db, scenario_name, episodes, threads, sims, evaluator_type, model_path
+            card_db, scenario_name, episodes, threads, sims, evaluator_type, model_path, deck_lists
         )
         # We need to maintain self.is_cancelled for backward compatibility with external access
         # but link it to runner
@@ -215,9 +215,11 @@ class AutoLoopWorker(QThread):
 
 
 class SimulationDialog(QDialog):
-    def __init__(self, card_db, parent=None):
+    def __init__(self, card_db, parent=None, deck_ids_p0=None, deck_ids_p1=None):
         super().__init__(parent)
         self.card_db = card_db
+        self.deck_ids_p0 = deck_ids_p0
+        self.deck_ids_p1 = deck_ids_p1
         self.setWindowTitle(tr("Batch Simulation / Verification"))
         self.resize(600, 500)
         self.init_ui()
@@ -234,6 +236,21 @@ class SimulationDialog(QDialog):
         group = QGroupBox(tr("Settings"))
         form = QVBoxLayout(group)
 
+        # Simulation Mode
+        mode_layout = QHBoxLayout()
+        self.mode_scenario_rb = QRadioButton(tr("Scenario Mode"))
+        self.mode_deck_rb = QRadioButton(tr("Deck Mode"))
+        self.mode_scenario_rb.setChecked(True)
+
+        self.mode_bg = QButtonGroup(self)
+        self.mode_bg.addButton(self.mode_scenario_rb)
+        self.mode_bg.addButton(self.mode_deck_rb)
+
+        mode_layout.addWidget(self.mode_scenario_rb)
+        mode_layout.addWidget(self.mode_deck_rb)
+        mode_layout.addStretch()
+        form.addLayout(mode_layout)
+
         # Scenario
         h_scen = QHBoxLayout()
         lbl_scen = QLabel(tr("Scenario") + ":")
@@ -244,6 +261,10 @@ class SimulationDialog(QDialog):
         h_scen.addWidget(lbl_scen)
         h_scen.addWidget(self.scenario_combo, 1)
         form.addLayout(h_scen)
+
+        # Connect mode toggle
+        self.mode_scenario_rb.toggled.connect(lambda: self.scenario_combo.setEnabled(self.mode_scenario_rb.isChecked()))
+        self.mode_deck_rb.toggled.connect(lambda: self.scenario_combo.setEnabled(not self.mode_deck_rb.isChecked()))
 
         # Evaluator
         h_eval = QHBoxLayout()
@@ -541,7 +562,19 @@ class SimulationDialog(QDialog):
                 self.auto_run_seconds = 0
             return
 
-        self.worker = SimulationWorker(self.card_db, scenario, episodes, threads, sims, evaluator, model_path)
+        deck_lists = None
+        if self.mode_deck_rb.isChecked():
+            if not self.deck_ids_p0 or len(self.deck_ids_p0) != 40:
+                QMessageBox.warning(self, tr("Invalid Deck"), tr("P0 Deck is invalid or missing (must be 40 cards)."))
+                self.run_btn.setEnabled(True)
+                return
+            if not self.deck_ids_p1 or len(self.deck_ids_p1) != 40:
+                QMessageBox.warning(self, tr("Invalid Deck"), tr("P1 Deck is invalid or missing (must be 40 cards)."))
+                self.run_btn.setEnabled(True)
+                return
+            deck_lists = [self.deck_ids_p0, self.deck_ids_p1]
+
+        self.worker = SimulationWorker(self.card_db, scenario, episodes, threads, sims, evaluator, model_path, deck_lists)
         self.worker.progress_signal.connect(self.update_progress)
         self.worker.finished_signal.connect(self.simulation_finished)
         self.worker.start()
