@@ -2,8 +2,8 @@
 #include "core/game_state.hpp"
 #include "core/action.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
-#include "engine/systems/card/effect_system.hpp"
-#include "engine/systems/flow/reaction_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
+#include "engine/systems/effects/reaction_system.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
 

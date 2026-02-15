@@ -83,3 +83,4 @@ archive/
 !.vscode/extensions.json
 !.vscode/cmake-kits.json
 !docs/archive/
+_deps/

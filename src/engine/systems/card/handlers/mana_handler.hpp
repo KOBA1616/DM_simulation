@@ -1,10 +1,10 @@
 #pragma once
-#include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/utils/tap_in_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "core/card_def.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 #include "engine/utils/action_primitive_utils.hpp"
 

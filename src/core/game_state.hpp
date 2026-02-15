@@ -8,7 +8,7 @@
 #include "pending_effect.hpp"
 #include "modifiers.hpp"
 #include "game_event.hpp"
-#include "engine/systems/trigger_system/reaction_window.hpp"
+#include "engine/systems/effects/reaction_window.hpp"
 #include <vector>
 #include <map>
 #include <string>

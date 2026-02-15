@@ -1,5 +1,5 @@
 #include "game_instance.hpp"
-#include "systems/flow/phase_manager.hpp"
+#include "engine/systems/flow/phase_system.hpp"
 #include "engine/actions/intent_generator.hpp"
 #include "engine/ai/simple_ai.hpp" // Added for SimpleAI
 #include "engine/infrastructure/commands/definitions/game_command.hpp"
@@ -7,8 +7,8 @@
 #include "engine/infrastructure/commands/definitions/commands.hpp" // Added for DeclareReactionCommand
 #include "engine/systems/director/game_logic_system.hpp"
 #include "engine/systems/effects/continuous_effect_system.hpp"
-#include "engine/systems/card/card_registry.hpp"
-#include "engine/systems/card/effect_system.hpp" // Added for EffectSystem
+#include "engine/infrastructure/data/card_registry.hpp"
+#include "engine/systems/effects/effect_system.hpp" // Added for dm::engine::effects::EffectSystem
 #include "engine/infrastructure/commands/command_system.hpp" // Added for CommandSystem
 #include "diag_win32.h"
 #include <functional>
@@ -37,7 +37,7 @@ namespace dm::engine {
     }
 
     GameInstance::GameInstance(uint32_t seed)
-        : state(seed), card_db(CardRegistry::get_all_definitions_ptr()) {
+        : state(seed), card_db(dm::engine::infrastructure::CardRegistry::get_all_definitions_ptr()) {
         initial_seed_ = seed;
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
@@ -53,7 +53,7 @@ namespace dm::engine {
 
     void GameInstance::start_game() {
         if (card_db) {
-            PhaseManager::start_game(state, *card_db);
+            dm::engine::flow::PhaseSystem::instance().start_game(state, *card_db);
         }
     }
 
@@ -87,7 +87,7 @@ namespace dm::engine {
         if (actions.empty()) {
             std::cout << "[step] No actions, calling fast_forward...\n";
             // No actions available - call fast_forward to progress to next decision point
-            PhaseManager::fast_forward(state, *card_db);
+            dm::engine::flow::PhaseSystem::instance().fast_forward(state, *card_db);
             std::cout << "[step] After fast_forward: Turn " << state.turn_number 
                       << ", Phase " << static_cast<int>(state.current_phase) << "\n";
             
@@ -292,7 +292,7 @@ namespace dm::engine {
                             pe.execution_context[output_key] = chosen_number;
                         }
                         if (pe.effect_def.has_value()) {
-                            core::PlayerID controller = dm::engine::EffectSystem::get_controller(state, pe.source_instance_id);
+                            core::PlayerID controller = dm::engine::effects::EffectSystem::get_controller(state, pe.source_instance_id);
                             for (const auto& c : pe.effect_def->commands) {
                                 dm::engine::systems::CommandSystem::execute_command(state, c, pe.source_instance_id, controller, pe.execution_context);
                             }
@@ -360,9 +360,15 @@ namespace dm::engine {
     }
 
     void GameInstance::reset_with_scenario(const ScenarioConfig& config) {
-        // [Existing implementation remains unchanged]
+        if (card_db) {
+            dm::engine::flow::PhaseSystem::instance().setup_scenario(state, config, *card_db);
+        }
+        return;
+
+        /* Legacy implementation below replaced by PhaseSystem::setup_scenario
         // 1. Reset Game State
         state.turn_number = 5;
+        */
         state.active_player_id = 0;
         state.current_phase = Phase::MAIN;
         state.winner = GameResult::NONE;

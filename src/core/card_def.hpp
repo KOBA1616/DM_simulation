@@ -83,7 +83,7 @@ namespace dm::core {
         
         CardKeywords keywords;
 
-        // Primary Effects (Added for removal of CardRegistry dependence)
+        // Primary Effects (Added for removal of dm::engine::infrastructure::CardRegistry dependence)
         std::vector<EffectDef> effects;
 
         // Static Abilities (Phase 7: Hybrid Schema)

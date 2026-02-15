@@ -1,15 +1,15 @@
 #include "selection_system.hpp"
-#include "effect_system.hpp"
-#include "target_utils.hpp"
-#include "engine/systems/card/card_registry.hpp"
+#include "engine/systems/effects/effect_system.hpp"
+#include "engine/utils/target_utils.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include <algorithm>
 
-namespace dm::engine {
+namespace dm::engine::mechanics {
 
     using namespace dm::core;
 
-    std::vector<int> SelectionSystem::select_targets(GameState& game_state, const ActionDef& action, int source_instance_id, const EffectDef& continuation, std::map<std::string, int>& execution_context) {
-        PlayerID controller = EffectSystem::get_controller(game_state, source_instance_id);
+    std::vector<int> dm::engine::mechanics::SelectionSystem::select_targets(GameState& game_state, const ActionDef& action, int source_instance_id, const EffectDef& continuation, std::map<std::string, int>& execution_context) {
+        PlayerID controller = dm::engine::effects::EffectSystem::get_controller(game_state, source_instance_id);
 
         // First, attempt auto-selection optimization: collect valid targets and
         // if the requested count >= available targets, resolve immediately.
@@ -30,7 +30,7 @@ namespace dm::engine {
             }
         }
 
-        const auto& card_db = CardRegistry::get_all_definitions();
+        const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
 
         for (PlayerID pid : {controller, static_cast<PlayerID>(1 - controller)}) {
             for (Zone z : zones) {
@@ -54,12 +54,12 @@ namespace dm::engine {
 
                     if (card_db.count(card.card_id)) {
                         const auto& def = card_db.at(card.card_id);
-                        if (TargetUtils::is_valid_target(card, def, filter, game_state, controller, pid)) {
+                        if (dm::engine::utils::TargetUtils::is_valid_target(card, def, filter, game_state, controller, pid)) {
                             valid_targets.push_back(instance_id);
                         }
                     } else if (card.card_id == 0) {
                         // allow generic dummy cards
-                        if (TargetUtils::is_valid_target(card, CardDefinition(), filter, game_state, controller, pid)) {
+                        if (dm::engine::utils::TargetUtils::is_valid_target(card, CardDefinition(), filter, game_state, controller, pid)) {
                             valid_targets.push_back(instance_id);
                         }
                     }
@@ -80,7 +80,7 @@ namespace dm::engine {
 
         if (num_needed >= (int)valid_targets.size()) {
             // Auto-resolve: select all valid targets (or as many as available)
-            EffectSystem::instance().resolve_effect_with_targets(game_state, continuation, valid_targets, source_instance_id, card_db, execution_context);
+            dm::engine::effects::EffectSystem::instance().resolve_effect_with_targets(game_state, continuation, valid_targets, source_instance_id, card_db, execution_context);
             return valid_targets;
         }
 

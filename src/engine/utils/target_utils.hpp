@@ -2,10 +2,10 @@
 #include "core/game_state.hpp"
 #include "core/card_json_types.hpp"
 #include "core/card_def.hpp"
-#include "card_registry.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include <algorithm>
 
-namespace dm::engine {
+namespace dm::engine::utils {
 
     class TargetUtils {
     public:

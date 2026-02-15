@@ -5,7 +5,7 @@
 #include <map>
 #include <string>
 
-namespace dm::engine {
+namespace dm::engine::mechanics {
     class SelectionSystem {
     public:
         static SelectionSystem& instance() {

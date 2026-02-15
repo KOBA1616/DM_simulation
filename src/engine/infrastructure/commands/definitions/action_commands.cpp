@@ -1,6 +1,6 @@
 #include "action_commands.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
-#include "engine/systems/card/card_registry.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include "commands.hpp" // For TransitionCommand
 #include <fstream>  // For debug logging
 
@@ -10,7 +10,7 @@ namespace dm::engine::game_command {
 
     void PlayCardCommand::execute(core::GameState& state) {
         // Construct CommandDef to pass to GameLogicSystem
-        const auto& card_db = CardRegistry::get_all_definitions();
+        const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
 
         core::CommandDef cmd;
         cmd.type = core::CommandType::PLAY_FROM_ZONE;
@@ -30,7 +30,7 @@ namespace dm::engine::game_command {
     }
 
     void AttackCommand::execute(core::GameState& state) {
-        const auto& card_db = CardRegistry::get_all_definitions();
+        const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
 
         core::CommandDef cmd;
         if (target_id == -1) {
@@ -51,7 +51,7 @@ namespace dm::engine::game_command {
     }
 
     void BlockCommand::execute(core::GameState& state) {
-        const auto& card_db = CardRegistry::get_all_definitions();
+        const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
 
         core::CommandDef cmd;
         cmd.type = core::CommandType::BLOCK;
@@ -65,7 +65,7 @@ namespace dm::engine::game_command {
     }
 
     void UseAbilityCommand::execute(core::GameState& state) {
-        const auto& card_db = CardRegistry::get_all_definitions();
+        const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
 
         core::CommandDef cmd;
         cmd.type = core::CommandType::USE_ABILITY;
@@ -126,7 +126,7 @@ namespace dm::engine::game_command {
     }
 
     void PassCommand::execute(core::GameState& state) {
-        const auto& card_db = CardRegistry::get_all_definitions();
+        const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
         core::CommandDef cmd;
         cmd.type = core::CommandType::PASS;
 

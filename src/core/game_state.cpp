@@ -1,7 +1,7 @@
 #include "game_state.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "engine/diag_win32.h"
-#include "engine/systems/card/card_registry.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include <fstream>
 
 namespace dm::core {

@@ -173,7 +173,6 @@ set(SRC_ENGINE
     src/engine/actions/strategies/stack_strategy.cpp
     src/engine/actions/strategies/phase_strategies.cpp
     src/engine/ai/simple_ai.cpp # AI selection logic
-    src/engine/systems/flow/phase_manager.cpp
     src/engine/systems/flow/phase_system.cpp # Added
     src/engine/systems/mechanics/battle_system.cpp # Added
     src/engine/systems/mechanics/shield_system.cpp # Added
@@ -182,12 +181,12 @@ set(SRC_ENGINE
     src/engine/systems/breaker/breaker_system.cpp # Added
     src/engine/utils/determinizer.cpp
     src/engine/utils/dev_tools.cpp
-    src/engine/systems/card/card_registry.cpp
-    src/engine/systems/card/effect_system.cpp
-    src/engine/systems/card/selection_system.cpp
-    src/engine/systems/card/condition_system.cpp
-    src/engine/systems/card/json_loader.cpp
-    src/engine/systems/card/keyword_expander.cpp
+    src/engine/infrastructure/data/card_registry.cpp
+    src/engine/systems/effects/effect_system.cpp
+    src/engine/systems/mechanics/selection_system.cpp
+    src/engine/systems/rules/condition_system.cpp
+    src/engine/infrastructure/data/json_loader.cpp
+    src/engine/infrastructure/data/keyword_expander.cpp
     src/engine/game_instance.cpp
     src/engine/diag_win32.cpp
     src/engine/systems/mechanics/cost_payment_system.cpp

@@ -1,7 +1,7 @@
 #include "shield_system.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "engine/systems/effects/trigger_system.hpp"
-#include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
 #include "engine/systems/breaker/breaker_system.hpp"
 #include <iostream>
 #include <fstream>
@@ -35,7 +35,7 @@ namespace dm::engine::systems {
              if (!effects.empty()) {
                  std::map<std::string, int> ctx;
                  for (const auto& eff : effects) {
-                     EffectSystem::instance().resolve_effect_with_context(state, eff, source_id, ctx, card_db);
+                     dm::engine::effects::EffectSystem::instance().resolve_effect_with_context(state, eff, source_id, ctx, card_db);
                  }
              }
         }

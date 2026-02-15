@@ -2,7 +2,7 @@
 
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include <map>
 #include <vector>
 

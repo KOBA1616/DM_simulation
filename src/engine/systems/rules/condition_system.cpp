@@ -1,16 +1,16 @@
 #include "condition_system.hpp"
-#include "engine/systems/card/target_utils.hpp"
-#include "effect_system.hpp"
+#include "engine/utils/target_utils.hpp"
+#include "engine/systems/effects/effect_system.hpp"
 #include "engine/systems/card/evaluators/deck_empty_evaluator.hpp"
 #include <iostream>
 
-namespace dm::engine {
+namespace dm::engine::rules {
     using namespace dm::core;
 
     class TurnEvaluator : public IConditionEvaluator {
     public:
         bool evaluate(GameState& state, const ConditionDef& condition, int source_instance_id, const std::map<CardID, CardDefinition>& /*card_db*/, const std::map<std::string, int>& /*execution_context*/) override {
-            PlayerID controller = EffectSystem::get_controller(state, source_instance_id);
+            PlayerID controller = dm::engine::effects::EffectSystem::get_controller(state, source_instance_id);
             if (condition.type == "DURING_YOUR_TURN") {
                 return state.active_player_id == controller;
             }
@@ -24,7 +24,7 @@ namespace dm::engine {
     class ManaArmedEvaluator : public IConditionEvaluator {
     public:
         bool evaluate(GameState& state, const ConditionDef& condition, int source_instance_id, const std::map<CardID, CardDefinition>& card_db, const std::map<std::string, int>& /*execution_context*/) override {
-            PlayerID controller_id = EffectSystem::get_controller(state, source_instance_id);
+            PlayerID controller_id = dm::engine::effects::EffectSystem::get_controller(state, source_instance_id);
             Player& controller = state.players[controller_id];
 
             int count = 0;
@@ -50,7 +50,7 @@ namespace dm::engine {
     class ShieldCountEvaluator : public IConditionEvaluator {
     public:
         bool evaluate(GameState& state, const ConditionDef& condition, int source_instance_id, const std::map<CardID, CardDefinition>& /*card_db*/, const std::map<std::string, int>& /*execution_context*/) override {
-            PlayerID controller_id = EffectSystem::get_controller(state, source_instance_id);
+            PlayerID controller_id = dm::engine::effects::EffectSystem::get_controller(state, source_instance_id);
             Player& controller = state.players[controller_id];
             return (int)controller.shield_zone.size() <= condition.value;
         }
@@ -66,7 +66,7 @@ namespace dm::engine {
     class CivilizationMatchEvaluator : public IConditionEvaluator {
     public:
         bool evaluate(GameState& state, const ConditionDef& condition, int source_instance_id, const std::map<CardID, CardDefinition>& card_db, const std::map<std::string, int>& /*execution_context*/) override {
-             PlayerID controller_id = EffectSystem::get_controller(state, source_instance_id);
+             PlayerID controller_id = dm::engine::effects::EffectSystem::get_controller(state, source_instance_id);
              Player& controller = state.players[controller_id];
 
              Civilization target_civ = Civilization::NONE;
@@ -89,7 +89,7 @@ namespace dm::engine {
     class CompareStatEvaluator : public IConditionEvaluator {
     public:
         bool evaluate(GameState& state, const ConditionDef& condition, int source_instance_id, const std::map<CardID, CardDefinition>& /*card_db*/, const std::map<std::string, int>& execution_context) override {
-            PlayerID self_id = EffectSystem::get_controller(state, source_instance_id);
+            PlayerID self_id = dm::engine::effects::EffectSystem::get_controller(state, source_instance_id);
             PlayerID opp_id = (self_id == 0) ? 1 : 0;
             const Player& self = state.players[self_id];
             const Player& opp = state.players[opp_id];
@@ -124,7 +124,7 @@ namespace dm::engine {
     class CardsMatchingFilterEvaluator : public IConditionEvaluator {
     public:
         bool evaluate(GameState& state, const ConditionDef& condition, int source_instance_id, const std::map<CardID, CardDefinition>& card_db, const std::map<std::string, int>& execution_context) override {
-             PlayerID player_id = EffectSystem::get_controller(state, source_instance_id);
+             PlayerID player_id = dm::engine::effects::EffectSystem::get_controller(state, source_instance_id);
 
              int count = 0;
              if (condition.filter.has_value()) {
@@ -152,7 +152,7 @@ namespace dm::engine {
                          for (int id : zone_vec) {
                              const CardInstance* inst = state.get_card_instance(id);
                              if (inst && card_db.count(inst->card_id)) {
-                                 if (TargetUtils::is_valid_target(*inst, card_db.at(inst->card_id), filter, state, player_id, pid)) {
+                                 if (dm::engine::utils::TargetUtils::is_valid_target(*inst, card_db.at(inst->card_id), filter, state, player_id, pid)) {
                                      count++;
                                  }
                              }
@@ -174,13 +174,13 @@ namespace dm::engine {
         }
     };
 
-    nlohmann::json ConditionSystem::compile_condition(const dm::core::ConditionDef& condition) {
+    nlohmann::json dm::engine::rules::ConditionSystem::compile_condition(const dm::core::ConditionDef& condition) {
         nlohmann::json j;
         dm::core::to_json(j, condition);
         return j;
     }
 
-    void ConditionSystem::initialize_defaults() {
+    void dm::engine::rules::ConditionSystem::initialize_defaults() {
         register_evaluator("DURING_YOUR_TURN", std::make_unique<TurnEvaluator>());
         register_evaluator("DURING_OPPONENT_TURN", std::make_unique<TurnEvaluator>());
         register_evaluator("MANA_ARMED", std::make_unique<ManaArmedEvaluator>());

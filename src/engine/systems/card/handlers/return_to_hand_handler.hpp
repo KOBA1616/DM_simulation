@@ -1,11 +1,11 @@
 #pragma once
-#include "engine/systems/card/effect_system.hpp"
-#include "engine/systems/card/selection_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
+#include "engine/systems/mechanics/selection_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/effect_system.hpp"
-#include "engine/systems/card/selection_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
+#include "engine/systems/mechanics/selection_system.hpp"
 #include "engine/utils/zone_utils.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 #include <algorithm>
 
@@ -22,7 +22,7 @@ namespace dm::engine {
                 targets = *ctx.targets;
             } else if (ctx.action.target_choice != "SELECT") {
                 // Auto-Return Logic
-                PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                PlayerID controller_id = dm::engine::effects::EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
 
                 std::vector<std::pair<PlayerID, Zone>> zones_to_check;
                 if (ctx.action.filter.zones.empty()) {
@@ -58,10 +58,10 @@ namespace dm::engine {
                         if (!ctx.card_db.count(card.card_id)) continue;
                         const auto& def = ctx.card_db.at(card.card_id);
 
-                        if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
+                        if (dm::engine::utils::TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
                              // Check Just Diver
                              if (pid != controller_id) {
-                                  if (TargetUtils::is_protected_by_just_diver(card, def, ctx.game_state, controller_id)) continue;
+                                  if (dm::engine::utils::TargetUtils::is_protected_by_just_diver(card, def, ctx.game_state, controller_id)) continue;
                              }
                              targets.push_back(card.instance_id);
                         }
@@ -84,7 +84,7 @@ namespace dm::engine {
              if (ctx.action.scope == dm::core::TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
                  dm::core::EffectDef ed;
                  ed.actions = { ctx.action };
-                 SelectionSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                 dm::engine::mechanics::SelectionSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                  return;
             }
 

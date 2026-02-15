@@ -184,7 +184,7 @@ namespace dm::engine::utils {
         step3.condition = ConditionDef();
         step3.condition.value().type = "NOT_EMPTY"; // Check implicit existence in ctx
         step3.condition.value().stat_key = buffer_key; // Check if key has > 0 count? Or value?
-        // Wait, ConditionSystem checks int value. CommandSystem stores count in output_value_key?
+        // Wait, dm::engine::rules::ConditionSystem checks int value. CommandSystem stores count in output_value_key?
         // QUERY stores result count?
         // QueryCommand doesn't store in map, DECIDE does.
         // But CommandSystem QUERY flow is: Execute -> Wait for Input -> Decide.
@@ -203,7 +203,7 @@ namespace dm::engine::utils {
 
         // If we are strictly expanding macros for *immediate* execution (like AI simulation),
         // we might assume AI agent makes choice.
-        // But for `JsonLoader`, we are defining the *Card Logic*.
+        // But for `dm::engine::infrastructure::JsonLoader`, we are defining the *Card Logic*.
         // If the card logic involves user input, it breaks the synchronous `commands` execution flow
         // unless the flow is managed by a `PipelineExecutor`.
         // The user mentioned "Buffer Sequencing".
@@ -248,7 +248,7 @@ namespace dm::engine::utils {
         // Or we use `target_group = TARGET_SELECT` in Step 3?
         // Step 2 asks for selection. Step 3 uses it.
 
-        // Actually, `SEARCH_DECK` expansion in `JsonLoader` (if I wrote it) would be:
+        // Actually, `SEARCH_DECK` expansion in `dm::engine::infrastructure::JsonLoader` (if I wrote it) would be:
         // 1. QUERY.
         // 2. MOVE (Target=Selected).
         // 3. SHUFFLE.

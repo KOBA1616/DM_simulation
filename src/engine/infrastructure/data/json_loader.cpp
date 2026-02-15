@@ -7,7 +7,7 @@
 #include <sstream>
 #include <nlohmann/json.hpp>
 
-namespace dm::engine {
+namespace dm::engine::infrastructure {
 
     using namespace dm::core;
 
@@ -269,7 +269,7 @@ namespace dm::engine {
             if (kws.count("hyper_energy") && kws.at("hyper_energy")) def.keywords.hyper_energy = true;
 
             // Expand complex keywords (Friend Burst, Mega Last Burst, etc.)
-            KeywordExpander::expand_keywords(data, def);
+            dm::engine::infrastructure::KeywordExpander::expand_keywords(data, def);
         }
 
         // Keywords mapping from effects
@@ -312,7 +312,7 @@ namespace dm::engine {
         return def;
     }
 
-    std::map<CardID, CardDefinition> JsonLoader::load_cards(const std::string& filepath) {
+    std::map<CardID, CardDefinition> dm::engine::infrastructure::JsonLoader::load_cards(const std::string& filepath) {
         std::map<CardID, CardDefinition> result;
         std::ifstream file(filepath);
         if (!file.is_open()) {
@@ -325,12 +325,12 @@ namespace dm::engine {
         std::string json_str = buffer.str();
 
         // 1. Load into Registry (Single Source of Truth)
-        CardRegistry::load_from_json(json_str);
+        dm::engine::infrastructure::CardRegistry::load_from_json(json_str);
 
         // 2. Parse locally to identify which cards were loaded and retrieve them from Registry
         try {
             auto j = nlohmann::json::parse(json_str);
-            const auto& registry_defs = CardRegistry::get_all_definitions();
+            const auto& registry_defs = dm::engine::infrastructure::CardRegistry::get_all_definitions();
 
             auto process_item = [&](const nlohmann::json& item) {
                 // We only need the ID to fetch from registry
@@ -353,7 +353,7 @@ namespace dm::engine {
             }
 
         } catch (const std::exception& e) {
-            std::cerr << "JsonLoader Error: " << e.what() << std::endl;
+            std::cerr << "dm::engine::infrastructure::JsonLoader Error: " << e.what() << std::endl;
         }
 
         return result;

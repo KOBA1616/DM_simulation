@@ -1,9 +1,9 @@
 #include "scenario_executor.hpp"
 #include "engine/game_instance.hpp"
-#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/systems/flow/phase_system.hpp"
 #include "engine/actions/intent_generator.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
-#include "engine/systems/card/card_registry.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include "ai/agents/heuristic_agent.hpp"
 #include <random>
 
@@ -20,7 +20,7 @@ namespace dm::ai {
         : card_db(std::make_shared<std::map<CardID, CardDefinition>>(db)) {}
 
     ScenarioExecutor::ScenarioExecutor()
-        : card_db(CardRegistry::get_all_definitions_ptr()) {}
+        : card_db(dm::engine::infrastructure::CardRegistry::get_all_definitions_ptr()) {}
 
     GameResultInfo ScenarioExecutor::run_scenario(const ScenarioConfig& config, int max_steps) {
         // Use a random seed for the game instance
@@ -38,14 +38,14 @@ namespace dm::ai {
         GameResult result = GameResult::NONE;
 
         while (steps < max_steps) {
-            bool game_over = PhaseManager::check_game_over(instance.state, result);
+            bool game_over = dm::engine::flow::PhaseSystem::instance().check_game_over(instance.state, result);
             if (game_over) {
                 break;
             }
 
             std::vector<CommandDef> legal_actions = IntentGenerator::generate_legal_commands(instance.state, *card_db);
             if (legal_actions.empty()) {
-                PhaseManager::next_phase(instance.state, *card_db);
+                dm::engine::flow::PhaseSystem::instance().next_phase(instance.state, *card_db);
                 continue;
             }
 

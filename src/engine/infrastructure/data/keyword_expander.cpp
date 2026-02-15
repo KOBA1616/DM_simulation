@@ -1,11 +1,11 @@
 #include "keyword_expander.hpp"
 #include <iostream>
 
-namespace dm::engine {
+namespace dm::engine::infrastructure {
 
     using namespace dm::core;
 
-    void KeywordExpander::expand_keywords(const CardData& data, CardDefinition& def) {
+    void dm::engine::infrastructure::KeywordExpander::expand_keywords(const CardData& data, CardDefinition& def) {
         if (!data.keywords.has_value()) {
             return;
         }
@@ -23,7 +23,7 @@ namespace dm::engine {
         }
     }
 
-    void KeywordExpander::expand_friend_burst(CardDefinition& def) {
+    void dm::engine::infrastructure::KeywordExpander::expand_friend_burst(CardDefinition& def) {
         def.keywords.friend_burst = true;
 
         EffectDef fb_effect;
@@ -52,7 +52,7 @@ namespace dm::engine {
         def.effects.push_back(fb_effect);
     }
 
-    void KeywordExpander::expand_mega_last_burst(const CardData& data, CardDefinition& def) {
+    void dm::engine::infrastructure::KeywordExpander::expand_mega_last_burst(const CardData& data, CardDefinition& def) {
         def.keywords.mega_last_burst = true;
 
         if (data.spell_side) {
@@ -73,7 +73,7 @@ namespace dm::engine {
             // Command Logic for MLB casting from Graveyard
             // This assumes the command interpreter knows how to handle CAST_SPELL with cast_spell_side context
             // possibly derived from the action conversion or explicitly set here if command def supports it.
-            // For now, mirroring what was in JsonLoader.
+            // For now, mirroring what was in dm::engine::infrastructure::JsonLoader.
 
             mlb_effect.commands.push_back(mlb_cmd);
 

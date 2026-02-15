@@ -3,7 +3,7 @@
 #include "core/card_def.hpp"
 #include "core/card_json_types.hpp"
 
-namespace dm::engine {
+namespace dm::engine::infrastructure {
 
     /**
      * @brief Expands specific keyword abilities into full Effect/Action definitions.

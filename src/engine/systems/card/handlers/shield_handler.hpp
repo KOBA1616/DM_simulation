@@ -1,10 +1,10 @@
 #pragma once
 #include <iostream>
-#include "engine/systems/card/effect_system.hpp"
-#include "engine/systems/card/selection_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
+#include "engine/systems/mechanics/selection_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/effect_system.hpp"
-#include "engine/systems/card/selection_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
+#include "engine/systems/mechanics/selection_system.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 #include <algorithm>
 #include <vector>
@@ -17,7 +17,7 @@ namespace dm::engine {
         void compile_action(const ResolutionContext& ctx) override {
             using namespace dm::core;
 
-            PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+            PlayerID controller_id = dm::engine::effects::EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
             Player& controller = ctx.game_state.players[controller_id];
 
             if (ctx.action.type == EffectPrimitive::ADD_SHIELD) {
@@ -142,7 +142,7 @@ namespace dm::engine {
                      ed.trigger = TriggerType::NONE;
                      ed.condition = ConditionDef{"NONE", 0, "", "", "", std::nullopt};
                      ed.actions = { ctx.action };
-                     SelectionSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                     dm::engine::mechanics::SelectionSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                      return;
             }
 

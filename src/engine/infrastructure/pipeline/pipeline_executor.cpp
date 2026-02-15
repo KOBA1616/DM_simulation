@@ -1,7 +1,7 @@
 #include "pipeline_executor.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
-#include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/card/condition_system.hpp"
+#include "engine/utils/target_utils.hpp"
+#include "engine/systems/rules/condition_system.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
 #include <iostream>
 #include "engine/diag_win32.h"
@@ -465,11 +465,11 @@ namespace dm::engine::systems {
 
                     if (card_db.count(card.card_id)) {
                         const auto& def = card_db.at(card.card_id);
-                        if (TargetUtils::is_valid_target(card, def, filter, state, player_id, pid)) {
+                        if (dm::engine::utils::TargetUtils::is_valid_target(card, def, filter, state, player_id, pid)) {
                             valid_targets.push_back(instance_id);
                         }
                     } else if (card.card_id == 0) {
-                         if (TargetUtils::is_valid_target(card, CardDefinition(), filter, state, player_id, pid)) {
+                         if (dm::engine::utils::TargetUtils::is_valid_target(card, CardDefinition(), filter, state, player_id, pid)) {
                             valid_targets.push_back(instance_id);
                         }
                     }
@@ -1073,7 +1073,7 @@ namespace dm::engine::systems {
                      }
                  }
 
-                 return dm::engine::ConditionSystem::instance().evaluate_def(state, def, source_id, card_db, exec_ctx);
+                 return dm::engine::rules::ConditionSystem::instance().evaluate_def(state, def, source_id, card_db, exec_ctx);
              }
         }
 
