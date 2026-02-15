@@ -10,17 +10,17 @@
 
 ### 実装レポート
 
-1. **[PHASE1_IMPLEMENTATION_REPORT.md](../PHASE1_IMPLEMENTATION_REPORT.md)**
+1. **[PHASE1_IMPLEMENTATION_REPORT.md](reports/PHASE1_IMPLEMENTATION_REPORT.md)**
    - SimpleAI実装レポート
    - AI選択ロジック統一
    - 実装ファイル: simple_ai.hpp/cpp
 
-2. **[PHASE2_IMPLEMENTATION_REPORT.md](../PHASE2_IMPLEMENTATION_REPORT.md)**
+2. **[PHASE2_IMPLEMENTATION_REPORT.md](reports/PHASE2_IMPLEMENTATION_REPORT.md)**
    - プレイヤーモード管理C++化
    - PlayerMode enum実装
    - GameState統合
 
-3. **[PHASE1_AND_PHASE2_SUMMARY.md](../PHASE1_AND_PHASE2_SUMMARY.md)**
+3. **[PHASE1_AND_PHASE2_SUMMARY.md](reports/PHASE1_AND_PHASE2_SUMMARY.md)**
    - Phase 1 + 2 統合サマリー
    - 実装時間: 約2時間
    - コード削減: ~100行
@@ -204,8 +204,8 @@
 
 | トピック | 参照ドキュメント |
 |---------|----------------|
-| SimpleAI実装 | [PHASE1_IMPLEMENTATION_REPORT.md](../PHASE1_IMPLEMENTATION_REPORT.md) |
-| PlayerMode | [PHASE2_IMPLEMENTATION_REPORT.md](../PHASE2_IMPLEMENTATION_REPORT.md) |
+| SimpleAI実装 | [PHASE1_IMPLEMENTATION_REPORT.md](reports/PHASE1_IMPLEMENTATION_REPORT.md) |
+| PlayerMode | [PHASE2_IMPLEMENTATION_REPORT.md](reports/PHASE2_IMPLEMENTATION_REPORT.md) |
 | フェーズ対応AI | [PHASE_AWARE_AI_DESIGN.md](../PHASE_AWARE_AI_DESIGN.md) |
 | 優先度設計 | [PHASE_ACTION_PRIORITY_SPEC.md](../PHASE_ACTION_PRIORITY_SPEC.md) |
 | マスタープラン | [CPP_MIGRATION_PLAN.md](../CPP_MIGRATION_PLAN.md) |
