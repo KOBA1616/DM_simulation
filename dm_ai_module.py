@@ -76,6 +76,9 @@ if not _disable_native:
             os.path.join(_root, 'bin', 'Release', 'dm_ai_module.cp312-win_amd64.pyd'),
             os.path.join(_root, 'build-msvc', 'Release', 'dm_ai_module.cp312-win_amd64.pyd'),
             os.path.join(_root, 'build-msvc', 'dm_ai_module.cp312-win_amd64.pyd'),
+            # Linux support
+            os.path.join(_root, 'bin', 'dm_ai_module.cpython-312-x86_64-linux-gnu.so'),
+            os.path.join(_root, 'bin', 'dm_ai_module.so'),
         ]
         _loaded_native = False
         for _p in _candidates:

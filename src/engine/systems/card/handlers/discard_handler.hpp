@@ -37,7 +37,7 @@ namespace dm::engine {
                 for (const auto& card : p.hand) {
                     if (!ctx.card_db.count(card.card_id)) continue;
                      const auto& def = ctx.card_db.at(card.card_id);
-                     if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, 
+                     if (dm::engine::utils::TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state,
                                                      EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id), 
                                                      target_pid, false, nullptr)) {
                          discard_candidates.push_back(card.instance_id);

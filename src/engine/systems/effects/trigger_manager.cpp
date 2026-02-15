@@ -1,5 +1,5 @@
 #include "trigger_manager.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include "engine/systems/card/effect_system.hpp" // For resolve_trigger (temporary linkage) or just common logic
 #include "core/card_def.hpp"
 #include <iostream>
@@ -134,7 +134,7 @@ namespace dm::engine::systems {
                                 if (has_filter) {
                                     const CardInstance* source_card = state.get_card_instance(event.instance_id);
                                     if (source_card && card_db.count(source_card->card_id)) {
-                                         if (TargetUtils::is_valid_target(*source_card, card_db.at(source_card->card_id),
+                                         if (dm::engine::utils::TargetUtils::is_valid_target(*source_card, card_db.at(source_card->card_id),
                                                                           effect.trigger_filter, state, controller, controller, false, nullptr)) {
                                               condition_met = true;
                                          }
@@ -201,7 +201,7 @@ namespace dm::engine::systems {
 
                     if (def.keywords.revolution_change) {
                         if (def.revolution_change_condition.has_value()) {
-                            bool match = TargetUtils::is_valid_target(*attacker, card_db.at(attacker->card_id),
+                            bool match = dm::engine::utils::TargetUtils::is_valid_target(*attacker, card_db.at(attacker->card_id),
                                                                     def.revolution_change_condition.value(),
                                                                     state, att_pid, att_pid);
                             if (match) {

@@ -2,11 +2,11 @@
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
 #include "core/constants.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include <map>
 #include <string>
 
-namespace dm::engine {
+namespace dm::engine::systems {
 
     class ReactionSystem {
     public:

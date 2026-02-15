@@ -10,7 +10,7 @@
 #include "engine/infrastructure/commands/command_system.hpp" // Added include for CommandSystem
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp" // Added for PipelineExecutor
 #include "engine/systems/director/game_logic_system.hpp" // Added for GameLogicSystem
-#include "engine/systems/card/card_registry.hpp" // Added for CardRegistry
+#include "engine/infrastructure/data/card_registry.hpp" // Added for CardRegistry
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
 
@@ -663,7 +663,7 @@ void bind_core(py::module& m) {
         .def("apply_move", [](GameState& s, const CommandDef& c) {
              // Create a temporary pipeline executor for this move
              dm::engine::systems::PipelineExecutor pipeline;
-             const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+             const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
              dm::engine::systems::GameLogicSystem::dispatch_command(pipeline, s, c, card_db);
              pipeline.execute(nullptr, s, card_db);
         })
@@ -687,13 +687,13 @@ void bind_core(py::module& m) {
              if (d.contains("output_value_key")) cmd.output_value_key = d["output_value_key"].cast<std::string>();
 
              dm::engine::systems::PipelineExecutor pipeline;
-             const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+             const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
              dm::engine::systems::GameLogicSystem::dispatch_command(pipeline, s, cmd, card_db);
              pipeline.execute(nullptr, s, card_db);
         })
         .def("make_move", [](GameState& s, const CommandDef& c) {
              dm::engine::systems::PipelineExecutor pipeline;
-             const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+             const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
              dm::engine::systems::GameLogicSystem::dispatch_command(pipeline, s, c, card_db);
              pipeline.execute(nullptr, s, card_db);
         })

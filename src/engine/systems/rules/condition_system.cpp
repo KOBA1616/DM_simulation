@@ -1,11 +1,13 @@
 #include "condition_system.hpp"
-#include "engine/systems/card/target_utils.hpp"
-#include "effect_system.hpp"
+#include "engine/utils/target_utils.hpp"
+#include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/card/evaluators/deck_empty_evaluator.hpp"
 #include <iostream>
 
-namespace dm::engine {
+namespace dm::engine::rules {
     using namespace dm::core;
+    using namespace dm::engine;
+    using namespace dm::engine::utils;
 
     class TurnEvaluator : public IConditionEvaluator {
     public:

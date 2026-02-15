@@ -1,5 +1,5 @@
 #include "cost_payment_system.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include "mana_system.hpp"
 #include <algorithm>
 
@@ -30,7 +30,7 @@ namespace dm::engine {
             check_filter.is_tapped = false;
 
             // Use TargetUtils to find candidates
-            // Wait, TargetUtils::collect_valid_targets might return all valid ones.
+            // Wait, dm::engine::utils::TargetUtils::collect_valid_targets might return all valid ones.
             // But we just need a count.
 
             // To use TargetUtils, we need to adapt since it works with EffectDef/Action usually.
@@ -55,8 +55,8 @@ namespace dm::engine {
                     if (card_db.find(instance.card_id) == card_db.end()) continue;
                     const auto& def = card_db.at(instance.card_id);
 
-                    // We need to construct a CardData wrapper or use TargetUtils::is_valid_target taking CardDefinition
-                    // TargetUtils::is_valid_target accepts (instance, def, filter, game_state)
+                    // We need to construct a CardData wrapper or use dm::engine::utils::TargetUtils::is_valid_target taking CardDefinition
+                    // dm::engine::utils::TargetUtils::is_valid_target accepts (instance, def, filter, game_state)
                     // Signature: is_valid_target(instance, def, filter, state, source_controller, card_controller, ignore_passives)
 
                     // Identify controller.
@@ -69,7 +69,7 @@ namespace dm::engine {
                         card_owner = state.get_card_owner(instance.instance_id);
                     }
 
-                    if (TargetUtils::is_valid_target(instance, def, unit_cost.filter, state, player_id, card_owner, false)) {
+                    if (dm::engine::utils::TargetUtils::is_valid_target(instance, def, unit_cost.filter, state, player_id, card_owner, false)) {
                         count++;
                     }
                 }
@@ -197,7 +197,7 @@ namespace dm::engine {
                         card_owner = state.get_card_owner(instance.instance_id);
                     }
 
-                    if (TargetUtils::is_valid_target(instance, def, unit_cost.filter, state, player_id, card_owner, false)) {
+                    if (dm::engine::utils::TargetUtils::is_valid_target(instance, def, unit_cost.filter, state, player_id, card_owner, false)) {
                         candidates.push_back((int)i);
                     }
                 }

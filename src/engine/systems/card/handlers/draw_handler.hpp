@@ -2,7 +2,7 @@
 #include <iostream>
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "engine/systems/effects/trigger_system.hpp"
 
