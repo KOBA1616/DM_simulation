@@ -612,7 +612,7 @@ int SimpleAI::get_priority(const Action& action, const GameState& state) {
 
 **Phase 1.1実装**: フェーズ対応SimpleAI
 - 所要時間: 1-2時間
-- [DESIGN_PHASE_AWARE_AI.cpp](DESIGN_PHASE_AWARE_AI.cpp)のコードを参考に実装
+- [DESIGN_PHASE_AWARE_AI.cpp](native_prototypes/DESIGN_PHASE_AWARE_AI.cpp)のコードを参考に実装
 
 ---
 
