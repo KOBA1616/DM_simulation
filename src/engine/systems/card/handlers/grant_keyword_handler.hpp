@@ -83,7 +83,7 @@ namespace dm::engine {
                     for (auto& card : p.battle_zone) {
                          if (!ctx.card_db.count(card.card_id)) continue;
                          const auto& def = ctx.card_db.at(card.card_id);
-                         if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
+                         if (dm::engine::utils::TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
                               targets.push_back(card.instance_id);
                          }
                     }

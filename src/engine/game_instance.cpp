@@ -1,5 +1,5 @@
 #include "game_instance.hpp"
-#include "systems/flow/phase_manager.hpp"
+#include "systems/flow/phase_system.hpp"
 #include "engine/actions/intent_generator.hpp"
 #include "engine/ai/simple_ai.hpp" // Added for SimpleAI
 #include "engine/infrastructure/commands/definitions/game_command.hpp"
@@ -7,7 +7,7 @@
 #include "engine/infrastructure/commands/definitions/commands.hpp" // Added for DeclareReactionCommand
 #include "engine/systems/director/game_logic_system.hpp"
 #include "engine/systems/effects/continuous_effect_system.hpp"
-#include "engine/systems/card/card_registry.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include "engine/systems/card/effect_system.hpp" // Added for EffectSystem
 #include "engine/infrastructure/commands/command_system.hpp" // Added for CommandSystem
 #include "diag_win32.h"
@@ -37,7 +37,7 @@ namespace dm::engine {
     }
 
     GameInstance::GameInstance(uint32_t seed)
-        : state(seed), card_db(CardRegistry::get_all_definitions_ptr()) {
+        : state(seed), card_db(dm::engine::infrastructure::CardRegistry::get_all_definitions_ptr()) {
         initial_seed_ = seed;
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
@@ -53,7 +53,7 @@ namespace dm::engine {
 
     void GameInstance::start_game() {
         if (card_db) {
-            PhaseManager::start_game(state, *card_db);
+            systems::PhaseSystem::instance().start_game(state, *card_db);
         }
     }
 
@@ -87,7 +87,7 @@ namespace dm::engine {
         if (actions.empty()) {
             std::cout << "[step] No actions, calling fast_forward...\n";
             // No actions available - call fast_forward to progress to next decision point
-            PhaseManager::fast_forward(state, *card_db);
+            systems::PhaseSystem::instance().fast_forward(state, *card_db);
             std::cout << "[step] After fast_forward: Turn " << state.turn_number 
                       << ", Phase " << static_cast<int>(state.current_phase) << "\n";
             

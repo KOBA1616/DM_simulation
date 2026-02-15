@@ -1,8 +1,8 @@
 #include "trigger_system.hpp"
-#include "engine/systems/card/card_registry.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include "core/game_event.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include <iostream>
 
 namespace dm::engine::systems {
@@ -21,8 +21,8 @@ namespace dm::engine::systems {
         const CardDefinition* def_ptr = nullptr;
         if (card_db.count(instance->card_id)) {
             def_ptr = &card_db.at(instance->card_id);
-        } else if (CardRegistry::get_all_definitions().count(instance->card_id)) {
-            def_ptr = &CardRegistry::get_all_definitions().at(instance->card_id);
+        } else if (dm::engine::infrastructure::CardRegistry::get_all_definitions().count(instance->card_id)) {
+            def_ptr = &dm::engine::infrastructure::CardRegistry::get_all_definitions().at(instance->card_id);
         }
 
         if (def_ptr) {
@@ -36,8 +36,8 @@ namespace dm::engine::systems {
             if (card_db.count(under.card_id)) {
                 const auto& under_data = card_db.at(under.card_id);
                 active_effects.insert(active_effects.end(), under_data.metamorph_abilities.begin(), under_data.metamorph_abilities.end());
-            } else if (CardRegistry::get_all_definitions().count(under.card_id)) {
-                const auto& under_data = CardRegistry::get_all_definitions().at(under.card_id);
+            } else if (dm::engine::infrastructure::CardRegistry::get_all_definitions().count(under.card_id)) {
+                const auto& under_data = dm::engine::infrastructure::CardRegistry::get_all_definitions().at(under.card_id);
                 active_effects.insert(active_effects.end(), under_data.metamorph_abilities.begin(), under_data.metamorph_abilities.end());
             }
         }
@@ -77,8 +77,8 @@ namespace dm::engine::systems {
         if (source_card) {
              if (card_db.count(source_card->card_id)) {
                 source_def = &card_db.at(source_card->card_id);
-            } else if (CardRegistry::get_all_definitions().count(source_card->card_id)) {
-                source_def = &CardRegistry::get_all_definitions().at(source_card->card_id);
+            } else if (dm::engine::infrastructure::CardRegistry::get_all_definitions().count(source_card->card_id)) {
+                source_def = &dm::engine::infrastructure::CardRegistry::get_all_definitions().at(source_card->card_id);
             }
         }
 
@@ -111,8 +111,8 @@ namespace dm::engine::systems {
             const CardDefinition* obs_def = nullptr;
              if (card_db.count(obs_card->card_id)) {
                 obs_def = &card_db.at(obs_card->card_id);
-            } else if (CardRegistry::get_all_definitions().count(obs_card->card_id)) {
-                obs_def = &CardRegistry::get_all_definitions().at(obs_card->card_id);
+            } else if (dm::engine::infrastructure::CardRegistry::get_all_definitions().count(obs_card->card_id)) {
+                obs_def = &dm::engine::infrastructure::CardRegistry::get_all_definitions().at(obs_card->card_id);
             }
             if (!obs_def) continue;
 
@@ -148,7 +148,7 @@ namespace dm::engine::systems {
                 bool filter_match = true;
 
                 // We assume FilterDef is present if trigger_filter is set (it's a struct, so always present, but maybe empty means 'match all'?)
-                // TargetUtils::is_valid_target handles empty filter as 'match all'?
+                // dm::engine::utils::TargetUtils::is_valid_target handles empty filter as 'match all'?
                 // Wait, TargetUtils checks "if (filter.types.empty())" etc. So yes.
                 // Note: The default constructor of FilterDef creates empty vectors/optionals.
 
@@ -165,7 +165,7 @@ namespace dm::engine::systems {
                 // source_controller: The player "evaluating" or "targeting". So the Observer's controller.
                 // card_controller: The owner of the card being checked.
 
-                filter_match = TargetUtils::is_valid_target(*source_card, *source_def, effect.trigger_filter, game_state, obs_controller, src_controller, true);
+                filter_match = dm::engine::utils::TargetUtils::is_valid_target(*source_card, *source_def, effect.trigger_filter, game_state, obs_controller, src_controller, true);
 
                 if (filter_match) {
                      // Queue Effect

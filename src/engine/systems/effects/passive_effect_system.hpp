@@ -1,8 +1,8 @@
 #pragma once
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
-#include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/card/condition_system.hpp"
+#include "engine/utils/target_utils.hpp"
+#include "engine/systems/rules/condition_system.hpp"
 
 namespace dm::engine {
     class PassiveEffectSystem {
@@ -24,12 +24,12 @@ namespace dm::engine {
                 if (eff.type == dm::core::PassiveType::POWER_MODIFIER) {
                     // Check condition if present
                     if (!eff.condition.type.empty() && eff.condition.type != "NONE") {
-                         if (!ConditionSystem::instance().evaluate_def(state_ref, eff.condition, eff.source_instance_id, card_db, {})) {
+                         if (!dm::engine::rules::ConditionSystem::instance().evaluate_def(state_ref, eff.condition, eff.source_instance_id, card_db, {})) {
                              continue;
                          }
                     }
 
-                    if (TargetUtils::is_valid_target(creature, card_db.at(creature.card_id), eff.target_filter, game_state, eff.controller, game_state.get_card_owner(creature.instance_id))) {
+                    if (dm::engine::utils::TargetUtils::is_valid_target(creature, card_db.at(creature.card_id), eff.target_filter, game_state, eff.controller, game_state.get_card_owner(creature.instance_id))) {
                         buff += eff.value;
                     }
                 }
@@ -44,7 +44,7 @@ namespace dm::engine {
                 if (eff.type == restriction_type) {
                     // Check condition first
                     if (!eff.condition.type.empty() && eff.condition.type != "NONE") {
-                         if (!ConditionSystem::instance().evaluate_def(state_ref, eff.condition, eff.source_instance_id, card_db, {})) {
+                         if (!dm::engine::rules::ConditionSystem::instance().evaluate_def(state_ref, eff.condition, eff.source_instance_id, card_db, {})) {
                              continue;
                          }
                     }
@@ -68,7 +68,7 @@ namespace dm::engine {
                                 controller = game_state.get_card_owner(card.instance_id);
                             }
 
-                            if (TargetUtils::is_valid_target(card, def, eff.target_filter, game_state, eff.controller, controller)) {
+                            if (dm::engine::utils::TargetUtils::is_valid_target(card, def, eff.target_filter, game_state, eff.controller, controller)) {
                                 restricted = true;
                             }
                         }
@@ -82,7 +82,7 @@ namespace dm::engine {
                 if (restriction_type == dm::core::PassiveType::LOCK_SPELL_BY_COST && eff.type == dm::core::PassiveType::LOCK_SPELL_BY_COST) {
                      // Check condition first
                      if (!eff.condition.type.empty() && eff.condition.type != "NONE") {
-                         if (!ConditionSystem::instance().evaluate_def(state_ref, eff.condition, eff.source_instance_id, card_db, {})) {
+                         if (!dm::engine::rules::ConditionSystem::instance().evaluate_def(state_ref, eff.condition, eff.source_instance_id, card_db, {})) {
                              continue;
                          }
                      }
@@ -94,7 +94,7 @@ namespace dm::engine {
                             if (card.instance_id < (int)game_state.card_owner_map.size()) {
                                 controller = game_state.get_card_owner(card.instance_id);
                             }
-                            if (TargetUtils::is_valid_target(card, def, eff.target_filter, game_state, eff.controller, controller)) {
+                            if (dm::engine::utils::TargetUtils::is_valid_target(card, def, eff.target_filter, game_state, eff.controller, controller)) {
                                 return true;
                             }
                         }

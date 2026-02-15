@@ -1,6 +1,6 @@
 #include "phase_strategies.hpp"
 #include "engine/systems/mechanics/mana_system.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include "core/modifiers.hpp"
 #include <iostream>
 
@@ -27,13 +27,13 @@ namespace dm::engine {
                 for (const auto& eff : state.passive_effects) {
                     if (eff.type == PassiveType::CANNOT_SUMMON && (card_def.type == CardType::CREATURE || card_def.type == CardType::EVOLUTION_CREATURE)) {
                          // Check if this card matches the prohibition filter
-                         if (TargetUtils::is_valid_target(card, card_def, eff.target_filter, state, eff.controller, player.id, true)) {
+                         if (dm::engine::utils::TargetUtils::is_valid_target(card, card_def, eff.target_filter, state, eff.controller, player.id, true)) {
                              prohibited = true;
                              break;
                          }
                     }
                     if (eff.type == PassiveType::CANNOT_USE_SPELLS && card_def.type == CardType::SPELL) {
-                        if (TargetUtils::is_valid_target(card, card_def, eff.target_filter, state, eff.controller, player.id, true)) {
+                        if (dm::engine::utils::TargetUtils::is_valid_target(card, card_def, eff.target_filter, state, eff.controller, player.id, true)) {
                              prohibited = true;
                              break;
                          }
@@ -67,13 +67,13 @@ namespace dm::engine {
 
                         if (card_def.evolution_condition.has_value()) {
                             // Use the explicit evolution condition filter
-                            if (TargetUtils::is_valid_target(source, source_def, *card_def.evolution_condition, state, player.id, player.id, false)) {
+                            if (dm::engine::utils::TargetUtils::is_valid_target(source, source_def, *card_def.evolution_condition, state, player.id, player.id, false)) {
                                 valid = true;
                             }
                         } else {
                             // Race Match (Standard Fallback)
                             for (const auto& r : card_def.races) {
-                                if (TargetUtils::CardProperties<CardDefinition>::has_race(source_def, r)) {
+                                if (dm::engine::utils::TargetUtils::CardProperties<CardDefinition>::has_race(source_def, r)) {
                                     valid = true;
                                     break;
                                 }

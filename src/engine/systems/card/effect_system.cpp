@@ -1,7 +1,7 @@
 #include "effect_system.hpp"
-#include "card_registry.hpp"
-#include "target_utils.hpp"
-#include "condition_system.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
+#include "engine/utils/target_utils.hpp"
+#include "engine/systems/rules/condition_system.hpp"
 #include "engine/infrastructure/commands/command_system.hpp"
 #include <algorithm>
 #include <iostream>
@@ -12,7 +12,7 @@ namespace dm::engine {
 
     void EffectSystem::initialize() {
         if (initialized) return;
-        ConditionSystem::instance().initialize_defaults();
+        dm::engine::rules::ConditionSystem::instance().initialize_defaults();
         initialized = true;
     }
 
@@ -64,8 +64,8 @@ namespace dm::engine {
         if (condition.type == "NONE") return true;
 
         initialize();
-        ConditionSystem& sys = ConditionSystem::instance();
-        if (IConditionEvaluator* evaluator = sys.get_evaluator(condition.type)) {
+        dm::engine::rules::ConditionSystem& sys = dm::engine::rules::ConditionSystem::instance();
+        if (dm::engine::rules::IConditionEvaluator* evaluator = sys.get_evaluator(condition.type)) {
             return evaluator->evaluate(game_state, condition, source_instance_id, card_db, execution_context);
         }
 

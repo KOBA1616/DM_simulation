@@ -1,7 +1,7 @@
 #include "selection_system.hpp"
 #include "effect_system.hpp"
-#include "target_utils.hpp"
-#include "engine/systems/card/card_registry.hpp"
+#include "engine/utils/target_utils.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include <algorithm>
 
 namespace dm::engine {
@@ -30,7 +30,7 @@ namespace dm::engine {
             }
         }
 
-        const auto& card_db = CardRegistry::get_all_definitions();
+        const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
 
         for (PlayerID pid : {controller, static_cast<PlayerID>(1 - controller)}) {
             for (Zone z : zones) {
@@ -54,12 +54,12 @@ namespace dm::engine {
 
                     if (card_db.count(card.card_id)) {
                         const auto& def = card_db.at(card.card_id);
-                        if (TargetUtils::is_valid_target(card, def, filter, game_state, controller, pid)) {
+                        if (dm::engine::utils::TargetUtils::is_valid_target(card, def, filter, game_state, controller, pid)) {
                             valid_targets.push_back(instance_id);
                         }
                     } else if (card.card_id == 0) {
                         // allow generic dummy cards
-                        if (TargetUtils::is_valid_target(card, CardDefinition(), filter, game_state, controller, pid)) {
+                        if (dm::engine::utils::TargetUtils::is_valid_target(card, CardDefinition(), filter, game_state, controller, pid)) {
                             valid_targets.push_back(instance_id);
                         }
                     }

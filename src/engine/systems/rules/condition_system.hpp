@@ -1,9 +1,9 @@
 #pragma once
 #include "core/game_state.hpp"
 #include "core/card_json_types.hpp"
-#include "effect_system.hpp"
+#include "engine/systems/card/effect_system.hpp"
 
-namespace dm::engine {
+namespace dm::engine::rules {
 
     class IConditionEvaluator {
     public:

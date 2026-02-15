@@ -1,6 +1,6 @@
 #include "game_logic_system.hpp"
-#include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/card/condition_system.hpp"
+#include "engine/utils/target_utils.hpp"
+#include "engine/systems/rules/condition_system.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/effects/trigger_system.hpp"
@@ -10,7 +10,7 @@
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "engine/infrastructure/commands/command_system.hpp"
 #include "engine/systems/flow/phase_system.hpp"
-#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/systems/flow/phase_system.hpp"
 #include "engine/systems/mechanics/mana_system.hpp"
 #include "engine/systems/breaker/breaker_system.hpp"
 #include "engine/systems/mechanics/battle_system.hpp"
@@ -199,8 +199,8 @@ namespace dm::engine::systems {
                 Instruction inst(InstructionOp::GAME_ACTION, args);
                 inst.args["type"] = "MANA_CHARGE";
                 handle_mana_charge(pipeline, state, inst);
-                // PhaseManager::fast_forward(state, card_db); // Fast forward logic is complex to port immediately, keeping PhaseManager for fast_forward
-                PhaseManager::fast_forward(state, card_db);
+                // PhaseSystem::instance().fast_forward(state, card_db); // Fast forward logic is complex to port immediately, keeping PhaseManager for fast_forward
+                PhaseSystem::instance().fast_forward(state, card_db);
                 break;
             }
             case core::CommandType::USE_ABILITY:
@@ -526,7 +526,7 @@ namespace dm::engine::systems {
             }
 
             PlayerID player_id = state.active_player_id;
-            const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+            const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
 
             for (PlayerID pid : {player_id, static_cast<PlayerID>(1 - player_id)}) {
                 for (core::Zone z : zones) {
@@ -550,11 +550,11 @@ namespace dm::engine::systems {
 
                         if (card_db.count(card.card_id)) {
                             const auto& def = card_db.at(card.card_id);
-                            if (dm::engine::TargetUtils::is_valid_target(card, def, filter, state, player_id, pid)) {
+                            if (dm::engine::utils::TargetUtils::is_valid_target(card, def, filter, state, player_id, pid)) {
                                 valid_targets.push_back(instance_id);
                             }
                         } else if (card.card_id == 0) {
-                            if (dm::engine::TargetUtils::is_valid_target(card, core::CardDefinition(), filter, state, player_id, pid)) {
+                            if (dm::engine::utils::TargetUtils::is_valid_target(card, core::CardDefinition(), filter, state, player_id, pid)) {
                                 valid_targets.push_back(instance_id);
                             }
                         }

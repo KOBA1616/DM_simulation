@@ -1,8 +1,8 @@
 #include "data_collector.hpp"
 #include "ai/agents/heuristic_agent.hpp"
 #include "engine/game_instance.hpp"
-#include "engine/systems/flow/phase_manager.hpp"
-#include "engine/systems/card/card_registry.hpp"
+#include "engine/systems/flow/phase_system.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include "engine/actions/intent_generator.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
 #include "ai/encoders/action_encoder.hpp"
@@ -22,7 +22,7 @@ namespace dm::ai {
         : card_db_(std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>(card_db)) {}
 
     DataCollector::DataCollector()
-        : card_db_(dm::engine::CardRegistry::get_all_definitions_ptr()) {}
+        : card_db_(dm::engine::infrastructure::CardRegistry::get_all_definitions_ptr()) {}
 
     CollectedBatch DataCollector::collect_data_batch(int episodes) {
         // Default behavior: Collect Tensors (legacy compatible)
@@ -71,7 +71,7 @@ namespace dm::ai {
             setup_deck(game.state.players[1], deck2);
 
             // Game Loop
-            dm::engine::PhaseManager::start_game(game.state, *card_db_);
+            dm::engine::systems::PhaseSystem::instance().start_game(game.state, *card_db_);
 
             std::vector<std::vector<long>> game_tokens;
             std::vector<std::vector<float>> game_tensors;
@@ -91,10 +91,10 @@ namespace dm::ai {
 
                 // If no actions, transition phase
                 if (legal_actions.empty()) {
-                     dm::engine::PhaseManager::next_phase(game.state, *card_db_);
+                     dm::engine::systems::PhaseSystem::instance().next_phase(game.state, *card_db_);
 
                      dm::core::GameResult res;
-                     if(dm::engine::PhaseManager::check_game_over(game.state, res)){
+                     if(dm::engine::systems::PhaseSystem::instance().check_game_over(game.state, res)){
                         game.state.winner = res;
                      }
                      continue;
@@ -142,7 +142,7 @@ namespace dm::ai {
                 GameLogicSystem::resolve_command_oneshot(game.state, chosen_action, *card_db_);
 
                 if (chosen_action.type == dm::core::CommandType::PASS) {
-                     dm::engine::PhaseManager::next_phase(game.state, *card_db_);
+                     dm::engine::systems::PhaseSystem::instance().next_phase(game.state, *card_db_);
                 }
 
                 game.state.update_loop_check();
@@ -152,7 +152,7 @@ namespace dm::ai {
                 }
 
                 dm::core::GameResult res;
-                if(dm::engine::PhaseManager::check_game_over(game.state, res)){
+                if(dm::engine::systems::PhaseSystem::instance().check_game_over(game.state, res)){
                     game.state.winner = res;
                 }
             }

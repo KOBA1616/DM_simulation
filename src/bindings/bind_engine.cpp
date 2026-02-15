@@ -4,12 +4,12 @@
 #include "engine/game_instance.hpp"
 #include <pybind11/stl_bind.h>
 #include "engine/actions/intent_generator.hpp"
-#include "engine/systems/card/card_registry.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
-#include "engine/systems/card/json_loader.hpp"
-#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/infrastructure/data/json_loader.hpp"
+#include "engine/systems/flow/phase_system.hpp"
 #include "engine/systems/effects/trigger_manager.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "engine/infrastructure/commands/definitions/action_commands.hpp"
@@ -288,10 +288,10 @@ void bind_engine(py::module& m) {
         });
 
 
-    py::class_<JsonLoader>(m, "JsonLoader")
+    py::class_<dm::engine::infrastructure::JsonLoader>(m, "JsonLoader")
         .def(py::init<>())
         .def_static("load_cards", [](const std::string& filepath) {
-            auto map_val = JsonLoader::load_cards(filepath);
+            auto map_val = dm::engine::infrastructure::JsonLoader::load_cards(filepath);
             // Move into shared pointer to prevent copy when returning to Python
             return std::make_shared<CardDatabase>(std::move(map_val));
         });
@@ -305,7 +305,7 @@ void bind_engine(py::module& m) {
              nlohmann::json j;
              dm::core::to_json(j, data);
              std::string json_str = j.dump();
-             CardRegistry::load_from_json(json_str);
+             dm::engine::infrastructure::CardRegistry::load_from_json(json_str);
          } catch (const py::error_already_set& e) {
             throw;
          } catch (const std::exception& e) {
@@ -373,13 +373,13 @@ void bind_engine(py::module& m) {
         .def("initialize_card_stats", &GameInstance::initialize_card_stats)
         .def("reset_with_scenario", &GameInstance::reset_with_scenario);
 
-    py::class_<CardRegistry>(m, "CardRegistry")
+    py::class_<dm::engine::infrastructure::CardRegistry>(m, "CardRegistry")
         .def_static("register_card_data", [](const CardData& data) {
              try {
                  nlohmann::json j;
                  dm::core::to_json(j, data);
                  std::string json_str = j.dump();
-                 CardRegistry::load_from_json(json_str);
+                 dm::engine::infrastructure::CardRegistry::load_from_json(json_str);
              } catch (const py::error_already_set& e) {
                 throw;
              } catch (const std::exception& e) {
@@ -388,20 +388,21 @@ void bind_engine(py::module& m) {
                 throw std::runtime_error("Unknown error in CardRegistry.register_card_data");
              }
         })
-        .def_static("load_from_json", &CardRegistry::load_from_json)
+        .def_static("load_from_json", &dm::engine::infrastructure::CardRegistry::load_from_json)
         .def_static("get_all_cards", []() {
              // Return a copy of the static map as CardDatabase (shared ptr probably better but copied for safety/simplicity)
              // But CardDatabase is std::map<CardID, CardDefinition>.
              // CardRegistry has get_all_definitions()
-             return CardRegistry::get_all_definitions();
+             return dm::engine::infrastructure::CardRegistry::get_all_definitions();
         })
-        .def_static("clear", &CardRegistry::clear);
+        .def_static("clear", &dm::engine::infrastructure::CardRegistry::clear);
 
-    py::class_<PhaseManager>(m, "PhaseManager")
-        .def_static("start_game", &PhaseManager::start_game)
-        .def_static("setup_scenario", &PhaseManager::setup_scenario)
-        .def_static("start_turn", &PhaseManager::start_turn)
-        .def_static("next_phase", &PhaseManager::next_phase)
-        .def_static("fast_forward", &PhaseManager::fast_forward)
-        .def_static("check_game_over", &PhaseManager::check_game_over);
+    py::class_<dm::engine::systems::PhaseSystem>(m, "PhaseSystem")
+        .def_static("instance", &dm::engine::systems::PhaseSystem::instance, py::return_value_policy::reference)
+        .def("start_game", &dm::engine::systems::PhaseSystem::start_game)
+        .def("setup_scenario", &dm::engine::systems::PhaseSystem::setup_scenario)
+        .def("on_start_turn", &dm::engine::systems::PhaseSystem::on_start_turn)
+        .def("next_phase", &dm::engine::systems::PhaseSystem::next_phase)
+        .def("fast_forward", &dm::engine::systems::PhaseSystem::fast_forward)
+        .def("check_game_over", &dm::engine::systems::PhaseSystem::check_game_over);
 }
