@@ -37,7 +37,7 @@ namespace dm::engine {
         // Constructor
         // 1. With shared pointer (Recommended)
         GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db);
-        // 2. Default (Uses CardRegistry Singleton)
+        // 2. Default (Uses dm::engine::infrastructure::CardRegistry Singleton)
         GameInstance(uint32_t seed);
         // Destructor (explicit so we can instrument destruction)
         ~GameInstance();

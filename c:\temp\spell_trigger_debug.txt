@@ -1,0 +1,36 @@
+CHECK_SPELL_CAST_TRIGGERS called, card_id=70
+  Card found: 10
+  Card def found, type=1, effects=1
+    Effect 0: trigger=12, trigger_scope=7
+  Calling TriggerSystem::resolve_trigger...
+  After resolve_trigger, pending_effects.size()=1
+CHECK_SPELL_CAST_TRIGGERS called, card_id=68
+  Card found: 12
+  Card def found, type=1, effects=1
+    Effect 0: trigger=12, trigger_scope=7
+  Calling TriggerSystem::resolve_trigger...
+  After resolve_trigger, pending_effects.size()=1
+CHECK_SPELL_CAST_TRIGGERS called, card_id=25
+  Card found: 12
+  Card def found, type=1, effects=1
+    Effect 0: trigger=12, trigger_scope=7
+  Calling TriggerSystem::resolve_trigger...
+  After resolve_trigger, pending_effects.size()=1
+CHECK_SPELL_CAST_TRIGGERS called, card_id=70
+  Card found: 10
+  Card def found, type=1, effects=1
+    Effect 0: trigger=12, trigger_scope=7
+  Calling TriggerSystem::resolve_trigger...
+  After resolve_trigger, pending_effects.size()=1
+CHECK_SPELL_CAST_TRIGGERS called, card_id=68
+  Card found: 12
+  Card def found, type=1, effects=1
+    Effect 0: trigger=12, trigger_scope=7
+  Calling TriggerSystem::resolve_trigger...
+  After resolve_trigger, pending_effects.size()=1
+CHECK_SPELL_CAST_TRIGGERS called, card_id=25
+  Card found: 12
+  Card def found, type=1, effects=1
+    Effect 0: trigger=12, trigger_scope=7
+  Calling TriggerSystem::resolve_trigger...
+  After resolve_trigger, pending_effects.size()=1

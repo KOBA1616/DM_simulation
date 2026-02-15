@@ -3,15 +3,18 @@
 #include "engine/systems/mechanics/mana_system.hpp"
 #include "engine/systems/effects/trigger_system.hpp"
 #include "engine/systems/effects/continuous_effect_system.hpp"
+#include "engine/actions/intent_generator.hpp"
 #include "core/constants.hpp"
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #include <algorithm>
 
-namespace dm::engine::systems {
+namespace dm::engine::flow {
 
     using namespace dm::core;
     using namespace dm::engine::game_command;
+    using namespace dm::engine::systems; // For TriggerSystem, ContinuousEffectSystem
 
     // Helper to move card via Command
     static void move_card_cmd(GameState& state, std::vector<CardInstance>& from, Zone from_zone, Zone to_zone, PlayerID owner) {
@@ -41,6 +44,135 @@ namespace dm::engine::systems {
         on_start_turn(game_state, card_db);
         // Initial state loop check
         game_state.update_loop_check();
+    }
+
+    void PhaseSystem::setup_scenario(GameState& state, const ScenarioConfig& config, const std::map<CardID, CardDefinition>& card_db) {
+        // 1. Reset Game State
+        state.turn_number = 5;
+        state.active_player_id = 0;
+        state.current_phase = Phase::MAIN;
+        state.winner = GameResult::NONE;
+        state.pending_effects.clear();
+        state.current_attack = AttackState(); // Reset attack context
+
+        // Clear all zones for both players
+        for (auto& p : state.players) {
+            p.hand.clear();
+            p.battle_zone.clear();
+            p.mana_zone.clear();
+            p.graveyard.clear();
+            p.shield_zone.clear();
+            p.deck.clear();
+        }
+
+        // Instance ID counter
+        int instance_id_counter = 0;
+
+        // Fill decks
+        // Player 0 (Me)
+        if (!config.my_deck.empty()) {
+             for (int cid : config.my_deck) {
+                  state.players[0].deck.emplace_back((CardID)cid, instance_id_counter++, (PlayerID)0);
+             }
+        } else {
+             // Fallback to dummy deck
+             for(int i=0; i<30; ++i) {
+                  state.players[0].deck.emplace_back((CardID)1, instance_id_counter++, (PlayerID)0);
+             }
+        }
+
+        // Player 1 (Enemy)
+        if (!config.enemy_deck.empty()) {
+             for (int cid : config.enemy_deck) {
+                  state.players[1].deck.emplace_back((CardID)cid, instance_id_counter++, (PlayerID)1);
+             }
+        } else {
+             // Fallback to dummy deck
+             for(int i=0; i<30; ++i) {
+                  state.players[1].deck.emplace_back((CardID)1, instance_id_counter++, (PlayerID)1);
+             }
+        }
+
+        // 2. Setup My Resources (Player 0)
+        Player& me = state.players[0];
+
+        // Hand
+        for (int cid : config.my_hand_cards) {
+            me.hand.emplace_back((CardID)cid, instance_id_counter++, me.id);
+        }
+
+        // Battle Zone
+        for (int cid : config.my_battle_zone) {
+            CardInstance c((CardID)cid, instance_id_counter++, me.id);
+            c.summoning_sickness = false; // Assume creatures on board are ready
+            me.battle_zone.push_back(c);
+        }
+
+        // Mana Zone
+        for (int cid : config.my_mana_zone) {
+            CardInstance c((CardID)cid, instance_id_counter++, me.id);
+            c.is_tapped = false;
+            me.mana_zone.push_back(c);
+        }
+
+        if (config.my_mana_zone.empty() && config.my_mana > 0) {
+            for (int i = 0; i < config.my_mana; ++i) {
+                me.mana_zone.emplace_back(1, instance_id_counter++, me.id);
+            }
+        }
+
+        // Graveyard
+        for (int cid : config.my_grave_yard) {
+            me.graveyard.emplace_back((CardID)cid, instance_id_counter++, me.id);
+        }
+
+        // My Shields (Player 0)
+        for (int cid : config.my_shields) {
+             me.shield_zone.emplace_back((CardID)cid, instance_id_counter++, me.id);
+        }
+
+        // 3. Setup Enemy Resources (Player 1)
+        Player& enemy = state.players[1];
+
+        // Enemy Battle Zone
+        for (int cid : config.enemy_battle_zone) {
+            CardInstance c((CardID)cid, instance_id_counter++, enemy.id);
+            c.summoning_sickness = false;
+            enemy.battle_zone.push_back(c);
+        }
+
+        // Enemy Shields
+        for (int i = 0; i < config.enemy_shield_count; ++i) {
+             enemy.shield_zone.emplace_back(1, instance_id_counter++, enemy.id);
+        }
+
+        // Initialize Owner Map
+        state.card_owner_map.resize(instance_id_counter);
+
+        // Populate owner map
+        auto populate_owner = [&](const Player& p) {
+            auto register_cards = [&](const std::vector<CardInstance>& cards) {
+                for (const auto& c : cards) {
+                    if (c.instance_id >= 0 && c.instance_id < (int)state.card_owner_map.size()) {
+                        state.set_card_owner(c.instance_id, p.id);
+                    }
+                }
+            };
+            register_cards(p.hand);
+            register_cards(p.battle_zone);
+            register_cards(p.mana_zone);
+            register_cards(p.graveyard);
+            register_cards(p.shield_zone);
+            register_cards(p.deck);
+            register_cards(p.hyper_spatial_zone);
+            register_cards(p.gr_deck);
+        };
+
+        populate_owner(state.players[0]);
+        populate_owner(state.players[1]);
+
+        // Initialize Stats (Optional but good practice)
+        state.initialize_card_stats(card_db, 40); // Approx
     }
 
     void PhaseSystem::handle_pass(GameState& state, const std::map<CardID, CardDefinition>& card_db) {
@@ -141,9 +273,8 @@ namespace dm::engine::systems {
         }
     }
 
-    static bool check_game_over_internal(GameState& game_state) {
+    bool PhaseSystem::check_game_over(GameState& game_state, GameResult& result) {
         bool is_over = false;
-        GameResult result = GameResult::NONE;
 
         if (game_state.winner != GameResult::NONE) {
             result = game_state.winner;
@@ -183,7 +314,65 @@ namespace dm::engine::systems {
             }
             return true;
         }
+
+        result = GameResult::NONE;
         return false;
+    }
+
+    void PhaseSystem::fast_forward(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+        GameResult result;
+        int loop_count = 0;
+        while (true) {
+            ++loop_count;
+
+            // DEBUG: Log each iteration
+            try {
+                std::filesystem::create_directories("logs");
+                std::ofstream ofs("logs/fast_forward_debug.txt", std::ios::app);
+                if (ofs) {
+                    ofs << "[FastForward] loop=" << loop_count
+                        << " phase=" << static_cast<int>(game_state.current_phase)
+                        << " player=" << static_cast<int>(game_state.active_player_id)
+                        << " turn=" << game_state.turn_number << "\n";
+                }
+            } catch (...) {}
+
+            if (check_game_over(game_state, result)) {
+                try {
+                    std::filesystem::create_directories("logs");
+                    std::ofstream ofs("logs/fast_forward_debug.txt", std::ios::app);
+                    if (ofs) {
+                        ofs << "[FastForward] game_over at loop=" << loop_count << "\n";
+                    }
+                } catch (...) {}
+                return;
+            }
+
+            auto actions = IntentGenerator::generate_legal_commands(game_state, card_db);
+
+            try {
+                std::filesystem::create_directories("logs");
+                std::ofstream ofs("logs/fast_forward_debug.txt", std::ios::app);
+                if (ofs) {
+                    ofs << "[FastForward] loop=" << loop_count
+                        << " actions_count=" << actions.size() << "\n";
+                }
+            } catch (...) {}
+
+            if (!actions.empty()) {
+                try {
+                    std::filesystem::create_directories("logs");
+                    std::ofstream ofs("logs/fast_forward_debug.txt", std::ios::app);
+                    if (ofs) {
+                        ofs << "[FastForward] exit with actions at loop=" << loop_count
+                            << " phase=" << static_cast<int>(game_state.current_phase) << "\n";
+                    }
+                } catch (...) {}
+                return;
+            }
+
+            next_phase(game_state, card_db);
+        }
     }
 
     void PhaseSystem::next_phase(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
@@ -198,7 +387,6 @@ namespace dm::engine::systems {
             case Phase::BLOCK:
                 next_p = Phase::ATTACK;
                 // Transitioning from BLOCK to ATTACK means we resolve the battle.
-                // NOTE: This logic should ideally be in BattleSystem, but kept here for now to maintain flow.
                 if (game_state.current_attack.source_instance_id != -1) {
                     bool blocked = game_state.current_attack.blocked;
                     int target_id = game_state.current_attack.target_instance_id;
@@ -252,7 +440,8 @@ namespace dm::engine::systems {
              on_draw_phase(game_state, card_db);
         }
 
-        check_game_over_internal(game_state);
+        GameResult res;
+        check_game_over(game_state, res);
         game_state.update_loop_check();
     }
 

@@ -5,7 +5,7 @@
 #include <string>
 #include <memory>
 
-namespace dm::engine {
+namespace dm::engine::infrastructure {
     class CardRegistry {
     public:
         static void load_from_json(const std::string& json_str);

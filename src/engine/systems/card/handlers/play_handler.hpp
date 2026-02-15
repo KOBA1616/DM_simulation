@@ -2,7 +2,7 @@
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
@@ -49,7 +49,7 @@ namespace dm::engine {
                         for (const auto& card : *zone) {
                             if (ctx.card_db.count(card.card_id)) {
                                  const auto& def = ctx.card_db.at(card.card_id);
-                                 if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller, pid, false)) {
+                                 if (dm::engine::utils::TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller, pid, false)) {
                                      targets.push_back(card.instance_id);
                                  }
                             }

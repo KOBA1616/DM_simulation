@@ -8,7 +8,6 @@
 #include "pending_effect.hpp"
 #include "modifiers.hpp"
 #include "game_event.hpp"
-#include "engine/systems/trigger_system/reaction_window.hpp"
 #include <vector>
 #include <map>
 #include <string>
@@ -75,7 +74,6 @@ namespace dm::core {
         GameResult winner = GameResult::NONE;
         
         std::vector<PendingEffect> pending_effects;
-        std::vector<dm::engine::systems::ReactionWindow> reaction_stack;
 
         std::vector<CostModifier> active_modifiers;
         std::vector<PassiveEffect> passive_effects;

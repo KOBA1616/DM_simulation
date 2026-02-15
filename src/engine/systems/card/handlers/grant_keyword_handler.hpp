@@ -51,8 +51,8 @@ namespace dm::engine {
                 targets = *ctx.targets;
             } else {
                  // Filter logic needed
-                 // Can reuse TargetUtils logic or delegate
-                 // Since I don't have full TargetUtils logic here to scan all zones easily without copy-paste,
+                 // Can reuse dm::engine::utils::TargetUtils logic or delegate
+                 // Since I don't have full dm::engine::utils::TargetUtils logic here to scan all zones easily without copy-paste,
                  // I will assume for now targets are provided or implicit logic matches `resolve` (which was buggy/incomplete in old code anyway regarding ID targets).
                  // But wait, old code just added a PassiveEffect globally!
                  // It did NOT iterate targets.
@@ -83,7 +83,7 @@ namespace dm::engine {
                     for (auto& card : p.battle_zone) {
                          if (!ctx.card_db.count(card.card_id)) continue;
                          const auto& def = ctx.card_db.at(card.card_id);
-                         if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
+                         if (dm::engine::utils::TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, controller_id, pid)) {
                               targets.push_back(card.instance_id);
                          }
                     }

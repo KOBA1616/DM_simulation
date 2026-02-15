@@ -1,7 +1,7 @@
 #include "commands.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "core/game_event.hpp"
-#include "engine/systems/card/card_registry.hpp" // Added for G-Neo lookup
+#include "engine/infrastructure/data/card_registry.hpp" // Added for G-Neo lookup
 #include <iostream>
 #include <algorithm>
 #include <fstream>
@@ -120,7 +120,7 @@ namespace dm::engine::game_command {
         bool should_replace = false;
         if (from_zone == core::Zone::BATTLE && to_zone != core::Zone::BATTLE && !card.underlying_cards.empty()) {
              // Access Global Card Registry (Singleton)
-             const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+             const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
              if (card_db.count(card.card_id)) {
                  const auto& def = card_db.at(card.card_id);
                  if (def.keywords.g_neo) {
@@ -687,47 +687,6 @@ namespace dm::engine::game_command {
         if (previous_query) {
              state.pending_query = *previous_query;
         }
-    }
-
-    // --- DeclareReactionCommand ---
-
-    void DeclareReactionCommand::execute(core::GameState& state) {
-        previous_status = state.status;
-        previous_stack = state.reaction_stack;
-
-        if (state.reaction_stack.empty()) return;
-
-        auto& window = state.reaction_stack.back();
-
-        if (!pass) {
-            if (reaction_index < 0 || reaction_index >= (int)window.candidates.size()) {
-                return;
-            }
-            window.used_candidate_indices.push_back(reaction_index);
-
-            const auto& candidate = window.candidates[reaction_index];
-
-            if (candidate.type == dm::engine::systems::ReactionType::SHIELD_TRIGGER) {
-                 core::PendingEffect eff(core::EffectType::TRIGGER_ABILITY, candidate.instance_id, candidate.player_id);
-                 state.pending_effects.push_back(eff);
-            }
-            else if (candidate.type == dm::engine::systems::ReactionType::REVOLUTION_CHANGE) {
-                core::PendingEffect eff(core::EffectType::TRIGGER_ABILITY, candidate.instance_id, candidate.player_id);
-                state.pending_effects.push_back(eff);
-            }
-        }
-
-        if (pass) {
-            state.reaction_stack.pop_back();
-            if (state.reaction_stack.empty()) {
-                state.status = core::GameState::Status::PLAYING;
-            }
-        }
-    }
-
-    void DeclareReactionCommand::invert(core::GameState& state) {
-        state.status = previous_status;
-        state.reaction_stack = previous_stack;
     }
 
     // --- StatCommand ---

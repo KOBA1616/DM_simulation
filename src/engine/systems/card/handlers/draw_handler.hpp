@@ -2,7 +2,7 @@
 #include <iostream>
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "engine/systems/effects/trigger_system.hpp"
 
@@ -155,8 +155,8 @@ namespace dm::engine {
             // 1. Check Deck Empty -> Win/Lose
             // Instruction: IF (deck_count == 0) THEN (Win/Lose)
             // Need condition "DECK_COUNT". PipelineExecutor::check_condition supports "exists"?
-            // We need "type"="DECK_COUNT_CHECK"? No, ConditionSystem handles it.
-            // But ConditionSystem usually checks Source/Context.
+            // We need "type"="DECK_COUNT_CHECK"? No, dm::engine::rules::ConditionSystem handles it.
+            // But dm::engine::rules::ConditionSystem usually checks Source/Context.
 
             // Let's assume we can use GAME_ACTION "CHECK_DECKOUT".
             // Or just check condition.

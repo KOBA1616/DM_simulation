@@ -1,13 +1,13 @@
-#include "json_loader.hpp"
-#include "card_registry.hpp"
+#include "engine/infrastructure/data/json_loader.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include "core/card_json_types.hpp"
-#include "keyword_expander.hpp"
+#include "engine/systems/card/keyword_expander.hpp"
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <nlohmann/json.hpp>
 
-namespace dm::engine {
+namespace dm::engine::infrastructure {
 
     using namespace dm::core;
 

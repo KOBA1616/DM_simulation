@@ -1,6 +1,6 @@
 #include "pending_strategy.hpp"
-#include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/flow/reaction_system.hpp"
+#include "engine/utils/target_utils.hpp"
+#include "engine/systems/effects/reaction_system.hpp"
 #include "engine/systems/effects/passive_effect_system.hpp"
 #include <algorithm>
 #include <vector>
@@ -131,10 +131,10 @@ namespace dm::engine {
                                 if (card_db.count(card.card_id) == 0) continue;
                                 const auto& def = card_db.at(card.card_id);
 
-                                if (TargetUtils::is_valid_target(card, def, filter, game_state, decision_maker, (PlayerID)pid, false, &eff.execution_context)) {
+                                if (dm::engine::utils::TargetUtils::is_valid_target(card, def, filter, game_state, decision_maker, (PlayerID)pid, false, &eff.execution_context)) {
                                     bool protected_by_jd = false;
                                     if (decision_maker != pid) {
-                                        if (TargetUtils::is_protected_by_just_diver(card, def, game_state, decision_maker)) {
+                                        if (dm::engine::utils::TargetUtils::is_protected_by_just_diver(card, def, game_state, decision_maker)) {
                                             protected_by_jd = true;
                                         }
                                     }
@@ -150,7 +150,7 @@ namespace dm::engine {
                                     for (const auto& under : card.underlying_cards) {
                                         if (card_db.count(under.card_id) == 0) continue;
                                         const auto& under_def = card_db.at(under.card_id);
-                                        if (TargetUtils::is_valid_target(under, under_def, filter, game_state, decision_maker, (PlayerID)pid, false, &eff.execution_context)) {
+                                        if (dm::engine::utils::TargetUtils::is_valid_target(under, under_def, filter, game_state, decision_maker, (PlayerID)pid, false, &eff.execution_context)) {
                                             if (PassiveEffectSystem::instance().check_restriction(game_state, under, PassiveType::CANNOT_BE_SELECTED, card_db)) {
                                                 continue;
                                             }
@@ -239,7 +239,7 @@ namespace dm::engine {
                             if (def.keywords.revolution_change) {
                                 bool valid_condition = true;
                                 if (def.revolution_change_condition.has_value()) {
-                                    valid_condition = TargetUtils::is_valid_target(*attacker_it, card_db.at(attacker_it->card_id), def.revolution_change_condition.value(), game_state, eff.controller, eff.controller);
+                                    valid_condition = dm::engine::utils::TargetUtils::is_valid_target(*attacker_it, card_db.at(attacker_it->card_id), def.revolution_change_condition.value(), game_state, eff.controller, eff.controller);
                                 }
 
                                 if (valid_condition) {
@@ -292,7 +292,7 @@ namespace dm::engine {
 
                      bool legal = false;
                      for (const auto& r : def.reaction_abilities) {
-                         if (ReactionSystem::check_condition(game_state, r, card, eff.controller, card_db, event_type)) {
+                         if (dm::engine::systems::ReactionSystem::check_condition(game_state, r, card, eff.controller, card_db, event_type)) {
                              legal = true;
                              break;
                          }

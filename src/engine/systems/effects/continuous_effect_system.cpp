@@ -1,6 +1,6 @@
 #include "continuous_effect_system.hpp"
-#include "engine/systems/card/condition_system.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/systems/rules/condition_system.hpp"
+#include "engine/utils/target_utils.hpp"
 #include "core/modifiers.hpp"
 #include <algorithm>
 #include <iostream>
@@ -29,10 +29,10 @@ namespace dm::engine::systems {
                 for (const auto& mod_def : def.static_abilities) {
                     // Check Condition (Source condition, e.g. "If I am tapped")
                     if (mod_def.condition.type != "NONE" && !mod_def.condition.type.empty()) {
-                        // ConditionSystem usually requires context.
+                        // dm::engine::rules::ConditionSystem usually requires context.
                         // We pass the card itself as source.
                         // Use instance() to access singleton
-                        if (!ConditionSystem::instance().evaluate_def(state, mod_def.condition, card.instance_id, card_db, {})) {
+                        if (!dm::engine::rules::ConditionSystem::instance().evaluate_def(state, mod_def.condition, card.instance_id, card_db, {})) {
                             continue;
                         }
                     }
