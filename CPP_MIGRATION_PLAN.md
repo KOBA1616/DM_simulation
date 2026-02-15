@@ -4,7 +4,7 @@
 
 ### ✅ Phase 1: AI選択ロジックの統一（完了）
 - 実装完了日: 2024年
-- 詳細レポート: [PHASE1_IMPLEMENTATION_REPORT.md](PHASE1_IMPLEMENTATION_REPORT.md)
+- 詳細レポート: [PHASE1_IMPLEMENTATION_REPORT.md](docs/reports/PHASE1_IMPLEMENTATION_REPORT.md)
 - 変更ファイル:
   - ✅ `src/engine/ai/simple_ai.hpp` - 新規作成
   - ✅ `src/engine/ai/simple_ai.cpp` - 新規作成
@@ -15,7 +15,7 @@
 
 ### ✅ Phase 2: プレイヤーモード管理C++化（完了）
 - 実装完了日: 2024年
-- 詳細レポート: [PHASE2_IMPLEMENTATION_REPORT.md](PHASE2_IMPLEMENTATION_REPORT.md)
+- 詳細レポート: [PHASE2_IMPLEMENTATION_REPORT.md](docs/reports/PHASE2_IMPLEMENTATION_REPORT.md)
 - 変更ファイル:
   - ✅ `src/core/types.hpp` - PlayerMode enum追加
   - ✅ `src/core/game_state.hpp` - player_modes配列とis_human_player()追加
