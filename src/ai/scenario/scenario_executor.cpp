@@ -1,6 +1,6 @@
 #include "scenario_executor.hpp"
 #include "engine/game_instance.hpp"
-#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/systems/flow/phase_system.hpp"
 #include "engine/actions/intent_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
@@ -38,14 +38,14 @@ namespace dm::ai {
         GameResult result = GameResult::NONE;
 
         while (steps < max_steps) {
-            bool game_over = PhaseManager::check_game_over(instance.state, result);
+            bool game_over = PhaseSystem::check_game_over(instance.state, result);
             if (game_over) {
                 break;
             }
 
             std::vector<Action> legal_actions = IntentGenerator::generate_legal_actions(instance.state, *card_db);
             if (legal_actions.empty()) {
-                PhaseManager::next_phase(instance.state, *card_db);
+                PhaseSystem::next_phase(instance.state, *card_db);
                 continue;
             }
 

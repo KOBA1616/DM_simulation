@@ -1,5 +1,5 @@
 #include "self_play.hpp"
-#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/systems/flow/phase_system.hpp"
 #include "engine/systems/game_logic_system.hpp"
 #include "engine/utils/determinizer.hpp"
 #include "engine/actions/intent_generator.hpp"
@@ -41,7 +41,7 @@ namespace dm::ai {
         while (true) {
             GameResult result;
             // Check game over on current state.
-            if (PhaseManager::check_game_over(state, result)) {
+            if (PhaseSystem::check_game_over(state, result)) {
                 info.result = result;
                 info.turn_count = state.turn_number;
                 break;
@@ -68,7 +68,7 @@ namespace dm::ai {
 
             auto legal_actions = IntentGenerator::generate_legal_actions(state, *card_db_);
             if (legal_actions.empty()) {
-                PhaseManager::next_phase(state, *card_db_);
+                PhaseSystem::next_phase(state, *card_db_);
                 continue;
             }
 
@@ -98,17 +98,17 @@ namespace dm::ai {
             }
 
             if (!found) {
-                PhaseManager::next_phase(state, *card_db_);
+                PhaseSystem::next_phase(state, *card_db_);
                 continue;
             }
 
             GameLogicSystem::resolve_action(state, selected_action, *card_db_);
             
             if (selected_action.type == PlayerIntent::PASS || selected_action.type == PlayerIntent::MANA_CHARGE) {
-                 if (state.current_phase == Phase::MANA && selected_action.type == PlayerIntent::MANA_CHARGE) {
-                     PhaseManager::next_phase(state, *card_db_);
+                if (state.current_phase == Phase::MANA && selected_action.type == PlayerIntent::MANA_CHARGE) {
+                     PhaseSystem::next_phase(state, *card_db_);
                  } else if (selected_action.type == PlayerIntent::PASS) {
-                     PhaseManager::next_phase(state, *card_db_);
+                     PhaseSystem::next_phase(state, *card_db_);
                  }
             }
         }

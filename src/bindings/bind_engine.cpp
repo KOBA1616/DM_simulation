@@ -9,7 +9,7 @@
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/pipeline_executor.hpp"
 #include "engine/systems/card/json_loader.hpp"
-#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/systems/flow/phase_system.hpp"
 #include "engine/systems/trigger_system/trigger_manager.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/game_command/action_commands.hpp"
@@ -477,13 +477,17 @@ void bind_engine(py::module& m) {
         })
         .def_static("clear", &CardRegistry::clear);
 
-    py::class_<PhaseManager>(m, "PhaseManager")
-        .def_static("start_game", &PhaseManager::start_game)
-        .def_static("setup_scenario", &PhaseManager::setup_scenario)
-        .def_static("start_turn", &PhaseManager::start_turn)
-        .def_static("next_phase", &PhaseManager::next_phase)
-        .def_static("fast_forward", &PhaseManager::fast_forward)
-        .def_static("check_game_over", &PhaseManager::check_game_over);
+    py::class_<PhaseSystem>(m, "PhaseSystem")
+        .def_static("start_game", &PhaseSystem::start_game)
+        .def_static("setup_scenario", &PhaseSystem::setup_scenario)
+        .def_static("start_turn", &PhaseSystem::start_turn)
+        .def_static("next_phase", &PhaseSystem::next_phase)
+        .def_static("fast_forward", &PhaseSystem::fast_forward)
+        .def_static("check_game_over", &PhaseSystem::check_game_over);
+    // Backwards compatibility alias: expose PhaseManager name mapped to PhaseSystem
+    try {
+        m.attr("PhaseManager") = m.attr("PhaseSystem");
+    } catch(...) {}
     // Bind the new CommandGenerator helper (Phase1 bridge)
     try { bind_command_generator(m); } catch(...) {}
 }

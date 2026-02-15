@@ -102,8 +102,8 @@ class SimpleGameGenerator:
             # Start game: prefer native PhaseManager.start_game, fallback to instance.start_game(), else do a minimal python setup
             applied = False
             try:
-                if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'start_game'):
-                    dm_ai_module.PhaseManager.start_game(gs, self.card_db)
+                if hasattr(dm_ai_module, 'PhaseSystem') and hasattr(dm_ai_module.PhaseSystem, 'start_game'):
+                    dm_ai_module.PhaseSystem.start_game(gs, self.card_db)
                     applied = True
             except Exception:
                 applied = False
@@ -156,7 +156,7 @@ class SimpleGameGenerator:
                 # Check automated termination
                 try:
                     res_enum = dm_ai_module.GameResult.NONE
-                    is_over = dm_ai_module.PhaseManager.check_game_over(gs, res_enum)
+                    is_over = dm_ai_module.PhaseSystem.check_game_over(gs, res_enum)
                     if is_over:
                         break
                 except:

@@ -10,7 +10,7 @@
 #include "core/action.hpp"
 #include "engine/game_command/commands.hpp"
 #include "engine/systems/command_system.hpp" // Added for CommandSystem
-#include "engine/systems/flow/phase_manager.hpp" // Added for PhaseManager
+#include "engine/systems/flow/phase_system.hpp" // Transitional PhaseSystem shim
 #include "engine/systems/mana/mana_system.hpp" // Added for ManaSystem
 #include "engine/systems/breaker/breaker_system.hpp" // Added for BreakerSystem
 #include "engine/utils/action_primitive_utils.hpp"
@@ -367,7 +367,7 @@ namespace dm::engine::systems {
             case PlayerIntent::PASS:
             {
                 // Always advance to next phase when PASS is selected
-                PhaseManager::next_phase(state, card_db);
+                PhaseSystem::next_phase(state, card_db);
                 break;
             }
             case PlayerIntent::MANA_CHARGE:
@@ -380,7 +380,7 @@ namespace dm::engine::systems {
             
             // DM Rule: After mana charge (max 1 per turn), automatically advance to next phase
             // Use fast_forward to skip phases with no legal actions
-            PhaseManager::fast_forward(state, card_db);
+            PhaseSystem::fast_forward(state, card_db);
                 break;
             }
             case PlayerIntent::PLAY_CARD_INTERNAL:

@@ -2,7 +2,8 @@
 #include "mcts_evaluator.hpp"
 #include "engine/actions/intent_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
-#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/systems/flow/phase_system.hpp"
+#include "engine/systems/flow/phase_system.hpp"
 #include "ai/encoders/action_encoder.hpp"
 #include "../inference/native_inference.hpp"
 #include <cmath>
@@ -104,7 +105,7 @@ namespace dm::ai {
 
         // 1. Clone and Fast Forward Root
         GameState root_gs = root_state.clone(); // Copy
-        PhaseManager::fast_forward(root_gs, *card_db_);
+        PhaseSystem::fast_forward(root_gs, *card_db_);
         
         // Explicitly free the old tree before allocating the new one to reduce peak memory usage
         transposition_table_.clear();
@@ -161,7 +162,7 @@ namespace dm::ai {
                 }
 
                 GameResult result;
-                bool is_over = PhaseManager::check_game_over(leaf->state, result);
+                bool is_over = PhaseSystem::check_game_over(leaf->state, result);
                 
                 if (is_over) {
                     float value = 0.0f;
@@ -284,9 +285,9 @@ namespace dm::ai {
             GameLogicSystem::resolve_action(next_state, action, *card_db_);
 
             if (action.type == PlayerIntent::PASS || action.type == PlayerIntent::MANA_CHARGE) {
-                PhaseManager::next_phase(next_state, *card_db_);
+                PhaseSystem::next_phase(next_state, *card_db_);
             }
-            PhaseManager::fast_forward(next_state, *card_db_);
+            PhaseSystem::fast_forward(next_state, *card_db_);
             
             auto child = std::make_unique<MCTSNode>(std::move(next_state)); // next_state is moved
 

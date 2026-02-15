@@ -2,7 +2,7 @@
 #include <iostream>
 #include <chrono>
 #include "ai/agents/heuristic_agent.hpp"
-#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/systems/flow/phase_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "engine/actions/intent_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
@@ -81,7 +81,7 @@ namespace dm::ai {
                         });
 
                         if (stop_pool_ && tasks_.empty()) return;
-
+                             if(dm::engine::PhaseSystem::check_game_over(instance.state, res)) {
                         if (!tasks_.empty()) {
                             task = std::move(tasks_.front());
                             tasks_.pop();
@@ -90,7 +90,7 @@ namespace dm::ai {
                     if (task) {
                         try {
                             task();
-                        } catch (...) {
+                                     final_res = res;
                         }
                     }
                 }
@@ -404,15 +404,15 @@ namespace dm::ai {
 
             while (steps < max_steps) {
                  dm::core::GameResult res;
-                 if(dm::engine::PhaseManager::check_game_over(instance.state, res)) {
+                 if(dm::engine::PhaseSystem::check_game_over(instance.state, res)) {
                     final_res = res;
                     break;
                  }
 
                  auto legal_actions = dm::engine::IntentGenerator::generate_legal_actions(instance.state, *card_db_);
                  if (legal_actions.empty()) {
-                     dm::engine::PhaseManager::next_phase(instance.state, *card_db_);
-                     if(dm::engine::PhaseManager::check_game_over(instance.state, res)) {
+                     dm::engine::PhaseSystem::next_phase(instance.state, *card_db_);
+                     if(dm::engine::PhaseSystem::check_game_over(instance.state, res)) {
                          final_res = res;
                          break;
                      }
@@ -433,7 +433,7 @@ namespace dm::ai {
             // Ensure finalization to capture winner if engine has pending resolution
             if (final_res == dm::core::GameResult::NONE) {
                 dm::core::GameResult tmp = final_res;
-                if (dm::engine::PhaseManager::check_game_over(instance.state, tmp)) {
+                if (dm::engine::PhaseSystem::check_game_over(instance.state, tmp)) {
                     final_res = tmp;
                 }
                 // Try finalization hook if available on state
@@ -514,7 +514,7 @@ namespace dm::ai {
                     instance.state.card_owner_map[card.instance_id] = 1;
             }
 
-            dm::engine::PhaseManager::start_game(instance.state, *card_db_);
+            dm::engine::PhaseSystem::start_game(instance.state, *card_db_);
 
             HeuristicAgent agent0(0, *card_db_);
             HeuristicAgent agent1(1, *card_db_);
@@ -529,15 +529,15 @@ namespace dm::ai {
                      break;
                  }
 
-                 dm::core::GameResult res;
-                 if(dm::engine::PhaseManager::check_game_over(instance.state, res)) {
-                    final_res = res;
-                    break;
-                 }
+                      dm::core::GameResult res;
+                      if(dm::engine::PhaseSystem::check_game_over(instance.state, res)) {
+                          final_res = res;
+                          break;
+                      }
 
                  auto legal_actions = dm::engine::IntentGenerator::generate_legal_actions(instance.state, *card_db_);
                  if (legal_actions.empty()) {
-                     dm::engine::PhaseManager::next_phase(instance.state, *card_db_);
+                     dm::engine::PhaseSystem::next_phase(instance.state, *card_db_);
                      continue;
                  }
 
@@ -559,7 +559,7 @@ namespace dm::ai {
                 // Try additional finalization if still none
                 if (final_res == dm::core::GameResult::NONE) {
                     dm::core::GameResult tmp = final_res;
-                    if (dm::engine::PhaseManager::check_game_over(instance.state, tmp)) {
+                    if (dm::engine::PhaseSystem::check_game_over(instance.state, tmp)) {
                         final_res = tmp;
                     }
                     try {
@@ -633,7 +633,7 @@ namespace dm::ai {
                     instance.state.card_owner_map[card.instance_id] = 1;
             }
 
-            dm::engine::PhaseManager::start_game(instance.state, *card_db_);
+            dm::engine::PhaseSystem::start_game(instance.state, *card_db_);
 
             HeuristicAgent agent0(0, *card_db_);
             HeuristicAgent agent1(1, *card_db_);
@@ -646,11 +646,11 @@ namespace dm::ai {
                  if(instance.state.winner != dm::core::GameResult::NONE) break;
 
                  dm::core::GameResult res;
-                 if(dm::engine::PhaseManager::check_game_over(instance.state, res)) break;
+                 if(dm::engine::PhaseSystem::check_game_over(instance.state, res)) break;
 
                  auto legal_actions = dm::engine::IntentGenerator::generate_legal_actions(instance.state, *card_db_);
                  if (legal_actions.empty()) {
-                     dm::engine::PhaseManager::next_phase(instance.state, *card_db_);
+                     dm::engine::PhaseSystem::next_phase(instance.state, *card_db_);
                      continue;
                  }
 
@@ -667,9 +667,9 @@ namespace dm::ai {
 
             // Trigger stats finalization (e.g. tracking mana usage)
             dm::core::GameResult final_res_val = instance.state.winner;
-            if (final_res_val == dm::core::GameResult::NONE) {
-                 dm::engine::PhaseManager::check_game_over(instance.state, final_res_val);
-            }
+              if (final_res_val == dm::core::GameResult::NONE) {
+                  dm::engine::PhaseSystem::check_game_over(instance.state, final_res_val);
+              }
             // Explicitly call on_game_finished to ensure mana usage and win stats are recorded
             instance.state.on_game_finished(final_res_val);
 

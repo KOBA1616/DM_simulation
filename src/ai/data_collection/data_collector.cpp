@@ -1,7 +1,7 @@
 #include "data_collector.hpp"
 #include "ai/agents/heuristic_agent.hpp"
 #include "engine/game_instance.hpp"
-#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/systems/flow/phase_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "engine/actions/intent_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
@@ -71,7 +71,7 @@ namespace dm::ai {
             setup_deck(game.state.players[1], deck2);
 
             // Game Loop
-            dm::engine::PhaseManager::start_game(game.state, *card_db_);
+            dm::engine::PhaseSystem::start_game(game.state, *card_db_);
 
             std::vector<std::vector<long>> game_tokens;
             std::vector<std::vector<float>> game_tensors;
@@ -90,13 +90,13 @@ namespace dm::ai {
                 auto legal_actions = action_gen.generate_legal_actions(game.state, *card_db_);
 
                 // If no actions, transition phase
-                if (legal_actions.empty()) {
-                     dm::engine::PhaseManager::next_phase(game.state, *card_db_);
+                     if (legal_actions.empty()) {
+                            dm::engine::PhaseSystem::next_phase(game.state, *card_db_);
 
-                     dm::core::GameResult res;
-                     if(dm::engine::PhaseManager::check_game_over(game.state, res)){
-                        game.state.winner = res;
-                     }
+                            dm::core::GameResult res;
+                            if(dm::engine::PhaseSystem::check_game_over(game.state, res)){
+                                game.state.winner = res;
+                            }
                      continue;
                 }
 
@@ -142,7 +142,7 @@ namespace dm::ai {
                 GameLogicSystem::resolve_action(game.state, chosen_action, *card_db_);
 
                 if (chosen_action.type == dm::core::PlayerIntent::PASS) {
-                     dm::engine::PhaseManager::next_phase(game.state, *card_db_);
+                     dm::engine::PhaseSystem::next_phase(game.state, *card_db_);
                 }
 
                 game.state.update_loop_check();
@@ -152,7 +152,7 @@ namespace dm::ai {
                 }
 
                 dm::core::GameResult res;
-                if(dm::engine::PhaseManager::check_game_over(game.state, res)){
+                if(dm::engine::PhaseSystem::check_game_over(game.state, res)){
                     game.state.winner = res;
                 }
             }

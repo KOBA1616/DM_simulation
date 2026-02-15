@@ -19,10 +19,19 @@ using namespace dm::core;
 
 void bind_core(py::module& m) {
     std::cerr << "[DEBUG] bind_core enter" << std::endl;
-    // Bind opaque vectors
-    py::bind_vector<std::vector<dm::core::CardInstance>>(m, "CardList");
-    py::bind_vector<std::vector<dm::core::Civilization>>(m, "CivilizationList");
-    py::bind_vector<std::vector<dm::core::Player>>(m, "PlayerList");
+    static bool __bind_core_initialized = false;
+    if (__bind_core_initialized) return;
+    try {
+    // Bind opaque vectors (guarded to allow repeated import without crash)
+    try {
+        py::bind_vector<std::vector<dm::core::CardInstance>>(m, "CardList");
+    } catch (...) {}
+    try {
+        py::bind_vector<std::vector<dm::core::Civilization>>(m, "CivilizationList");
+    } catch (...) {}
+    try {
+        py::bind_vector<std::vector<dm::core::Player>>(m, "PlayerList");
+    } catch (...) {}
     
     // Bind opaque map
     // py::bind_map<dm::CardDatabase>(m, "CardDatabase");
@@ -32,26 +41,39 @@ void bind_core(py::module& m) {
 
     // ... (Previous Enums and Classes) ...
     // GameEvent bindings
-    py::enum_<dm::core::EventType>(m, "EventType")
-        .value("NONE", dm::core::EventType::NONE)
-        .value("ZONE_ENTER", dm::core::EventType::ZONE_ENTER)
-        .value("ZONE_LEAVE", dm::core::EventType::ZONE_LEAVE)
-        .value("TURN_START", dm::core::EventType::TURN_START)
-        .value("TURN_END", dm::core::EventType::TURN_END)
-        .value("PHASE_START", dm::core::EventType::PHASE_START)
-        .value("PHASE_END", dm::core::EventType::PHASE_END)
-        .value("PLAY_CARD", dm::core::EventType::PLAY_CARD)
-        .value("ATTACK_INITIATE", dm::core::EventType::ATTACK_INITIATE)
-        .value("BLOCK_INITIATE", dm::core::EventType::BLOCK_INITIATE)
-        .value("BATTLE_START", dm::core::EventType::BATTLE_START)
-        .value("BATTLE_WIN", dm::core::EventType::BATTLE_WIN)
-        .value("BATTLE_LOSE", dm::core::EventType::BATTLE_LOSE)
-        .value("SHIELD_BREAK", dm::core::EventType::SHIELD_BREAK)
-        .value("DIRECT_ATTACK", dm::core::EventType::DIRECT_ATTACK)
-        .value("TAP_CARD", dm::core::EventType::TAP_CARD)
-        .value("UNTAP_CARD", dm::core::EventType::UNTAP_CARD)
-        .value("CUSTOM", dm::core::EventType::CUSTOM)
-        .export_values();
+    try {
+        if (!py::hasattr(m, "EventType")) {
+            py::enum_<dm::core::EventType>(m, "EventType")
+                .value("NONE", dm::core::EventType::NONE)
+                .value("ZONE_ENTER", dm::core::EventType::ZONE_ENTER)
+                .value("ZONE_LEAVE", dm::core::EventType::ZONE_LEAVE)
+                .value("TURN_START", dm::core::EventType::TURN_START)
+                .value("TURN_END", dm::core::EventType::TURN_END)
+                .value("PHASE_START", dm::core::EventType::PHASE_START)
+                .value("PHASE_END", dm::core::EventType::PHASE_END)
+                .value("PLAY_CARD", dm::core::EventType::PLAY_CARD)
+                .value("ATTACK_INITIATE", dm::core::EventType::ATTACK_INITIATE)
+                .value("BLOCK_INITIATE", dm::core::EventType::BLOCK_INITIATE)
+                .value("BATTLE_START", dm::core::EventType::BATTLE_START)
+                .value("BATTLE_WIN", dm::core::EventType::BATTLE_WIN)
+                .value("BATTLE_LOSE", dm::core::EventType::BATTLE_LOSE)
+                .value("SHIELD_BREAK", dm::core::EventType::SHIELD_BREAK)
+                .value("DIRECT_ATTACK", dm::core::EventType::DIRECT_ATTACK)
+                .value("TAP_CARD", dm::core::EventType::TAP_CARD)
+                .value("UNTAP_CARD", dm::core::EventType::UNTAP_CARD)
+                .value("CUSTOM", dm::core::EventType::CUSTOM)
+                .export_values();
+        } else {
+            std::cerr << "[DEBUG] EventType already bound, skipping" << std::endl;
+        }
+    } catch (const py::error_already_set& e) {
+        std::cerr << "[DEBUG] EventType binding threw py::error_already_set: " << e.what() << std::endl;
+        PyErr_Clear();
+    } catch (const std::exception& e) {
+        std::cerr << "[DEBUG] EventType binding threw exception: " << e.what() << std::endl;
+    } catch (...) {
+        std::cerr << "[DEBUG] EventType binding threw unknown exception" << std::endl;
+    }
 
     py::enum_<dm::core::GameState::Status>(m, "GameStatus")
         .value("PLAYING", dm::core::GameState::Status::PLAYING)
@@ -1082,4 +1104,13 @@ void bind_core(py::module& m) {
     // Manual binding check replaced with standard bind_map to ensure type casters are registered for Opaque type
     std::cerr << "[DEBUG] executing bind_map in bind_core" << std::endl;
     py::bind_map<dm::CardDatabase, std::shared_ptr<dm::CardDatabase>>(m, "CardDatabase");
+    } catch (const std::exception& e) {
+        std::cerr << "[DEBUG] bind_core caught exception: " << e.what() << std::endl;
+    } catch (...) {
+        std::cerr << "[DEBUG] bind_core caught unknown exception" << std::endl;
+    }
+    __bind_core_initialized = true;
 }
+
+// mark as initialized at end of function
+// Note: We set the flag before returning to avoid double-registration on repeated imports.

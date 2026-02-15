@@ -1,4 +1,4 @@
-#include "phase_manager.hpp"
+#include "phase_system.hpp"
 #include "engine/systems/mana/mana_system.hpp"
 #include "engine/actions/intent_generator.hpp"
 #include "engine/game_command/commands.hpp"
@@ -31,7 +31,7 @@ namespace dm::engine {
         from.pop_back();
     }
 
-    void PhaseManager::start_game(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+    void PhaseSystem::start_game(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         game_state.turn_number = 1;
         game_state.active_player_id = 0;
         
@@ -53,7 +53,7 @@ namespace dm::engine {
         game_state.update_loop_check();
     }
 
-    void PhaseManager::setup_scenario(GameState& state, const ScenarioConfig& config, const std::map<CardID, CardDefinition>& card_db) {
+    void PhaseSystem::setup_scenario(GameState& state, const ScenarioConfig& config, const std::map<CardID, CardDefinition>& card_db) {
         // 1. Reset Game State
         state.turn_number = 5;
         state.active_player_id = 0;
@@ -182,7 +182,7 @@ namespace dm::engine {
         state.initialize_card_stats(card_db, 40); // Approx
     }
 
-    void PhaseManager::start_turn(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+    void PhaseSystem::start_turn(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         Player& active_player = game_state.players[game_state.active_player_id];
         
         // DEBUG: Log start_turn call
@@ -231,7 +231,7 @@ namespace dm::engine {
         }
     }
 
-    void PhaseManager::draw_card(GameState& game_state, Player& player) {
+    void PhaseSystem::draw_card(GameState& game_state, Player& player) {
         using namespace dm::engine::game_command;
         
         if (player.deck.empty()) {
@@ -244,7 +244,7 @@ namespace dm::engine {
         move_card_cmd(game_state, player.deck, Zone::DECK, Zone::HAND, player.id);
     }
 
-    void PhaseManager::fast_forward(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+    void PhaseSystem::fast_forward(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         GameResult result;
         int loop_count = 0;
         while (true) {
@@ -300,7 +300,7 @@ namespace dm::engine {
         }
     }
 
-    bool PhaseManager::check_game_over(GameState& game_state, GameResult& result) {
+    bool PhaseSystem::check_game_over(GameState& game_state, GameResult& result) {
         bool is_over = false;
 
         // Check Winner Flag
@@ -351,7 +351,7 @@ namespace dm::engine {
         return false;
     }
 
-    void PhaseManager::next_phase(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+    void PhaseSystem::next_phase(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         using namespace dm::engine::game_command;
 
         Phase next_p = game_state.current_phase; // Default same

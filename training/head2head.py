@@ -241,7 +241,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
             started = True
         except Exception as e:
             try:
-                dm.PhaseManager.start_game(inst.state, CARD_DB)
+                dm.PhaseSystem.start_game(inst.state, CARD_DB)
                 started = True
             except Exception as e2:
                 try:
@@ -266,7 +266,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
             p1 = EngineCompat.get_player(inst.state, 1)
             if started and (len(getattr(p0, 'deck', [])) == 0 and len(getattr(p1, 'deck', [])) == 0):
                 try:
-                    dm.PhaseManager.start_game(inst.state, CARD_DB)
+                    dm.PhaseSystem.start_game(inst.state, CARD_DB)
                     p0_after = EngineCompat.get_player(inst.state, 0)
                     p1_after = EngineCompat.get_player(inst.state, 1)
                     pm_diag = {'event': 'start_game_phase_manager_applied', 'seed': int(s), 'p0_counts_after': {'hand': len(getattr(p0_after, 'hand', [])), 'deck': len(getattr(p0_after, 'deck', [])), 'shields': len(getattr(p0_after, 'shield_zone', []))}, 'p1_counts_after': {'hand': len(getattr(p1_after, 'hand', [])), 'deck': len(getattr(p1_after, 'deck', [])), 'shields': len(getattr(p1_after, 'shield_zone', []))}}

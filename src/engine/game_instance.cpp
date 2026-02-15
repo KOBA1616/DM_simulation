@@ -1,5 +1,5 @@
 #include "game_instance.hpp"
-#include "systems/flow/phase_manager.hpp"
+#include "systems/flow/phase_system.hpp"
 #include "engine/actions/intent_generator.hpp"
 #include "engine/ai/simple_ai.hpp" // Added for SimpleAI
 #include "engine/game_command/game_command.hpp"
@@ -53,7 +53,7 @@ namespace dm::engine {
 
     void GameInstance::start_game() {
         if (card_db) {
-            PhaseManager::start_game(state, *card_db);
+            PhaseSystem::start_game(state, *card_db);
         }
     }
 
@@ -87,7 +87,7 @@ namespace dm::engine {
         if (actions.empty()) {
             std::cout << "[step] No actions, calling fast_forward...\n";
             // No actions available - call fast_forward to progress to next decision point
-            PhaseManager::fast_forward(state, *card_db);
+            PhaseSystem::fast_forward(state, *card_db);
             std::cout << "[step] After fast_forward: Turn " << state.turn_number 
                       << ", Phase " << static_cast<int>(state.current_phase) << "\n";
             

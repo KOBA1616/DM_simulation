@@ -1,7 +1,8 @@
 #include "beam_search_evaluator.hpp"
 #include "engine/actions/intent_generator.hpp"
 #include "engine/systems/game_logic_system.hpp"
-#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/systems/flow/phase_system.hpp"
+#include "engine/systems/flow/phase_system.hpp"
 #include "engine/systems/mana/mana_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include <cmath>
@@ -58,9 +59,9 @@ namespace dm::ai {
             GameState next_state = root_state.clone();
             GameLogicSystem::resolve_action(next_state, action, *card_db_);
             if (action.type == PlayerIntent::PASS || action.type == PlayerIntent::MANA_CHARGE) {
-                PhaseManager::next_phase(next_state, *card_db_);
+                PhaseSystem::next_phase(next_state, *card_db_);
             }
-            PhaseManager::fast_forward(next_state, *card_db_);
+            PhaseSystem::fast_forward(next_state, *card_db_);
 
             float score = evaluate_state_heuristic(next_state, root_player);
 
@@ -93,7 +94,7 @@ namespace dm::ai {
             for (const auto& node : current_beam) {
                 GameResult res;
                 GameState base_state = node.state.clone();
-                if (PhaseManager::check_game_over(base_state, res)) {
+                if (PhaseSystem::check_game_over(base_state, res)) {
                     next_candidates.emplace_back(std::move(base_state), node.score);
                     next_candidates.back().first_action = node.first_action;
                     continue;
@@ -104,9 +105,9 @@ namespace dm::ai {
                     GameState next_state = base_state.clone();
                     GameLogicSystem::resolve_action(next_state, action, *card_db_);
                     if (action.type == PlayerIntent::PASS || action.type == PlayerIntent::MANA_CHARGE) {
-                        PhaseManager::next_phase(next_state, *card_db_);
+                        PhaseSystem::next_phase(next_state, *card_db_);
                     }
-                    PhaseManager::fast_forward(next_state, *card_db_);
+                    PhaseSystem::fast_forward(next_state, *card_db_);
 
                     float score = evaluate_state_heuristic(next_state, root_player);
 
@@ -136,7 +137,7 @@ namespace dm::ai {
     float BeamSearchEvaluator::evaluate_state_heuristic(const GameState& state, PlayerID perspective) {
         GameResult res = GameResult::NONE;
         GameState check_state = state.clone();
-        if (PhaseManager::check_game_over(check_state, res)) {
+        if (PhaseSystem::check_game_over(check_state, res)) {
             if (res == GameResult::DRAW) return 0.0f;
             if (res == GameResult::P1_WIN) return (perspective == 0) ? 1000.0f : -1000.0f;
             if (res == GameResult::P2_WIN) return (perspective == 1) ? 1000.0f : -1000.0f;
