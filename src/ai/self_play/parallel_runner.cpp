@@ -409,7 +409,7 @@ namespace dm::ai {
                     break;
                  }
 
-                 auto legal_actions = dm::engine::IntentGenerator::generate_legal_actions(instance.state, *card_db_);
+                 auto legal_actions = dm::engine::IntentGenerator::generate_legal_commands(instance.state, *card_db_);
                  if (legal_actions.empty()) {
                      dm::engine::PhaseManager::next_phase(instance.state, *card_db_);
                      if(dm::engine::PhaseManager::check_game_over(instance.state, res)) {
@@ -419,14 +419,14 @@ namespace dm::ai {
                      continue;
                  }
 
-                 dm::core::Action action;
+                 dm::core::CommandDef action;
                  if (instance.state.active_player_id == 0) {
                      action = agent0.get_action(instance.state, legal_actions);
                  } else {
                      action = agent1.get_action(instance.state, legal_actions);
                  }
 
-                 GameLogicSystem::resolve_action(instance.state, action, *card_db_);
+                 GameLogicSystem::resolve_command_oneshot(instance.state, action, *card_db_);
                  steps++;
             }
 
@@ -535,20 +535,20 @@ namespace dm::ai {
                     break;
                  }
 
-                 auto legal_actions = dm::engine::IntentGenerator::generate_legal_actions(instance.state, *card_db_);
+                 auto legal_actions = dm::engine::IntentGenerator::generate_legal_commands(instance.state, *card_db_);
                  if (legal_actions.empty()) {
                      dm::engine::PhaseManager::next_phase(instance.state, *card_db_);
                      continue;
                  }
 
-                 dm::core::Action action;
+                 dm::core::CommandDef action;
                  if (instance.state.active_player_id == 0) {
                      action = agent0.get_action(instance.state, legal_actions);
                  } else {
                      action = agent1.get_action(instance.state, legal_actions);
                  }
 
-                 GameLogicSystem::resolve_action(instance.state, action, *card_db_);
+                 GameLogicSystem::resolve_command_oneshot(instance.state, action, *card_db_);
                  steps++;
             }
 
@@ -648,20 +648,20 @@ namespace dm::ai {
                  dm::core::GameResult res;
                  if(dm::engine::PhaseManager::check_game_over(instance.state, res)) break;
 
-                 auto legal_actions = dm::engine::IntentGenerator::generate_legal_actions(instance.state, *card_db_);
+                 auto legal_actions = dm::engine::IntentGenerator::generate_legal_commands(instance.state, *card_db_);
                  if (legal_actions.empty()) {
                      dm::engine::PhaseManager::next_phase(instance.state, *card_db_);
                      continue;
                  }
 
-                 dm::core::Action action;
+                 dm::core::CommandDef action;
                  if (instance.state.active_player_id == 0) {
                      action = agent0.get_action(instance.state, legal_actions);
                  } else {
                      action = agent1.get_action(instance.state, legal_actions);
                  }
 
-                 GameLogicSystem::resolve_action(instance.state, action, *card_db_);
+                 GameLogicSystem::resolve_command_oneshot(instance.state, action, *card_db_);
                  steps++;
             }
 

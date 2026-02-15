@@ -55,7 +55,7 @@ namespace dm::ai {
 
             // 2. Calculate Policy (Uniform over legal actions)
             std::vector<float> policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
-            auto legal_actions = dm::engine::IntentGenerator::generate_legal_actions(const_cast<dm::core::GameState&>(state), card_db_);
+            auto legal_actions = dm::engine::IntentGenerator::generate_legal_commands(const_cast<dm::core::GameState&>(state), card_db_);
             
             if (!legal_actions.empty()) {
                 float prob = 1.0f / legal_actions.size();

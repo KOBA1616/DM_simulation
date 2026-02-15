@@ -34,7 +34,7 @@ namespace dm::engine {
                 pipeline->set_context_var("$controller", (int)controller_id);
                 pipeline->set_context_var("$source", (int)ctx.source_instance_id);
 
-                ctx.game_state.active_pipeline = pipeline;
+                // ctx.game_state.active_pipeline = pipeline; // Removed
                 pipeline->execute(insts, ctx.game_state, ctx.card_db);
 
                 // Sync Output Variables

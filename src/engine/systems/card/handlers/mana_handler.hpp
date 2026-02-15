@@ -25,7 +25,7 @@ namespace dm::engine {
              if (!insts.empty()) {
                  // Use persistent pipeline to support pausing (e.g. SELECT)
                  auto pipeline = std::make_shared<dm::engine::systems::PipelineExecutor>();
-                 ctx.game_state.active_pipeline = pipeline;
+                 // ctx.game_state.active_pipeline = pipeline; // Removed
                  pipeline->execute(insts, ctx.game_state, ctx.card_db);
              }
         }

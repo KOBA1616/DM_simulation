@@ -43,21 +43,21 @@ namespace dm::ai {
                 break;
             }
 
-            std::vector<Action> legal_actions = IntentGenerator::generate_legal_actions(instance.state, *card_db);
+            std::vector<CommandDef> legal_actions = IntentGenerator::generate_legal_commands(instance.state, *card_db);
             if (legal_actions.empty()) {
                 PhaseManager::next_phase(instance.state, *card_db);
                 continue;
             }
 
             // Select action
-            Action action;
+            CommandDef action;
             if (instance.state.active_player_id == 0) {
                 action = agent0.get_action(instance.state, legal_actions);
             } else {
                 action = agent1.get_action(instance.state, legal_actions);
             }
 
-            GameLogicSystem::resolve_action(instance.state, action, *card_db);
+            GameLogicSystem::resolve_command_oneshot(instance.state, action, *card_db);
             steps++;
         }
 

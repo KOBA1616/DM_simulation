@@ -66,7 +66,7 @@ namespace dm::ai {
                 info.active_players.push_back(state.active_player_id);
             }
 
-            auto legal_actions = IntentGenerator::generate_legal_actions(state, *card_db_);
+            auto legal_actions = IntentGenerator::generate_legal_commands(state, *card_db_);
             if (legal_actions.empty()) {
                 PhaseManager::next_phase(state, *card_db_);
                 continue;
@@ -76,9 +76,9 @@ namespace dm::ai {
             std::discrete_distribution<int> dist(policy.begin(), policy.end());
             action_idx = dist(state.rng);
 
-            Action selected_action;
+            CommandDef selected_action;
             bool found = false;
-            std::vector<Action> candidates;
+            std::vector<CommandDef> candidates;
             
             for (const auto& act : legal_actions) {
                 if (ActionEncoder::action_to_index(act) == action_idx) {
@@ -102,12 +102,12 @@ namespace dm::ai {
                 continue;
             }
 
-            GameLogicSystem::resolve_action(state, selected_action, *card_db_);
+            GameLogicSystem::resolve_command_oneshot(state, selected_action, *card_db_);
             
-            if (selected_action.type == PlayerIntent::PASS || selected_action.type == PlayerIntent::MANA_CHARGE) {
-                 if (state.current_phase == Phase::MANA && selected_action.type == PlayerIntent::MANA_CHARGE) {
+            if (selected_action.type == CommandType::PASS || selected_action.type == CommandType::MANA_CHARGE) {
+                 if (state.current_phase == Phase::MANA && selected_action.type == CommandType::MANA_CHARGE) {
                      PhaseManager::next_phase(state, *card_db_);
-                 } else if (selected_action.type == PlayerIntent::PASS) {
+                 } else if (selected_action.type == CommandType::PASS) {
                      PhaseManager::next_phase(state, *card_db_);
                  }
             }

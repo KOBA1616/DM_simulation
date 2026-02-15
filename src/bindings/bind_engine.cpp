@@ -21,11 +21,6 @@ using namespace dm;
 using namespace dm::core;
 using namespace dm::engine;
 
-// Helper to access pipeline
-std::shared_ptr<dm::engine::systems::PipelineExecutor> get_active_pipeline(GameState& state) {
-    return std::static_pointer_cast<dm::engine::systems::PipelineExecutor>(state.active_pipeline);
-}
-
 void bind_engine(py::module& m) {
      // GameCommand bindings
     py::class_<dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::GameCommand>>(m, "GameCommand")
@@ -275,7 +270,7 @@ void bind_engine(py::module& m) {
                     diag.close();
                 }
             } catch(...) {}
-            return IntentGenerator::generate_legal_actions(gs, db);
+            return IntentGenerator::generate_legal_commands(gs, db);
         });
 
     // Alias for backward compatibility
@@ -287,36 +282,9 @@ void bind_engine(py::module& m) {
             return dm::engine::systems::GameLogicSystem::get_breaker_count(state, card, db);
         })
         .def_static("resume", [](GameState& state, const std::map<CardID, CardDefinition>& db, py::object input_val) {
-             try {
-                 if (!state.active_pipeline) return;
-
-                 dm::engine::systems::ContextValue val;
-                 if (py::isinstance<py::int_>(input_val)) {
-                     val = input_val.cast<int>();
-                 } else if (py::isinstance<py::str>(input_val)) {
-                     val = input_val.cast<std::string>();
-                 } else if (py::isinstance<py::list>(input_val)) {
-                     std::vector<int> vec;
-                     for (auto item : input_val.cast<py::list>()) {
-                         vec.push_back(item.cast<int>());
-                     }
-                     val = vec;
-                 }
-
-                 auto pipeline = get_active_pipeline(state);
-                 if (pipeline) {
-                     pipeline->resume(state, db, val);
-                     if (pipeline->call_stack.empty()) {
-                         state.active_pipeline.reset();
-                     }
-                 }
-             } catch (const py::error_already_set& e) {
-                throw;
-             } catch (const std::exception& e) {
-                throw std::runtime_error("Error in EffectResolver.resume: " + std::string(e.what()));
-             } catch (...) {
-                throw std::runtime_error("Unknown error in EffectResolver.resume");
-             }
+             // resume is deprecated via EffectResolver as GameState no longer holds pipeline.
+             // Use GameInstance.resume_processing or equivalent.
+             throw std::runtime_error("EffectResolver.resume is deprecated. Use GameInstance to resume.");
         });
 
 

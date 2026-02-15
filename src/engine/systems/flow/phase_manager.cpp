@@ -273,7 +273,7 @@ namespace dm::engine {
                 return;
             }
             
-            auto actions = IntentGenerator::generate_legal_actions(game_state, card_db);
+            auto actions = IntentGenerator::generate_legal_commands(game_state, card_db);
             
             try {
                 std::filesystem::create_directories("logs");

@@ -1,8 +1,6 @@
 #include "game_state.hpp"
 #include "engine/game_command/commands.hpp"
-#include "engine/systems/pipeline_executor.hpp" // Include for cloning
 #include "engine/diag_win32.h"
-#include "engine/systems/game_logic_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include <fstream>
 
@@ -70,11 +68,7 @@ namespace dm::core {
         // Do NOT copy command_history. It is only for replay/undo and grows indefinitely.
         // new_state.command_history = command_history;
 
-        // Deep copy pipeline if active
-        if (active_pipeline) {
-            auto ptr = std::static_pointer_cast<dm::engine::systems::PipelineExecutor>(active_pipeline);
-            new_state.active_pipeline = ptr->clone();
-        }
+        // Pipeline is no longer part of GameState. Execution state must be managed externally.
 
         // Stats
         new_state.historical_card_stats = historical_card_stats; // Share
@@ -371,28 +365,6 @@ namespace dm::core {
         while (command_history.size() > snap.commands_since_snapshot.size()) {
             undo();
         }
-    }
-
-    void GameState::make_move(const CommandDef& cmd) {
-        execute_turn_command(cmd);
-    }
-
-    void GameState::execute_turn_command(const CommandDef& cmd) {
-        move_start_indices.push_back(command_history.size());
-        const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
-
-        if (!active_pipeline) {
-            active_pipeline = std::make_shared<dm::engine::systems::PipelineExecutor>();
-        } else {
-            // Only clear stack if not paused (waiting for input)
-            if (!active_pipeline->execution_paused) {
-                active_pipeline->call_stack.clear();
-                active_pipeline->execution_paused = false;
-            }
-        }
-
-        dm::engine::systems::GameLogicSystem::dispatch_command(*active_pipeline, *this, cmd, card_db);
-        active_pipeline->execute(nullptr, *this, card_db);
     }
 
     void GameState::unmake_move() {

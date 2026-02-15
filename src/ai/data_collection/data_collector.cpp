@@ -87,7 +87,7 @@ namespace dm::ai {
                 int active_player = game.state.active_player_id;
 
                 dm::engine::IntentGenerator action_gen;
-                auto legal_actions = action_gen.generate_legal_actions(game.state, *card_db_);
+                auto legal_actions = dm::engine::IntentGenerator::generate_legal_commands(game.state, *card_db_);
 
                 // If no actions, transition phase
                 if (legal_actions.empty()) {
@@ -101,7 +101,7 @@ namespace dm::ai {
                 }
 
                 // Choose action
-                dm::core::Action chosen_action;
+                dm::core::CommandDef chosen_action;
                 if (active_player == 0) {
                     chosen_action = agent1.get_action(game.state, legal_actions);
                 } else {
@@ -139,9 +139,9 @@ namespace dm::ai {
                 game_players.push_back(active_player);
 
                 // Apply action
-                GameLogicSystem::resolve_action(game.state, chosen_action, *card_db_);
+                GameLogicSystem::resolve_command_oneshot(game.state, chosen_action, *card_db_);
 
-                if (chosen_action.type == dm::core::PlayerIntent::PASS) {
+                if (chosen_action.type == dm::core::CommandType::PASS) {
                      dm::engine::PhaseManager::next_phase(game.state, *card_db_);
                 }
 

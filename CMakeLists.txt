@@ -164,7 +164,6 @@ set(SRC_CORE
     src/core/game_state_hash.cpp
     src/core/game_state_loop.cpp
     src/core/game_state_observer.cpp # Added
-    src/core/action.hpp
 )
 
 # Engine (Phase 2)
@@ -175,6 +174,10 @@ set(SRC_ENGINE
     src/engine/actions/strategies/phase_strategies.cpp
     src/engine/ai/simple_ai.cpp # AI selection logic
     src/engine/systems/flow/phase_manager.cpp
+    src/engine/systems/phase/phase_system.cpp # Added
+    src/engine/systems/battle/battle_system.cpp # Added
+    src/engine/systems/battle/shield_system.cpp # Added
+    src/engine/systems/play/play_system.cpp # Added
     src/engine/systems/mana/mana_system.cpp
     src/engine/systems/breaker/breaker_system.cpp # Added
     src/engine/utils/determinizer.cpp
@@ -192,7 +195,6 @@ set(SRC_ENGINE
     src/engine/systems/trigger_system/trigger_system.cpp
     src/engine/game_command/commands.cpp
     src/engine/game_command/action_commands.cpp # Added
-    src/engine/commands/command_generator.cpp
     src/engine/systems/pipeline_executor.cpp
     src/engine/systems/command_system.cpp
     src/engine/systems/game_logic_system.cpp
@@ -255,7 +257,6 @@ pybind11_add_module(dm_ai_module
     src/bindings/bindings.cpp
     src/bindings/bind_core.cpp
     src/bindings/bind_engine.cpp
-    src/bindings/bind_command_generator.cpp
     src/bindings/bind_ai.cpp
     src/bindings/inference_bindings.cpp
 )
