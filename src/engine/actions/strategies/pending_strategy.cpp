@@ -1,7 +1,7 @@
 #include "pending_strategy.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/systems/flow/reaction_system.hpp"
-#include "engine/systems/card/passive_effect_system.hpp"
+#include "engine/systems/effects/passive_effect_system.hpp"
 #include <algorithm>
 #include <vector>
 #include <fstream>

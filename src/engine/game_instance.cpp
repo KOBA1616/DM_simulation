@@ -2,14 +2,14 @@
 #include "systems/flow/phase_manager.hpp"
 #include "engine/actions/intent_generator.hpp"
 #include "engine/ai/simple_ai.hpp" // Added for SimpleAI
-#include "engine/game_command/game_command.hpp"
-#include "engine/game_command/action_commands.hpp" // Added
-#include "engine/game_command/commands.hpp" // Added for DeclareReactionCommand
-#include "engine/systems/game_logic_system.hpp"
-#include "engine/systems/continuous_effect_system.hpp"
+#include "engine/infrastructure/commands/definitions/game_command.hpp"
+#include "engine/infrastructure/commands/definitions/action_commands.hpp" // Added
+#include "engine/infrastructure/commands/definitions/commands.hpp" // Added for DeclareReactionCommand
+#include "engine/systems/director/game_logic_system.hpp"
+#include "engine/systems/effects/continuous_effect_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "engine/systems/card/effect_system.hpp" // Added for EffectSystem
-#include "engine/systems/command_system.hpp" // Added for CommandSystem
+#include "engine/infrastructure/commands/command_system.hpp" // Added for CommandSystem
 #include "diag_win32.h"
 #include <functional>
 #include <iostream>

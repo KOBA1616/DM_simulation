@@ -1,8 +1,8 @@
 #include "beam_search_evaluator.hpp"
 #include "engine/actions/intent_generator.hpp"
-#include "engine/systems/game_logic_system.hpp"
+#include "engine/systems/director/game_logic_system.hpp"
 #include "engine/systems/flow/phase_manager.hpp"
-#include "engine/systems/mana/mana_system.hpp"
+#include "engine/systems/mechanics/mana_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include <cmath>
 #include <algorithm>

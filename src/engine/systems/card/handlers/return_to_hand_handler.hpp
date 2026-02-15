@@ -6,7 +6,7 @@
 #include "engine/systems/card/selection_system.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/pipeline_executor.hpp"
+#include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 #include <algorithm>
 
 namespace dm::engine {

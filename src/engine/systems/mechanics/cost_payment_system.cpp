@@ -1,6 +1,6 @@
-#include "engine/systems/mana/cost_payment_system.hpp"
+#include "cost_payment_system.hpp"
 #include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/mana/mana_system.hpp"
+#include "mana_system.hpp"
 #include <algorithm>
 
 namespace dm::engine {

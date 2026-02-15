@@ -1,6 +1,6 @@
-#include "engine/game_command/commands.hpp"
+#include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/game_logic_system.hpp"
+#include "engine/systems/director/game_logic_system.hpp"
 #include <algorithm>
 #include <iostream>
 #include <fstream>

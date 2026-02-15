@@ -1,8 +1,8 @@
 #include "phase_strategies.hpp"
 #include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/mana/mana_system.hpp"
-#include "engine/systems/card/passive_effect_system.hpp"
-#include "engine/systems/mana/cost_payment_system.hpp"
+#include "engine/systems/mechanics/mana_system.hpp"
+#include "engine/systems/effects/passive_effect_system.hpp"
+#include "engine/systems/mechanics/cost_payment_system.hpp"
 #include <fstream>
 #include <sstream>
 #include <filesystem>

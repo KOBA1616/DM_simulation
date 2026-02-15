@@ -1,5 +1,5 @@
 #include "action_commands.hpp"
-#include "engine/systems/game_logic_system.hpp"
+#include "engine/systems/director/game_logic_system.hpp"
 #include "engine/systems/card/card_registry.hpp"
 #include "commands.hpp" // For TransitionCommand
 #include <fstream>  // For debug logging

@@ -3,7 +3,7 @@
 #include "engine/systems/card/selection_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/systems/card/effect_system.hpp"
-#include "engine/systems/game_logic_system.hpp"
+#include "engine/systems/director/game_logic_system.hpp"
 #include <set>
 #include <stdexcept>
 

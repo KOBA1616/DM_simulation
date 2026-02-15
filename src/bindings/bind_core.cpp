@@ -6,10 +6,10 @@
 #include "core/card_json_types.hpp"
 #include "core/card_stats.hpp"
 #include "core/instruction.hpp"
-#include "engine/game_command/commands.hpp"
-#include "engine/systems/command_system.hpp" // Added include for CommandSystem
-#include "engine/systems/pipeline_executor.hpp" // Added for PipelineExecutor
-#include "engine/systems/game_logic_system.hpp" // Added for GameLogicSystem
+#include "engine/infrastructure/commands/definitions/commands.hpp"
+#include "engine/infrastructure/commands/command_system.hpp" // Added include for CommandSystem
+#include "engine/infrastructure/pipeline/pipeline_executor.hpp" // Added for PipelineExecutor
+#include "engine/systems/director/game_logic_system.hpp" // Added for GameLogicSystem
 #include "engine/systems/card/card_registry.hpp" // Added for CardRegistry
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>

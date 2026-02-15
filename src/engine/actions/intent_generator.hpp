@@ -2,7 +2,7 @@
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
 #include "core/card_json_types.hpp"
-#include "engine/game_command/game_command.hpp"
+#include "engine/infrastructure/commands/definitions/game_command.hpp"
 #include "action_strategy.hpp"
 #include "strategies/pending_strategy.hpp"
 #include "strategies/stack_strategy.hpp"

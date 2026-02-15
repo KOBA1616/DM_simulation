@@ -4,8 +4,8 @@
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "core/game_state.hpp"
-#include "engine/game_command/commands.hpp"
-#include "engine/systems/pipeline_executor.hpp"
+#include "engine/infrastructure/commands/definitions/commands.hpp"
+#include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 #include <algorithm>
 
 namespace dm::engine {

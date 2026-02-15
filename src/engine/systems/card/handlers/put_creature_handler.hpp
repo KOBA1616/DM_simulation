@@ -6,7 +6,7 @@
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
 // #include "engine/effects/effect_resolver.hpp" // Removed
-#include "engine/systems/trigger_system/trigger_system.hpp"
+#include "engine/systems/effects/trigger_system.hpp"
 
 namespace dm::engine {
 

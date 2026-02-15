@@ -1,5 +1,5 @@
 #include "command_system.hpp"
-#include "engine/systems/pipeline_executor.hpp"
+#include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 #include "engine/systems/card/target_utils.hpp"
 #include "engine/systems/card/condition_system.hpp"
 #include "engine/systems/card/card_registry.hpp"

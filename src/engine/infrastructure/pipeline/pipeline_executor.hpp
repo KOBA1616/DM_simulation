@@ -10,7 +10,7 @@
 #include <string>
 #include <variant>
 #include <memory>
-#include "engine/game_command/game_command.hpp"
+#include "engine/infrastructure/commands/definitions/game_command.hpp"
 
 namespace dm::engine::systems {
 

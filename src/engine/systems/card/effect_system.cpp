@@ -2,7 +2,7 @@
 #include "card_registry.hpp"
 #include "target_utils.hpp"
 #include "condition_system.hpp"
-#include "engine/systems/command_system.hpp"
+#include "engine/infrastructure/commands/command_system.hpp"
 #include <algorithm>
 #include <iostream>
 
