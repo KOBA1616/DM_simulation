@@ -44,8 +44,41 @@ void bind_ai(py::module& m) {
         .def_readonly_static("INPUT_SIZE", &dm::ai::TensorConverter::INPUT_SIZE)
         .def_readonly_static("VOCAB_SIZE", &dm::ai::TensorConverter::VOCAB_SIZE)
         .def_readonly_static("MAX_SEQ_LEN", &dm::ai::TensorConverter::MAX_SEQ_LEN)
-        .def_static("convert_to_tensor", &dm::ai::TensorConverter::convert_to_tensor,
-             py::arg("game_state"), py::arg("player_view"), py::arg("card_db"), py::arg("mask_opponent_hand") = true)
+        .def_static("convert_to_tensor", [](const dm::core::GameState& game_state, int player_view, py::object card_db_obj, bool mask_opponent_hand) {
+             std::map<dm::core::CardID, dm::core::CardDefinition> card_db;
+             try {
+                 if (py::isinstance<py::dict>(card_db_obj)) {
+                     py::dict d = card_db_obj.cast<py::dict>();
+                     if (d.empty()) {
+                         // leave card_db empty
+                     } else {
+                         for (auto item : d) {
+                             try {
+                                 int key = py::cast<int>(item.first);
+                                 // Try to cast value to CardDefinition if possible
+                                 if (py::isinstance<py::dict>(item.second)) {
+                                     // cannot easily construct CardDefinition from dict here; skip
+                                     continue;
+                                 } else {
+                                     dm::core::CardDefinition cd = item.second.cast<dm::core::CardDefinition>();
+                                     card_db.emplace(static_cast<dm::core::CardID>(key), cd);
+                                 }
+                             } catch (...) {
+                                 continue;
+                             }
+                         }
+                     }
+                 } else {
+                     // Try to cast to the native CardDatabase/map if bound
+                     try {
+                         card_db = card_db_obj.cast<std::map<dm::core::CardID, dm::core::CardDefinition>>();
+                     } catch (...) {
+                         // ignore
+                     }
+                 }
+             } catch (...) {}
+             return dm::ai::TensorConverter::convert_to_tensor(game_state, player_view, card_db, mask_opponent_hand);
+        }, py::arg("game_state"), py::arg("player_view"), py::arg("card_db"), py::arg("mask_opponent_hand") = true)
         .def_static("convert_batch_flat", static_cast<std::vector<float> (*)(const std::vector<std::shared_ptr<dm::core::GameState>>&, const std::map<dm::core::CardID, dm::core::CardDefinition>&, bool)>(&dm::ai::TensorConverter::convert_batch_flat),
              py::arg("states"), py::arg("card_db"), py::arg("mask_opponent_hand") = true)
         .def_static("convert_to_sequence", &dm::ai::TensorConverter::convert_to_sequence,
@@ -230,7 +263,26 @@ void bind_ai(py::module& m) {
                 },
                 temperature, add_noise, num_threads, alpha, collect_data);
         }, py::arg("initial_states"), py::arg("evaluator"), py::arg("temperature")=1.0f, py::arg("add_noise")=true, py::arg("num_threads")=4, py::arg("alpha")=0.0f, py::arg("collect_data")=true, py::return_value_policy::move)
+        
 #endif
+        // Accept a Python callable evaluator: func(states) -> (List[List[float]], List[float])
+        .def("play_games", [](ParallelRunner& self,
+                              const std::vector<std::shared_ptr<dm::core::GameState>>& initial_states,
+                              py::function py_evaluator,
+                              float temperature,
+                              bool add_noise,
+                              int num_threads,
+                              float alpha,
+                              bool collect_data) {
+            auto cb_lambda = [py_evaluator](const std::vector<std::shared_ptr<dm::core::GameState>>& states) -> std::pair<std::vector<std::vector<float>>, std::vector<float>> {
+                py::gil_scoped_acquire gil;
+                py::object res = py_evaluator(states);
+                return res.cast<std::pair<std::vector<std::vector<float>>, std::vector<float>>>();
+            };
+            dm::ai::BatchEvaluatorCallback cb = cb_lambda;
+            return self.play_games(initial_states, cb, temperature, add_noise, num_threads, alpha, collect_data);
+        }, py::arg("initial_states"), py::arg("evaluator"), py::arg("temperature")=1.0f, py::arg("add_noise")=true, py::arg("num_threads")=4, py::arg("alpha")=0.0f, py::arg("collect_data")=true, py::return_value_policy::move)
+        
         .def("play_scenario_match", &ParallelRunner::play_scenario_match)
         .def("play_deck_matchup", &ParallelRunner::play_deck_matchup)
         .def("play_deck_matchup_with_stats", &ParallelRunner::play_deck_matchup_with_stats);

@@ -338,7 +338,7 @@ set(SRC_CORE
 
 # Engine (Phase 2)
 
-set(    # MISSING: SRC_ENGINE
+set(SRC_ENGINE
 
     src/engine/actions/intent_generator.cpp
 
@@ -393,6 +393,8 @@ set(    # MISSING: SRC_ENGINE
     src/engine/game_command/commands.cpp
 
     src/engine/game_command/action_commands.cpp # Added
+
+    src/engine/commands/command_generator.cpp
 
     src/engine/systems/pipeline_executor.cpp
 
@@ -482,9 +484,10 @@ set(SRC_AI
 
 
 
-# Main Simulator Library (Object library to avoid singleton duplication in static linking)
+# Main Simulator Library
 
-add_library(dm_core OBJECT
+# Use STATIC library for dm_core so the Python extension links cleanly on Windows
+add_library(dm_core STATIC
 
     ${SRC_CORE}
 
@@ -517,6 +520,8 @@ pybind11_add_module(dm_ai_module
     src/bindings/bind_core.cpp
 
     src/bindings/bind_engine.cpp
+
+    src/bindings/bind_command_generator.cpp
 
     src/bindings/bind_ai.cpp
 

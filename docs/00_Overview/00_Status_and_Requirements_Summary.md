@@ -90,3 +90,28 @@ Phase 6の品質保証完了に伴い、開発の主軸はAIモデルの本番�
 - `scripts/python/generate_card_tests.py` により、カード定義からテストを自動生成する基盤が確立されました。
 
 詳細は [99_Completed_Tasks_Archive.md](./99_Completed_Tasks_Archive.md) のアーカイブを参照。
+
+## 開発環境の必須パス (MSVC)
+
+本プロジェクトのネイティブビルド（C++/pybind11）は Windows 上で Visual Studio ビルドツールを使用することを想定しています。現行リポジトリ上で検出された例:
+
+- Visual Studio Build Tools (検出済み): C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools
+- 重要スクリプト（vcvars）:
+    - C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat
+    - C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat
+
+推奨ビルド手順（PowerShell の場合）:
+
+```powershell
+& "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat" -arch=amd64
+cmake -S . -B build-msvc -G "Visual Studio 17 2022" -A x64
+cmake --build build-msvc --config Release
+```
+
+あるいは vcvars を直接使う短いチェイン（cmd 推奨）:
+
+```cmd
+"C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvarsall.bat" amd64 && cmake -S . -B build-msvc -G "Visual Studio 17 2022" -A x64 && cmake --build build-msvc --config Release
+```
+
+このパスは環境によって異なります。プロジェクトの `docs/MSVC_PATH.md` に検出結果と代替手順を保存しています。必要ならば組織内標準環境へ合わせてこの節を更新してください。

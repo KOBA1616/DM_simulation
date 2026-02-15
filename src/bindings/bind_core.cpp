@@ -24,13 +24,34 @@ void bind_core(py::module& m) {
     try {
     // Bind opaque vectors (guarded to allow repeated import without crash)
     try {
-        py::bind_vector<std::vector<dm::core::CardInstance>>(m, "CardList");
+        if (!py::hasattr(m, "CardList")) {
+            try {
+                py::bind_vector<std::vector<dm::core::CardInstance>>(m, "CardList");
+            } catch (const py::error_already_set &e) {
+                PyErr_Clear();
+            } catch (const std::exception &e) {
+            }
+        }
     } catch (...) {}
     try {
-        py::bind_vector<std::vector<dm::core::Civilization>>(m, "CivilizationList");
+        if (!py::hasattr(m, "CivilizationList")) {
+            try {
+                py::bind_vector<std::vector<dm::core::Civilization>>(m, "CivilizationList");
+            } catch (const py::error_already_set &e) {
+                PyErr_Clear();
+            } catch (const std::exception &e) {
+            }
+        }
     } catch (...) {}
     try {
-        py::bind_vector<std::vector<dm::core::Player>>(m, "PlayerList");
+        if (!py::hasattr(m, "PlayerList")) {
+            try {
+                py::bind_vector<std::vector<dm::core::Player>>(m, "PlayerList");
+            } catch (const py::error_already_set &e) {
+                PyErr_Clear();
+            } catch (const std::exception &e) {
+            }
+        }
     } catch (...) {}
     
     // Bind opaque map
@@ -703,17 +724,116 @@ void bind_core(py::module& m) {
             }
             dm::engine::systems::CommandSystem::execute_command(state, cmd, source_instance_id, player_id, ctx);
 
-            // Update python dict back? (pybind11 dict is reference, so modifying it in place might work if we wrapped map)
-            // But we created a temporary map.
-            // If the user wants output, they should pass a dict and we update it.
             for (const auto& pair : ctx) {
                 py_ctx[py::str(pair.first)] = pair.second;
             }
         }
+
+        // Convenience overload when no context dict is provided from Python
+        static void execute_command_noctx(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id) {
+            execute_command(state, cmd, source_instance_id, player_id, py::dict());
+        }
+
+        // Flexible overload: accept a dict or CommandDef-like object
+        static void execute_command_flexible(GameState& state, py::object cmd_obj, int source_instance_id, PlayerID player_id, py::dict py_ctx) {
+            CommandDef cmd;
+            try {
+                if (py::isinstance<py::dict>(cmd_obj)) {
+                    py::dict d = cmd_obj.cast<py::dict>();
+                    if (d.contains("type")) {
+                        auto v = d["type"];
+                        if (py::isinstance<py::int_>(v)) {
+                            cmd.type = static_cast<CommandType>(py::cast<int>(v));
+                        } else if (py::isinstance<py::str>(v)) {
+                            std::string name = py::cast<std::string>(v);
+                            try {
+                                py::module dm_mod = py::module::import("dm_ai_module");
+                                if (py::hasattr(dm_mod, "CommandType")) {
+                                    py::object enum_obj = dm_mod.attr("CommandType").attr(name.c_str());
+                                    cmd.type = enum_obj.cast<CommandType>();
+                                }
+                            } catch (...) {
+                                // fallback leave as default
+                            }
+                        }
+                    }
+                    if (d.contains("instance_id")) cmd.instance_id = py::cast<int>(d["instance_id"]);
+                    if (d.contains("target_instance")) cmd.target_instance = py::cast<int>(d["target_instance"]);
+                    if (d.contains("owner_id")) cmd.owner_id = py::cast<int>(d["owner_id"]);
+                    if (d.contains("amount")) cmd.amount = py::cast<int>(d["amount"]);
+                    if (d.contains("from_zone")) {
+                        try {
+                            py::object fv = d["from_zone"];
+                            if (py::isinstance<py::str>(fv)) {
+                                cmd.from_zone = py::cast<std::string>(fv);
+                            } else {
+                                // try to construct Zone enum and read .name
+                                py::module dm_mod = py::module::import("dm_ai_module");
+                                if (py::hasattr(dm_mod, "Zone")) {
+                                    py::object enum_obj = dm_mod.attr("Zone")(fv);
+                                    if (py::hasattr(enum_obj, "name")) {
+                                        cmd.from_zone = py::cast<std::string>(enum_obj.attr("name"));
+                                    }
+                                }
+                            }
+                        } catch (...) { }
+                    }
+                    if (d.contains("to_zone")) {
+                        try {
+                            py::object tv = d["to_zone"];
+                            if (py::isinstance<py::str>(tv)) {
+                                cmd.to_zone = py::cast<std::string>(tv);
+                            } else {
+                                py::module dm_mod = py::module::import("dm_ai_module");
+                                if (py::hasattr(dm_mod, "Zone")) {
+                                    py::object enum_obj = dm_mod.attr("Zone")(tv);
+                                    if (py::hasattr(enum_obj, "name")) {
+                                        cmd.to_zone = py::cast<std::string>(enum_obj.attr("name"));
+                                    }
+                                }
+                            }
+                        } catch (...) { }
+                    }
+                    if (d.contains("str_param")) cmd.str_param = py::cast<std::string>(d["str_param"]);
+                } else {
+                    // Try casting directly to CommandDef
+                    cmd = cmd_obj.cast<CommandDef>();
+                }
+            } catch (...) {
+                // if conversion fails, raise a python exception
+                throw py::type_error("Invalid command object passed to execute_command");
+            }
+
+            execute_command(state, cmd, source_instance_id, player_id, py_ctx);
+        }
+
+        // Flexible no-context overload
+        static void execute_command_flexible_noctx(GameState& state, py::object cmd_obj, int source_instance_id, PlayerID player_id) {
+            execute_command_flexible(state, cmd_obj, source_instance_id, player_id, py::dict());
+        }
     };
 
     py::class_<CommandSystemWrapper>(m, "CommandSystem")
-        .def_static("execute_command", &CommandSystemWrapper::execute_command);
+        .def_static("execute_command",
+            [](GameState& state, const CommandDef& cmd, int source_id, PlayerID player_id, py::dict ctx){
+                CommandSystemWrapper::execute_command(state, cmd, source_id, player_id, ctx);
+            },
+            py::arg("state"), py::arg("cmd"), py::arg("source_id") = 0, py::arg("player_id") = 0, py::arg("ctx") = py::dict())
+        .def_static("execute_command",
+            [](GameState& state, const CommandDef& cmd, int source_id, PlayerID player_id){
+                CommandSystemWrapper::execute_command_noctx(state, cmd, source_id, player_id);
+            },
+            py::arg("state"), py::arg("cmd"), py::arg("source_id") = 0, py::arg("player_id") = 0)
+        .def_static("execute_command",
+            [](GameState& state, py::object cmd_obj, int source_id, PlayerID player_id, py::dict ctx){
+                CommandSystemWrapper::execute_command_flexible(state, cmd_obj, source_id, player_id, ctx);
+            },
+            py::arg("state"), py::arg("cmd"), py::arg("source_id") = 0, py::arg("player_id") = 0, py::arg("ctx") = py::dict())
+        .def_static("execute_command",
+            [](GameState& state, py::object cmd_obj, int source_id, PlayerID player_id){
+                CommandSystemWrapper::execute_command_flexible_noctx(state, cmd_obj, source_id, player_id);
+            },
+            py::arg("state"), py::arg("cmd"), py::arg("source_id") = 0, py::arg("player_id") = 0);
 
     py::class_<GameState::StateSnapshot>(m, "StateSnapshot")
         .def(py::init<>())
@@ -751,7 +871,17 @@ void bind_core(py::module& m) {
         .def_readwrite("turn_number", &GameState::turn_number)
         .def_readwrite("active_player_id", &GameState::active_player_id)
         .def_property("current_phase",
-            [](const GameState &s) { return s.current_phase; },
+            [](const GameState &s) -> py::object {
+                try {
+                    py::module dm_mod = py::module::import("dm_ai_module");
+                    if (py::hasattr(dm_mod, "Phase")) {
+                        return py::cast(s.current_phase);
+                    }
+                } catch (...) {
+                    // ignore import errors
+                }
+                return py::cast(static_cast<int>(s.current_phase));
+            },
             [](GameState &s, py::object v) {
                 try {
                     if (py::isinstance<py::int_>(v)) {

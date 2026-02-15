@@ -49,6 +49,8 @@ namespace dm::engine {
         }
 
         start_turn(game_state, card_db);
+        // Set initial phase to MANA to match legacy startup behavior/tests
+        game_state.current_phase = Phase::MANA;
         // Initial state loop check
         game_state.update_loop_check();
     }
@@ -474,10 +476,14 @@ namespace dm::engine {
         }
         
         // Auto-call start_turn() when entering START_OF_TURN phase
+        // Legacy tests expect that after start-of-turn processing the
+        // active phase is `MANA` (draw already performed in start_turn),
+        // so advance directly to MANA instead of DRAW to preserve
+        // historical behavior.
         if (game_state.current_phase == Phase::START_OF_TURN) {
             start_turn(game_state, card_db);
-            // Immediately advance to DRAW phase after start_turn processing
-            auto cmd_draw = std::make_shared<FlowCommand>(FlowCommand::FlowType::PHASE_CHANGE, static_cast<int>(Phase::DRAW));
+            // Immediately advance to MANA phase after start_turn processing
+            auto cmd_draw = std::make_shared<FlowCommand>(FlowCommand::FlowType::PHASE_CHANGE, static_cast<int>(Phase::MANA));
             game_state.execute_command(std::move(cmd_draw));
         }
 

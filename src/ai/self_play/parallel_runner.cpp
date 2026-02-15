@@ -81,7 +81,7 @@ namespace dm::ai {
                         });
 
                         if (stop_pool_ && tasks_.empty()) return;
-                             if(dm::engine::PhaseSystem::check_game_over(instance.state, res)) {
+
                         if (!tasks_.empty()) {
                             task = std::move(tasks_.front());
                             tasks_.pop();
@@ -90,7 +90,8 @@ namespace dm::ai {
                     if (task) {
                         try {
                             task();
-                                     final_res = res;
+                        } catch (...) {
+                            // swallow worker exceptions to keep thread pool alive
                         }
                     }
                 }

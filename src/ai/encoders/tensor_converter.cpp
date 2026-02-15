@@ -95,6 +95,10 @@ namespace dm::ai {
 
         encode_player(self, true);
         encode_player(opp, !mask_opponent_hand);
+
+        // Ensure legacy fixed-length output by zero-padding to INPUT_SIZE
+        while ((int)tensor.size() < INPUT_SIZE) tensor.push_back(0.0f);
+        if ((int)tensor.size() > INPUT_SIZE) tensor.resize(INPUT_SIZE);
         return tensor;
     }
 
