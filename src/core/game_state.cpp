@@ -1,7 +1,7 @@
 #include "game_state.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "engine/diag_win32.h"
-#include "engine/systems/card/card_registry.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include <fstream>
 
 namespace dm::core {
@@ -50,7 +50,6 @@ namespace dm::core {
         new_state.game_over = game_over;
         new_state.winner = winner;
         new_state.pending_effects = pending_effects;
-        new_state.reaction_stack = reaction_stack;
         new_state.active_modifiers = active_modifiers;
         new_state.passive_effects = passive_effects;
         new_state.current_attack = current_attack;

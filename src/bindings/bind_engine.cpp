@@ -4,12 +4,12 @@
 #include "engine/game_instance.hpp"
 #include <pybind11/stl_bind.h>
 #include "engine/actions/intent_generator.hpp"
-#include "engine/systems/card/card_registry.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
-#include "engine/systems/card/json_loader.hpp"
-#include "engine/systems/flow/phase_manager.hpp"
+#include "engine/infrastructure/data/json_loader.hpp"
+#include "engine/systems/flow/phase_system.hpp"
 #include "engine/systems/effects/trigger_manager.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "engine/infrastructure/commands/definitions/action_commands.hpp"
@@ -26,18 +26,6 @@ void bind_engine(py::module& m) {
     py::class_<dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::GameCommand>>(m, "GameCommand")
         .def("get_type", &dm::engine::game_command::GameCommand::get_type)
         .def("invert", &dm::engine::game_command::GameCommand::invert);
-
-    // Removed CommandType binding here to avoid conflict with bind_core.cpp
-    // The core CommandType (card_json_types.hpp) is now the primary one exposed.
-    // If Engine uses a different CommandType enum, we should map or expose it differently.
-    // However, GameCommand uses `dm::engine::game_command::CommandType` which seems to be different
-    // or aliased.
-    // Let's check `game_command.hpp`.
-
-    // Assuming dm::engine::game_command::CommandType needs to be exposed for Engine Commands
-    // but the conflict suggests they might share name or scope in python.
-    // Let's rename this one to EngineCommandType if needed, or remove if unused by python side
-    // except for return types.
 
     py::enum_<dm::engine::game_command::CommandType>(m, "EngineCommandType")
         .value("TRANSITION", dm::engine::game_command::CommandType::TRANSITION)
@@ -121,12 +109,6 @@ void bind_engine(py::module& m) {
         .def_readwrite("selected_indices", &dm::engine::game_command::DecideCommand::selected_indices)
         .def_readwrite("selected_option_index", &dm::engine::game_command::DecideCommand::selected_option_index);
 
-    py::class_<dm::engine::game_command::DeclareReactionCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::DeclareReactionCommand>>(m, "DeclareReactionCommand")
-        .def(py::init<PlayerID, bool, int>())
-        .def_readwrite("pass", &dm::engine::game_command::DeclareReactionCommand::pass)
-        .def_readwrite("reaction_index", &dm::engine::game_command::DeclareReactionCommand::reaction_index)
-        .def_readwrite("player_id", &dm::engine::game_command::DeclareReactionCommand::player_id);
-
     py::class_<dm::engine::game_command::StatCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::StatCommand>>(m, "StatCommand")
         .def(py::init<dm::engine::game_command::StatCommand::StatType, int>())
         .def_readwrite("stat", &dm::engine::game_command::StatCommand::stat)
@@ -147,7 +129,7 @@ void bind_engine(py::module& m) {
         .def(py::init<PlayerID>())
         .def_readwrite("player_id", &dm::engine::game_command::ShuffleCommand::player_id);
 
-    // High-level action command bindings (used by Python-side execution helpers)
+    // High-level action command bindings
     py::class_<dm::engine::game_command::PlayCardCommand, dm::engine::game_command::GameCommand, std::shared_ptr<dm::engine::game_command::PlayCardCommand>>(m, "PlayCardCommand")
         .def(py::init<int>())
         .def_readwrite("card_instance_id", &dm::engine::game_command::PlayCardCommand::card_instance_id)
@@ -202,7 +184,6 @@ void bind_engine(py::module& m) {
         .def_readonly("waiting_for_key", &dm::engine::systems::PipelineExecutor::waiting_for_key)
         .def("resume", &dm::engine::systems::PipelineExecutor::resume)
         .def("execute", static_cast<void (dm::engine::systems::PipelineExecutor::*)(const std::vector<dm::core::Instruction>&, core::GameState&, const std::map<core::CardID, core::CardDefinition>&)>(&dm::engine::systems::PipelineExecutor::execute))
-        // execute_command wrapper: accept a dict or bound command objects and dispatch
         .def("execute_command", [&m](dm::engine::systems::PipelineExecutor& exec, py::object obj, core::GameState& state) {
             try {
                 std::unique_ptr<dm::engine::game_command::GameCommand> cmd;
@@ -228,7 +209,6 @@ void bind_engine(py::module& m) {
                         cmd = std::make_unique<dm::engine::game_command::AttackCommand>(src, tgt, (dm::core::PlayerID)pid);
                     }
                 } else {
-                    // If it's one of the bound command types, attempt to cast and copy fields
                     try {
                         if (py::isinstance(obj, m.attr("PlayCardCommand"))) {
                             auto pc = obj.cast<std::shared_ptr<dm::engine::game_command::PlayCardCommand>>();
@@ -258,7 +238,6 @@ void bind_engine(py::module& m) {
         .def("dispatch", &dm::engine::systems::TriggerManager::dispatch)
         .def("clear", &dm::engine::systems::TriggerManager::clear);
 
-    // Systems
     py::class_<IntentGenerator>(m, "IntentGenerator")
         .def_static("generate_legal_actions", [](const GameState& gs, const std::map<CardID, CardDefinition>& db){
             try {
@@ -273,7 +252,6 @@ void bind_engine(py::module& m) {
             return IntentGenerator::generate_legal_commands(gs, db);
         });
 
-    // Alias for backward compatibility
     m.attr("ActionGenerator") = m.attr("IntentGenerator");
 
     auto effect_resolver = py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver");
@@ -282,17 +260,14 @@ void bind_engine(py::module& m) {
             return dm::engine::systems::GameLogicSystem::get_breaker_count(state, card, db);
         })
         .def_static("resume", [](GameState& state, const std::map<CardID, CardDefinition>& db, py::object input_val) {
-             // resume is deprecated via EffectResolver as GameState no longer holds pipeline.
-             // Use GameInstance.resume_processing or equivalent.
              throw std::runtime_error("EffectResolver.resume is deprecated. Use GameInstance to resume.");
         });
 
 
-    py::class_<JsonLoader>(m, "JsonLoader")
+    py::class_<dm::engine::infrastructure::JsonLoader>(m, "JsonLoader")
         .def(py::init<>())
         .def_static("load_cards", [](const std::string& filepath) {
-            auto map_val = JsonLoader::load_cards(filepath);
-            // Move into shared pointer to prevent copy when returning to Python
+            auto map_val = dm::engine::infrastructure::JsonLoader::load_cards(filepath);
             return std::make_shared<CardDatabase>(std::move(map_val));
         });
 
@@ -305,7 +280,7 @@ void bind_engine(py::module& m) {
              nlohmann::json j;
              dm::core::to_json(j, data);
              std::string json_str = j.dump();
-             CardRegistry::load_from_json(json_str);
+             dm::engine::infrastructure::CardRegistry::load_from_json(json_str);
          } catch (const py::error_already_set& e) {
             throw;
          } catch (const std::exception& e) {
@@ -326,7 +301,6 @@ void bind_engine(py::module& m) {
         .def("step", &GameInstance::step, "Execute one game step: generate actions, select and execute first viable action, progress game state")
         .def("execute_command", [&m](GameInstance& gi, py::object obj) {
             try {
-                // Prefer to dispatch via pipeline if available
                 std::unique_ptr<dm::engine::game_command::GameCommand> cmd;
                 if (py::isinstance<py::dict>(obj)) {
                     py::dict d = obj.cast<py::dict>();
@@ -344,7 +318,6 @@ void bind_engine(py::module& m) {
                         cmd = std::make_unique<dm::engine::game_command::PassCommand>();
                     }
                 } else {
-                    // Try to cast known bound command types
                     try {
                         if (py::isinstance(obj, m.attr("PlayCardCommand"))) {
                             auto pc = obj.cast<std::shared_ptr<dm::engine::game_command::PlayCardCommand>>();
@@ -358,7 +331,6 @@ void bind_engine(py::module& m) {
                 }
 
                 if (cmd) {
-                    // dispatch to state's execute_command
                     gi.state.execute_command(std::move(cmd));
                 }
             } catch (const py::error_already_set& e) {
@@ -373,35 +345,59 @@ void bind_engine(py::module& m) {
         .def("initialize_card_stats", &GameInstance::initialize_card_stats)
         .def("reset_with_scenario", &GameInstance::reset_with_scenario);
 
-    py::class_<CardRegistry>(m, "CardRegistry")
+    py::class_<dm::engine::infrastructure::CardRegistry>(m, "CardRegistry")
         .def_static("register_card_data", [](const CardData& data) {
              try {
                  nlohmann::json j;
                  dm::core::to_json(j, data);
                  std::string json_str = j.dump();
-                 CardRegistry::load_from_json(json_str);
+                 dm::engine::infrastructure::CardRegistry::load_from_json(json_str);
              } catch (const py::error_already_set& e) {
                 throw;
              } catch (const std::exception& e) {
-                throw std::runtime_error("Error in CardRegistry.register_card_data: " + std::string(e.what()));
+                throw std::runtime_error("Error in dm::engine::infrastructure::CardRegistry.register_card_data: " + std::string(e.what()));
              } catch (...) {
-                throw std::runtime_error("Unknown error in CardRegistry.register_card_data");
+                throw std::runtime_error("Unknown error in dm::engine::infrastructure::CardRegistry.register_card_data");
              }
         })
-        .def_static("load_from_json", &CardRegistry::load_from_json)
+        .def_static("load_from_json", &dm::engine::infrastructure::CardRegistry::load_from_json)
         .def_static("get_all_cards", []() {
-             // Return a copy of the static map as CardDatabase (shared ptr probably better but copied for safety/simplicity)
-             // But CardDatabase is std::map<CardID, CardDefinition>.
-             // CardRegistry has get_all_definitions()
-             return CardRegistry::get_all_definitions();
+             return dm::engine::infrastructure::CardRegistry::get_all_definitions();
         })
-        .def_static("clear", &CardRegistry::clear);
+        .def_static("clear", &dm::engine::infrastructure::CardRegistry::clear);
 
-    py::class_<PhaseManager>(m, "PhaseManager")
-        .def_static("start_game", &PhaseManager::start_game)
-        .def_static("setup_scenario", &PhaseManager::setup_scenario)
-        .def_static("start_turn", &PhaseManager::start_turn)
-        .def_static("next_phase", &PhaseManager::next_phase)
-        .def_static("fast_forward", &PhaseManager::fast_forward)
-        .def_static("check_game_over", &PhaseManager::check_game_over);
+    // Bind PhaseSystem
+    py::class_<dm::engine::flow::PhaseSystem>(m, "PhaseSystem")
+        .def_static("instance", &dm::engine::flow::PhaseSystem::instance, py::return_value_policy::reference)
+        .def("start_game", &dm::engine::flow::PhaseSystem::start_game)
+        .def("setup_scenario", &dm::engine::flow::PhaseSystem::setup_scenario)
+        .def("next_phase", &dm::engine::flow::PhaseSystem::next_phase)
+        .def("fast_forward", &dm::engine::flow::PhaseSystem::fast_forward)
+        .def("check_game_over", &dm::engine::flow::PhaseSystem::check_game_over);
+
+    // Backward compatibility wrapper for PhaseManager (static -> singleton instance)
+    struct PhaseManagerWrapper {};
+    py::class_<PhaseManagerWrapper>(m, "PhaseManager")
+        .def_static("start_game", [](GameState& s, const std::map<CardID, CardDefinition>& db) {
+            dm::engine::flow::PhaseSystem::instance().start_game(s, db);
+        })
+        .def_static("setup_scenario", [](GameState& s, const ScenarioConfig& c, const std::map<CardID, CardDefinition>& db) {
+            dm::engine::flow::PhaseSystem::instance().setup_scenario(s, c, db);
+        })
+        // start_turn was internal, but exposed. Map it to on_start_turn if needed, or remove if unused.
+        // It was exposed in old bindings. Let's map it to on_start_turn for safety.
+        .def_static("start_turn", [](GameState& s, const std::map<CardID, CardDefinition>& db) {
+            dm::engine::flow::PhaseSystem::instance().on_start_turn(s, db);
+        })
+        .def_static("next_phase", [](GameState& s, const std::map<CardID, CardDefinition>& db) {
+            dm::engine::flow::PhaseSystem::instance().next_phase(s, db);
+        })
+        .def_static("fast_forward", [](GameState& s, const std::map<CardID, CardDefinition>& db) {
+            dm::engine::flow::PhaseSystem::instance().fast_forward(s, db);
+        })
+        .def_static("check_game_over", [](GameState& s) {
+            GameResult res;
+            bool over = dm::engine::flow::PhaseSystem::instance().check_game_over(s, res);
+            return std::make_tuple(over, res);
+        });
 }

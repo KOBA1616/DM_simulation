@@ -77,6 +77,12 @@ if not _disable_native:
             os.path.join(_root, 'build-msvc', 'Release', 'dm_ai_module.cp312-win_amd64.pyd'),
             os.path.join(_root, 'build-msvc', 'dm_ai_module.cp312-win_amd64.pyd'),
         ]
+        # Add Linux/Unix .so candidates
+        for root_search in [os.path.join(_root, 'bin'), os.path.join(_root, 'build'), _root]:
+            if os.path.exists(root_search):
+                for file in os.listdir(root_search):
+                    if file.startswith('dm_ai_module') and file.endswith('.so'):
+                        _candidates.append(os.path.join(root_search, file))
         _loaded_native = False
         for _p in _candidates:
             try:

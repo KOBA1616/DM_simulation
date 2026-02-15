@@ -1,5 +1,5 @@
 #include "trigger_manager.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include "engine/systems/card/effect_system.hpp" // For resolve_trigger (temporary linkage) or just common logic
 #include "core/card_def.hpp"
 #include <iostream>
@@ -134,7 +134,7 @@ namespace dm::engine::systems {
                                 if (has_filter) {
                                     const CardInstance* source_card = state.get_card_instance(event.instance_id);
                                     if (source_card && card_db.count(source_card->card_id)) {
-                                         if (TargetUtils::is_valid_target(*source_card, card_db.at(source_card->card_id),
+                                         if (dm::engine::utils::TargetUtils::is_valid_target(*source_card, card_db.at(source_card->card_id),
                                                                           effect.trigger_filter, state, controller, controller, false, nullptr)) {
                                               condition_met = true;
                                          }
@@ -164,7 +164,7 @@ namespace dm::engine::systems {
 
     bool TriggerManager::check_reactions(const GameEvent& event, GameState& state,
                                          const std::map<CardID, CardDefinition>& card_db) {
-        std::vector<ReactionCandidate> candidates;
+        bool pushed = false;
 
         // 1. Shield Trigger
         if (event.type == EventType::ZONE_ENTER) {
@@ -176,12 +176,12 @@ namespace dm::engine::systems {
                 if (card && card_db.count(card->card_id)) {
                     const auto& def = card_db.at(card->card_id);
                     if (def.keywords.shield_trigger) {
-                        ReactionCandidate c;
-                        c.card_id = card->card_id;
-                        c.instance_id = instance_id;
-                        c.player_id = state.get_card_owner(instance_id);
-                        c.type = ReactionType::SHIELD_TRIGGER;
-                        candidates.push_back(c);
+                        PlayerID owner = state.get_card_owner(instance_id);
+                        PendingEffect pe(EffectType::SHIELD_TRIGGER, instance_id, owner);
+                        pe.resolve_type = ResolveType::EFFECT_RESOLUTION;
+                        pe.optional = true; // Shield Trigger is optional to use
+                        state.pending_effects.push_back(pe);
+                        pushed = true;
                     }
                 }
             }
@@ -195,36 +195,36 @@ namespace dm::engine::systems {
             const CardInstance* attacker = state.get_card_instance(attacker_id);
 
             if (attacker) {
+                // Check if any card in hand matches Revolution Change condition
+                bool possible = false;
                 for (const auto& hand_card : player.hand) {
                     if (!card_db.count(hand_card.card_id)) continue;
                     const auto& def = card_db.at(hand_card.card_id);
 
                     if (def.keywords.revolution_change) {
                         if (def.revolution_change_condition.has_value()) {
-                            bool match = TargetUtils::is_valid_target(*attacker, card_db.at(attacker->card_id),
+                            bool match = dm::engine::utils::TargetUtils::is_valid_target(*attacker, card_db.at(attacker->card_id),
                                                                     def.revolution_change_condition.value(),
                                                                     state, att_pid, att_pid);
                             if (match) {
-                                ReactionCandidate c;
-                                c.card_id = hand_card.card_id;
-                                c.instance_id = hand_card.instance_id;
-                                c.player_id = att_pid;
-                                c.type = ReactionType::REVOLUTION_CHANGE;
-                                candidates.push_back(c);
+                                possible = true;
+                                break;
                             }
                         }
                     }
                 }
+
+                if (possible) {
+                    PendingEffect pe(EffectType::ON_ATTACK_FROM_HAND, attacker_id, att_pid);
+                    pe.resolve_type = ResolveType::EFFECT_RESOLUTION;
+                    pe.optional = true;
+                    state.pending_effects.push_back(pe);
+                    pushed = true;
+                }
             }
         }
 
-        if (!candidates.empty()) {
-            ReactionWindow window(candidates);
-            state.reaction_stack.push_back(window);
-            state.status = GameState::Status::WAITING_FOR_REACTION;
-            return true;
-        }
-        return false;
+        return pushed;
     }
 
     void TriggerManager::clear() {

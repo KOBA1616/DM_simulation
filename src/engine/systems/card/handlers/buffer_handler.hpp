@@ -2,7 +2,7 @@
 #include "engine/systems/card/effect_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/systems/card/effect_system.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include <algorithm>
 
 namespace dm::engine {
@@ -88,7 +88,7 @@ namespace dm::engine {
                 for (size_t i = 0; i < looked.size(); ++i) {
                     if (!ctx.card_db.count(looked[i].card_id)) continue;
                     const auto& cd = ctx.card_db.at(looked[i].card_id);
-                     if (TargetUtils::is_valid_target(looked[i], cd, ctx.action.filter, ctx.game_state, controller_id, controller_id)) {
+                     if (dm::engine::utils::TargetUtils::is_valid_target(looked[i], cd, ctx.action.filter, ctx.game_state, controller_id, controller_id)) {
                         chosen_idx = (int)i;
                         break;
                     }

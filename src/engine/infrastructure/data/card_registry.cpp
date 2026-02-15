@@ -1,9 +1,9 @@
-#include "card_registry.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include "core/card_def.hpp"
 #include <nlohmann/json.hpp>
 #include <iostream>
 
-namespace dm::engine {
+namespace dm::engine::infrastructure {
     
     using namespace dm::core;
 

@@ -73,7 +73,7 @@ namespace dm::engine {
             // Command Logic for MLB casting from Graveyard
             // This assumes the command interpreter knows how to handle CAST_SPELL with cast_spell_side context
             // possibly derived from the action conversion or explicitly set here if command def supports it.
-            // For now, mirroring what was in JsonLoader.
+            // For now, mirroring what was in dm::engine::infrastructure::JsonLoader.
 
             mlb_effect.commands.push_back(mlb_cmd);
 

@@ -5,8 +5,8 @@
 #include "engine/systems/card/effect_system.hpp"
 #include "engine/systems/card/selection_system.hpp"
 #include "core/card_def.hpp"
-#include "engine/systems/card/card_registry.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
+#include "engine/utils/target_utils.hpp"
 #include <iostream>
 
 namespace dm::engine {

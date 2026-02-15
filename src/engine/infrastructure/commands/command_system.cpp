@@ -1,8 +1,8 @@
 #include "command_system.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
-#include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/card/condition_system.hpp"
-#include "engine/systems/card/card_registry.hpp"
+#include "engine/utils/target_utils.hpp"
+#include "engine/systems/rules/condition_system.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include <iostream>
 #include <algorithm>
@@ -36,7 +36,7 @@ namespace dm::engine::systems {
             filter.zones.push_back("BATTLE_ZONE");
         }
 
-        const auto& card_db = CardRegistry::get_all_definitions();
+        const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
         int total = 0;
 
         for (PlayerID pid : players_to_check) {
@@ -57,11 +57,11 @@ namespace dm::engine::systems {
                 for (const auto& card : *container) {
                     auto def_it = card_db.find(card.card_id);
                     if (def_it != card_db.end()) {
-                        if (TargetUtils::is_valid_target(card, def_it->second, filter, state, player_id, pid, false, &execution_context)) {
+                        if (dm::engine::utils::TargetUtils::is_valid_target(card, def_it->second, filter, state, player_id, pid, false, &execution_context)) {
                             total++;
                         }
                     } else if (card.card_id == 0) {
-                        if (TargetUtils::is_valid_target(card, CardDefinition(), filter, state, player_id, pid, false, &execution_context)) {
+                        if (dm::engine::utils::TargetUtils::is_valid_target(card, CardDefinition(), filter, state, player_id, pid, false, &execution_context)) {
                             total++;
                         }
                     }
@@ -96,7 +96,7 @@ namespace dm::engine::systems {
         auto instructions = generate_instructions(state, cmd, source_instance_id, player_id, execution_context);
 
         dm::engine::systems::PipelineExecutor pipeline;
-        const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+        const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
 
         // Seed pipeline context with current execution_context
         for (const auto& kv : execution_context) {
@@ -118,7 +118,7 @@ namespace dm::engine::systems {
         std::vector<Instruction> out;
 
         // Ensure defaults are loaded
-        ConditionSystem::instance().initialize_defaults();
+        dm::engine::rules::ConditionSystem::instance().initialize_defaults();
 
         switch (cmd.type) {
             // Primitive Commands
@@ -157,8 +157,8 @@ namespace dm::engine::systems {
         if (cmd.type == core::CommandType::FLOW) {
             bool cond_result = true;
             if (cmd.condition.has_value()) {
-                 const auto& card_db = CardRegistry::get_all_definitions();
-                 cond_result = ConditionSystem::instance().evaluate_def(state, cmd.condition.value(), source_instance_id, card_db, execution_context);
+                 const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
+                 cond_result = dm::engine::rules::ConditionSystem::instance().evaluate_def(state, cmd.condition.value(), source_instance_id, card_db, execution_context);
             }
 
             const auto& branch = cond_result ? cmd.if_true : cmd.if_false;
@@ -394,14 +394,14 @@ namespace dm::engine::systems {
         }
 
         const auto& filter = cmd.target_filter;
-        const auto& card_db = CardRegistry::get_all_definitions();
+        const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
 
         for (PlayerID pid : players_to_check) {
             if (filter.zones.empty()) {
                 if (cmd.target_group == TargetScope::SELF && source_instance_id != -1) {
                      CardInstance* inst = state.get_card_instance(source_instance_id);
                      if (inst && card_db.find(inst->card_id) != card_db.end()) {
-                        if (dm::engine::TargetUtils::is_valid_target(
+                        if (dm::engine::utils::TargetUtils::is_valid_target(
                                 *inst,
                                 card_db.at(inst->card_id),
                                 filter, state, player_id, pid, false, &execution_context)) {
@@ -430,7 +430,7 @@ namespace dm::engine::systems {
                     for (const auto& card : *container) {
                          if (card_db.find(card.card_id) != card_db.end()) {
                              const auto& def = card_db.at(card.card_id);
-                             if (dm::engine::TargetUtils::is_valid_target(
+                             if (dm::engine::utils::TargetUtils::is_valid_target(
                                      card, def, filter, state, player_id, pid, false, &execution_context)) {
                                  targets.push_back(card.instance_id);
                              }
