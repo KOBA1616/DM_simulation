@@ -132,11 +132,11 @@ namespace dm::engine::systems {
 
             case core::CommandType::MANA_CHARGE:
                 {
-                    Instruction move(InstructionOp::MOVE);
-                    int target = (cmd.instance_id != -1) ? cmd.instance_id : source_instance_id;
-                    move.args["target"] = target;
-                    move.args["to"] = "MANA";
-                    out.push_back(move);
+                    nlohmann::json args;
+                    args["card"] = (cmd.instance_id != -1) ? cmd.instance_id : source_instance_id;
+                    Instruction inst(InstructionOp::GAME_ACTION, args);
+                    inst.args["type"] = "MANA_CHARGE";
+                    out.push_back(inst);
                 }
                 break;
 
