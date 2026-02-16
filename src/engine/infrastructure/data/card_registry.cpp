@@ -9,14 +9,19 @@ namespace dm::engine::infrastructure {
     std::shared_ptr<std::map<dm::core::CardID, dm::core::CardDefinition>> dm::engine::infrastructure::CardRegistry::definitions_ptr;
 
     void dm::engine::infrastructure::CardRegistry::load_from_json(const std::string& json_str) {
-        // Implementation delegated to dm::engine::infrastructure::JsonLoader for now, or direct parsing
-        // Since dm::engine::infrastructure::JsonLoader expects a file path, we might need a string parser or stick to file loading.
-        // Assuming this method is intended to load from file path actually, based on signature usage in main.
-        // But the argument is named json_str...
-        // Let's assume it loads from file path for now as that's what dm::engine::infrastructure::JsonLoader does.
-
-        auto defs = dm::engine::infrastructure::JsonLoader::load_cards(json_str);
-        definitions_ptr = std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>(defs);
+        // Correctly delegate to string loading
+        auto defs = dm::engine::infrastructure::JsonLoader::load_cards_from_string(json_str);
+        // Only update if we parsed something
+        if (!defs.empty()) {
+            if (!definitions_ptr) {
+                definitions_ptr = std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>(defs);
+            } else {
+                // Merge
+                for (const auto& kv : defs) {
+                    (*definitions_ptr)[kv.first] = kv.second;
+                }
+            }
+        }
     }
 
     const dm::core::CardData* dm::engine::infrastructure::CardRegistry::get_card_data(int id) {

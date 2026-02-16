@@ -1,0 +1,3 @@
+Before switch: cmd.type=51
+Before switch: cmd.type=51
+Before switch: cmd.type=51

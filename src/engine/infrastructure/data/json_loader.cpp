@@ -327,17 +327,17 @@ namespace dm::engine::infrastructure {
         // 1. Load into Registry (Single Source of Truth)
         dm::engine::infrastructure::CardRegistry::load_from_json(json_str);
 
-        // 2. Parse locally to identify which cards were loaded and retrieve them from Registry
+        // 2. Retrieve definitions that were just loaded
+        // Since Registry parses the same string, we can re-parse lightly to get IDs or trust the registry update.
+        // To maintain function contract (return definitions from this file), we parse the JSON to get IDs.
         try {
             auto j = nlohmann::json::parse(json_str);
             const auto& registry_defs = dm::engine::infrastructure::CardRegistry::get_all_definitions();
 
             auto process_item = [&](const nlohmann::json& item) {
-                // We only need the ID to fetch from registry
                 if (item.contains("id")) {
                     int id = item["id"].get<int>();
                     CardID card_id = static_cast<CardID>(id);
-
                     if (registry_defs.count(card_id)) {
                         result[card_id] = registry_defs.at(card_id);
                     }
@@ -351,11 +351,42 @@ namespace dm::engine::infrastructure {
             } else {
                 process_item(j);
             }
-
         } catch (const std::exception& e) {
-            std::cerr << "dm::engine::infrastructure::JsonLoader Error: " << e.what() << std::endl;
+            std::cerr << "dm::engine::infrastructure::JsonLoader Error during verification parse: " << e.what() << std::endl;
+        } catch (...) {
+            std::cerr << "dm::engine::infrastructure::JsonLoader Unknown error during verification parse" << std::endl;
         }
 
+        return result;
+    }
+
+    std::map<CardID, CardDefinition> dm::engine::infrastructure::JsonLoader::load_cards_from_string(const std::string& json_content) {
+        std::map<CardID, CardDefinition> result;
+        try {
+            auto j = nlohmann::json::parse(json_content);
+
+            auto process_item = [&](const nlohmann::json& item) {
+                if (item.contains("id")) {
+                    dm::core::CardData data;
+                    // Manual or automated deserialization from JSON to CardData
+                    dm::core::from_json(item, data);
+
+                    // Convert to Definition
+                    CardDefinition def = convert_to_def(data);
+                    result[def.id] = def;
+                }
+            };
+
+            if (j.is_array()) {
+                for (const auto& item : j) {
+                    process_item(item);
+                }
+            } else {
+                process_item(j);
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "JsonLoader::load_cards_from_string Error: " << e.what() << std::endl;
+        }
         return result;
     }
 
