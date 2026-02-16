@@ -143,7 +143,7 @@ else:
 if _HAS_MODULE and hasattr(dm_ai_module, 'CommandType'):
     COMMAND_TYPES = _get_enum_names(dm_ai_module.CommandType)
 else:
-    # Fallback list should mirror docs/api/command_spec.md (best-effort)
+    # Fallback list should mirror docs/engine/infrastructure/commands/command_spec.md (best-effort)
     COMMAND_TYPES = [
         "TRANSITION",
         "REPLACE_CARD_MOVE",
