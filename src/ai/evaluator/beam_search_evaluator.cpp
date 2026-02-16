@@ -1,5 +1,5 @@
 #include "beam_search_evaluator.hpp"
-#include "engine/actions/intent_generator.hpp"
+#include "engine/command_generation/intent_generator.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
 #include "engine/systems/flow/phase_system.hpp"
 #include "engine/systems/mechanics/mana_system.hpp"
@@ -21,7 +21,7 @@ namespace dm::ai {
         : card_db_(dm::engine::infrastructure::CardRegistry::get_all_definitions_ptr()), beam_width_(beam_width), max_depth_(max_depth) {}
 
     std::pair<std::vector<float>, float> BeamSearchEvaluator::evaluate(const GameState& state) {
-        std::vector<float> policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f); // Logits (or probs)
+        std::vector<float> policy(CommandEncoder::TOTAL_COMMAND_SIZE, 0.0f); // Logits (or probs)
         float value = run_beam_search(state, policy);
         return {policy, value};
     }
@@ -80,7 +80,7 @@ namespace dm::ai {
         // Set policy for root
         float min_score = current_beam.back().score;
         for (const auto& node : current_beam) {
-            int idx = ActionEncoder::action_to_index(node.first_action);
+            int idx = CommandEncoder::command_to_index(node.first_action);
             if (idx >= 0 && idx < (int)policy_logits.size()) {
                 policy_logits[idx] = (node.score - min_score) * 10.0f + 1.0f;
             }

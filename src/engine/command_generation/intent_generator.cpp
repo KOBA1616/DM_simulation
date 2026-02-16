@@ -78,7 +78,7 @@ namespace dm::engine {
         }
 
         // Prepare Context
-        ActionGenContext ctx = { game_state, card_db, game_state.active_player_id };
+        CommandGenContext ctx = { game_state, card_db, game_state.active_player_id };
 
         // 1. Pending Effects
         if (!game_state.pending_effects.empty()) {

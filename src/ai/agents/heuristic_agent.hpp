@@ -13,7 +13,7 @@ namespace dm::ai {
     public:
         HeuristicAgent(int player_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
 
-        dm::core::CommandDef get_action(const dm::core::GameState& state,
+        dm::core::CommandDef get_command(const dm::core::GameState& state,
                                     const std::vector<dm::core::CommandDef>& legal_actions);
 
     private:

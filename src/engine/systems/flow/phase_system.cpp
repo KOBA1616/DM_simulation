@@ -3,7 +3,7 @@
 #include "engine/systems/mechanics/mana_system.hpp"
 #include "engine/systems/effects/trigger_system.hpp"
 #include "engine/systems/effects/continuous_effect_system.hpp"
-#include "engine/actions/intent_generator.hpp"
+#include "engine/command_generation/intent_generator.hpp"
 #include "core/constants.hpp"
 #include <iostream>
 #include <fstream>

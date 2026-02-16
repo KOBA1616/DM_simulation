@@ -4,7 +4,7 @@
 #include "ai/agents/heuristic_agent.hpp"
 #include "engine/systems/flow/phase_system.hpp"
 #include "engine/infrastructure/data/card_registry.hpp"
-#include "engine/actions/intent_generator.hpp"
+#include "engine/command_generation/intent_generator.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
 #include "engine/game_instance.hpp"
 #include "ai/mcts/mcts.hpp"
@@ -421,9 +421,9 @@ namespace dm::ai {
 
                  dm::core::CommandDef action;
                  if (instance.state.active_player_id == 0) {
-                     action = agent0.get_action(instance.state, legal_actions);
+                     action = agent0.get_command(instance.state, legal_actions);
                  } else {
-                     action = agent1.get_action(instance.state, legal_actions);
+                     action = agent1.get_command(instance.state, legal_actions);
                  }
 
                  GameLogicSystem::resolve_command_oneshot(instance.state, action, *card_db_);
@@ -543,9 +543,9 @@ namespace dm::ai {
 
                  dm::core::CommandDef action;
                  if (instance.state.active_player_id == 0) {
-                     action = agent0.get_action(instance.state, legal_actions);
+                     action = agent0.get_command(instance.state, legal_actions);
                  } else {
-                     action = agent1.get_action(instance.state, legal_actions);
+                     action = agent1.get_command(instance.state, legal_actions);
                  }
 
                  GameLogicSystem::resolve_command_oneshot(instance.state, action, *card_db_);
@@ -656,9 +656,9 @@ namespace dm::ai {
 
                  dm::core::CommandDef action;
                  if (instance.state.active_player_id == 0) {
-                     action = agent0.get_action(instance.state, legal_actions);
+                     action = agent0.get_command(instance.state, legal_actions);
                  } else {
-                     action = agent1.get_action(instance.state, legal_actions);
+                     action = agent1.get_command(instance.state, legal_actions);
                  }
 
                  GameLogicSystem::resolve_command_oneshot(instance.state, action, *card_db_);

@@ -11,7 +11,7 @@ namespace dm::engine {
 
     using namespace dm::core;
 
-    std::vector<CommandDef> ManaPhaseStrategy::generate(const ActionGenContext& ctx) {
+    std::vector<CommandDef> ManaPhaseStrategy::generate(const CommandGenContext& ctx) {
         std::vector<CommandDef> actions;
         const auto& game_state = ctx.game_state;
         const Player& active_player = game_state.players[game_state.active_player_id];
@@ -64,7 +64,7 @@ namespace dm::engine {
         return actions;
     }
 
-    std::vector<CommandDef> MainPhaseStrategy::generate(const ActionGenContext& ctx) {
+    std::vector<CommandDef> MainPhaseStrategy::generate(const CommandGenContext& ctx) {
         std::vector<CommandDef> actions;
         const auto& game_state = ctx.game_state;
         const auto& card_db = ctx.card_db;
@@ -198,7 +198,7 @@ namespace dm::engine {
         return actions;
     }
 
-    std::vector<CommandDef> AttackPhaseStrategy::generate(const ActionGenContext& ctx) {
+    std::vector<CommandDef> AttackPhaseStrategy::generate(const CommandGenContext& ctx) {
         std::vector<CommandDef> actions;
         const auto& game_state = ctx.game_state;
         const auto& card_db = ctx.card_db;
@@ -259,7 +259,7 @@ namespace dm::engine {
         return actions;
     }
 
-    std::vector<CommandDef> BlockPhaseStrategy::generate(const ActionGenContext& ctx) {
+    std::vector<CommandDef> BlockPhaseStrategy::generate(const CommandGenContext& ctx) {
         std::vector<CommandDef> actions;
         const auto& game_state = ctx.game_state;
         const auto& card_db = ctx.card_db;

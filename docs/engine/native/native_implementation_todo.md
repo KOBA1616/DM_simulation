@@ -53,7 +53,7 @@
 
 ## 優先度: P2（中長期）
 - MutateCommand / MutationType（もし複雑な副作用があるならネイティブに移行）
-- ActionGenerator / ActionEncoder（ルールベースの高速実装が必要な場合）
+- IntentGenerator / CommandEncoder（ルールベースの高速実装が必要な場合）
 - DeckEvolution, DeckInference（高度機能）
 
 ---

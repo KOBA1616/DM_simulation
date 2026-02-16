@@ -12,7 +12,7 @@
 
 ### 1.2 Action System
 *   **PendingEffect Queue**: `TRIGGER_ABILITY`, `RESOLVE_BATTLE` 等の処理待ちイベントを管理するスタック。
-*   **Strategies**: `ActionGenerator` は `MainPhaseStrategy`, `AttackPhaseStrategy` 等のストラテジーに処理を委譲。
+*   **Strategies**: `IntentGenerator` は `MainPhaseStrategy`, `AttackPhaseStrategy` 等のストラテジーに処理を委譲。
 *   **Effect Resolver**: `EffectResolver` および `IActionHandler` によるアクション解決のモジュール化。
 
 ## 2. 実装済みメカニクス (Implemented Mechanics)
@@ -31,6 +31,6 @@
 
 ## 4. API & Bindings
 *   **Python Integration**: `pybind11` を用いて `dm_ai_module` としてビルド。
-*   **Direct Access**: `GameState`, `CardDefinition`, `ActionGenerator` 等のコアクラスへの直接アクセスを提供し、Python側での柔軟な学習・テストを可能にする。
+*   **Direct Access**: `GameState`, `CardDefinition`, `IntentGenerator` 等のコアクラスへの直接アクセスを提供し、Python側での柔軟な学習・テストを可能にする。
 
 ```

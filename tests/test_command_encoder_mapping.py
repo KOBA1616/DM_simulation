@@ -7,12 +7,28 @@ if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 import dm_ai_module as dm
 
-def show(cmd):
+def show(cmd_dict):
     try:
+        if isinstance(cmd_dict, dict):
+            # Convert dict to CommandDef
+            cmd = dm.CommandDef()
+            if 'type' in cmd_dict:
+                t = cmd_dict['type']
+                if isinstance(t, str):
+                    try:
+                        cmd.type = getattr(dm.CommandType, t)
+                    except:
+                        if t == 'PLAY': cmd.type = dm.CommandType.PLAY_FROM_ZONE
+                        else: pass # NONE
+            if 'slot_index' in cmd_dict: cmd.slot_index = cmd_dict['slot_index']
+            if 'instance_id' in cmd_dict: cmd.instance_id = cmd_dict['instance_id']
+        else:
+            cmd = cmd_dict
+
         idx = dm.CommandEncoder.command_to_index(cmd)
     except Exception as e:
         idx = f"ERROR: {e}"
-    print(json.dumps({'cmd': cmd, 'index': idx}, ensure_ascii=False))
+    print(json.dumps({'cmd': cmd_dict, 'index': idx}, ensure_ascii=False))
 
 samples = [
     {'type': 'PASS'},

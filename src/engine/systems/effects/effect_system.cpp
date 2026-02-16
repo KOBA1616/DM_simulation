@@ -2,7 +2,7 @@
 #include "engine/systems/rules/condition_system.hpp"
 #include "engine/utils/target_utils.hpp"
 #include "engine/systems/mechanics/selection_system.hpp"
-#include "engine/actions/intent_generator.hpp"
+#include "engine/command_generation/intent_generator.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "engine/infrastructure/commands/command_system.hpp"
 #include <iostream>

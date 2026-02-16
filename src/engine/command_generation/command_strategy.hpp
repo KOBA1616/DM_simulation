@@ -7,17 +7,17 @@
 
 namespace dm::engine {
 
-    struct ActionGenContext {
+    struct CommandGenContext {
         const dm::core::GameState& game_state;
         const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db;
         dm::core::PlayerID active_player_id;
     };
 
-    class IActionStrategy {
+    class ICommandStrategy {
     public:
-        virtual ~IActionStrategy() = default;
+        virtual ~ICommandStrategy() = default;
         // Generate actions.
-        virtual std::vector<dm::core::CommandDef> generate(const ActionGenContext& ctx) = 0;
+        virtual std::vector<dm::core::CommandDef> generate(const CommandGenContext& ctx) = 0;
     };
 
 }

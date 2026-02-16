@@ -3,7 +3,7 @@
 #include "bindings/types.hpp"
 #include "engine/game_instance.hpp"
 #include <pybind11/stl_bind.h>
-#include "engine/actions/intent_generator.hpp"
+#include "engine/command_generation/intent_generator.hpp"
 #include "engine/infrastructure/data/card_registry.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
 #include "engine/systems/effects/effect_system.hpp"
@@ -272,9 +272,6 @@ void bind_engine(py::module& m) {
             } catch(...) {}
             return IntentGenerator::generate_legal_commands(gs, db);
         });
-
-    // Alias for backward compatibility
-    m.attr("ActionGenerator") = m.attr("IntentGenerator");
 
     auto effect_resolver = py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver");
     effect_resolver

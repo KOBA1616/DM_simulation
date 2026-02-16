@@ -4,9 +4,9 @@
 
 namespace dm::ai {
 
-    class ActionEncoder {
+    class CommandEncoder {
     public:
-        static constexpr int TOTAL_ACTION_SIZE = 
+        static constexpr int TOTAL_COMMAND_SIZE =
             dm::core::ACTION_MANA_SIZE + 
             dm::core::ACTION_PLAY_SIZE + 
             dm::core::ACTION_ATTACK_SIZE + 
@@ -16,7 +16,7 @@ namespace dm::ai {
             10; // Extra buffer for RESOLVE, USE_SHIELD_TRIGGER etc.
 
         // Maps a CommandDef to a unique index in the policy vector
-        static int action_to_index(const dm::core::CommandDef& cmd);
+        static int command_to_index(const dm::core::CommandDef& cmd);
     };
 
 }

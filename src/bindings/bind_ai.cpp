@@ -14,7 +14,7 @@
 #include "ai/scenario/scenario_executor.hpp"
 #include "ai/encoders/token_converter.hpp"
 #include "ai/encoders/tensor_converter.hpp"
-#include "ai/encoders/action_encoder.hpp"
+#include "ai/encoders/command_encoder.hpp"
 #include "ai/inference/deck_inference.hpp"
 #include "ai/inference/pimc_generator.hpp"
 #include "ai/pomdp/pomdp.hpp"
@@ -66,9 +66,9 @@ void bind_ai(py::module& m) {
             return batch_seq;
         }, py::arg("states"), py::arg("card_db"), py::arg("mask_opponent_hand") = true);
 
-    py::class_<ActionEncoder>(m, "ActionEncoder")
-        .def_readonly_static("TOTAL_ACTION_SIZE", &ActionEncoder::TOTAL_ACTION_SIZE)
-        .def_static("action_to_index", &ActionEncoder::action_to_index);
+    py::class_<CommandEncoder>(m, "CommandEncoder")
+        .def_readonly_static("TOTAL_COMMAND_SIZE", &CommandEncoder::TOTAL_COMMAND_SIZE)
+        .def_static("command_to_index", &CommandEncoder::command_to_index);
 
     py::class_<MCTSNode, std::shared_ptr<MCTSNode>>(m, "MCTSNode")
         .def_readonly("visit_count", &MCTSNode::visit_count)
@@ -94,7 +94,7 @@ void bind_ai(py::module& m) {
 
     py::class_<HeuristicAgent>(m, "HeuristicAgent")
         .def(py::init<int, const std::map<CardID, CardDefinition>&>())
-        .def("get_action", &HeuristicAgent::get_action);
+        .def("get_command", &HeuristicAgent::get_command);
 
     py::class_<BeamSearchEvaluator>(m, "BeamSearchEvaluator")
         // Primary efficient constructor using dm::engine::infrastructure::CardRegistry
@@ -209,7 +209,9 @@ void bind_ai(py::module& m) {
         .def(py::init<int, int>())
         .def("enable_pimc", &ParallelRunner::enable_pimc)
         .def("load_meta_decks", &ParallelRunner::load_meta_decks)
-        .def("play_games", &ParallelRunner::play_games, py::return_value_policy::move)
+        .def("play_games", &ParallelRunner::play_games, py::return_value_policy::move,
+             py::arg("initial_states"), py::arg("evaluator"), py::arg("temperature")=1.0f,
+             py::arg("add_noise")=true, py::arg("num_threads")=4, py::arg("alpha")=0.0f, py::arg("collect_data")=true)
         
 #if defined(USE_LIBTORCH) || defined(USE_ONNXRUNTIME)
         .def("play_games", [](ParallelRunner& self,

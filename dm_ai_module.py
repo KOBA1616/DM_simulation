@@ -822,37 +822,6 @@ class GameInstance:
             pass
 
 
-class ActionEncoder:
-    @staticmethod
-    def action_to_index(action: Any) -> int:
-        try:
-            if 'CommandEncoder' in globals() and CommandEncoder is not None:
-                try:
-                    if isinstance(action, dict):
-                        return CommandEncoder.command_to_index(action)
-                    t = getattr(action, 'type', None)
-                    if t is not None:
-                        cmd = {}
-                        if t == CommandType.PASS:
-                            cmd['type'] = 'PASS'
-                        elif t == CommandType.MANA_CHARGE:
-                            cmd['type'] = 'MANA_CHARGE'
-                            cmd['slot_index'] = getattr(action, 'source_instance_id', 1) or 1
-                        elif t == CommandType.PLAY_FROM_ZONE:
-                            cmd['type'] = 'PLAY_FROM_ZONE'
-                            cmd['slot_index'] = getattr(action, 'source_instance_id', 0) or 0
-                        else:
-                            raise ValueError('no command mapping')
-                        return CommandEncoder.command_to_index(cmd)
-                except Exception:
-                    pass
-
-            key = (getattr(action, 'type', 0), getattr(action, 'card_id', -1), getattr(action, 'source_instance_id', -1))
-            return abs(hash(key)) % 1024
-        except Exception:
-            return -1
-
-
 class IntentGenerator:
     @staticmethod
     def generate_legal_commands(state: GameState, card_db: Any = None) -> List[Any]:
@@ -887,8 +856,6 @@ class IntentGenerator:
         except Exception:
             pass
         return out
-
-ActionGenerator = IntentGenerator
 
 
 class PhaseManager:
@@ -1015,8 +982,8 @@ class TensorConverter:
 
 
 __all__ = [
-    'IS_NATIVE', 'GameInstance', 'GameState', 'CommandType', 'ActionEncoder',
-    'ActionGenerator', 'IntentGenerator', 'PhaseManager', 'EffectResolver', 'CardStub',
+    'IS_NATIVE', 'GameInstance', 'GameState', 'CommandType',
+    'IntentGenerator', 'PhaseManager', 'EffectResolver', 'CardStub',
     'CardType', 'Phase', 'GameResult', 'GameCommand', 'CommandSystem', 'ExecuteActionCompat',
 ]
 
@@ -1124,22 +1091,6 @@ if 'MutateCommand' not in globals():
                     pass
 
     # Provide minimal, module-level fallback helpers (kept simple and robust)
-    if 'ActionGenerator' not in globals():
-        class ActionGenerator:
-            def __init__(self, registry: Any = None):
-                self.registry = registry
-
-            def generate(self, state: Any, player_id: int) -> list:
-                return []
-
-    if 'ActionEncoder' not in globals():
-        class ActionEncoder:
-            def __init__(self):
-                pass
-
-            def encode(self, action: Any) -> dict:
-                return {}
-
     if 'EffectResolver' not in globals():
         class EffectResolver:
             @staticmethod

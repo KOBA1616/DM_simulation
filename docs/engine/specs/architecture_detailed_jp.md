@@ -34,7 +34,7 @@
 ### 2.2 アクション生成と実行 (Action System)
 ゲームの進行は「アクションの生成」と「解決」のサイクルで行われます。
 
-*   **ActionGenerator:** 現在のフェーズや保留中の効果（PendingEffect）に基づき、プレイヤーが選択可能なすべての合法手（Legal Actions）を生成します。
+*   **IntentGenerator:** 現在のフェーズや保留中の効果（PendingEffect）に基づき、プレイヤーが選択可能なすべての合法手（Legal Commands）を生成します。
     *   **Strategy Pattern:** `MainPhaseStrategy`, `AttackPhaseStrategy`, `PendingEffectStrategy` など、状況に応じた生成ロジックが分離されています。
 *   **EffectResolver:** 選択されたアクションを受け取り、ゲーム状態を更新します。
     *   **Stack System:** プレイされたカードやトリガー能力は一度 `PendingEffect` としてスタック（`game_state.pending_effects`）に積まれ、LIFO（後入れ先出し）またはルールに基づく順序で処理されます。

@@ -1,11 +1,11 @@
-#include "action_encoder.hpp"
+#include "command_encoder.hpp"
 #include <stdexcept>
 
 namespace dm::ai {
 
     using namespace dm::core;
 
-    int ActionEncoder::action_to_index(const CommandDef& cmd) {
+    int CommandEncoder::command_to_index(const CommandDef& cmd) {
         int offset = 0;
 
         // 1. MANA_CHARGE

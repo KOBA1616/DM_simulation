@@ -2,8 +2,8 @@
 #include "engine/systems/flow/phase_system.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
 #include "engine/utils/determinizer.hpp"
-#include "engine/actions/intent_generator.hpp"
-#include "ai/encoders/action_encoder.hpp"
+#include "engine/command_generation/intent_generator.hpp"
+#include "ai/encoders/command_encoder.hpp"
 #include <iostream>
 #include <random>
 
@@ -81,7 +81,7 @@ namespace dm::ai {
             std::vector<CommandDef> candidates;
             
             for (const auto& act : legal_actions) {
-                if (ActionEncoder::action_to_index(act) == action_idx) {
+                if (CommandEncoder::command_to_index(act) == action_idx) {
                     candidates.push_back(act);
                 }
             }
