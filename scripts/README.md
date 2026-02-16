@@ -31,4 +31,4 @@
 - Python補助スクリプト
   - `python/` 配下
 
-ドキュメント類は原則 `docs/` に置きます（例: テキスト生成マトリクスは `docs/notes/text_generation_matrix.md`）。
+ドキュメント類は原則 `docs/` に置きます（例: テキスト生成マトリクスは `docs/engine/reference/text_generation_matrix.md`）。

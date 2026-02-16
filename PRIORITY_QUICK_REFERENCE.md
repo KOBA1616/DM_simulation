@@ -168,9 +168,9 @@ actions = [SELECT_TARGET(90), PLAY_CARD(80)]  // ❌ IntentGeneratorの問題
 
 ## 図解リンク
 
-- [アクション優先度フロー](docs/action_priority_flow.md) - Mermaid図
-- [優先度ガントチャート](docs/priority_gantt.md) - 視覚的優先度
-- [状態遷移図](docs/action_state_machine.md) - ステートマシン
+- [アクション優先度フロー](docs/engine/actions/action_priority_flow.md) - Mermaid図
+- [優先度ガントチャート](docs/development/planning.md) - 視覚的優先度
+- [状態遷移図](docs/engine/actions/action_state_machine.md) - ステートマシン
 
 ---
 
