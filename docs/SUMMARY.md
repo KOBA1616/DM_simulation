@@ -2,34 +2,40 @@
 
 このドキュメントは `docs` フォルダの目次です。主要カテゴリと代表ファイルへのリンクを示します。
 
-## Overview
-- 00_Overview/
-- 01_Game_Engine_Specs.md
+## Engine
+- [Engine Overview](engine/architecture.md)
+- [Architecture (Detailed)](engine/specs/architecture_detailed_jp.md)
+- [Official Rules](engine/systems/rules/DM_Official_Rules.md)
 
-## Specs
-- Specs/01_System_Architecture_Overview_JP.md
-- Specs/02_AI_System_Specs.md
-- Specs/03_Card_Editor_Specs.md
+### Actions
+- engine/actions/
 
-## Architecture
-- architecture/
+### AI
+- engine/ai/
 
-## Design
-- design/
+### Infrastructure
+- engine/infrastructure/commands/
+
+### Systems
+- engine/systems/
+
+### Specs
+- engine/specs/
+
+### Migration
+- engine/migration/
+
+### Native
+- engine/native/
+
+### Development
+- engine/dev/
 
 ## Guides
 - guides/
-- GUI_HEADLESS_TESTING_SETUP.md
-
-## Development
-- dev/
-- DEVELOPMENT_WORKFLOW.md
 
 ## Reports
 - reports/
-
-## Archive
-- archive/legacy_requirements/
 
 ## Misc
 - misc/
