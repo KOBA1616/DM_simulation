@@ -1,48 +1,19 @@
-# Documentation index
+# Summary
 
-このドキュメントは `docs` フォルダの目次です。主要カテゴリと代表ファイルへのリンクを示します。
-
-## Engine
-- [Engine Overview](engine/architecture.md)
-- [Architecture (Detailed)](engine/specs/architecture_detailed_jp.md)
-- [Official Rules](engine/systems/rules/DM_Official_Rules.md)
-
-### Actions
-- engine/actions/
-
-### AI
-- engine/ai/
-
-### Infrastructure
-- engine/infrastructure/commands/
-
-### Systems
-- engine/systems/
-
-### Specs
-- engine/specs/
-
-### Migration
-- engine/migration/
-
-### Native
-- engine/native/
-
-### Development
-- engine/dev/
-
-## Guides
-- guides/
-
-## Reports
-- reports/
-
-## Misc
-- misc/
-- notes/
-
----
-
-今後の作業:
-- 内部リンクの相対パス整備
-- 大量ファイルの整理ルール適用 (prefix/番号付け等)
+- [Architecture](architecture/system_overview.md)
+    - [System Overview](architecture/system_overview.md)
+    - [Core Concepts](architecture/core_concepts.md)
+    - [Project Goals](architecture/project_goals_jp.md)
+- [Systems](systems/README.md)
+    - [Action Flow](systems/action_flow/README.md)
+    - [Commands](systems/commands/README.md)
+    - [AI](systems/ai/README.md)
+    - [Mechanics](systems/mechanics/README.md)
+    - [Rules](systems/rules/README.md)
+    - [Native Bridge](systems/native_bridge/README.md)
+- [Guides](guides/README.md)
+    - [Setup](guides/setup.md)
+    - [Migration](guides/migration/README.md)
+- [Reference](reference/README.md)
+    - [Specs](reference/specs/README.md)
+- [Archive](archive/README.md)
