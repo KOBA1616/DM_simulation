@@ -1,6 +1,6 @@
 #include "heuristic_evaluator.hpp"
-#include "engine/actions/intent_generator.hpp"
-#include "ai/encoders/action_encoder.hpp"
+#include "engine/command_generation/intent_generator.hpp"
+#include "ai/encoders/command_encoder.hpp"
 #include <algorithm>
 #include "ai/inference/torch_model.hpp"
 
@@ -54,14 +54,14 @@ namespace dm::ai {
             values.push_back(val);
 
             // 2. Calculate Policy (Uniform over legal actions)
-            std::vector<float> policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
+            std::vector<float> policy(CommandEncoder::TOTAL_COMMAND_SIZE, 0.0f);
             auto legal_actions = dm::engine::IntentGenerator::generate_legal_commands(const_cast<dm::core::GameState&>(state), card_db_);
             
             if (!legal_actions.empty()) {
                 float prob = 1.0f / legal_actions.size();
                 for (const auto& action : legal_actions) {
-                    int idx = ActionEncoder::action_to_index(action);
-                    if (idx >= 0 && idx < ActionEncoder::TOTAL_ACTION_SIZE) {
+                    int idx = CommandEncoder::command_to_index(action);
+                    if (idx >= 0 && idx < CommandEncoder::TOTAL_COMMAND_SIZE) {
                         policy[idx] += prob; // += in case multiple actions map to same index (shouldn't happen often)
                     }
                 }

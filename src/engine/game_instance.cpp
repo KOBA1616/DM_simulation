@@ -1,6 +1,6 @@
 #include "game_instance.hpp"
 #include "engine/systems/flow/phase_system.hpp"
-#include "engine/actions/intent_generator.hpp"
+#include "engine/command_generation/intent_generator.hpp"
 #include "engine/ai/simple_ai.hpp" // Added for SimpleAI
 #include "engine/infrastructure/commands/definitions/game_command.hpp"
 #include "engine/infrastructure/commands/definitions/action_commands.hpp" // Added

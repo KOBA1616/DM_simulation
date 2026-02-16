@@ -3,9 +3,9 @@
 #include "engine/game_instance.hpp"
 #include "engine/systems/flow/phase_system.hpp"
 #include "engine/infrastructure/data/card_registry.hpp"
-#include "engine/actions/intent_generator.hpp"
+#include "engine/command_generation/intent_generator.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
-#include "ai/encoders/action_encoder.hpp"
+#include "ai/encoders/command_encoder.hpp"
 #include "ai/encoders/token_converter.hpp"
 #include "ai/encoders/tensor_converter.hpp"
 #include <iostream>
@@ -103,9 +103,9 @@ namespace dm::ai {
                 // Choose action
                 dm::core::CommandDef chosen_action;
                 if (active_player == 0) {
-                    chosen_action = agent1.get_action(game.state, legal_actions);
+                    chosen_action = agent1.get_command(game.state, legal_actions);
                 } else {
-                    chosen_action = agent2.get_action(game.state, legal_actions);
+                    chosen_action = agent2.get_command(game.state, legal_actions);
                 }
 
                 // Record data
@@ -120,16 +120,16 @@ namespace dm::ai {
                     game_tensors.push_back(tensor);
                 }
 
-                std::vector<float> policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
-                int action_idx = ActionEncoder::action_to_index(chosen_action);
-                if (action_idx >= 0 && action_idx < ActionEncoder::TOTAL_ACTION_SIZE) {
+                std::vector<float> policy(CommandEncoder::TOTAL_COMMAND_SIZE, 0.0f);
+                int action_idx = CommandEncoder::command_to_index(chosen_action);
+                if (action_idx >= 0 && action_idx < CommandEncoder::TOTAL_COMMAND_SIZE) {
                     policy[action_idx] = 1.0f;
                 }
 
-                std::vector<float> mask(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
+                std::vector<float> mask(CommandEncoder::TOTAL_COMMAND_SIZE, 0.0f);
                 for (const auto& act : legal_actions) {
-                    int idx = ActionEncoder::action_to_index(act);
-                    if (idx >= 0 && idx < ActionEncoder::TOTAL_ACTION_SIZE) {
+                    int idx = CommandEncoder::command_to_index(act);
+                    if (idx >= 0 && idx < CommandEncoder::TOTAL_COMMAND_SIZE) {
                         mask[idx] = 1.0f;
                     }
                 }

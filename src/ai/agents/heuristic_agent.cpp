@@ -33,7 +33,7 @@ namespace dm::ai {
         return 0;
     }
 
-    dm::core::CommandDef HeuristicAgent::get_action(const dm::core::GameState& state,
+    dm::core::CommandDef HeuristicAgent::get_command(const dm::core::GameState& state,
                                                 const std::vector<dm::core::CommandDef>& legal_actions) {
         if (legal_actions.empty()) {
             return dm::core::CommandDef(); // Should not happen if game is not over

@@ -7,7 +7,7 @@ namespace dm::engine {
 
     using namespace dm::core;
 
-    std::vector<CommandDef> StackStrategy::generate(const ActionGenContext& ctx) {
+    std::vector<CommandDef> StackStrategy::generate(const CommandGenContext& ctx) {
         std::vector<CommandDef> actions;
         const auto& game_state = ctx.game_state;
         const auto& card_db = ctx.card_db;

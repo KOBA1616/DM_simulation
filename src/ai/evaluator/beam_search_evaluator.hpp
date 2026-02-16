@@ -2,7 +2,7 @@
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
 #include "core/card_json_types.hpp"
-#include "ai/encoders/action_encoder.hpp"
+#include "ai/encoders/command_encoder.hpp"
 #include <vector>
 #include <map>
 #include <memory>

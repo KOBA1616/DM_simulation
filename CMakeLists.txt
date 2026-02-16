@@ -168,10 +168,10 @@ set(SRC_CORE
 
 # Engine (Phase 2)
 set(SRC_ENGINE
-    src/engine/actions/intent_generator.cpp
-    src/engine/actions/strategies/pending_strategy.cpp
-    src/engine/actions/strategies/stack_strategy.cpp
-    src/engine/actions/strategies/phase_strategies.cpp
+    src/engine/command_generation/intent_generator.cpp
+    src/engine/command_generation/strategies/pending_strategy.cpp
+    src/engine/command_generation/strategies/stack_strategy.cpp
+    src/engine/command_generation/strategies/phase_strategies.cpp
     src/engine/ai/simple_ai.cpp # AI selection logic
     src/engine/systems/flow/phase_system.cpp # Added
     src/engine/systems/mechanics/battle_system.cpp # Added
@@ -210,7 +210,7 @@ set(SRC_UTILS
 set(SRC_AI
     src/ai/encoders/tensor_converter.cpp
     src/ai/encoders/token_converter.cpp
-    src/ai/encoders/action_encoder.cpp
+    src/ai/encoders/command_encoder.cpp
     src/ai/batch_evaluator.cpp
     src/ai/mcts/mcts.cpp
     src/ai/mcts/mcts_evaluator.cpp

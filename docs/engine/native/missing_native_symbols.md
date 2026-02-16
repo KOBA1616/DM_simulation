@@ -28,9 +28,10 @@ Detected references to `dm_ai_module` symbols and whether they are present.
 
 ## Missing
 - ActionDef
-- ActionEncoder
-- ActionGenerator
 - ActionType (ambiguous / noisy matches)
+
+- CommandEncoder
+- IntentGenerator
 
 - CardDefinition
 - CardKeywords

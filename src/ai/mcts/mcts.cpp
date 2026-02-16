@@ -1,9 +1,9 @@
 #include "mcts.hpp"
 #include "mcts_evaluator.hpp"
-#include "engine/actions/intent_generator.hpp"
+#include "engine/command_generation/intent_generator.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
 #include "engine/systems/flow/phase_system.hpp"
-#include "ai/encoders/action_encoder.hpp"
+#include "ai/encoders/command_encoder.hpp"
 #include "../inference/native_inference.hpp"
 #include <cmath>
 #include <limits>
@@ -63,7 +63,7 @@ namespace dm::ai {
 
         if (has_hidden_info) {
              // PIMC Root Parallelization Logic
-             std::vector<float> aggregated_policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
+             std::vector<float> aggregated_policy(CommandEncoder::TOTAL_COMMAND_SIZE, 0.0f);
              int samples = std::max(1, pimc_samples_);
              int sims_per_sample = std::max(1, simulations / samples);
 
@@ -71,7 +71,7 @@ namespace dm::ai {
              // Since MCTS::search is stateful (last_root_), we need to be careful.
              // We'll perform multiple searches and aggregate the results.
 
-             std::vector<float> total_policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
+             std::vector<float> total_policy(CommandEncoder::TOTAL_COMMAND_SIZE, 0.0f);
 
              for (int i = 0; i < samples; ++i) {
                  // 1. Determinize
@@ -214,7 +214,7 @@ namespace dm::ai {
         }
 
         // 4. Compute Policy
-        std::vector<float> policy(ActionEncoder::TOTAL_ACTION_SIZE, 0.0f);
+        std::vector<float> policy(CommandEncoder::TOTAL_COMMAND_SIZE, 0.0f);
         
         if (root->children.empty()) return policy;
 
@@ -228,7 +228,7 @@ namespace dm::ai {
                 }
             }
             if (best_child) {
-                int idx = ActionEncoder::action_to_index(best_child->action_from_parent);
+                int idx = CommandEncoder::command_to_index(best_child->action_from_parent);
                 if (idx >= 0 && idx < (int)policy.size()) {
                     policy[idx] = 1.0f;
                 }
@@ -245,7 +245,7 @@ namespace dm::ai {
             }
             
             for (size_t i = 0; i < root->children.size(); ++i) {
-                int idx = ActionEncoder::action_to_index(root->children[i]->action_from_parent);
+                int idx = CommandEncoder::command_to_index(root->children[i]->action_from_parent);
                 if (idx >= 0 && idx < (int)policy.size()) {
                     policy[idx] = visits_pow[i] / sum_visits_pow;
                 }
@@ -265,7 +265,7 @@ namespace dm::ai {
         priors.reserve(actions.size());
 
         for (const auto& action : actions) {
-            int idx = ActionEncoder::action_to_index(action);
+            int idx = CommandEncoder::command_to_index(action);
             float logit = 0.0f;
             if (idx >= 0 && idx < (int)policy_logits.size()) {
                 logit = policy_logits[idx];
