@@ -7,6 +7,7 @@
 #include <iostream>
 #include <algorithm>
 #include <set>
+#include <cstdlib>
 
 namespace dm::engine::systems {
 
@@ -130,6 +131,16 @@ namespace dm::engine::systems {
                 generate_primitive_instructions(out, state, cmd, source_instance_id, player_id, execution_context);
                 break;
 
+            case core::CommandType::MANA_CHARGE:
+                 {
+                     nlohmann::json args;
+                     args["type"] = "MANA_CHARGE";
+                     args["instance_id"] = cmd.instance_id;
+                     Instruction inst(InstructionOp::GAME_ACTION, args);
+                     out.push_back(inst);
+                 }
+                 break;
+
             // Macro Commands
             case core::CommandType::DRAW_CARD:
             case core::CommandType::BOOST_MANA:
@@ -171,19 +182,46 @@ namespace dm::engine::systems {
             std::vector<int> targets = resolve_targets(state, cmd, source_instance_id, player_id, execution_context);
             Zone from_z = parse_zone_string(cmd.from_zone);
             std::string to_z_str = cmd.to_zone; // Pass string to instruction
+            int amount = resolve_amount(cmd, execution_context);
+
+            if (from_z == Zone::HAND && amount > 0 && targets.size() > (size_t)amount) {
+                nlohmann::json args;
+                args["type"] = "SELECT_TARGET";
+                args["valid_targets"] = targets;
+                args["count"] = amount;
+                std::string out_key = "$selection_" + std::to_string(source_instance_id);
+                args["out"] = out_key;
+
+                Instruction select(InstructionOp::GAME_ACTION, args);
+                out.push_back(select);
+
+                Instruction move(InstructionOp::MOVE);
+                move.args["target"] = out_key;
+                move.args["to"] = to_z_str;
+                out.push_back(move);
+
+                if (!cmd.output_value_key.empty()) {
+                     Instruction calc(InstructionOp::MATH);
+                     calc.args["lhs"] = amount;
+                     calc.args["op"] = "+";
+                     calc.args["rhs"] = 0;
+                     calc.args["out"] = cmd.output_value_key;
+                     out.push_back(calc);
+                }
+                return;
+            }
 
             if (targets.empty() && cmd.amount > 0 && from_z != Zone::GRAVEYARD) {
-                int count = resolve_amount(cmd, execution_context);
                 if (from_z == Zone::DECK) {
                      Instruction move(InstructionOp::MOVE);
                      move.args["target"] = "DECK_TOP";
-                     move.args["count"] = count;
+                     move.args["count"] = amount;
                      move.args["to"] = to_z_str;
                      out.push_back(move);
 
                      if (!cmd.output_value_key.empty()) {
                          Instruction calc(InstructionOp::MATH);
-                         calc.args["lhs"] = count;
+                         calc.args["lhs"] = amount;
                          calc.args["op"] = "+";
                          calc.args["rhs"] = 0;
                          calc.args["out"] = cmd.output_value_key;
