@@ -20,6 +20,9 @@ public:
     // and returns a map (CardID -> CardDefinition)
     static std::map<core::CardID, core::CardDefinition> load_cards(const std::string& filepath);
 
+    // Loads cards from a JSON string content
+    static std::map<core::CardID, core::CardDefinition> load_cards_from_string(const std::string& json_content);
+
     // Helper methods for parsing are removed in favor of direct JSON-Enum mapping via NLOHMANN_JSON_SERIALIZE_ENUM
 
 };
