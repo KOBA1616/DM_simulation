@@ -15,6 +15,7 @@ namespace dm::engine::infrastructure {
     static CommandDef convert_legacy_action(const ActionDef& act) {
         CommandDef cmd;
         cmd.optional = act.optional;
+        cmd.up_to = act.up_to; // New Field
         cmd.amount = act.value1;
         cmd.str_param = act.str_val;
         cmd.target_filter = act.filter;
