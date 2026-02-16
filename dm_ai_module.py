@@ -389,6 +389,28 @@ class CommandSystem:
                     if not hasattr(state, 'command_history'):
                         state.command_history = []
                     state.command_history.append(cmd)
+                elif t == 'DRAW_CARD' or t == getattr(CommandType, 'DRAW_CARD', 'DRAW_CARD'):
+                    # Simulated minimal DRAW_CARD logic for testing interactive flow
+                    if cmd.get('up_to') or cmd.get('upto'):
+                        # Simulate WAIT_INPUT
+                        state.waiting_for_user_input = True
+                        class _Query:
+                            def __init__(self, qt, p):
+                                self.query_type = qt
+                                self.params = p
+                        state.pending_query = _Query("SELECT_NUMBER", {'min': 0, 'max': cmd.get('amount', 1)})
+                        return # Pause execution
+
+                    # Auto draw (simplified)
+                    amt = int(cmd.get('amount', 1) or 1)
+                    pid = player_id
+                    p = state.players[pid]
+                    for _ in range(amt):
+                         if p.deck:
+                             p.hand.append(p.deck.pop())
+                    if not hasattr(state, 'command_history'):
+                        state.command_history = []
+                    state.command_history.append(cmd)
                 elif t == 'DESTROY' or t == getattr(CommandType, 'DESTROY', 'DESTROY'):
                     if not hasattr(state, 'execution_context'):
                         return
@@ -556,6 +578,8 @@ class GameState:
             self.execution_context = _ExecCtx()
         except Exception:
             self.execution_context = type('EC', (), {'variables': {}})()
+        self.waiting_for_user_input = False
+        self.pending_query = None
 
     def calculate_hash(self) -> int:
         try:
