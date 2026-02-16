@@ -130,6 +130,16 @@ namespace dm::engine::systems {
                 generate_primitive_instructions(out, state, cmd, source_instance_id, player_id, execution_context);
                 break;
 
+            case core::CommandType::MANA_CHARGE:
+                {
+                    Instruction move(InstructionOp::MOVE);
+                    int target = (cmd.instance_id != -1) ? cmd.instance_id : source_instance_id;
+                    move.args["target"] = target;
+                    move.args["to"] = "MANA";
+                    out.push_back(move);
+                }
+                break;
+
             // Macro Commands
             case core::CommandType::DRAW_CARD:
             case core::CommandType::BOOST_MANA:
@@ -285,25 +295,33 @@ namespace dm::engine::systems {
 
         // Example: DRAW_CARD
         if (cmd.type == core::CommandType::DRAW_CARD) {
-            if (cmd.optional && count > 0) {
-                // Pending effect creation via instruction?
-                // We can use GAME_ACTION "REGISTER_PENDING_SELECT" logic or similar.
-                // For now, let's just generate the basic instruction if we can't do complex pending via instruction easily.
-                // Actually, logic was: create PendingEffect.
-                // We can't easily do that via InstructionOp::MOVE/MODIFY.
-                // We can use `InstructionOp::GAME_ACTION` with type "EXECUTE_COMMAND" (recursion) or custom.
-                // Or just fallback to primitive `TRANSITION` if simpler.
+            std::string out_key = cmd.output_value_key.empty() ? "$draw_choice" : cmd.output_value_key;
+            std::string count_val_key = "";
+
+            if (cmd.upto && count > 0) {
+                 Instruction select(InstructionOp::WAIT_INPUT);
+                 select.args["query_type"] = "SELECT_NUMBER";
+                 select.args["min"] = 0;
+                 select.args["max"] = count;
+                 select.args["out"] = out_key;
+                 out.push_back(select);
+
+                 count_val_key = out_key;
             }
 
             Instruction move(InstructionOp::MOVE);
             move.args["target"] = "DECK_TOP";
-            move.args["count"] = count;
+            if (!count_val_key.empty()) {
+                move.args["count"] = count_val_key;
+            } else {
+                move.args["count"] = count;
+            }
             move.args["to"] = "HAND";
             out.push_back(move);
 
-            if (!cmd.output_value_key.empty()) {
+            if (!cmd.output_value_key.empty() && count_val_key.empty()) {
                  Instruction calc(InstructionOp::MATH);
-                 calc.args["lhs"] = count; // Approximation
+                 calc.args["lhs"] = count;
                  calc.args["op"] = "+";
                  calc.args["rhs"] = 0;
                  calc.args["out"] = cmd.output_value_key;
