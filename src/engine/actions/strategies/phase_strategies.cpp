@@ -1,5 +1,5 @@
 #include "phase_strategies.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include "engine/systems/mechanics/mana_system.hpp"
 #include "engine/systems/effects/passive_effect_system.hpp"
 #include "engine/systems/mechanics/cost_payment_system.hpp"
@@ -211,8 +211,8 @@ namespace dm::engine {
             if (card_db.count(card.card_id)) {
                 const auto& def = card_db.at(card.card_id);
 
-                bool can_attack_player = TargetUtils::can_attack_player(card, def, game_state, card_db);
-                bool can_attack_creature = TargetUtils::can_attack_creature(card, def, game_state, card_db);
+                bool can_attack_player = dm::engine::utils::TargetUtils::can_attack_player(card, def, game_state, card_db);
+                bool can_attack_creature = dm::engine::utils::TargetUtils::can_attack_creature(card, def, game_state, card_db);
 
                 bool passive_restricted = false;
                 if (PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_ATTACK, card_db)) {
@@ -234,7 +234,7 @@ namespace dm::engine {
                         if (opp_card.is_tapped) {
                             if (card_db.count(opp_card.card_id)) {
                                 const auto& opp_def = card_db.at(opp_card.card_id);
-                                bool protected_by_jd = TargetUtils::is_protected_by_just_diver(opp_card, opp_def, game_state, active_player.id);
+                                bool protected_by_jd = dm::engine::utils::TargetUtils::is_protected_by_just_diver(opp_card, opp_def, game_state, active_player.id);
                                 if (game_state.turn_number > opp_card.turn_played) protected_by_jd = false;
                                 if (protected_by_jd) continue;
                             }
@@ -271,7 +271,7 @@ namespace dm::engine {
             if (!card.is_tapped) {
                 if (card_db.count(card.card_id)) {
                     const auto& def = card_db.at(card.card_id);
-                    if (TargetUtils::has_keyword_simple(game_state, card, def, "BLOCKER")) {
+                    if (dm::engine::utils::TargetUtils::has_keyword_simple(game_state, card, def, "BLOCKER")) {
                         if (!PassiveEffectSystem::instance().check_restriction(game_state, card, PassiveType::CANNOT_BLOCK, card_db)) {
                             CommandDef block;
                             block.type = CommandType::BLOCK;

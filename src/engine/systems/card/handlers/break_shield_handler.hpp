@@ -1,11 +1,11 @@
 #pragma once
-#include "engine/systems/card/effect_system.hpp"
-#include "engine/systems/card/selection_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
+#include "engine/systems/mechanics/selection_system.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
-#include "engine/systems/flow/reaction_system.hpp"
+#include "engine/systems/effects/reaction_system.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include <vector>
 
 namespace dm::engine {
@@ -30,7 +30,7 @@ namespace dm::engine {
             } else if (ctx.action.target_choice != "SELECT") {
                 // Auto-select logic (e.g. "Break opponent's shield")
                 // Copy logic from resolve()
-                PlayerID controller = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+                PlayerID controller = dm::engine::effects::EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
                 std::vector<PlayerID> target_players;
 
                 if (ctx.action.filter.owner.has_value()) {
@@ -54,7 +54,7 @@ namespace dm::engine {
                         FilterDef f = ctx.action.filter;
                         if (f.zones.empty()) f.zones = {"SHIELD_ZONE"};
 
-                        if (TargetUtils::is_valid_target(s, def, f, ctx.game_state, controller, pid)) {
+                        if (dm::engine::utils::TargetUtils::is_valid_target(s, def, f, ctx.game_state, controller, pid)) {
                             valid_in_player.push_back(s.instance_id);
                         }
                     }
@@ -87,7 +87,7 @@ namespace dm::engine {
                  ed.trigger = TriggerType::NONE;
                  ed.condition = ConditionDef{"NONE", 0, "", "", "", std::nullopt};
                  ed.actions = { ctx.action };
-                 SelectionSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
+                 dm::engine::mechanics::SelectionSystem::instance().select_targets(ctx.game_state, ctx.action, ctx.source_instance_id, ed, ctx.execution_vars);
                  return;
             }
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 

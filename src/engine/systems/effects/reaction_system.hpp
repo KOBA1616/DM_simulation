@@ -2,23 +2,26 @@
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
 #include "core/constants.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
+#include "engine/systems/effects/reaction_window.hpp"
 #include <map>
 #include <string>
+#include <vector>
 
-namespace dm::engine {
+namespace dm::engine::effects {
+
+    using namespace dm::engine::systems; // For ReactionType, ReactionCandidate
 
     class ReactionSystem {
     public:
-        // Checks for reactions and pushes a REACTION_WINDOW pending effect if any are available.
-        // Returns true if a window was opened.
-        static bool check_and_open_window(
-            dm::core::GameState& game_state,
+        // Scans for possible reactions (Ninja Strike, Strike Back, etc.) based on event
+        static std::vector<ReactionCandidate> get_reaction_candidates(
+            const dm::core::GameState& game_state,
             const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
             const std::string& trigger_event,
             dm::core::PlayerID reaction_player_id
         ) {
-            bool has_reaction = false;
+            std::vector<ReactionCandidate> candidates;
             auto& player = game_state.players[reaction_player_id];
 
             int attacker_id = game_state.current_attack.source_instance_id;
@@ -32,8 +35,6 @@ namespace dm::engine {
                      attacker_exists = true;
                  }
             }
-            // For ON_SHIELD_ADD, attacker logic might not apply (e.g. Strike Back).
-            // But if trigger is related to attack (Ninja Strike), attacker constraint applies.
 
             // 1. Scan Hand for Ninja Strike / Strike Back
             for (const auto& card : player.hand) {
@@ -55,21 +56,10 @@ namespace dm::engine {
                     // Check zone if specified
                     if (!reaction.zone.empty()) {
                          if (reaction.zone == "HAND") {
-                             // Hand Constraint: If attack trigger (Ninja Strike), attacker must exist.
-                             // Strike Back (ON_SHIELD_ADD) doesn't need attacker check necessarily?
-                             // Prompt says: "Hand triggers... cannot be declared... if attacking creature is gone."
-                             // This specifically targets Ninja Strike (ON_BLOCK_OR_ATTACK).
-                             // Strike Back is "When shield added". Attack might not be happening or irrelevant?
-                             // If Strike Back is used during shield break (during attack), but attacker is gone?
-                             // Usually Strike Back triggers when shield breaks. If attacker is gone, shield still broke.
-                             // So Strike Back should be fine?
-                             // Prompt: "Hand triggers... if attacking creature is gone... cannot be declared."
-                             // I will apply this to ON_ATTACK/ON_BLOCK triggers.
                              if (trigger_event == "ON_ATTACK" || trigger_event == "ON_BLOCK") {
                                  if (!attacker_exists) continue;
                              }
                          } else {
-                             // If reaction zone is NOT HAND, skip
                              continue;
                          }
                     }
@@ -77,29 +67,27 @@ namespace dm::engine {
                     // Check other conditions (Mana Count, Civ Match)
                     if (!check_condition(game_state, reaction, card, reaction_player_id, card_db)) continue;
 
-                    has_reaction = true;
+                    ReactionCandidate c;
+                    c.card_id = card.card_id;
+                    c.instance_id = card.instance_id;
+                    c.player_id = reaction_player_id;
+
+                    if (reaction.condition.trigger_event == "ON_BLOCK_OR_ATTACK") {
+                        c.type = ReactionType::NINJA_STRIKE;
+                    } else if (reaction.condition.trigger_event == "ON_SHIELD_ADD") {
+                        c.type = ReactionType::STRIKE_BACK;
+                    } else {
+                        c.type = ReactionType::OTHER;
+                    }
+
+                    candidates.push_back(c);
+                    // Only one reaction per card instance per check usually, but card could have multiple?
+                    // Usually just one valid per trigger.
                     break;
                 }
-                if (has_reaction) break;
             }
 
-            // Future: Scan other zones if needed (e.g. Revolution 0 Trigger from Graveyard?)
-
-            if (has_reaction) {
-                dm::core::PendingEffect effect(dm::core::EffectType::REACTION_WINDOW, -1, reaction_player_id);
-                effect.resolve_type = dm::core::ResolveType::EFFECT_RESOLUTION; // Handled by IntentGenerator
-                effect.optional = true; // Player can choose PASS
-
-                dm::core::PendingEffect::ReactionContext context;
-                context.trigger_event = trigger_event;
-                // Add more context if needed (attacker ID etc)
-                effect.reaction_context = context;
-
-                game_state.pending_effects.push_back(effect);
-                return true;
-            }
-
-            return false;
+            return candidates;
         }
 
     public:

@@ -1,8 +1,8 @@
 #pragma once
-#include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/effect_system.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/systems/effects/effect_system.hpp"
+#include "engine/utils/target_utils.hpp"
 #include <algorithm>
 
 namespace dm::engine {
@@ -64,7 +64,7 @@ namespace dm::engine {
             using namespace dm::core;
 
             // Find controller
-            PlayerID controller_id = EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
+            PlayerID controller_id = dm::engine::effects::EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id);
             Player& controller = ctx.game_state.players[controller_id];
 
             int val1 = ctx.action.value1;
@@ -88,7 +88,7 @@ namespace dm::engine {
                 for (size_t i = 0; i < looked.size(); ++i) {
                     if (!ctx.card_db.count(looked[i].card_id)) continue;
                     const auto& cd = ctx.card_db.at(looked[i].card_id);
-                     if (TargetUtils::is_valid_target(looked[i], cd, ctx.action.filter, ctx.game_state, controller_id, controller_id)) {
+                     if (dm::engine::utils::TargetUtils::is_valid_target(looked[i], cd, ctx.action.filter, ctx.game_state, controller_id, controller_id)) {
                         chosen_idx = (int)i;
                         break;
                     }

@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-namespace dm::engine {
+namespace dm::engine::effects {
 
     class EffectSystem {
     public:

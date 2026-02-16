@@ -1,10 +1,10 @@
 #pragma once
-#include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
 #include "core/game_state.hpp"
-#include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
-#include "engine/systems/card/selection_system.hpp"
+#include "engine/systems/mechanics/selection_system.hpp"
 #include <algorithm>
 #include <random>
 
@@ -37,8 +37,8 @@ namespace dm::engine {
                 for (const auto& card : p.hand) {
                     if (!ctx.card_db.count(card.card_id)) continue;
                      const auto& def = ctx.card_db.at(card.card_id);
-                     if (TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state, 
-                                                     EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id), 
+                     if (dm::engine::utils::TargetUtils::is_valid_target(card, def, ctx.action.filter, ctx.game_state,
+                                                     dm::engine::effects::EffectSystem::get_controller(ctx.game_state, ctx.source_instance_id),
                                                      target_pid, false, nullptr)) {
                          discard_candidates.push_back(card.instance_id);
                      }
@@ -93,7 +93,7 @@ namespace dm::engine {
         void resolve(const ResolutionContext& ctx) override {
             using namespace dm::core;
             if (ctx.action.scope == TargetScope::TARGET_SELECT || ctx.action.target_choice == "SELECT") {
-                 SelectionSystem::instance().delegate_selection(ctx);
+                 dm::engine::mechanics::SelectionSystem::instance().delegate_selection(ctx);
                  return;
             }
 
@@ -105,7 +105,7 @@ namespace dm::engine {
 
             if (instructions.empty()) return;
 
-            EffectSystem::instance().execute_pipeline(ctx, instructions);
+            dm::engine::effects::EffectSystem::instance().execute_pipeline(ctx, instructions);
         }
 
         void resolve_with_targets(const ResolutionContext& ctx) override {
@@ -117,7 +117,7 @@ namespace dm::engine {
 
             if (instructions.empty()) return;
 
-            EffectSystem::instance().execute_pipeline(ctx, instructions);
+            dm::engine::effects::EffectSystem::instance().execute_pipeline(ctx, instructions);
         }
     };
 }

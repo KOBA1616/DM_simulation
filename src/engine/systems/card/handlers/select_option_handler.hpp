@@ -1,5 +1,5 @@
 #pragma once
-#include "engine/systems/card/effect_system.hpp"
+#include "engine/systems/effects/effect_system.hpp"
 #include "core/game_state.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 
@@ -93,7 +93,7 @@ namespace dm::engine {
             // `GameLogicSystem::handle_select_option` (via dispatch) handles `PlayerIntent::SELECT_OPTION`.
             // But `Instruction` needs to setup the `PendingEffect`.
 
-            // Let's leave `resolve` doing the work via `EffectSystem` directly if `compile` is too hard?
+            // Let's leave `resolve` doing the work via `dm::engine::effects::EffectSystem` directly if `compile` is too hard?
             // But I must implement `compile`.
 
             // If I look at `GameLogicSystem.cpp`:
@@ -113,7 +113,7 @@ namespace dm::engine {
             // Or I can just leave `resolve` as legacy for now but provide empty `compile`?
             // No, the task is migration.
 
-            // Let's assume `EffectSystem` can handle it.
+            // Let's assume `dm::engine::effects::EffectSystem` can handle it.
             // I will implement `compile` to return nothing and let `resolve` handle it for now?
             // No, that defeats the purpose.
 

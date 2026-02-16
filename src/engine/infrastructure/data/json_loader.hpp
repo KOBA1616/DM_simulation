@@ -5,12 +5,11 @@
 #include <map>
 #include <iostream>
 #include <fstream>
-#include "../../../core/card_def.hpp"
-#include "../../../core/card_json_types.hpp"
+#include "core/card_def.hpp"
+#include "core/card_json_types.hpp"
 #include <nlohmann/json.hpp>
 
-namespace dm {
-namespace engine {
+namespace dm::engine::infrastructure {
 
 /**
  * @brief Loads card definitions from a JSON file.
@@ -25,5 +24,4 @@ public:
 
 };
 
-} // namespace engine
-} // namespace dm
+} // namespace dm::engine::infrastructure

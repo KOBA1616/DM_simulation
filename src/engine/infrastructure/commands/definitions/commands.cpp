@@ -1,7 +1,7 @@
 #include "commands.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include "core/game_event.hpp"
-#include "engine/systems/card/card_registry.hpp" // Added for G-Neo lookup
+#include "engine/infrastructure/data/card_registry.hpp" // Added for G-Neo lookup
 #include <iostream>
 #include <algorithm>
 #include <fstream>
@@ -120,7 +120,7 @@ namespace dm::engine::game_command {
         bool should_replace = false;
         if (from_zone == core::Zone::BATTLE && to_zone != core::Zone::BATTLE && !card.underlying_cards.empty()) {
              // Access Global Card Registry (Singleton)
-             const auto& card_db = dm::engine::CardRegistry::get_all_definitions();
+             const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
              if (card_db.count(card.card_id)) {
                  const auto& def = card_db.at(card.card_id);
                  if (def.keywords.g_neo) {

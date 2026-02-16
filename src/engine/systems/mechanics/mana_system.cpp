@@ -1,7 +1,7 @@
 #include "mana_system.hpp"
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
-#include "engine/systems/card/target_utils.hpp"
+#include "engine/utils/target_utils.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include <algorithm>
 #include <iostream>
@@ -24,7 +24,7 @@ namespace dm::engine {
             CardInstance dummy_inst;
             dummy_inst.card_id = card_def.id;
 
-            if (TargetUtils::is_valid_target(dummy_inst, card_def, mod.condition_filter, game_state, player.id, player.id)) {
+            if (dm::engine::utils::TargetUtils::is_valid_target(dummy_inst, card_def, mod.condition_filter, game_state, player.id, player.id)) {
                 cost -= mod.reduction_amount;
             }
         }

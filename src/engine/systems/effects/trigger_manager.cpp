@@ -1,12 +1,15 @@
 #include "trigger_manager.hpp"
-#include "engine/systems/card/target_utils.hpp"
-#include "engine/systems/card/effect_system.hpp" // For resolve_trigger (temporary linkage) or just common logic
+#include "engine/utils/target_utils.hpp"
+#include "engine/systems/effects/effect_system.hpp"
+#include "engine/systems/effects/reaction_system.hpp"
+#include "engine/systems/effects/reaction_window.hpp"
 #include "core/card_def.hpp"
 #include <iostream>
 
 namespace dm::engine::systems {
 
     using namespace core;
+    using namespace dm::engine::effects;
 
     void TriggerManager::subscribe(EventType type, EventCallback callback) {
         listeners[type].push_back(callback);
@@ -134,7 +137,7 @@ namespace dm::engine::systems {
                                 if (has_filter) {
                                     const CardInstance* source_card = state.get_card_instance(event.instance_id);
                                     if (source_card && card_db.count(source_card->card_id)) {
-                                         if (TargetUtils::is_valid_target(*source_card, card_db.at(source_card->card_id),
+                                         if (dm::engine::utils::TargetUtils::is_valid_target(*source_card, card_db.at(source_card->card_id),
                                                                           effect.trigger_filter, state, controller, controller, false, nullptr)) {
                                               condition_met = true;
                                          }
@@ -201,7 +204,7 @@ namespace dm::engine::systems {
 
                     if (def.keywords.revolution_change) {
                         if (def.revolution_change_condition.has_value()) {
-                            bool match = TargetUtils::is_valid_target(*attacker, card_db.at(attacker->card_id),
+                            bool match = dm::engine::utils::TargetUtils::is_valid_target(*attacker, card_db.at(attacker->card_id),
                                                                     def.revolution_change_condition.value(),
                                                                     state, att_pid, att_pid);
                             if (match) {
@@ -216,6 +219,20 @@ namespace dm::engine::systems {
                     }
                 }
             }
+        }
+
+        // 3. Ninja Strike / Strike Back (via ReactionSystem)
+        std::string trigger_event = "";
+        if (event.type == EventType::ATTACK_INITIATE) trigger_event = "ON_ATTACK";
+        else if (event.type == EventType::BLOCK_INITIATE) trigger_event = "ON_BLOCK";
+        else if (event.type == EventType::ZONE_ENTER && event.context.count("to_zone") && event.context.at("to_zone") == (int)Zone::SHIELD) trigger_event = "ON_SHIELD_ADD";
+
+        if (!trigger_event.empty()) {
+             // Check both players for reactions
+             for (PlayerID pid : {state.active_player_id, static_cast<PlayerID>(1 - state.active_player_id)}) {
+                  auto extra = ReactionSystem::get_reaction_candidates(state, card_db, trigger_event, pid);
+                  candidates.insert(candidates.end(), extra.begin(), extra.end());
+             }
         }
 
         if (!candidates.empty()) {
