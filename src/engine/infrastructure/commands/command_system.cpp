@@ -127,6 +127,8 @@ namespace dm::engine::systems {
             case core::CommandType::FLOW:
             case core::CommandType::QUERY:
             case core::CommandType::SHUFFLE_DECK:
+            case core::CommandType::SELECT_NUMBER:
+            case core::CommandType::SELECT_TARGET:
                 generate_primitive_instructions(out, state, cmd, source_instance_id, player_id, execution_context);
                 break;
 
@@ -172,8 +174,8 @@ namespace dm::engine::systems {
             Zone from_z = parse_zone_string(cmd.from_zone);
             std::string to_z_str = cmd.to_zone; // Pass string to instruction
 
-            if (targets.empty() && cmd.amount > 0 && from_z != Zone::GRAVEYARD) {
-                int count = resolve_amount(cmd, execution_context);
+            int count = resolve_amount(cmd, execution_context);
+            if (targets.empty() && (count > 0 || !cmd.input_value_key.empty()) && from_z != Zone::GRAVEYARD) {
                 if (from_z == Zone::DECK) {
                      Instruction move(InstructionOp::MOVE);
                      move.args["target"] = "DECK_TOP";
@@ -188,6 +190,45 @@ namespace dm::engine::systems {
                          calc.args["rhs"] = 0;
                          calc.args["out"] = cmd.output_value_key;
                          out.push_back(calc);
+                     }
+                     return;
+                } else if (from_z == Zone::HAND) {
+                     // Implicit Selection for Hand -> Zone
+                     Instruction select(InstructionOp::SELECT);
+                     core::FilterDef filter;
+                     filter.zones.push_back("HAND");
+                     filter.owner = "SELF"; // Assume self unless specified
+                     // TODO: Propagate other filters from cmd.target_filter?
+
+                     select.args["filter"] = filter;
+
+                     // Handle dynamic count if input_value_key was used
+                     if (!cmd.input_value_key.empty()) {
+                         select.args["count"] = "$" + cmd.input_value_key;
+                     } else {
+                         select.args["count"] = count;
+                     }
+
+                     std::string implicit_var = "$implicit_sel_" + std::to_string(cmd.instance_id);
+                     select.args["out"] = implicit_var;
+                     out.push_back(select);
+
+                     Instruction move(InstructionOp::MOVE);
+                     move.args["target"] = implicit_var;
+                     move.args["to"] = to_z_str;
+                     if (to_z_str == "DECK" || to_z_str == "DECK_BOTTOM") {
+                         move.args["to_bottom"] = true;
+                         move.args["to"] = "DECK";
+                     }
+                     out.push_back(move);
+
+                     if (!cmd.output_value_key.empty()) {
+                         // Pass implicit var as output? Or size?
+                         // Usually commands output size or list.
+                         // Let's copy implicit var to output key
+                         // Actually, set_context_var/calc logic?
+                         // Just alias it.
+                         // But for now, returning is enough.
                      }
                      return;
                 }
@@ -277,6 +318,33 @@ namespace dm::engine::systems {
              modify.args["type"] = "SHUFFLE";
              modify.args["target"] = "DECK";
              out.push_back(modify);
+        } else if (cmd.type == core::CommandType::SELECT_NUMBER) {
+             Instruction wait(InstructionOp::WAIT_INPUT);
+             wait.args["query_type"] = "SELECT_NUMBER";
+             if (cmd.target_filter.min_cost.has_value()) wait.args["min"] = cmd.target_filter.min_cost.value();
+
+             if (cmd.target_filter.cost_ref.has_value()) {
+                 std::string ref = cmd.target_filter.cost_ref.value();
+                 if (!ref.empty() && ref[0] != '$') ref = "$" + ref;
+                 wait.args["max"] = ref;
+             } else if (cmd.target_filter.max_cost.has_value()) {
+                 wait.args["max"] = cmd.target_filter.max_cost.value();
+             } else if (cmd.amount > 0) {
+                 wait.args["max"] = cmd.amount;
+             }
+             wait.args["out"] = cmd.output_value_key.empty() ? "$result" : cmd.output_value_key;
+             out.push_back(wait);
+        } else if (cmd.type == core::CommandType::SELECT_TARGET) {
+             Instruction select(InstructionOp::SELECT);
+             select.args["filter"] = cmd.target_filter;
+
+             if (!cmd.input_value_key.empty()) {
+                 select.args["count"] = "$" + cmd.input_value_key;
+             } else {
+                 select.args["count"] = cmd.amount;
+             }
+             select.args["out"] = cmd.output_value_key.empty() ? "$selection" : cmd.output_value_key;
+             out.push_back(select);
         }
     }
 
@@ -285,23 +353,36 @@ namespace dm::engine::systems {
 
         // Example: DRAW_CARD
         if (cmd.type == core::CommandType::DRAW_CARD) {
-            if (cmd.optional && count > 0) {
-                // Pending effect creation via instruction?
-                // We can use GAME_ACTION "REGISTER_PENDING_SELECT" logic or similar.
-                // For now, let's just generate the basic instruction if we can't do complex pending via instruction easily.
-                // Actually, logic was: create PendingEffect.
-                // We can't easily do that via InstructionOp::MOVE/MODIFY.
-                // We can use `InstructionOp::GAME_ACTION` with type "EXECUTE_COMMAND" (recursion) or custom.
-                // Or just fallback to primitive `TRANSITION` if simpler.
+            std::string draw_count_var = "";
+            if (cmd.up_to) {
+                 Instruction wait(InstructionOp::WAIT_INPUT);
+                 wait.args["query_type"] = "SELECT_NUMBER";
+                 wait.args["min"] = 0;
+                 wait.args["max"] = count;
+
+                 std::string var = cmd.output_value_key.empty() ? "$draw_amount" : cmd.output_value_key;
+                 wait.args["out"] = var;
+                 out.push_back(wait);
+
+                 draw_count_var = var;
             }
 
             Instruction move(InstructionOp::MOVE);
             move.args["target"] = "DECK_TOP";
-            move.args["count"] = count;
+            if (!draw_count_var.empty()) {
+                // Ensure variable reference has $
+                if (draw_count_var[0] != '$') move.args["count"] = "$" + draw_count_var;
+                else move.args["count"] = draw_count_var;
+            } else if (!cmd.input_value_key.empty()) {
+                // Dynamic amount from previous instruction
+                move.args["count"] = "$" + cmd.input_value_key;
+            } else {
+                move.args["count"] = count;
+            }
             move.args["to"] = "HAND";
             out.push_back(move);
 
-            if (!cmd.output_value_key.empty()) {
+            if (!cmd.output_value_key.empty() && !cmd.up_to) {
                  Instruction calc(InstructionOp::MATH);
                  calc.args["lhs"] = count; // Approximation
                  calc.args["op"] = "+";

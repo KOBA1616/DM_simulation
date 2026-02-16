@@ -21,61 +21,38 @@
         },
         "commands": [
           {
-            "uid": "3506843d-6a4d-4310-ba7c-1dae4d28aa0f",
             "type": "QUERY",
-            "target_group": "PLAYER_SELF",
-            "target_filter": {
-              "zones": [],
-              "civilizations": [],
-              "races": [],
-              "flags": []
-            },
-            "amount": 0,
             "str_param": "MANA_CIVILIZATION_COUNT",
-            "from_zone": "NONE",
-            "to_zone": "HAND",
-            "format": "command",
-            "output_value_key": "var_DRAW_CARD_0"
+            "output_value_key": "var_MAX_DRAW"
           },
           {
-            "uid": "898804b0-9b1c-472f-84fd-9bde105032dd",
+            "type": "SELECT_NUMBER",
+            "target_filter": {
+                "min_cost": 0,
+                "cost_ref": "var_MAX_DRAW"
+            },
+            "output_value_key": "var_CHOSEN_DRAW"
+          },
+          {
             "type": "DRAW_CARD",
+            "input_value_key": "var_CHOSEN_DRAW"
+          },
+          {
+            "type": "SELECT_TARGET",
             "target_group": "PLAYER_SELF",
             "target_filter": {
-              "zones": [],
-              "civilizations": [],
-              "races": [],
-              "flags": []
+              "zones": ["HAND"],
+              "owner": "SELF"
             },
-            "amount": 0,
-            "str_param": "",
-            "from_zone": "NONE",
-            "to_zone": "HAND",
-            "_input_value_label": "Step 0: カード情報取得 -> クエリ結果",
-            "format": "command",
-            "optional": true,
-            "up_to": true,
-            "input_value_key": "var_DRAW_CARD_0",
-            "output_value_key": "var_DRAW_CARD_1"
+            "input_value_key": "var_CHOSEN_DRAW",
+            "output_value_key": "var_CARDS_TO_RETURN"
           },
           {
-            "uid": "eed4b5c3-aab7-438f-b8f4-e8a78ba41569",
             "type": "TRANSITION",
             "target_group": "PLAYER_SELF",
-            "target_filter": {
-              "zones": [],
-              "civilizations": [],
-              "races": [],
-              "flags": []
-            },
-            "amount": 0,
-            "str_param": "",
             "from_zone": "HAND",
             "to_zone": "DECK_BOTTOM",
-            "_input_value_label": "Step 1: カードを引く -> Cards Drawn",
-            "format": "command",
-            "input_value_key": "var_DRAW_CARD_1",
-            "output_value_key": "var_c3ddf179-a6ed-4125-86cb-39a5c70cb2e8"
+            "input_value_key": "var_CARDS_TO_RETURN"
           }
         ]
       }
