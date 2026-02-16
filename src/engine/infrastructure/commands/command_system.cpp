@@ -298,7 +298,7 @@ namespace dm::engine::systems {
             std::string out_key = cmd.output_value_key.empty() ? "$draw_choice" : cmd.output_value_key;
             std::string count_val_key = "";
 
-            if (cmd.upto && count > 0) {
+            if (cmd.up_to && count > 0) {
                  Instruction select(InstructionOp::WAIT_INPUT);
                  select.args["query_type"] = "SELECT_NUMBER";
                  select.args["min"] = 0;

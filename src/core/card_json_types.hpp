@@ -313,6 +313,7 @@ namespace dm::core {
         std::string output_value_key;
         int slot_index = -1;
         int target_slot_index = -1;
+        bool up_to = false;
     };
 
     struct EffectDef {
