@@ -32,7 +32,7 @@ try:
 except ImportError:
     dm_ai_module = None
 
-from dm_toolkit.dm_types import GameState, CardDB, Action, PlayerID, CardID
+from dm_toolkit.dm_types import GameState, CardDB, PlayerID, CardID
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.command_describer import describe_command
