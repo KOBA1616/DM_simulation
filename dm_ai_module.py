@@ -361,6 +361,14 @@ class CommandSystem:
 
             if isinstance(cmd, dict):
                 t = cmd.get('type')
+                if t == 'PASS' or t == CommandType.PASS or t == 5:
+                    if 'PhaseManager' in globals():
+                        globals()['PhaseManager'].next_phase(state)
+                    if not hasattr(state, 'command_history'):
+                        state.command_history = []
+                    state.command_history.append(cmd)
+                    return
+
                 if t in (CommandType.MANA_CHARGE, 'MANA_CHARGE'):
                     pid = getattr(state, 'active_player_id', player_id)
                     cid = cmd.get('card_id') or cmd.get('instance_id') or cmd.get('source_instance_id') or 0
@@ -933,9 +941,12 @@ class PhaseManager:
             cp = getattr(state, 'current_phase', None)
             try:
                 if not isinstance(cp, Phase):
-                    state.current_phase = Phase(cp)
+                    try:
+                        state.current_phase = Phase(cp)
+                    except ValueError:
+                        pass
             except Exception:
-                state.current_phase = Phase.MANA
+                pass
 
             if getattr(state, 'pending_effects', None):
                 return
@@ -943,10 +954,21 @@ class PhaseManager:
             max_steps = 8
             steps = 0
             while steps < max_steps:
+                # Check stopping conditions FIRST
+                curr_p = getattr(state, 'current_phase', 2)
+                try:
+                    p_val = int(curr_p)
+                except Exception:
+                    p_val = 2
+
+                # Stop at MANA(2), MAIN(3), ATTACK(4) if no pending effects
+                if p_val in (2, 3, 4):
+                    if not getattr(state, 'pending_effects', None):
+                        break
+
                 PhaseManager.next_phase(state, card_db)
                 steps += 1
-                if getattr(state, 'current_phase', None) == Phase.MAIN:
-                    break
+
                 if getattr(state, 'pending_effects', None):
                     break
         except Exception:
