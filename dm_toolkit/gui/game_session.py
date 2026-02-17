@@ -100,8 +100,13 @@ class GameSession:
 
         # Start game via C++ PhaseManager
         try:
-            dm_ai_module.PhaseManager.start_game(self.gs, self.native_card_db)
-            dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
+            if hasattr(dm_ai_module, 'PhaseSystem'):
+                ps = dm_ai_module.PhaseSystem.instance()
+                ps.start_game(self.gs, self.native_card_db)
+                ps.fast_forward(self.gs, self.native_card_db)
+            else:
+                dm_ai_module.PhaseManager.start_game(self.gs, self.native_card_db)
+                dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
             self.callback_log("ゲームリセット")
         except Exception as e:
             self.callback_log(f"start_game/fast_forward failed: {e}")
@@ -156,8 +161,13 @@ class GameSession:
 
         # Start game via C++ PhaseManager
         try:
-            dm_ai_module.PhaseManager.start_game(self.gs, self.native_card_db)
-            dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
+            if hasattr(dm_ai_module, 'PhaseSystem'):
+                ps = dm_ai_module.PhaseSystem.instance()
+                ps.start_game(self.gs, self.native_card_db)
+                ps.fast_forward(self.gs, self.native_card_db)
+            else:
+                dm_ai_module.PhaseManager.start_game(self.gs, self.native_card_db)
+                dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
         except Exception as e:
             self.callback_log(f"start_game failed: {e}")
 
@@ -298,7 +308,7 @@ class GameSession:
 
     def _fast_forward(self):
         """Call C++ fast_forward to progress game until next decision point."""
-        if not dm_ai_module or not hasattr(dm_ai_module.PhaseManager, 'fast_forward'):
+        if not dm_ai_module:
             return
         
         if self.native_card_db is None:
@@ -306,7 +316,11 @@ class GameSession:
             return
         
         try:
-            dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
+            if hasattr(dm_ai_module, 'PhaseSystem'):
+                dm_ai_module.PhaseSystem.instance().fast_forward(self.gs, self.native_card_db)
+            elif hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'fast_forward'):
+                dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
+
             # Re-sync gs after C++ modifies state
             if self.game_instance:
                 self.gs = self.game_instance.state

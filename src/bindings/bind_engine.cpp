@@ -260,12 +260,12 @@ void bind_engine(py::module& m) {
 
     // Systems
     py::class_<IntentGenerator>(m, "IntentGenerator")
-        .def_static("generate_legal_actions", [](const GameState& gs, const std::map<CardID, CardDefinition>& db){
+        .def_static("generate_legal_commands", [](const GameState& gs, const std::map<CardID, CardDefinition>& db){
             try {
                 std::filesystem::create_directories("logs");
                 std::ofstream diag("logs/crash_diag.txt", std::ios::app);
                 if (diag) {
-                    diag << "BINDING generate_legal_actions entry player=" << static_cast<int>(gs.active_player_id)
+                    diag << "BINDING generate_legal_commands entry player=" << static_cast<int>(gs.active_player_id)
                          << " phase=" << static_cast<int>(gs.current_phase) << "\n";
                     diag.close();
                 }

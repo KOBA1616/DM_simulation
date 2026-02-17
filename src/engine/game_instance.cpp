@@ -23,11 +23,6 @@ namespace dm::engine {
 
     GameInstance::GameInstance(uint32_t seed, std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db)
         : state(seed), card_db(db) {
-        std::ofstream diag("c:\\temp\\game_instance_constructor.txt", std::ios::app);
-        if (diag) {
-            diag << "GameInstance constructor called with seed=" << seed << std::endl;
-            diag.close();
-        }
         initial_seed_ = seed;
         trigger_manager = std::make_shared<systems::TriggerManager>();
         pipeline = std::make_shared<systems::PipelineExecutor>();
