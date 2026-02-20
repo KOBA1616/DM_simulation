@@ -13,7 +13,7 @@ High-level system design and core concepts.
 ## ⚙️ [Systems](systems/)
 Detailed documentation for specific engine subsystems.
 
-- **[Action Flow](systems/action_flow/)**: Documentation on how actions are generated and processed (State Machine).
+- **[Game Flow](systems/flow/)**: Documentation on how game states transition and commands are generated.
 - **[Commands](systems/commands/)**: The Command System infrastructure (CommandDef, Instructions).
 - **[AI](systems/ai/)**: AI agent design, MCTS implementation, and requirements.
 - **[Mechanics](systems/mechanics/)**: Core game mechanics (Battle System, Shield System, etc.).
@@ -23,23 +23,26 @@ Detailed documentation for specific engine subsystems.
 - **[Native Bridge](systems/native_bridge/)**: Documentation for the C++ engine to Python binding (`dm_ai_module`).
 
 ## 📖 [Guides](guides/)
-Developer guides, setup instructions, and migration paths.
+Developer guides, setup instructions, and testing.
 
 - [Setup Guide](guides/setup.md) - Environment setup and installation.
+- [Testing Guide](guides/testing/headless_setup.md) - Headless testing setup.
 - [Planning](guides/planning.md) - Development planning documents.
 - [Repository Policy](guides/repository_policy.md) - Guidelines for repository management.
 - [Module Loading](guides/module_loading.md) - Explanation of how the native module is loaded.
-- **[Migration](guides/migration/)**: Guides for historical migrations (e.g., Action to Command system).
 
 ## 🗂 [Reference](reference/)
 API specifications and cheatsheets.
 
 - **[Specs](reference/specs/)**: Detailed specifications for Game Engine, AI System, and Card Editor.
+- **[Features](reference/features/)**: Specific feature documentation (e.g., Replace Card Move).
 - [Spell Execution QA](systems/mechanics/spells/SPELL_EXECUTION_TIMING_QA.md) (See Mechanics)
 
 ## 🏛 [Archive](archive/)
 Legacy documentation, old design docs, and project history.
 
+- [Migration Guides](archive/migration/) - Historical migration plans (e.g., Action to Command system).
+- [Troubleshooting](archive/troubleshooting/) - Legacy troubleshooting guides.
 - [Legacy Engine Architecture](archive/legacy_engine_architecture.md) - Older English architecture overview.
 - [Project History](archive/project_history/) - Changelogs, status updates, and archive notes.
 - [Research](archive/research/) - Presentations and research materials.

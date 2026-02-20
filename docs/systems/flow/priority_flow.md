@@ -1,3 +1,8 @@
+> **Legacy Terminology Note:**
+> This document uses the term "Action" to describe player moves and game state transitions.
+> In the current implementation, these are implemented as `CommandDef` structures within the Command System.
+> The high-level logic described here remains valid, but "Action" should be interpreted as "Command" or "Player Intent".
+
 ```mermaid
 graph TD
     Start[ゲーム進行] --> CheckQuery{waiting_for_user_input?}
