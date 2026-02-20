@@ -21,7 +21,15 @@ class VariableLinkWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.current_item = None
+        self._show_input = True
+        self._show_output = True
         self.setup_ui()
+
+    def set_view_mode(self, show_input: bool, show_output: bool):
+        """Configure which parts of the widget are visible."""
+        self._show_input = show_input
+        self._show_output = show_output
+        self._update_visibility()
 
     def setup_ui(self):
         layout = QFormLayout(self)
@@ -77,6 +85,22 @@ class VariableLinkWidget(QWidget):
 
         # Initial Population
         self.populate_input_keys()
+        self._update_visibility()
+
+    def _update_visibility(self):
+        """Update visibility of input/output sections based on mode and state."""
+        # Input Section
+        self.input_key_label.setVisible(self._show_input)
+        self.input_key_combo.setVisible(self._show_input)
+
+        # Input Usage: Only show if input section is enabled AND linked
+        is_linked = self.is_smart_link_active()
+        show_usage = self._show_input and is_linked
+        self.input_usage_label.setVisible(show_usage)
+        self.input_usage_combo.setVisible(show_usage)
+
+        # Output Section
+        self._update_output_visibility()
 
     def set_current_item(self, item):
         self.current_item = item
@@ -97,12 +121,10 @@ class VariableLinkWidget(QWidget):
 
     def on_combo_changed(self):
         # Update Input Usage visibility based on whether input is linked
-        is_linked = self.is_smart_link_active()
-        self.input_usage_label.setVisible(is_linked)
-        self.input_usage_combo.setVisible(is_linked)
+        self._update_visibility()
         
         self.linkChanged.emit()
-        self.smartLinkStateChanged.emit(is_linked)
+        self.smartLinkStateChanged.emit(self.is_smart_link_active())
 
     def set_data(self, data):
         """Set data from dictionary. Handles both dict and CommandModel."""
@@ -115,10 +137,12 @@ class VariableLinkWidget(QWidget):
         input_usage = data.get('input_value_usage', '')
         out_val = data.get('output_value_key', '') or data.get('output_var', '')
         self.output_key_edit.setText(out_val)
-        # Show output widgets if there is an output key present
-        self._update_output_visibility()
 
-        self.populate_input_keys()
+        # Only populate if enabled
+        if self._show_input:
+            self.populate_input_keys()
+
+        self._update_visibility()
 
         # Match key
         found = False
@@ -158,45 +182,46 @@ class VariableLinkWidget(QWidget):
             self.input_usage_combo.setCurrentIndex(0)
 
         # Update Input Usage visibility
-        is_linked = self.is_smart_link_active()
-        self.input_usage_label.setVisible(is_linked)
-        self.input_usage_combo.setVisible(is_linked)
+        self._update_visibility()
         
         self.blockSignals(False)
         # Emit state change to ensure parent UI updates (hiding val1 etc)
-        self.smartLinkStateChanged.emit(is_linked)
+        self.smartLinkStateChanged.emit(self.is_smart_link_active())
 
     def get_data(self, data):
         """
         Updates the data dictionary in-place.
+        Respects view mode to prevent overwriting hidden fields with empty data.
         """
-        # Input Key
-        idx = self.input_key_combo.currentIndex()
-        val = ""
-        if idx >= 0:
-             val = self.input_key_combo.itemData(idx)
-             if val is None: val = "" # Safety
+        if self._show_input:
+            # Input Key
+            idx = self.input_key_combo.currentIndex()
+            val = ""
+            if idx >= 0:
+                 val = self.input_key_combo.itemData(idx)
+                 if val is None: val = "" # Safety
 
-        data['input_value_key'] = val
+            data['input_value_key'] = val
 
-        # Save friendly label if valid link
-        if val and val in getattr(self, 'valid_keys', set()):
-             data['_input_value_label'] = self.input_key_combo.currentText()
+            # Save friendly label if valid link
+            if val and val in getattr(self, 'valid_keys', set()):
+                 data['_input_value_label'] = self.input_key_combo.currentText()
 
-        # Input Usage
-        uidx = self.input_usage_combo.currentIndex()
-        usage_val = ""
-        if uidx >= 0:
-            usage_val = self.input_usage_combo.itemData(uidx)
-            if usage_val is None:
-                usage_val = ""
-        data['input_value_usage'] = usage_val
+            # Input Usage
+            uidx = self.input_usage_combo.currentIndex()
+            usage_val = ""
+            if uidx >= 0:
+                usage_val = self.input_usage_combo.itemData(uidx)
+                if usage_val is None:
+                    usage_val = ""
+            data['input_value_usage'] = usage_val
 
-        # Output Key
-        data['output_value_key'] = self.output_key_edit.text()
-        # Also preserve flag if it was autogenerated (for UI/metadata use)
-        if self._output_autogenerated:
-            data['_output_autogenerated'] = True
+        if self._show_output:
+            # Output Key
+            data['output_value_key'] = self.output_key_edit.text()
+            # Also preserve flag if it was autogenerated (for UI/metadata use)
+            if self._output_autogenerated:
+                data['_output_autogenerated'] = True
 
     def set_value(self, data):
         """Alias for set_data to support interface-based widget API."""
@@ -247,6 +272,11 @@ class VariableLinkWidget(QWidget):
 
     def _update_output_visibility(self):
         """Show/hide the output key controls based on current text or autogenerated state."""
+        if not self._show_output:
+            self.output_key_label.setVisible(False)
+            self.output_key_edit.setVisible(False)
+            return
+
         has_text = bool(self.output_key_edit.text())
         # Show when there is a value or it was autogenerated
         show = has_text or self._output_autogenerated
@@ -275,10 +305,13 @@ class VariableLinkWidget(QWidget):
         Enables/disables output key UI based on whether the command produces output.
         If produces_output is True, show output_key_edit; otherwise hide if empty.
         """
+        # This acts as a secondary filter on _show_output
         if produces_output:
             # Force show output key controls when command produces output
-            self.output_key_label.setVisible(True)
-            self.output_key_edit.setVisible(True)
+            # (Assuming _show_output is True)
+            if self._show_output:
+                self.output_key_label.setVisible(True)
+                self.output_key_edit.setVisible(True)
         else:
             # Hide if no output expected and field is empty
             self._update_output_visibility()
