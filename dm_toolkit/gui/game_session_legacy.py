@@ -375,17 +375,7 @@ class GameSession:
             return
 
         try:
-            if cmd_dict.get('type') == 'MANA_CHARGE' and 'instance_id' in cmd_dict:
-                print(f"[DEBUG] Creating ManaChargeCommand for instance_id={cmd_dict['instance_id']}")
-                if dm_ai_module and hasattr(dm_ai_module, 'ManaChargeCommand'):
-                    cpp_cmd = dm_ai_module.ManaChargeCommand(int(cmd_dict['instance_id']))
-                    print(f"[DEBUG] Created C++ ManaChargeCommand: {cpp_cmd}")
-                    self.gs.execute_command(cpp_cmd)
-                    print("[DEBUG] ManaChargeCommand executed")
-                else:
-                    print("[DEBUG] Using EngineCompat.ExecuteCommand for MANA_CHARGE")
-                    EngineCompat.ExecuteCommand(self.gs, cmd_dict, self.card_db)
-            elif cmd_dict.get('type') == 'PLAY_FROM_ZONE' or cmd_dict.get('legacy_original_type') == 'DECLARE_PLAY':
+            if cmd_dict.get('type') == 'PLAY_FROM_ZONE' or cmd_dict.get('legacy_original_type') == 'DECLARE_PLAY':
                 print(f"[DEBUG] Creating PlayCard Command for instance_id={cmd_dict.get('instance_id')}")
                 if dm_ai_module and hasattr(dm_ai_module, 'PlayCardCommand'):
                     instance_id = int(cmd_dict.get('instance_id') or cmd_dict.get('source_instance_id', -1))
@@ -403,6 +393,8 @@ class GameSession:
                 else:
                     EngineCompat.ExecuteCommand(self.gs, cmd_dict, self.card_db)
             else:
+                # Unified fallback: handles MANA_CHARGE and all other types
+                # via CommandSystem.execute_command which enforces game rules
                 EngineCompat.ExecuteCommand(self.gs, cmd_dict, self.card_db)
 
             log_str = f"P{EngineCompat.get_active_player_id(self.gs)} {tr('Action')}: {cmd_dict.get('type', 'UNKNOWN')}"

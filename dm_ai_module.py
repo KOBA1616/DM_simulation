@@ -371,6 +371,10 @@ class CommandSystem:
 
                 if t in (CommandType.MANA_CHARGE, 'MANA_CHARGE'):
                     pid = getattr(state, 'active_player_id', player_id)
+                    # Enforce once-per-turn mana charge rule
+                    mana_flags = getattr(state, 'mana_charged_this_turn', None)
+                    if mana_flags is not None and pid < len(mana_flags) and mana_flags[pid]:
+                        return  # Already charged this turn
                     cid = cmd.get('card_id') or cmd.get('instance_id') or cmd.get('source_instance_id') or 0
                     try:
                         hand = getattr(state.players[pid], 'hand', [])
@@ -392,6 +396,83 @@ class CommandSystem:
                                 continue
                         if not removed:
                             state.players[pid].mana_zone.append(CardStub(cid))
+                    except Exception:
+                        pass
+                    # Set flag: this player has charged this turn
+                    if mana_flags is not None and pid < len(mana_flags):
+                        mana_flags[pid] = True
+                    if not hasattr(state, 'command_history'):
+                        state.command_history = []
+                    state.command_history.append(cmd)
+                elif t in (CommandType.PLAY_FROM_ZONE, 'PLAY_FROM_ZONE', 'PLAY_CARD', 'PLAY'):
+                    pid = getattr(state, 'active_player_id', player_id)
+                    cid = cmd.get('instance_id') or cmd.get('source_instance_id') or 0
+                    try:
+                        hand = getattr(state.players[pid], 'hand', [])
+                        card = None
+                        card_idx = -1
+                        for i, c in enumerate(list(hand)):
+                            if getattr(c, 'instance_id', None) == cid:
+                                card = c
+                                card_idx = i
+                                break
+                        if card is None:
+                            return  # Card not in hand
+                        # Check mana cost
+                        card_cost = getattr(card, 'cost', 1)
+                        mana = getattr(state.players[pid], 'mana_zone', [])
+                        untapped_mana = [m for m in mana if not getattr(m, 'is_tapped', False)]
+                        if len(untapped_mana) < card_cost:
+                            return  # Not enough mana
+                        # Tap mana
+                        for i in range(card_cost):
+                            untapped_mana[i].is_tapped = True
+                        # Remove from hand
+                        try:
+                            hand.pop(card_idx)
+                        except Exception:
+                            pass
+                        # Place card based on type
+                        ctype = getattr(card, 'card_type', 'CREATURE')
+                        if ctype == 'SPELL':
+                            # Spells go to graveyard after resolving
+                            state.players[pid].graveyard.append(card)
+                        else:
+                            # Creatures go to battle zone with summoning sickness
+                            card.sick = True
+                            card.is_tapped = False
+                            state.players[pid].battle_zone.append(card)
+                    except Exception:
+                        pass
+                    if not hasattr(state, 'command_history'):
+                        state.command_history = []
+                    state.command_history.append(cmd)
+                elif t in (CommandType.ATTACK, CommandType.ATTACK_PLAYER, CommandType.ATTACK_CREATURE, 'ATTACK', 'ATTACK_PLAYER', 'ATTACK_CREATURE'):
+                    pid = getattr(state, 'active_player_id', player_id)
+                    cid = cmd.get('instance_id') or cmd.get('source_instance_id') or 0
+                    opp = 1 - pid
+                    try:
+                        bz = getattr(state.players[pid], 'battle_zone', [])
+                        attacker = None
+                        for c in bz:
+                            if getattr(c, 'instance_id', None) == cid:
+                                attacker = c
+                                break
+                        if attacker is None:
+                            return  # Attacker not found
+                        if getattr(attacker, 'is_tapped', False) or getattr(attacker, 'sick', False):
+                            return  # Cannot attack
+                        # Tap attacker
+                        attacker.is_tapped = True
+                        # Break opponent shield
+                        opp_shields = getattr(state.players[opp], 'shield_zone', [])
+                        if opp_shields:
+                            broken = opp_shields.pop(0)
+                            state.players[opp].hand.append(broken)
+                        else:
+                            # Direct attack - game over
+                            state.game_over = True
+                            state.winner = pid
                     except Exception:
                         pass
                     if not hasattr(state, 'command_history'):
@@ -540,7 +621,7 @@ class PlayerMode(IntEnum):
 class CardStub:
     _iid = 1000
 
-    def __init__(self, card_id: int, instance_id: Optional[int] = None):
+    def __init__(self, card_id: int, instance_id: Optional[int] = None, cost: int = 1, card_type: str = 'CREATURE'):
         if instance_id is None:
             CardStub._iid += 1
             instance_id = CardStub._iid
@@ -548,6 +629,8 @@ class CardStub:
         self.instance_id = instance_id
         self.is_tapped = False
         self.sick = False
+        self.cost = cost
+        self.card_type = card_type  # 'CREATURE' or 'SPELL'
 
 
 class Player:
@@ -588,6 +671,8 @@ class GameState:
             self.execution_context = type('EC', (), {'variables': {}})()
         self.waiting_for_user_input = False
         self.pending_query = None
+        # Mana charge tracking: one flag per player, reset each turn.
+        self.mana_charged_this_turn = [False, False]
 
     def calculate_hash(self) -> int:
         try:
@@ -685,6 +770,7 @@ class GameState:
                 self.current_phase = 2
         self.game_over = False
         self.winner = -1
+        self.mana_charged_this_turn = [False, False]
 
     def is_human_player(self, player_id: int) -> bool:
         if 0 <= player_id < len(self.player_modes):
@@ -709,13 +795,29 @@ class GameState:
             c = CardStub(card_id)
             self.players[player].mana_zone.append(c)
 
-    def set_deck(self, player: int, deck_ids: List[int]):
+    def set_deck(self, player: int, deck_ids: List[int], card_db: Any = None):
         try:
+            # Store card_db reference for cost lookups
+            if card_db is not None:
+                self._card_db = card_db
+            db = getattr(self, '_card_db', None) or {}
             base_instance_id = 10000 + (player * 1000)
             deck_cards = []
             for i, card_id in enumerate(deck_ids):
                 instance_id = base_instance_id + i
-                deck_cards.append(CardStub(card_id, instance_id))
+                # Lookup cost and type from card_db
+                cost = 1
+                card_type = 'CREATURE'
+                try:
+                    card_data = db.get(card_id) if isinstance(db, dict) else None
+                    if isinstance(card_data, dict):
+                        cost = int(card_data.get('cost', 1))
+                        types = card_data.get('types', [])
+                        if isinstance(types, list) and 'SPELL' in types:
+                            card_type = 'SPELL'
+                except Exception:
+                    pass
+                deck_cards.append(CardStub(card_id, instance_id, cost=cost, card_type=card_type))
             self.players[player].deck = deck_cards
         except Exception:
             pass
@@ -845,19 +947,27 @@ class IntentGenerator:
             phase = getattr(state, 'current_phase', Phase.MANA)
 
             if phase == Phase.MANA:
-                for c in list(p.hand):
-                    m = {'type': 'MANA_CHARGE', 'instance_id': c.instance_id, 'card_id': c.card_id, 'uid': str(uuid.uuid4())}
-                    out.append(m)
+                # Only allow mana charge if not already charged this turn
+                mana_flags = getattr(state, 'mana_charged_this_turn', None)
+                already_charged = (mana_flags is not None and pid < len(mana_flags) and mana_flags[pid])
+                if not already_charged:
+                    for c in list(p.hand):
+                        m = {'type': 'MANA_CHARGE', 'instance_id': c.instance_id, 'card_id': c.card_id, 'uid': str(uuid.uuid4())}
+                        out.append(m)
 
             elif phase == Phase.MAIN:
+                # Only offer cards the player can afford to play
+                mana = getattr(p, 'mana_zone', [])
+                untapped_count = sum(1 for m in mana if not getattr(m, 'is_tapped', False))
                 for c in list(p.hand):
-                    # Simplified play logic
-                    pc = {'type': 'PLAY_FROM_ZONE', 'instance_id': c.instance_id, 'card_id': c.card_id, 'uid': str(uuid.uuid4())}
-                    out.append(pc)
+                    card_cost = getattr(c, 'cost', 1)
+                    if untapped_count >= card_cost:
+                        pc = {'type': 'PLAY_FROM_ZONE', 'instance_id': c.instance_id, 'card_id': c.card_id, 'uid': str(uuid.uuid4())}
+                        out.append(pc)
 
             elif phase == Phase.ATTACK:
                 for c in list(p.battle_zone):
-                     if not c.is_tapped and not c.sick:
+                    if not getattr(c, 'is_tapped', False) and not getattr(c, 'sick', False):
                         at = {'type': 'ATTACK', 'instance_id': c.instance_id, 'target_player': 1 - pid, 'uid': str(uuid.uuid4())}
                         out.append(at)
 
@@ -920,6 +1030,11 @@ class PhaseManager:
             else:
                 state.active_player_id = 1 - state.active_player_id
                 state.current_phase = _Phase.MANA
+                # Reset mana charge flag for the new turn
+                try:
+                    state.mana_charged_this_turn = [False, False]
+                except Exception:
+                    pass
                 p = state.players[state.active_player_id]
                 for c in p.mana_zone:
                     c.is_tapped = False

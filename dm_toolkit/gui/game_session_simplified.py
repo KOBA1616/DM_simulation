@@ -215,13 +215,7 @@ class GameSessionSimplified:
 
         try:
             # Execute command using appropriate C++ command class
-            if cmd_dict.get('type') == 'MANA_CHARGE' and dm_ai_module and hasattr(dm_ai_module, 'ManaChargeCommand'):
-                instance_id = int(cmd_dict['instance_id'])
-                cpp_cmd = dm_ai_module.ManaChargeCommand(instance_id)
-                self.gs.execute_command(cpp_cmd)
-                self.callback_log(f"P{active_pid}: MANA_CHARGE")
-                
-            elif (cmd_dict.get('type') == 'PLAY_FROM_ZONE' or cmd_dict.get('legacy_original_type') == 'DECLARE_PLAY') and \
+            if (cmd_dict.get('type') == 'PLAY_FROM_ZONE' or cmd_dict.get('legacy_original_type') == 'DECLARE_PLAY') and \
                  dm_ai_module and hasattr(dm_ai_module, 'PlayCardCommand'):
                 instance_id = int(cmd_dict.get('instance_id') or cmd_dict.get('source_instance_id', -1))
                 cpp_cmd = dm_ai_module.PlayCardCommand(instance_id)
@@ -234,7 +228,8 @@ class GameSessionSimplified:
                 self.callback_log(f"P{active_pid}: PASS")
                 
             else:
-                # Fallback to EngineCompat
+                # Unified fallback: handles MANA_CHARGE and all other types
+                # via CommandSystem.execute_command which enforces game rules
                 EngineCompat.ExecuteCommand(self.gs, cmd_dict, self.card_db)
                 cmd_type = cmd_dict.get('type', 'UNKNOWN')
                 self.callback_log(f"P{active_pid}: {cmd_type}")
@@ -451,10 +446,11 @@ class GameSessionSimplified:
                     best_score = score
                     best_choice = choice
             
-            self.callback_log(f\"Simulation selected {best_choice}/{safe_draw} (score={best_score:.2f})\")\n            return best_choice
+            self.callback_log(f"Simulation selected {best_choice}/{safe_draw} (score={best_score:.2f})")
+            return best_choice
             
         except Exception as e:
-            self.callback_log(f\"MCTS simulation error: {e}, fallback to heuristic\")
+            self.callback_log(f"MCTS simulation error: {e}, fallback to heuristic")
             return self._evaluate_with_heuristic(max_val)
 
     def _build_default_deck(self) -> List[int]:

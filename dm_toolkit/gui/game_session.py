@@ -262,16 +262,16 @@ class GameSession:
         try:
             # Prefer executing native C++ Action objects directly to keep all game logic in C++
             if hasattr(raw_action, '_action') and raw_action._action is not None and dm_ai_module:
-                # Direct C++ Action execution - all logic handled by C++ GameInstance.resolve_action()
+                # Direct C++ Action execution - all logic handled by C++ GameInstance.resolve_command()
                 action = raw_action._action
                 
                 try:
-                    self.game_instance.resolve_action(action)
+                    self.game_instance.resolve_command(action)
                     # IMPORTANT: Re-sync gs after C++ modifies GameInstance
                     # This ensures Python sees the latest state
                     self.gs = self.game_instance.state
                 except Exception as e:
-                    self.callback_log(f"ERROR: resolve_action failed: {e}")
+                    self.callback_log(f"ERROR: resolve_command failed: {e}")
                     import traceback
                     traceback.print_exc()
                     return
