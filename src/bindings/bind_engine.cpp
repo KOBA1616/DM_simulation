@@ -369,7 +369,8 @@ void bind_engine(py::module &m) {
               mcmd.instance_id = iid;
               const auto &card_db = dm::engine::infrastructure::CardRegistry::
                   get_all_definitions();
-              GameLogicSystem::resolve_command_oneshot(state, mcmd, card_db);
+              dm::engine::systems::GameLogicSystem::resolve_command_oneshot(
+                  state, mcmd, card_db);
               return; // Already handled, skip cmd path
             } else if (t == "PASS") {
               cmd = std::make_unique<dm::engine::game_command::PassCommand>();
@@ -612,13 +613,43 @@ void bind_engine(py::module &m) {
                   })
       .def_static("clear", &dm::engine::infrastructure::CardRegistry::clear);
 
-  py::class_<dm::engine::flow::PhaseSystem>(m, "PhaseSystem")
+  py::class_<dm::engine::flow::PhaseSystem>(m, "PhaseManager")
       .def_static("instance", &dm::engine::flow::PhaseSystem::instance,
                   py::return_value_policy::reference)
-      .def("start_game", &dm::engine::flow::PhaseSystem::start_game)
-      .def("setup_scenario", &dm::engine::flow::PhaseSystem::setup_scenario)
-      .def("on_start_turn", &dm::engine::flow::PhaseSystem::on_start_turn)
-      .def("next_phase", &dm::engine::flow::PhaseSystem::next_phase)
-      .def("fast_forward", &dm::engine::flow::PhaseSystem::fast_forward)
-      .def("check_game_over", &dm::engine::flow::PhaseSystem::check_game_over);
+      .def_static("start_game",
+                  [](core::GameState &state,
+                     const std::map<core::CardID, core::CardDefinition> &db) {
+                    dm::engine::flow::PhaseSystem::instance().start_game(state,
+                                                                         db);
+                  })
+      .def_static("setup_scenario",
+                  [](core::GameState &state, const core::ScenarioConfig &config,
+                     const std::map<core::CardID, core::CardDefinition> &db) {
+                    dm::engine::flow::PhaseSystem::instance().setup_scenario(
+                        state, config, db);
+                  })
+      .def_static("on_start_turn",
+                  [](core::GameState &state,
+                     const std::map<core::CardID, core::CardDefinition> &db) {
+                    dm::engine::flow::PhaseSystem::instance().on_start_turn(
+                        state, db);
+                  })
+      .def_static("next_phase",
+                  [](core::GameState &state,
+                     const std::map<core::CardID, core::CardDefinition> &db) {
+                    dm::engine::flow::PhaseSystem::instance().next_phase(state,
+                                                                         db);
+                  })
+      .def_static("fast_forward",
+                  [](core::GameState &state,
+                     const std::map<core::CardID, core::CardDefinition> &db) {
+                    dm::engine::flow::PhaseSystem::instance().fast_forward(
+                        state, db);
+                  })
+      .def_static("check_game_over", [](core::GameState &state) {
+        core::GameResult result = core::GameResult::NONE;
+        bool over = dm::engine::flow::PhaseSystem::instance().check_game_over(
+            state, result);
+        return py::make_tuple(over, result);
+      });
 }
