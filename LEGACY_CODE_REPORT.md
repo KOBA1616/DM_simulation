@@ -40,3 +40,7 @@ This report documents the findings regarding legacy code, deprecated features, a
 ## 5. Scripts and Tools
 
 **Finding:** The `scripts/` directory appears clean. Utilities like `check_native_symbols.py` and `import_dm_ai.py` are functional and should be kept.
+
+## 6. Conclusion
+
+The codebase is generally clean, with deprecated items clearly marked or removed. Future cleanups should focus on the C++ side (`ReactionWindow`) once the architecture permits.
