@@ -31,6 +31,8 @@ except ImportError:
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
     import dm_ai_module
 
+import dm_toolkit.command_builders as cb
+
 
 class TestGameFlowMinimal(unittest.TestCase):
     
@@ -98,9 +100,12 @@ class TestGameFlowMinimal(unittest.TestCase):
         p0_battle = self.gs.players[0].battle_zone
         if len(p0_battle) > 0:
             card = p0_battle[0]
-            # MutateCommand stub usage
-            cmd = dm_ai_module.MutateCommand(card.instance_id, dm_ai_module.MutationType.TAP)
-            self.assertIsNotNone(cmd)
+            # Use CommandBuilder instead of direct construction if possible, or verify Builder works
+            # The original code tested low-level C++ classes. We update to use the high-level builder
+            # to verify the migration path.
+            cmd = cb.build_tap_command(source_instance_id=card.instance_id, native=True)
+            self.assertIsInstance(cmd, dm_ai_module.CommandDef)
+            self.assertEqual(cmd.type, dm_ai_module.CommandType.TAP)
     
     def _step_game_flow_phases(self):
         print("\n[STEP 4] Game Flow Phases")
@@ -115,9 +120,13 @@ class TestGameFlowMinimal(unittest.TestCase):
 
     def _step_attack_mechanics(self):
         print("\n[STEP 6] Attack Mechanics")
-        # Check flow command creation
-        cmd = dm_ai_module.FlowCommand(dm_ai_module.FlowType.SET_ATTACK_SOURCE, -1)
-        self.assertEqual(cmd.new_value, -1)
+        # Attack Logic usually involves an ATTACK_PLAYER or ATTACK_CREATURE command
+        # Verify builder for Attack Player
+        cmd = cb.build_attack_player_command(attacker_instance_id=1, target_player=1, native=True)
+        self.assertIsInstance(cmd, dm_ai_module.CommandDef)
+        self.assertEqual(cmd.type, dm_ai_module.CommandType.ATTACK_PLAYER)
+        # Note: target_player=1 maps to owner_id=1 in current builder logic for native
+        self.assertEqual(cmd.owner_id, 1)
 
     def _step_shield_break(self):
         print("\n[STEP 7] Shield Break")

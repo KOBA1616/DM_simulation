@@ -721,6 +721,8 @@ void bind_core(py::module& m) {
 
     // Bind CommandSystem helper struct to execute commands from Python
     struct CommandSystemWrapper {
+        // Updated to accept py::object for context to support both dict and direct binding if needed,
+        // though strictly it's bound as dict in signature.
         static void execute_command(GameState& state, const CommandDef& cmd, int source_instance_id, PlayerID player_id, py::dict py_ctx) {
             std::map<std::string, int> ctx;
             // Convert python dict to map

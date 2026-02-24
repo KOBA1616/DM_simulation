@@ -129,9 +129,9 @@ def to_command_dict(obj: Any) -> Dict[str, Any]:
     # map_action converts to dict internally if possible or returns error command.
     return map_action(obj)
 
-def ensure_executable_command(obj: Any) -> Dict[str, Any]:
+def ensure_executable_command(obj: Any) -> Union[Dict[str, Any], Any]:
     """
-    Ensures the given object is a valid Command dictionary ready for execution.
+    Ensures the given object is a valid Command dictionary or native CommandDef ready for execution.
     This is the Unified Execution Path entry point.
     
     Post-Processing (Specs/AGENTS.md Policy Section 2):
@@ -143,9 +143,18 @@ def ensure_executable_command(obj: Any) -> Dict[str, Any]:
         obj: Action-like object (dict, ActionDef, CommandDef, etc.)
         
     Returns:
-        Validated and normalized Command dictionary ready for engine execution
+        Validated and normalized Command dictionary or native CommandDef ready for engine execution
     """
     from dm_toolkit.compat_wrappers import normalize_legacy_fields
+
+    # Phase 3 Prep: Pass native CommandDef through directly
+    # This avoids redundant serialization/deserialization cycles when the engine can handle the native object.
+    # Note: EngineCompat.ExecuteCommand must support native objects (it currently accepts Any).
+    try:
+        if obj.__class__.__name__ == 'CommandDef' and hasattr(obj, 'type'):
+             return obj
+    except Exception:
+        pass
     
     # Capture original simple type hint when input is a dict so we can preserve
     # certain execution-time semantics expected by the unified path tests.
