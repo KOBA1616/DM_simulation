@@ -17,6 +17,91 @@
 using namespace dm;
 using namespace dm::core;
 
+// Helper function for serialization
+py::dict filter_to_dict(const FilterDef& f);
+py::dict condition_to_dict(const ConditionDef& c);
+py::dict command_to_dict(const CommandDef& c);
+
+py::dict filter_to_dict(const FilterDef& f) {
+    py::dict d;
+    d["zones"] = f.zones;
+    d["types"] = f.types;
+    d["civilizations"] = f.civilizations;
+    d["races"] = f.races;
+    d["min_cost"] = f.min_cost;
+    d["max_cost"] = f.max_cost;
+    d["exact_cost"] = f.exact_cost;
+    d["cost_ref"] = f.cost_ref;
+    d["min_power"] = f.min_power;
+    d["max_power"] = f.max_power;
+    d["is_tapped"] = f.is_tapped;
+    d["is_blocker"] = f.is_blocker;
+    d["is_evolution"] = f.is_evolution;
+    d["owner"] = f.owner;
+    d["count"] = f.count;
+
+    py::list and_conds;
+    for (const auto& sub : f.and_conditions) {
+        and_conds.append(filter_to_dict(sub));
+    }
+    d["and_conditions"] = and_conds;
+
+    return d;
+}
+
+py::dict condition_to_dict(const ConditionDef& c) {
+    py::dict d;
+    d["type"] = c.type;
+    d["value"] = c.value;
+    d["str_val"] = c.str_val;
+    d["stat_key"] = c.stat_key;
+    d["op"] = c.op;
+    if (c.filter) {
+        d["filter"] = filter_to_dict(*c.filter);
+    } else {
+        d["filter"] = py::none();
+    }
+    return d;
+}
+
+py::dict command_to_dict(const CommandDef& c) {
+    py::dict d;
+    d["type"] = c.type;
+    d["instance_id"] = c.instance_id;
+    d["target_instance"] = c.target_instance;
+    d["owner_id"] = c.owner_id;
+    d["target_group"] = c.target_group;
+    d["target_filter"] = filter_to_dict(c.target_filter);
+    d["amount"] = c.amount;
+    d["str_param"] = c.str_param;
+    d["optional"] = c.optional;
+    d["from_zone"] = c.from_zone;
+    d["to_zone"] = c.to_zone;
+    d["mutation_kind"] = c.mutation_kind;
+    if (c.condition) d["condition"] = condition_to_dict(*c.condition);
+    else d["condition"] = py::none();
+    d["input_value_key"] = c.input_value_key;
+    d["input_value_usage"] = c.input_value_usage;
+    d["output_value_key"] = c.output_value_key;
+    d["slot_index"] = c.slot_index;
+    d["target_slot_index"] = c.target_slot_index;
+    d["up_to"] = c.up_to;
+
+    py::list if_true_list;
+    for (const auto& sub : c.if_true) {
+        if_true_list.append(command_to_dict(sub));
+    }
+    d["if_true"] = if_true_list;
+
+    py::list if_false_list;
+    for (const auto& sub : c.if_false) {
+        if_false_list.append(command_to_dict(sub));
+    }
+    d["if_false"] = if_false_list;
+
+    return d;
+}
+
 void bind_core(py::module& m) {
     // Bind opaque vectors
     py::bind_vector<std::vector<dm::core::CardInstance>>(m, "CardList");
@@ -402,7 +487,8 @@ void bind_core(py::module& m) {
         .def_readwrite("is_blocker", &FilterDef::is_blocker)
         .def_readwrite("is_evolution", &FilterDef::is_evolution)
         .def_readwrite("owner", &FilterDef::owner)
-        .def_readwrite("count", &FilterDef::count);
+        .def_readwrite("count", &FilterDef::count)
+        .def("to_dict", &filter_to_dict);
 
     py::class_<ConditionDef>(m, "ConditionDef")
         .def(py::init<>())
@@ -411,7 +497,8 @@ void bind_core(py::module& m) {
         .def_readwrite("str_val", &ConditionDef::str_val)
         .def_readwrite("stat_key", &ConditionDef::stat_key)
         .def_readwrite("op", &ConditionDef::op)
-        .def_readwrite("filter", &ConditionDef::filter);
+        .def_readwrite("filter", &ConditionDef::filter)
+        .def("to_dict", &condition_to_dict);
 
     py::class_<ModifierDef>(m, "ModifierDef")
         .def(py::init<>())
@@ -464,7 +551,9 @@ void bind_core(py::module& m) {
         .def_readwrite("input_value_usage", &CommandDef::input_value_usage)
         .def_readwrite("output_value_key", &CommandDef::output_value_key)
         .def_readwrite("slot_index", &CommandDef::slot_index)
-        .def_readwrite("target_slot_index", &CommandDef::target_slot_index);
+        .def_readwrite("target_slot_index", &CommandDef::target_slot_index)
+        .def_readwrite("up_to", &CommandDef::up_to)
+        .def("to_dict", &command_to_dict);
 
     py::class_<EffectDef>(m, "EffectDef")
         .def(py::init<>())
