@@ -99,6 +99,16 @@ py::dict command_to_dict(const CommandDef& c) {
     }
     d["if_false"] = if_false_list;
 
+    py::list options_list;
+    for (const auto& opt_group : c.options) {
+        py::list group;
+        for (const auto& sub : opt_group) {
+            group.append(command_to_dict(sub));
+        }
+        options_list.append(group);
+    }
+    d["options"] = options_list;
+
     return d;
 }
 
@@ -553,6 +563,7 @@ void bind_core(py::module& m) {
         .def_readwrite("slot_index", &CommandDef::slot_index)
         .def_readwrite("target_slot_index", &CommandDef::target_slot_index)
         .def_readwrite("up_to", &CommandDef::up_to)
+        .def_readwrite("options", &CommandDef::options)
         .def("to_dict", &command_to_dict);
 
     py::class_<EffectDef>(m, "EffectDef")
