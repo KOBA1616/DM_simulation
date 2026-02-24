@@ -38,12 +38,14 @@ try:
     _CommandType = dm_ai_module.CommandType
     _CommandDef = dm_ai_module.CommandDef
     _FilterDef = dm_ai_module.FilterDef
+    _ConditionDef = getattr(dm_ai_module, "ConditionDef", None)
     _HAS_NATIVE = True
 except ImportError:
     dm_ai_module = None
     _CommandType = None
     _CommandDef = None
     _FilterDef = None
+    _ConditionDef = None
     _HAS_NATIVE = False
 
 
@@ -52,6 +54,62 @@ def _ensure_uid(cmd: Dict[str, Any]) -> Dict[str, Any]:
     if 'uid' not in cmd:
         cmd['uid'] = str(uuid.uuid4())
     return cmd
+
+
+def _build_filter_def(tf_data: Dict[str, Any]) -> Any:
+    """Helper to build a FilterDef from a dict."""
+    if not _HAS_NATIVE:
+        return None
+    f = _FilterDef()
+    for k in ['zones', 'types', 'civilizations', 'races', 'min_cost', 'max_cost',
+              'exact_cost', 'min_power', 'max_power', 'is_tapped', 'is_blocker',
+              'is_evolution', 'owner', 'count', 'cost_ref', 'selection_mode']:
+        if k in tf_data:
+            val = tf_data[k]
+            # Special handling for civilizations enum conversion
+            if k == 'civilizations' and isinstance(val, list):
+                converted_civs = []
+                for c in val:
+                    if isinstance(c, str) and hasattr(dm_ai_module.Civilization, c):
+                        converted_civs.append(getattr(dm_ai_module.Civilization, c))
+                    else:
+                        converted_civs.append(c)
+
+                # Pybind11 bind_vector requires explicit type for CivilizationList in some cases
+                if hasattr(dm_ai_module, 'CivilizationList'):
+                    c_list = dm_ai_module.CivilizationList()
+                    for c in converted_civs:
+                        c_list.append(c)
+                    setattr(f, k, c_list)
+                else:
+                    setattr(f, k, converted_civs)
+            else:
+                setattr(f, k, val)
+
+    if 'and_conditions' in tf_data:
+        for sub in tf_data['and_conditions']:
+            if isinstance(sub, dict):
+                f.and_conditions.append(_build_filter_def(sub))
+
+    return f
+
+
+def _build_condition_def(cond_data: Dict[str, Any]) -> Any:
+    """Helper to build a ConditionDef from a dict."""
+    if not _HAS_NATIVE or not _ConditionDef:
+        return None
+    c = _ConditionDef()
+    if 'type' in cond_data: c.type = cond_data['type']
+    if 'value' in cond_data: c.value = cond_data['value']
+    if 'str_val' in cond_data: c.str_val = cond_data['str_val']
+    if 'stat_key' in cond_data: c.stat_key = cond_data['stat_key']
+    if 'op' in cond_data: c.op = cond_data['op']
+    if 'filter' in cond_data and cond_data['filter']:
+        if isinstance(cond_data['filter'], dict):
+            c.filter = _build_filter_def(cond_data['filter'])
+        elif isinstance(cond_data['filter'], _FilterDef):
+            c.filter = cond_data['filter']
+    return c
 
 
 def _build_native_command(cmd_type_str: str, **kwargs: Any) -> Any:
@@ -66,8 +124,6 @@ def _build_native_command(cmd_type_str: str, **kwargs: Any) -> Any:
         cmd.type = getattr(_CommandType, cmd_type_str)
 
     # Map common kwargs to CommandDef fields
-    # Note: CommandDef fields: instance_id, target_instance, owner_id, amount, etc.
-
     if 'instance_id' in kwargs and kwargs['instance_id'] is not None: cmd.instance_id = kwargs['instance_id']
     if 'source_instance_id' in kwargs and kwargs['source_instance_id'] is not None: cmd.instance_id = kwargs['source_instance_id'] # alias
     if 'target_instance' in kwargs and kwargs['target_instance'] is not None: cmd.target_instance = kwargs['target_instance']
@@ -80,39 +136,60 @@ def _build_native_command(cmd_type_str: str, **kwargs: Any) -> Any:
     if 'optional' in kwargs: cmd.optional = kwargs['optional']
     if 'up_to' in kwargs: cmd.up_to = kwargs['up_to']
 
+    if 'input_value_key' in kwargs: cmd.input_value_key = kwargs['input_value_key']
+    if 'input_value_usage' in kwargs: cmd.input_value_usage = kwargs['input_value_usage']
+    if 'output_value_key' in kwargs: cmd.output_value_key = kwargs['output_value_key']
+    if 'slot_index' in kwargs: cmd.slot_index = kwargs['slot_index']
+    if 'target_slot_index' in kwargs: cmd.target_slot_index = kwargs['target_slot_index']
+
+    # Handle Target Group
+    if 'target_group' in kwargs and kwargs['target_group'] is not None:
+        tg = kwargs['target_group']
+        if isinstance(tg, int): # Enum value
+             cmd.target_group = tg
+        elif isinstance(tg, str) and hasattr(dm_ai_module.TargetScope, tg):
+            cmd.target_group = getattr(dm_ai_module.TargetScope, tg)
+
     # Handle Target Filter
     if 'target_filter' in kwargs and kwargs['target_filter']:
         tf_data = kwargs['target_filter']
         if isinstance(tf_data, dict):
-            f = _FilterDef()
-            # Map known FilterDef fields
-            for k in ['zones', 'types', 'civilizations', 'races', 'min_cost', 'max_cost',
-                      'exact_cost', 'min_power', 'max_power', 'is_tapped', 'is_blocker',
-                      'is_evolution', 'owner', 'count']:
-                if k in tf_data:
-                    val = tf_data[k]
-                    # Special handling for civilizations enum conversion
-                    if k == 'civilizations' and isinstance(val, list):
-                        converted_civs = []
-                        for c in val:
-                            if isinstance(c, str) and hasattr(dm_ai_module.Civilization, c):
-                                converted_civs.append(getattr(dm_ai_module.Civilization, c))
-                            else:
-                                converted_civs.append(c)
-
-                        # Pybind11 bind_vector requires explicit type for CivilizationList in some cases
-                        if hasattr(dm_ai_module, 'CivilizationList'):
-                            c_list = dm_ai_module.CivilizationList()
-                            for c in converted_civs:
-                                c_list.append(c)
-                            setattr(f, k, c_list)
-                        else:
-                            setattr(f, k, converted_civs)
-                    else:
-                        setattr(f, k, val)
-            cmd.target_filter = f
+            cmd.target_filter = _build_filter_def(tf_data)
         elif isinstance(tf_data, _FilterDef):
              cmd.target_filter = tf_data
+
+    # Handle Condition
+    if 'condition' in kwargs and kwargs['condition']:
+        c_data = kwargs['condition']
+        if isinstance(c_data, dict):
+            cmd.condition = _build_condition_def(c_data)
+        elif _ConditionDef and isinstance(c_data, _ConditionDef):
+            cmd.condition = c_data
+
+    # Handle Recursive Command Lists (if_true, if_false)
+    if 'if_true' in kwargs and kwargs['if_true']:
+        true_cmds = []
+        for item in kwargs['if_true']:
+            if isinstance(item, _CommandDef):
+                true_cmds.append(item)
+            elif isinstance(item, dict):
+                ctype = item.get('type', 'NONE')
+                item_kwargs = item.copy()
+                if 'type' in item_kwargs: del item_kwargs['type']
+                true_cmds.append(_build_native_command(ctype, **item_kwargs))
+        cmd.if_true = true_cmds
+
+    if 'if_false' in kwargs and kwargs['if_false']:
+        false_cmds = []
+        for item in kwargs['if_false']:
+            if isinstance(item, _CommandDef):
+                false_cmds.append(item)
+            elif isinstance(item, dict):
+                ctype = item.get('type', 'NONE')
+                item_kwargs = item.copy()
+                if 'type' in item_kwargs: del item_kwargs['type']
+                false_cmds.append(_build_native_command(ctype, **item_kwargs))
+        cmd.if_false = false_cmds
 
     return cmd
 
