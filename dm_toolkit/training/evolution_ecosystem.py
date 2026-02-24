@@ -132,7 +132,7 @@ class EvolutionEcosystem:
                     # Prefer native command-first generator (non-strict).
                     cmds = []
                     try:
-                        cmds = commands.generate_legal_commands(instance.state, self.card_db, strict=False) or []
+                        cmds = commands.generate_legal_commands(instance.state, self.card_db, strict=False, skip_wrapper=True) or []
                     except TypeError:
                         cmds = commands.generate_legal_commands(instance.state, self.card_db) or []
                     except Exception:

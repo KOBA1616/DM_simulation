@@ -14,9 +14,11 @@ AGENTS.md Policy Compliance:
 Key Functions:
 - to_command_dict: Converts any action-like object to a command dictionary
 - ensure_executable_command: Validates and prepares commands for engine execution
+- execute_command: Executes a command using the engine compatibility layer
+- execute_commands: Executes a sequence of commands
 
 Usage:
-    from dm_toolkit.unified_execution import ensure_executable_command
+    from dm_toolkit.unified_execution import ensure_executable_command, execute_command
     
     # From legacy action dict
     action = {"type": "DRAW_CARD", "value1": 2}
@@ -27,11 +29,11 @@ Usage:
     cmd = ensure_executable_command(action_obj)
     
     # Execute via engine
-    EngineCompat.ExecuteCommand(state, cmd, card_db)
+    execute_command(state, cmd, card_db)
 
 Note: action_mapper.py is deprecated; use this module instead.
 """
-from typing import Any, Dict, List, Union, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Union, Optional, TYPE_CHECKING, Iterable
 import copy
 import json
 from dm_toolkit.action_to_command import map_action
@@ -61,7 +63,14 @@ def to_command_dict(obj: Any) -> Dict[str, Any]:
     Returns:
         A dictionary representing the Command.
     """
-    # 0. If the object exposes a precomputed `command` attribute, prefer it.
+    # 0. Prefer explicit `to_dict` method if available (Native CommandDef support)
+    try:
+        if hasattr(obj, 'to_dict') and callable(getattr(obj, 'to_dict')):
+            return obj.to_dict()
+    except Exception:
+        pass
+
+    # 1. If the object exposes a precomputed `command` attribute, prefer it.
     # This allows Action instances to carry a canonical command dict produced
     # by generators (see dm_ai_module.IntentGenerator.command). Support
     # both dicts and objects that can be mapped via map_action.
@@ -80,7 +89,7 @@ def to_command_dict(obj: Any) -> Dict[str, Any]:
     except Exception:
         pass
 
-    # 1. If it's already a dictionary
+    # 2. If it's already a dictionary
     if isinstance(obj, dict):
         return map_action(obj)
 
@@ -98,7 +107,7 @@ def to_command_dict(obj: Any) -> Dict[str, Any]:
     except Exception:
         pass
 
-    # 2. If it's a CommandDef/ActionDef object with to_json support (e.g. pybind11 structs)
+    # 3. If it's a CommandDef/ActionDef object with to_json support (e.g. pybind11 structs)
     if hasattr(obj, 'to_json'):
         try:
             # If to_json returns a dict directly (some bindings do this)
@@ -111,7 +120,7 @@ def to_command_dict(obj: Any) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # 3. If it's an ActionDef object (Python side class)
+    # 4. If it's an ActionDef object (Python side class)
     if hasattr(obj, '__dict__'):
         return map_action(obj.__dict__)
 
@@ -189,3 +198,19 @@ def ensure_executable_command(obj: Any) -> Dict[str, Any]:
     cmd = normalize_legacy_fields(cmd)
 
     return cmd
+
+
+def execute_command(state: Any, command: Any, card_db: Any = None) -> None:
+    """Executes a single command using the engine compatibility layer."""
+    from dm_toolkit.engine.compat import EngineCompat
+    # EngineCompat.ExecuteCommand accepts dicts or bound CommandDef objects
+    if card_db is not None:
+        EngineCompat.ExecuteCommand(state, command, card_db)
+    else:
+        EngineCompat.ExecuteCommand(state, command)
+
+
+def execute_commands(state: Any, commands: Iterable[Any], card_db: Any = None) -> None:
+    """Executes a sequence of commands."""
+    for c in commands:
+        execute_command(state, c, card_db)

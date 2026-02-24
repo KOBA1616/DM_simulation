@@ -2,9 +2,9 @@ import random
 import time
 import argparse
 from dm_toolkit.gui.headless import create_session
-from dm_toolkit import commands_v2
+from dm_toolkit import commands
 # Prefer command-first wrapper
-generate_legal_commands = commands_v2.generate_legal_commands
+generate_legal_commands = commands.generate_legal_commands
 import dm_ai_module
 
 
@@ -36,10 +36,10 @@ def inspect_game(max_steps=500, seed=42):
     start = time.time()
     while steps < max_steps and not sess.is_game_over():
         try:
-            cmds = commands_v2.generate_legal_commands(gs, card_db, strict=False) or []
+            cmds = commands.generate_legal_commands(gs, card_db, strict=False, skip_wrapper=True) or []
         except Exception:
             try:
-                cmds = commands_v2.generate_legal_commands(gs, card_db) or []
+                cmds = commands.generate_legal_commands(gs, card_db) or []
             except Exception:
                 cmds = []
 

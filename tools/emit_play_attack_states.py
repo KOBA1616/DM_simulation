@@ -14,7 +14,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from dm_toolkit.engine.compat import EngineCompat
-from dm_toolkit import commands_v2 as commands
+from dm_toolkit import commands as commands
 try:
     import dm_ai_module
 except Exception:
@@ -24,7 +24,7 @@ except Exception:
 
 def dump_mapped_commands(state, card_db, note: str):
     try:
-        cmds = commands.generate_legal_commands(state, card_db, strict=False) or []
+        cmds = commands.generate_legal_commands(state, card_db, strict=False, skip_wrapper=True) or []
     except Exception:
         try:
             cmds = commands.generate_legal_commands(state, card_db) or []

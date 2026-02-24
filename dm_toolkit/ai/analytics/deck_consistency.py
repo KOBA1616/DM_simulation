@@ -1,5 +1,5 @@
 import dm_ai_module
-from dm_toolkit import commands_v2 as commands
+from dm_toolkit import commands as commands
 import random
 import logging
 from typing import Any, List, cast, Dict
@@ -93,7 +93,7 @@ class SolitaireRunner:
             # Prefer native command-first generator (non-strict), fallback to legacy ActionGenerator
             cmds = []
             try:
-                cmds = commands.generate_legal_commands(state, cast(Dict[int, Any], self.card_db), strict=False) or []
+                cmds = commands.generate_legal_commands(state, cast(Dict[int, Any], self.card_db), strict=False, skip_wrapper=True) or []
             except TypeError:
                 cmds = commands.generate_legal_commands(state, cast(Dict[int, Any], self.card_db)) or []
             except Exception:
@@ -103,7 +103,7 @@ class SolitaireRunner:
         actions: List[Any] = []
         if not cmds:
             try:
-                actions = commands.generate_legal_commands(state, cast(Dict[int, Any], self.card_db), strict=False) or []
+                actions = commands.generate_legal_commands(state, cast(Dict[int, Any], self.card_db), strict=False, skip_wrapper=True) or []
             except Exception:
                 try:
                     actions = commands.generate_legal_commands(state, cast(Dict[int, Any], self.card_db)) or []

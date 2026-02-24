@@ -43,7 +43,7 @@ class PythonMCTS:
         try:
             legal_commands = []
             try:
-                legal_commands = commands.generate_legal_commands(self.root.state, self.card_db, strict=False) or []
+                legal_commands = commands.generate_legal_commands(self.root.state, self.card_db, strict=False, skip_wrapper=True) or []
             except TypeError:
                 legal_commands = commands.generate_legal_commands(self.root.state, self.card_db) or []
             except Exception:
@@ -51,7 +51,7 @@ class PythonMCTS:
             legal_actions = []
             if not legal_commands:
                 try:
-                    legal_actions = commands.generate_legal_commands(self.root.state, self.card_db, strict=False) or []
+                    legal_actions = commands.generate_legal_commands(self.root.state, self.card_db, strict=False, skip_wrapper=True) or []
                 except Exception:
                     try:
                         legal_actions = commands.generate_legal_commands(self.root.state, self.card_db) or []
@@ -190,7 +190,7 @@ class PythonMCTS:
                 # Prefer command-first generator, fallback to legacy ActionGenerator only when needed
                 child_cmds = []
                 try:
-                    child_cmds = commands.generate_legal_commands(next_state, self.card_db, strict=False) or []
+                    child_cmds = commands.generate_legal_commands(next_state, self.card_db, strict=False, skip_wrapper=True) or []
                 except TypeError:
                     child_cmds = commands.generate_legal_commands(next_state, self.card_db) or []
                 except Exception:
@@ -198,7 +198,7 @@ class PythonMCTS:
                 child_actions = []
                     if not child_cmds:
                     try:
-                        child_actions = commands.generate_legal_commands(next_state, self.card_db, strict=False) or []
+                        child_actions = commands.generate_legal_commands(next_state, self.card_db, strict=False, skip_wrapper=True) or []
                     except Exception:
                         try:
                             child_actions = commands.generate_legal_commands(next_state, self.card_db) or []
@@ -233,14 +233,14 @@ class PythonMCTS:
                     # Prefer command-first during simulation rollouts
                     actions = []
                     try:
-                        actions = commands.generate_legal_commands(current_state, self.card_db, strict=False) or []
+                        actions = commands.generate_legal_commands(current_state, self.card_db, strict=False, skip_wrapper=True) or []
                     except TypeError:
                         actions = commands.generate_legal_commands(current_state, self.card_db) or []
                     except Exception:
                         actions = []
                     if not actions:
                         try:
-                            actions = commands.generate_legal_commands(current_state, self.card_db, strict=False) or []
+                            actions = commands.generate_legal_commands(current_state, self.card_db, strict=False, skip_wrapper=True) or []
                         except Exception:
                             try:
                                 actions = commands.generate_legal_commands(current_state, self.card_db) or []

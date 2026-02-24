@@ -53,7 +53,7 @@ try:
 
     print('Calling commands.generate_legal_commands (prefer command-first)')
     try:
-        cmds = commands.generate_legal_commands(state, card_db, strict=False) or []
+        cmds = commands.generate_legal_commands(state, card_db, strict=False, skip_wrapper=True) or []
     except Exception:
         try:
             cmds = commands.generate_legal_commands(state, card_db) or []

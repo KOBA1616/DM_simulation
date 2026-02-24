@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 
 import dm_ai_module
 # Prefer command-first generation where available
-from dm_toolkit import commands_v2 as commands
+from dm_toolkit import commands as commands
 # from dm_toolkit.ai.agent.mcts import MCTS # MCTS might not be available in python toolkit yet or deprecated
 # Since MCTS is now in C++ (dm_ai_module.MCTS), we should use that or skip deep logic here.
 
@@ -89,8 +89,8 @@ class DeckEvolution:
             # Random (prefer commands when available)
             try:
                 # Prefer the command-first wrapper when available
-                from dm_toolkit import commands_v2
-                _generate_legal_commands = commands_v2.generate_legal_commands
+                from dm_toolkit import commands
+                _generate_legal_commands = commands.generate_legal_commands
             except Exception:
                 def _generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> List[Any]:
                     return []
@@ -102,7 +102,7 @@ class DeckEvolution:
             cmds = []
             try:
                 try:
-                    cmds = commands.generate_legal_commands(gs, self.card_db, strict=False) or []
+                    cmds = commands.generate_legal_commands(gs, self.card_db, strict=False, skip_wrapper=True) or []
                 except TypeError:
                     # Older wrappers may not accept `strict`
                     cmds = commands.generate_legal_commands(gs, self.card_db) or []
