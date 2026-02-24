@@ -67,10 +67,7 @@ def list_legal(sess: Any):
         print("no game state")
         return
     from dm_toolkit import commands_v2
-    try:
-        import dm_ai_module
-    except Exception:
-        from dm_toolkit import dm_ai_module
+    import dm_ai_module
 
     try:
         cmds = commands_v2.generate_legal_commands(sess.gs, sess.card_db, strict=False) or []

@@ -9,17 +9,12 @@ from types import ModuleType
 from dm_toolkit.debug.effect_tracer import get_tracer, TraceEventType
 
 # dm_ai_module may be an optional compiled extension; annotate as Optional.
-# Prefer the dm_toolkit shim module so unit tests can patch it reliably.
 dm_ai_module: Optional[ModuleType] = None
 try:
-    from dm_toolkit import dm_ai_module as _shim_dm_ai_module  # type: ignore
-    dm_ai_module = _shim_dm_ai_module
+    import dm_ai_module as _dm_ai_module  # type: ignore
+    dm_ai_module = _dm_ai_module
 except ImportError:
-    try:
-        import dm_ai_module as _native_dm_ai_module  # type: ignore
-        dm_ai_module = _native_dm_ai_module
-    except ImportError:
-        dm_ai_module = None
+    dm_ai_module = None
 
 from dm_toolkit.dm_types import GameState, CardDB, PlayerID, Tensor, NPArray
 
