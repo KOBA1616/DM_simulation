@@ -80,48 +80,14 @@ void UseAbilityCommand::execute(core::GameState &state) {
 void UseAbilityCommand::invert(core::GameState &state) { (void)state; }
 
 void ManaChargeCommand::execute(core::GameState &state) {
-  using namespace dm::core;
+  const auto &card_db =
+      dm::engine::infrastructure::CardRegistry::get_all_definitions();
 
-  try {
-    std::ofstream lout("logs/manacharge_trace.txt", std::ios::app);
-    if (lout) {
-      lout << "MANA_CHARGE_CMD CALLED id=" << card_id << "\n";
-      lout.close();
-    }
-  } catch (...) {
-  }
+  core::CommandDef cmd;
+  cmd.type = core::CommandType::MANA_CHARGE;
+  cmd.instance_id = card_id;
 
-  const CardInstance *card_ptr = state.get_card_instance(card_id);
-  if (!card_ptr) {
-    return;
-  }
-
-  PlayerID owner = card_ptr->owner;
-
-  if (state.turn_stats.mana_charged_by_player[owner]) {
-    return;
-  }
-
-  bool found = false;
-  const Player &p = state.players[owner];
-  for (const auto &c : p.hand) {
-    if (c.instance_id == card_id) {
-      found = true;
-      break;
-    }
-  }
-
-  if (!found) {
-    return;
-  }
-
-  auto move_cmd = std::make_shared<TransitionCommand>(card_id, Zone::HAND,
-                                                      Zone::MANA, owner);
-  state.execute_command(std::move(move_cmd));
-
-  auto flow_cmd = std::make_shared<FlowCommand>(
-      FlowCommand::FlowType::SET_MANA_CHARGED, 1, owner);
-  state.execute_command(std::move(flow_cmd));
+  GameLogicSystem::resolve_command_oneshot(state, cmd, card_db);
 }
 
 void ManaChargeCommand::invert(core::GameState &state) { (void)state; }
