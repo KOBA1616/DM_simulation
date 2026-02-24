@@ -224,14 +224,35 @@ def wrap_action(action: Any) -> Optional[ICommand]:
     return _ActionWrapper(action)
 
 
-def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
+def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = False, skip_wrapper: bool = False) -> list:
     """Compatibility helper: generate legal actions and return wrapped commands.
 
     Calls `dm_ai_module.IntentGenerator.generate_legal_commands` and maps each
     `Action` (or its attached `command`) to an `ICommand` via `wrap_action`.
+
+    Args:
+        state: GameState object
+        card_db: CardDatabase object or dict
+        strict: If True, raise RuntimeError if native generator is unavailable or fails.
+        skip_wrapper: If True, return raw native objects (CommandDef) without wrapping.
     """
     try:
         import dm_ai_module
+    except Exception:
+        if strict:
+            raise RuntimeError("Native dm_ai_module not available")
+        pass
+
+    # Validate native generator availability if strict
+    if strict:
+        try:
+            import dm_ai_module
+            if not hasattr(dm_ai_module, 'generate_commands') and not hasattr(dm_ai_module, 'ActionGenerator'):
+                raise RuntimeError("Native generator not found (strict mode)")
+        except Exception:
+            if strict: raise
+
+    try:
         # Debug: report observed state phase and active player for diagnostics
         try:
             cur_phase = getattr(state, 'current_phase', None)
@@ -249,6 +270,8 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
             try:
                 actions = _call_native_action_generator(state, card_db) or []
             except Exception:
+                if strict:
+                    raise
                 actions = []
             # Debug: show types/reprs of first few returned actions to diagnose discrepancies
             try:
@@ -475,6 +498,9 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
             pass
         
         # Trust C++ engine completely - wrap actions for GUI execution
+        if skip_wrapper:
+            return actions
+
         cmds = []
         for a in actions:
             w = wrap_action(a)
@@ -482,6 +508,8 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any]) -> list:
                 cmds.append(w)
         return cmds
     except Exception as e:
+        if strict:
+            raise
         print(f"generate_legal_commands failed: {e}")
         import traceback
         traceback.print_exc()

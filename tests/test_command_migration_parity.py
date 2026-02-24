@@ -1,27 +1,36 @@
 import dm_ai_module as dm
-from dm_toolkit import commands_v2
-
+from dm_toolkit import commands
+from dm_toolkit.engine.compat import EngineCompat
 
 def test_generators_exist_and_return_iterables():
     # Use registered card DB (may be empty) to construct a GameInstance
-    card_db = dm.CardRegistry.get_all_cards()
-    gi = dm.GameInstance(42, card_db)
+    card_db = EngineCompat.load_cards_robust("data/cards.json")
+    # Need to get cached native DB if available
+    native_db = EngineCompat._native_db_cache
+    if native_db:
+        gi = dm.GameInstance(42, native_db)
+    else:
+        gi = dm.GameInstance(42, card_db) if card_db else dm.GameInstance()
+
     state = gi.state
 
     # Prefer command-first generator
     cmds = []
     try:
-        cmds = commands_v2.generate_legal_commands(state, card_db, strict=False) or []
+        cmds = commands.generate_legal_commands(state, card_db, strict=False, skip_wrapper=True) or []
     except Exception:
         try:
-            cmds = dm.generate_commands(state, card_db) or []
+            if hasattr(dm, 'generate_commands'):
+                cmds = dm.generate_commands(state, card_db) or []
         except Exception:
             cmds = []
 
     # Legacy actions as fallback for parity checks
+    # Native IntentGenerator still exists?
     actions = []
     try:
-        actions = dm.IntentGenerator.generate_legal_commands(state, card_db) or []
+        if hasattr(dm, 'IntentGenerator'):
+            actions = dm.IntentGenerator.generate_legal_commands(state, card_db) or []
     except Exception:
         actions = []
 

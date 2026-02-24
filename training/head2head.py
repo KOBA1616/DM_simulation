@@ -47,7 +47,7 @@ import random
 import time
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.action_to_command import map_action
-from dm_toolkit import commands_v2 as commands
+from dm_toolkit import commands as commands
 
 # Robustly ensure ActionEncoder availability
 try:
@@ -449,7 +449,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 # native-action helper if no commands are returned. Maintain
                 # final fallback to dm.IntentGenerator for maximum compatibility.
                 try:
-                    legal = commands.generate_legal_commands(state, CARD_DB, strict=False) or []
+                    legal = commands.generate_legal_commands(state, CARD_DB, strict=False, skip_wrapper=True) or []
                 except Exception:
                     legal = []
                 if not legal:
@@ -1021,7 +1021,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 continue
             try:
                 try:
-                    legal = commands.generate_legal_commands(inst.state, CARD_DB, strict=False) or []
+                    legal = commands.generate_legal_commands(inst.state, CARD_DB, strict=False, skip_wrapper=True) or []
                 except Exception:
                     legal = []
                 if not legal:
@@ -1121,7 +1121,7 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                     try:
                         legal = []
                         try:
-                            legal = commands.generate_legal_commands(inst.state, CARD_DB, strict=False) or []
+                            legal = commands.generate_legal_commands(inst.state, CARD_DB, strict=False, skip_wrapper=True) or []
                         except Exception:
                             legal = []
                         if not legal:

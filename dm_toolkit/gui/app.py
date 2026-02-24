@@ -43,6 +43,7 @@ from dm_toolkit.gui.widgets.log_viewer import LogViewer
 from dm_toolkit.gui.game_session import GameSession
 from dm_toolkit.gui.input_handler import GameInputHandler
 from dm_toolkit.gui.layout_builder import LayoutBuilder
+from dm_toolkit import commands
 
 class GameWindow(QMainWindow):
     def __init__(self) -> None:
@@ -490,7 +491,7 @@ class GameWindow(QMainWindow):
         try:
             # Prefer native command-first generator via commands wrapper; only call EngineCompat fallback when empty
             try:
-                all_legal_actions = commands.generate_legal_commands(self.gs, self.card_db, strict=False) or []
+                all_legal_actions = commands.generate_legal_commands(self.gs, self.card_db, strict=False, skip_wrapper=True) or []
             except Exception:
                 all_legal_actions = []
             if not all_legal_actions:

@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from dm_toolkit.ai.agent.tokenization import StateTokenizer
 from dm_toolkit.engine.compat import EngineCompat
-from dm_toolkit import commands_v2 as commands
+from dm_toolkit import commands as commands
 import dm_ai_module
 
 try:
@@ -75,7 +75,7 @@ def legal_indices_for_state(state, card_db=None):
     card_db = card_db or {}
     try:
         try:
-            cmds = commands.generate_legal_commands(state, card_db, strict=False) or []
+            cmds = commands.generate_legal_commands(state, card_db, strict=False, skip_wrapper=True) or []
         except TypeError:
             cmds = commands.generate_legal_commands(state, card_db) or []
         except Exception:

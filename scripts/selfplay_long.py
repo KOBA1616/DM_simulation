@@ -38,16 +38,16 @@ if native_p:
     os.environ['PYTHONPATH'] = pyd_dir + os.pathsep + cur_pp if cur_pp else pyd_dir
 
 from dm_toolkit.gui.headless import create_session
-from dm_toolkit import commands_v2
+from dm_toolkit import commands
 import dm_ai_module
 
 # Prefer command-first wrapper; provide safe fallback to legacy ActionGenerator
 def get_legal_commands(gs, card_db):
     try:
-        cmds = commands_v2.generate_legal_commands(gs, card_db, strict=False) or []
+        cmds = commands.generate_legal_commands(gs, card_db, strict=False, skip_wrapper=True) or []
     except Exception:
         try:
-            cmds = commands_v2.generate_legal_commands(gs, card_db) or []
+            cmds = commands.generate_legal_commands(gs, card_db) or []
         except Exception:
             cmds = []
     return cmds

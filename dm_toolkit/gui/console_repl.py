@@ -66,24 +66,24 @@ def list_legal(sess: Any):
     if not getattr(sess, 'gs', None):
         print("no game state")
         return
-    from dm_toolkit import commands_v2
+    from dm_toolkit import commands
     import dm_ai_module
 
     try:
-        cmds = commands_v2.generate_legal_commands(sess.gs, sess.card_db, strict=False) or []
+        cmds = commands.generate_legal_commands(sess.gs, sess.card_db, strict=False, skip_wrapper=True) or []
     except Exception as e:
-        print("commands_v2.generate_legal_commands failed:", e)
+        print("commands.generate_legal_commands failed:", e)
         cmds = []
 
     if not cmds:
         try:
-            from dm_toolkit import commands_v2 as _commands
+            from dm_toolkit import commands as _commands
             cmds = _commands.generate_legal_commands(sess.gs, sess.card_db) or []
         except Exception:
             try:
-                cmds = commands_v2.generate_legal_commands(sess.gs, sess.card_db) or []
+                cmds = commands.generate_legal_commands(sess.gs, sess.card_db) or []
             except Exception as e:
-                print("commands_v2.generate_legal_commands failed:", e)
+                print("commands.generate_legal_commands failed:", e)
                 return
     out = []
     for i, c in enumerate(cmds):

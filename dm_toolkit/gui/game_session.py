@@ -19,9 +19,9 @@ from dm_toolkit.dm_types import GameState, CardDB
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.unified_execution import ensure_executable_command
 from dm_toolkit.gui.i18n import tr
-from dm_toolkit import commands_v2
+from dm_toolkit import commands
 # Prefer v2 command-first wrapper
-_generate_legal_commands = commands_v2.generate_legal_commands
+_generate_legal_commands = commands.generate_legal_commands
 
 try:
     import dm_ai_module
@@ -354,7 +354,7 @@ class GameSession:
             return []
         try:
             try:
-                cmds = _generate_legal_commands(self.gs, self.card_db, strict=False) or []
+                cmds = _generate_legal_commands(self.gs, self.card_db, strict=False, skip_wrapper=True) or []
             except TypeError:
                 cmds = _generate_legal_commands(self.gs, self.card_db) or []
             except Exception:
