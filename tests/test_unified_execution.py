@@ -1,6 +1,14 @@
 import pytest
 from dm_toolkit.unified_execution import to_command_dict, ensure_executable_command
 from dm_toolkit.action_to_command import map_action
+from dm_toolkit.command_builders import (
+    build_draw_command,
+    build_play_card_command,
+    build_pass_command,
+    build_shield_burn_command,
+    build_mutate_command,
+    build_mana_charge_command
+)
 
 class MockAction:
     def __init__(self, data):
@@ -14,7 +22,8 @@ class MockCommandDef:
 
 def test_conversion_consistency_basic():
     """Test basic conversion from dict to command."""
-    action = {"type": "DRAW_CARD", "value1": 2}
+    # Using builder but injecting legacy field to verify normalization still works if builder allows kwargs
+    action = build_draw_command(amount=2, value1=2)
 
     # 1. to_command_dict
     cmd1 = to_command_dict(action)
@@ -40,7 +49,7 @@ def test_conversion_consistency_conflict():
     """Test behavior when input has conflicting legacy and canonical fields."""
     # Input has both, different values.
     # map_action prioritizes 'amount' if present in input for _finalize_command
-    action = {"type": "DRAW_CARD", "value1": 10, "amount": 5}
+    action = build_draw_command(amount=5, value1=10)
 
     cmd1 = to_command_dict(action)
     assert cmd1['amount'] == 5
@@ -57,7 +66,7 @@ def test_conversion_consistency_conflict():
     # Some handlers might copy it.
     # e.g. _handle_specific_moves -> SHIELD_BURN copies value1 explicitly
 
-    action_burn = {"type": "SHIELD_BURN", "value1": 10, "amount": 5}
+    action_burn = build_shield_burn_command(amount=5, value1=10)
     # _handle_specific_moves:
     # if act_type == "SHIELD_BURN": cmd['amount'] = act.get('value1', 1)
     # It IGNORES 'amount' in input and uses 'value1' for SHIELD_BURN specific logic!
@@ -83,7 +92,7 @@ def test_conversion_consistency_conflict():
 
 def test_ensure_executable_idempotency():
     """Test that ensure_executable_command is idempotent-ish."""
-    action = {"type": "DRAW_CARD", "value1": 2}
+    action = build_draw_command(amount=2, value1=2)
     cmd = ensure_executable_command(action)
 
     # Pass the result back in
@@ -95,7 +104,9 @@ def test_ensure_executable_idempotency():
 
 def test_object_input():
     """Test conversion from objects."""
-    obj = MockAction({"type": "DRAW_CARD", "value1": 3})
+    # Build a command then wrap in object
+    base_cmd = build_draw_command(amount=3, value1=3)
+    obj = MockAction(base_cmd)
     cmd = ensure_executable_command(obj)
     assert cmd['amount'] == 3
     assert cmd['value1'] == 3
@@ -103,23 +114,28 @@ def test_object_input():
 def test_missing_fields_normalization():
     """Test that missing fields are populated."""
     # Action with only canonical fields
-    action = {"type": "DRAW_CARD", "amount": 4}
+    action = build_draw_command(amount=4)
     cmd = ensure_executable_command(action)
     assert cmd['value1'] == 4
 
-    # Action with only legacy fields
-    action2 = {"type": "DRAW_CARD", "value1": 4}
+    # Action with only legacy fields (simulated via kwargs)
+    action2 = build_draw_command(amount=0, value1=4)
+    # Note: build_draw_command forces amount=1 default if not provided, so explicit amount=0/None needed or careful construction.
+    # Actually build_draw_command default is 1.
+    # If we want to test "only legacy fields", we might need to bypass builder default or use explicit dict if builder enforces canonical.
+    # But let's try to abuse builder:
+    action2 = {"type": "DRAW_CARD", "value1": 4} # Keep raw dict for legacy-only test case to ensure coverage of legacy path
     cmd2 = ensure_executable_command(action2)
     assert cmd2['amount'] == 4
 
 def test_str_normalization():
     """Test string parameter normalization."""
-    action = {"type": "MUTATE", "str_val": "TEST", "target_group": "NONE"}
+    action = build_mutate_command(mutation_kind="NONE", str_val="TEST", target_group="NONE")
     cmd = ensure_executable_command(action)
     assert cmd['str_param'] == "TEST"
     assert cmd['str_val'] == "TEST"
 
-    action2 = {"type": "MUTATE", "str_param": "TEST2", "target_group": "NONE"}
+    action2 = build_mutate_command(mutation_kind="NONE", str_param="TEST2", target_group="NONE")
     cmd2 = ensure_executable_command(action2)
     assert cmd2['str_val'] == "TEST2"
     assert cmd2['str_param'] == "TEST2"

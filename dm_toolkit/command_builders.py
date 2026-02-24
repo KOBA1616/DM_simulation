@@ -439,3 +439,134 @@ def build_choice_command(
         **kwargs
     }
     return _ensure_uid(cmd)
+
+def build_play_card_command(
+    card_id: int,
+    source_instance_id: int,
+    from_zone: str = "HAND",
+    to_zone: str = "BATTLE",
+    amount: int = 1,
+    native: bool = False,
+    **kwargs: Any
+) -> Union[Dict[str, Any], Any]:
+    """
+    Build a standardized PLAY_FROM_ZONE command.
+
+    Args:
+        card_id: Card ID (for reference, usually tracked by instance)
+        source_instance_id: Card instance ID to play
+        from_zone: Source zone (default: HAND)
+        to_zone: Destination zone (default: BATTLE)
+        amount: Number of cards to play (usually 1)
+        native: If True, returns a native CommandDef object
+        **kwargs: Additional command fields
+
+    Returns:
+        GameCommand dictionary or CommandDef object
+    """
+    if native:
+        return _build_native_command("PLAY_FROM_ZONE", instance_id=source_instance_id,
+                                     from_zone=from_zone, to_zone=to_zone,
+                                     amount=amount, **kwargs)
+
+    cmd = {
+        "type": "PLAY_FROM_ZONE",
+        "instance_id": source_instance_id,
+        "from_zone": from_zone,
+        "to_zone": to_zone,
+        "amount": amount,
+        "card_id": card_id, # Optional legacy info
+        **kwargs
+    }
+    return _ensure_uid(cmd)
+
+
+def build_pass_command(
+    native: bool = False,
+    **kwargs: Any
+) -> Union[Dict[str, Any], Any]:
+    """
+    Build a standardized PASS command.
+
+    Args:
+        native: If True, returns a native CommandDef object
+        **kwargs: Additional command fields
+
+    Returns:
+        GameCommand dictionary or CommandDef object
+    """
+    if native:
+        return _build_native_command("PASS", **kwargs)
+
+    cmd = {
+        "type": "PASS",
+        **kwargs
+    }
+    return _ensure_uid(cmd)
+
+
+def build_shield_burn_command(
+    amount: int,
+    owner_id: Optional[int] = None,
+    native: bool = False,
+    **kwargs: Any
+) -> Union[Dict[str, Any], Any]:
+    """
+    Build a standardized SHIELD_BURN command.
+
+    Args:
+        amount: Number of shields to burn
+        owner_id: Optional player ID
+        native: If True, returns a native CommandDef object
+        **kwargs: Additional command fields
+
+    Returns:
+        GameCommand dictionary or CommandDef object
+    """
+    if native:
+        return _build_native_command("SHIELD_BURN", amount=amount, owner_id=owner_id, **kwargs)
+
+    cmd = {
+        "type": "SHIELD_BURN",
+        "amount": amount,
+        **kwargs
+    }
+    if owner_id is not None:
+        cmd["owner_id"] = owner_id
+    return _ensure_uid(cmd)
+
+
+def build_discard_command(
+    amount: int,
+    from_zone: str = "HAND",
+    owner_id: Optional[int] = None,
+    native: bool = False,
+    **kwargs: Any
+) -> Union[Dict[str, Any], Any]:
+    """
+    Build a standardized DISCARD command.
+
+    Args:
+        amount: Number of cards to discard
+        from_zone: Source zone (default: HAND)
+        owner_id: Optional player ID
+        native: If True, returns a native CommandDef object
+        **kwargs: Additional command fields
+
+    Returns:
+        GameCommand dictionary or CommandDef object
+    """
+    if native:
+        return _build_native_command("DISCARD", amount=amount, from_zone=from_zone,
+                                     to_zone="GRAVEYARD", owner_id=owner_id, **kwargs)
+
+    cmd = {
+        "type": "DISCARD",
+        "amount": amount,
+        "from_zone": from_zone,
+        "to_zone": "GRAVEYARD",
+        **kwargs
+    }
+    if owner_id is not None:
+        cmd["owner_id"] = owner_id
+    return _ensure_uid(cmd)
