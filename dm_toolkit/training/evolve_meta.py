@@ -19,15 +19,10 @@ if TYPE_CHECKING:
     HAS_MODULE = True
 else:
     try:
-        # Prefer the packaged shim if available
-        from dm_toolkit import dm_ai_module as _dm_module  # type: ignore
+        import dm_ai_module as _dm_module  # type: ignore
         dm_ai_module = _dm_module
     except Exception:
-        try:
-            import dm_ai_module as _dm_module  # type: ignore
-            dm_ai_module = _dm_module
-        except Exception:
-            dm_ai_module = None
+        dm_ai_module = None
 
     if dm_ai_module is None:
         HAS_MODULE = False

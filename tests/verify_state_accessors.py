@@ -6,19 +6,14 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from dm_toolkit.engine.compat import EngineCompat
-try:
-    from dm_ai_module import GameState, Phase, PlayerStub
-except ImportError:
-    # Fallback if dm_ai_module is not directly importable (e.g. strict environment)
-    # But usually it should be via the shim or PYTHONPATH
-    from dm_toolkit.dm_ai_module import GameState, Phase, PlayerStub
+from dm_ai_module import GameState, Phase, Player
 
 class TestEngineCompatAccessors(unittest.TestCase):
     def setUp(self):
         self.state = GameState()
         # Ensure minimal setup
         if not hasattr(self.state, 'players') or not self.state.players:
-            self.state.players = [PlayerStub(), PlayerStub()]
+            self.state.players = [Player(), Player()]
 
         self.state.active_player_id = 0
         self.state.current_phase = Phase.MANA

@@ -1,2 +1,5 @@
-from dm_ai_module import IS_NATIVE
-print(f"IS_NATIVE: {IS_NATIVE}")
+import dm_ai_module
+try:
+    print(f"CardStub: {dm_ai_module.CardStub}")
+except AttributeError:
+    print("CardStub not found")
