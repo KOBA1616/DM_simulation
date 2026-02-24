@@ -70,10 +70,20 @@ class EffectTracer:
         }
         self._trace_log.append(entry)
 
-    def log_command(self, command: Dict[str, Any]) -> None:
+    def log_command(self, command: Any) -> None:
         """Helper to log a command execution."""
-        cmd_type = command.get("type", "UNKNOWN")
-        self.log_event(TraceEventType.COMMAND_EXECUTION, f"Executing {cmd_type}", command)
+        if hasattr(command, 'to_dict'):
+            cmd_data = command.to_dict()
+        elif isinstance(command, dict):
+            cmd_data = command
+        else:
+            # Fallback for objects without to_dict
+            cmd_data = {"type": getattr(command, "type", "UNKNOWN")}
+            if hasattr(command, "__dict__"):
+                cmd_data.update(command.__dict__)
+
+        cmd_type = cmd_data.get("type", "UNKNOWN")
+        self.log_event(TraceEventType.COMMAND_EXECUTION, f"Executing {cmd_type}", cmd_data)
 
     def log_state_snapshot(self, state: Any) -> None:
         """

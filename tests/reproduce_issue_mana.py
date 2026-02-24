@@ -6,8 +6,10 @@ import time
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "../bin"))
 sys.path.append(os.path.join(os.path.dirname(__file__), "../build"))
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 import dm_ai_module
+from dm_toolkit import command_builders as cb
 
 def test_mana_charge_repro():
     is_native = getattr(dm_ai_module, 'IS_NATIVE', False)
@@ -59,11 +61,11 @@ def test_mana_charge_repro():
                 print(f"Charging card {card.instance_id}...")
 
                 # Construct command for apply_move
-                cmd = {
-                    "type": int(dm_ai_module.CommandType.MANA_CHARGE),
-                    "instance_id": card.instance_id,
-                    "owner_id": 0
-                }
+                cmd = cb.build_mana_charge_command(
+                    source_instance_id=card.instance_id,
+                    native=True,
+                    owner_id=0
+                )
 
                 # Execute via Pipeline
                 state.apply_move(cmd)
@@ -79,7 +81,7 @@ def test_mana_charge_repro():
                 print(f"Phase after charge: {state.current_phase}")
 
                 print("Passing to Main...")
-                pass_cmd = {"type": int(dm_ai_module.CommandType.PASS)}
+                pass_cmd = cb.build_pass_command(native=True)
                 state.apply_move(pass_cmd)
 
                 print(f"Phase after PASS: {state.current_phase}")
