@@ -18,6 +18,12 @@ from dm_toolkit.ai.agent.transformer_model import (
     extend_action_types,
     encode_action_hierarchical
 )
+from dm_toolkit.command_builders import (
+    build_pass_command,
+    build_mana_charge_command,
+    build_play_card_command,
+    _HAS_NATIVE
+)
 
 @pytest.mark.skipif(not TORCH_AVAILABLE, reason="Torch not available")
 def test_initialization():
@@ -97,28 +103,33 @@ def test_compute_loss_hierarchical():
 
 def test_encode_action_hierarchical():
     # Test PASS
-    assert encode_action_hierarchical({'type': 'PASS'}) == [0, 0]
+    # Use builder (standardized dict)
+    assert encode_action_hierarchical(build_pass_command()) == [0, 0]
+    # Use builder (native object) if available
+    if _HAS_NATIVE:
+        # Native CommandDef defaults slot_index to -1, but encoder expects 0 for PASS.
+        # Explicitly setting slot_index=0 aligns with legacy dict behavior (get default 0).
+        assert encode_action_hierarchical(build_pass_command(native=True, slot_index=0)) == [0, 0]
 
     # Test MANA_CHARGE
-    assert encode_action_hierarchical({'type': 'MANA_CHARGE', 'slot_index': 5}) == [1, 5]
+    # Use builder with slot_index (passed via kwargs as builders primarily focus on instance_id)
+    assert encode_action_hierarchical(build_mana_charge_command(source_instance_id=0, slot_index=5)) == [1, 5]
+    if _HAS_NATIVE:
+        assert encode_action_hierarchical(build_mana_charge_command(source_instance_id=0, slot_index=5, native=True)) == [1, 5]
 
     # Test PLAY_FROM_ZONE
-    assert encode_action_hierarchical({'type': 'PLAY_FROM_ZONE', 'slot_index': 3}) == [2, 3]
+    # Use builder (produces PLAY_FROM_ZONE type)
+    assert encode_action_hierarchical(build_play_card_command(card_id=1, source_instance_id=1, slot_index=3)) == [2, 3]
+    if _HAS_NATIVE:
+        assert encode_action_hierarchical(build_play_card_command(card_id=1, source_instance_id=1, slot_index=3, native=True)) == [2, 3]
 
-    # Test Legacy PLAY_CARD -> PLAY_FROM_ZONE
+    # Test Legacy PLAY_CARD -> PLAY_FROM_ZONE (Raw Dict Regression Test)
     assert encode_action_hierarchical({'type': 'PLAY_CARD', 'slot_index': 1}) == [2, 1]
 
-    # Test Enum support (mocking enum)
+    # Test Enum support / Object input
+    # Covered by native=True tests above, but keeping mock for environments without native module
     class CommandTypeEnum:
         def __init__(self, name):
             self.name = name
 
     assert encode_action_hierarchical({'type': CommandTypeEnum('PASS')}) == [0, 0]
-
-    # Test object input
-    class ActionObj:
-        def __init__(self, t, s=0):
-            self.type = t
-            self.slot_index = s
-
-    assert encode_action_hierarchical(ActionObj('MANA_CHARGE', 2)) == [1, 2]

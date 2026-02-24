@@ -46,12 +46,14 @@ else:
         import dm_ai_module as _native_dm  # type: ignore
         ActionDef = getattr(_native_dm, 'ActionDef', object)
         CommandDef = getattr(_native_dm, 'CommandDef', object)
+        _HAS_NATIVE = True
     except Exception:
         # Dummy runtime fallbacks for environments without the compiled module
         class ActionDef:
             pass
         class CommandDef:
             pass
+        _HAS_NATIVE = False
 
 def to_command_dict(obj: Any) -> Dict[str, Any]:
     """
@@ -129,7 +131,7 @@ def to_command_dict(obj: Any) -> Dict[str, Any]:
     # map_action converts to dict internally if possible or returns error command.
     return map_action(obj)
 
-def ensure_executable_command(obj: Any) -> Dict[str, Any]:
+def ensure_executable_command(obj: Any) -> Union[Dict[str, Any], Any]:
     """
     Ensures the given object is a valid Command dictionary ready for execution.
     This is the Unified Execution Path entry point.
@@ -145,6 +147,10 @@ def ensure_executable_command(obj: Any) -> Dict[str, Any]:
     Returns:
         Validated and normalized Command dictionary ready for engine execution
     """
+    # Phase 3: Pass through native CommandDef objects directly
+    if _HAS_NATIVE and isinstance(obj, CommandDef):
+        return obj
+
     from dm_toolkit.compat_wrappers import normalize_legacy_fields
     
     # Capture original simple type hint when input is a dict so we can preserve

@@ -37,3 +37,24 @@ def test_to_json_action():
     cmd = ensure_executable_command(ja)
     assert isinstance(cmd, dict)
     assert cmd.get('type') == 'PASS'
+
+def test_native_command_passthrough():
+    try:
+        import dm_ai_module
+        if not hasattr(dm_ai_module, 'CommandDef'):
+             return # Skip if incomplete binding
+
+        cmd = dm_ai_module.CommandDef()
+        # Set some properties
+        if hasattr(dm_ai_module.CommandType, 'PASS'):
+             cmd.type = dm_ai_module.CommandType.PASS
+
+        result = ensure_executable_command(cmd)
+
+        # Verify identity (pass-through)
+        assert result is cmd
+        # Verify type
+        assert isinstance(result, dm_ai_module.CommandDef)
+
+    except ImportError:
+        pass # Skip if native module not available
