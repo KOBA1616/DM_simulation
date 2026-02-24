@@ -191,6 +191,24 @@ def _build_native_command(cmd_type_str: str, **kwargs: Any) -> Any:
                 false_cmds.append(_build_native_command(ctype, **item_kwargs))
         cmd.if_false = false_cmds
 
+    # Handle Options (List[List[CommandDef]])
+    if 'options' in kwargs and kwargs['options']:
+        options_list = []
+        for opt_group in kwargs['options']:
+            native_group = []
+            for item in opt_group:
+                if isinstance(item, _CommandDef):
+                    native_group.append(item)
+                elif isinstance(item, dict):
+                    ctype = item.get('type', 'NONE')
+                    item_kwargs = item.copy()
+                    if 'type' in item_kwargs: del item_kwargs['type']
+                    native_group.append(_build_native_command(ctype, **item_kwargs))
+            options_list.append(native_group)
+        # Note: CommandDef must support 'options' field (std::vector<std::vector<CommandDef>>)
+        if hasattr(cmd, 'options'):
+            cmd.options = options_list
+
     return cmd
 
 
@@ -470,16 +488,6 @@ def build_attack_player_command(
         GameCommand dictionary or CommandDef object
     """
     if native:
-        # Note: target_player is usually mapped to target_group?
-        # Or owner_id? CommandDef has owner_id and target_group.
-        # ATTACK_PLAYER usually targets a player ID.
-        # Check logic: CommandType.ATTACK_PLAYER.
-        # CommandDef has 'target_instance' for creature attack.
-        # For player attack, it probably uses 'target_group' = PLAYER_OPPONENT or specific ID?
-        # But 'target_player' is passed as int.
-        # Map to 'owner_id' (if target is owner?) or special handling?
-        # Assuming ATTACK_PLAYER command handles it via owner_id or just type.
-        # For now, map instance_id -> attacker.
         return _build_native_command("ATTACK_PLAYER", instance_id=attacker_instance_id,
                                      owner_id=target_player, **kwargs)
 
@@ -509,6 +517,9 @@ def build_choice_command(
     Returns:
         GameCommand dictionary ready for execution
     """
+    if native:
+        return _build_native_command("CHOICE", options=options, amount=amount, **kwargs)
+
     cmd = {
         "type": "CHOICE",
         "options": options,
