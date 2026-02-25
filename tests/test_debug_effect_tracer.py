@@ -3,6 +3,7 @@ import json
 import time
 import os
 from dm_toolkit.debug.effect_tracer import EffectTracer, TraceEventType, get_tracer
+from dm_toolkit.command_builders import build_play_card_command
 
 class TestDebugEffectTracer:
 
@@ -54,13 +55,13 @@ class TestDebugEffectTracer:
 
     def test_log_command(self, tracer):
         tracer.start_tracing()
-        cmd = {"type": "PLAY_CARD", "card_id": 123}
+        cmd = build_play_card_command(card_id=123, source_instance_id=0, native=False)
         tracer.log_command(cmd)
 
         trace = tracer.get_trace()
         event = trace[-1]
         assert event["type"] == TraceEventType.COMMAND_EXECUTION.value
-        assert event["message"] == "Executing PLAY_CARD"
+        assert event["message"] == f"Executing {cmd['type']}"
         assert event["data"] == cmd
 
     def test_log_state_snapshot(self, tracer):

@@ -1,9 +1,10 @@
 import json
 from dm_toolkit.unified_execution import ensure_executable_command, to_command_dict
+from dm_toolkit.command_builders import build_play_card_command
 
 
 def test_dict_action_play_card():
-    action = {"type": "PLAY_CARD", "card_id": 123, "source_instance_id": 77}
+    action = build_play_card_command(card_id=123, source_instance_id=77, native=False)
     cmd = ensure_executable_command(action)
     assert isinstance(cmd, dict)
     # Accept several PLAY-like mappings (engine may normalize to PLAY_FROM_ZONE)
