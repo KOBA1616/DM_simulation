@@ -1,0 +1,14 @@
+GameInstance constructor called with seed=0
+GameInstance constructor called with seed=0
+GameInstance constructor called with seed=0
+GameInstance constructor called with seed=0
+GameInstance constructor called with seed=42
+GameInstance constructor called with seed=42
+GameInstance constructor called with seed=42
+GameInstance constructor called with seed=42
+GameInstance constructor called with seed=42
+GameInstance constructor called with seed=42
+GameInstance constructor called with seed=42
+GameInstance constructor called with seed=42
+GameInstance constructor called with seed=3066823183
+GameInstance constructor called with seed=42

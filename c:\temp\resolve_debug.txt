@@ -1,0 +1,14 @@
+Before switch: cmd.type=52
+Before switch: cmd.type=6
+Before switch: cmd.type=52
+Before switch: cmd.type=6
+Before switch: cmd.type=6
+Before switch: cmd.type=52
+Before switch: cmd.type=6
+Before switch: cmd.type=6
+Before switch: cmd.type=52
+Before switch: cmd.type=6
+Before switch: cmd.type=6
+Before switch: cmd.type=52
+Before switch: cmd.type=6
+Before switch: cmd.type=6

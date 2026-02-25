@@ -553,6 +553,18 @@ void bind_engine(py::module &m) {
                   }
                 } catch (...) {
                 }
+
+                try {
+                  if (py::isinstance(obj, m.attr("DecideCommand"))) {
+                    auto dc = obj.cast<std::shared_ptr<
+                        dm::engine::game_command::DecideCommand>>();
+                    auto p = std::make_unique<
+                        dm::engine::game_command::DecideCommand>(
+                        dc->query_id, dc->selected_indices, dc->selected_option_index);
+                    cmd = std::move(p);
+                  }
+                } catch (...) {
+                }
               }
 
               if (cmd) {

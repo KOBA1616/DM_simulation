@@ -658,3 +658,194 @@ def build_discard_command(
     if owner_id is not None:
         cmd["owner_id"] = owner_id
     return _ensure_uid(cmd)
+
+
+def build_select_target_command(
+    target_group: Union[str, int],
+    amount: int = 1,
+    output_value_key: Optional[str] = None,
+    native: bool = False,
+    **kwargs: Any
+) -> Union[Dict[str, Any], Any]:
+    """
+    Build a standardized SELECT_TARGET command.
+
+    Args:
+        target_group: Target scope (e.g., PLAYER_SELF, NONE, ALL_PLAYERS)
+        amount: Number of targets to select
+        output_value_key: Key to store selection result in execution context
+        native: If True, returns a native CommandDef object
+        **kwargs: Additional command fields
+
+    Returns:
+        GameCommand dictionary or CommandDef object
+    """
+    # For SELECT_TARGET, str_param often holds legacy "SELECT_TARGET" value,
+    # but target_group is the primary field.
+    if native:
+        return _build_native_command("SELECT_TARGET", target_group=target_group,
+                                     amount=amount, output_value_key=output_value_key, **kwargs)
+
+    cmd = {
+        "type": "SELECT_TARGET",
+        "target_group": target_group,
+        "amount": amount,
+        **kwargs
+    }
+    if output_value_key:
+        cmd["output_value_key"] = output_value_key
+    return _ensure_uid(cmd)
+
+
+def build_look_to_buffer(
+    look_count: int,
+    from_zone: str = "DECK",
+    native: bool = False,
+    **kwargs: Any
+) -> Union[Dict[str, Any], Any]:
+    """
+    Build a LOOK_TO_BUFFER command.
+
+    Args:
+        look_count: Number of cards to look at
+        from_zone: Source zone (default: DECK)
+        native: If True, returns a native CommandDef object
+        **kwargs: Additional command fields
+
+    Returns:
+        GameCommand dictionary or CommandDef object
+    """
+    if native:
+        # Note: Native CommandType might be LOOK_TO_BUFFER
+        return _build_native_command("LOOK_TO_BUFFER", amount=look_count, from_zone=from_zone, **kwargs)
+
+    cmd = {
+        "type": "LOOK_TO_BUFFER",
+        "value1": look_count, # Legacy mapping
+        "from_zone": from_zone,
+        **kwargs
+    }
+    return _ensure_uid(cmd)
+
+
+def build_reveal_to_buffer(
+    look_count: int,
+    from_zone: str = "DECK",
+    native: bool = False,
+    **kwargs: Any
+) -> Union[Dict[str, Any], Any]:
+    """
+    Build a REVEAL_TO_BUFFER command.
+
+    Args:
+        look_count: Number of cards to reveal
+        from_zone: Source zone (default: DECK)
+        native: If True, returns a native CommandDef object
+        **kwargs: Additional command fields
+
+    Returns:
+        GameCommand dictionary or CommandDef object
+    """
+    if native:
+        return _build_native_command("REVEAL_TO_BUFFER", amount=look_count, from_zone=from_zone, **kwargs)
+
+    cmd = {
+        "type": "REVEAL_TO_BUFFER",
+        "value1": look_count, # Legacy mapping
+        "from_zone": from_zone,
+        **kwargs
+    }
+    return _ensure_uid(cmd)
+
+
+def build_select_from_buffer(
+    amount: int,
+    allow_duplicates: bool = False,
+    native: bool = False,
+    **kwargs: Any
+) -> Union[Dict[str, Any], Any]:
+    """
+    Build a SELECT_FROM_BUFFER command.
+
+    Args:
+        amount: Number of cards to select
+        allow_duplicates: Whether duplicates are allowed
+        native: If True, returns a native CommandDef object
+        **kwargs: Additional command fields
+
+    Returns:
+        GameCommand dictionary or CommandDef object
+    """
+    if native:
+        return _build_native_command("SELECT_FROM_BUFFER", amount=amount, **kwargs)
+
+    cmd = {
+        "type": "SELECT_FROM_BUFFER",
+        "value1": amount,
+        **kwargs
+    }
+    if allow_duplicates:
+        cmd["value2"] = 1 # Legacy flag
+    return _ensure_uid(cmd)
+
+
+def build_play_from_buffer(
+    max_cost: int,
+    to_zone: str = "BATTLE",
+    native: bool = False,
+    **kwargs: Any
+) -> Union[Dict[str, Any], Any]:
+    """
+    Build a PLAY_FROM_BUFFER command.
+
+    Args:
+        max_cost: Maximum cost of card to play
+        to_zone: Destination zone (default: BATTLE)
+        native: If True, returns a native CommandDef object
+        **kwargs: Additional command fields
+
+    Returns:
+        GameCommand dictionary or CommandDef object
+    """
+    if native:
+        return _build_native_command("PLAY_FROM_BUFFER", from_zone="BUFFER", to_zone=to_zone,
+                                     amount=max_cost, **kwargs) # amount is sometimes used for cost constraint
+
+    cmd = {
+        "type": "PLAY_FROM_BUFFER",
+        "value1": max_cost,
+        "to_zone": to_zone,
+        **kwargs
+    }
+    return _ensure_uid(cmd)
+
+
+def build_move_buffer_to_zone(
+    amount: int,
+    to_zone: str = "HAND",
+    native: bool = False,
+    **kwargs: Any
+) -> Union[Dict[str, Any], Any]:
+    """
+    Build a MOVE_BUFFER_TO_ZONE command.
+
+    Args:
+        amount: Number of cards to move
+        to_zone: Destination zone (default: HAND)
+        native: If True, returns a native CommandDef object
+        **kwargs: Additional command fields
+
+    Returns:
+        GameCommand dictionary or CommandDef object
+    """
+    if native:
+        return _build_native_command("MOVE_BUFFER_TO_ZONE", from_zone="BUFFER", to_zone=to_zone,
+                                     amount=amount, **kwargs)
+
+    cmd = {
+        "type": "MOVE_BUFFER_TO_ZONE",
+        "value1": amount,
+        "to_zone": to_zone,
+        **kwargs
+    }
+    return _ensure_uid(cmd)
