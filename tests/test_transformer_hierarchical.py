@@ -104,7 +104,7 @@ def test_compute_loss_hierarchical():
 def test_encode_action_hierarchical():
     # Test PASS
     # Use builder (standardized dict)
-    assert encode_action_hierarchical(build_pass_command()) == [0, 0]
+    assert encode_action_hierarchical(build_pass_command(native=False)) == [0, 0]
     # Use builder (native object) if available
     if _HAS_NATIVE:
         # Native CommandDef defaults slot_index to -1, but encoder expects 0 for PASS.
@@ -113,13 +113,13 @@ def test_encode_action_hierarchical():
 
     # Test MANA_CHARGE
     # Use builder with slot_index (passed via kwargs as builders primarily focus on instance_id)
-    assert encode_action_hierarchical(build_mana_charge_command(source_instance_id=0, slot_index=5)) == [1, 5]
+    assert encode_action_hierarchical(build_mana_charge_command(source_instance_id=0, slot_index=5, native=False)) == [1, 5]
     if _HAS_NATIVE:
         assert encode_action_hierarchical(build_mana_charge_command(source_instance_id=0, slot_index=5, native=True)) == [1, 5]
 
     # Test PLAY_FROM_ZONE
     # Use builder (produces PLAY_FROM_ZONE type)
-    assert encode_action_hierarchical(build_play_card_command(card_id=1, source_instance_id=1, slot_index=3)) == [2, 3]
+    assert encode_action_hierarchical(build_play_card_command(card_id=1, source_instance_id=1, slot_index=3, native=False)) == [2, 3]
     if _HAS_NATIVE:
         assert encode_action_hierarchical(build_play_card_command(card_id=1, source_instance_id=1, slot_index=3, native=True)) == [2, 3]
 

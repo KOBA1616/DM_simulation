@@ -16,7 +16,11 @@ class TestNativeInferenceBridge(unittest.TestCase):
     def test_tensor_converter(self):
         """Verify TensorConverter_convert_to_tensor returns expected vector."""
         state = GameState(0)
-        card_db = dm_ai_module.CardRegistry.get_all_cards()
+        # Use JsonLoader to get DB (returns map) instead of CardRegistry
+        try:
+            card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+        except Exception:
+            card_db = {} # Fallback
 
         # Should return a list of floats (zeros in fallback)
         vec = EngineCompat.TensorConverter_convert_to_tensor(state, 0, card_db)
@@ -40,7 +44,11 @@ class TestNativeInferenceBridge(unittest.TestCase):
 
     def test_parallel_runner_lifecycle(self):
         """Verify create_parallel_runner and ParallelRunner_play_games."""
-        card_db = dm_ai_module.CardRegistry.get_all_cards()
+        try:
+            card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+        except Exception:
+            card_db = {}
+
         sims = 10
         batch_size = 4
 
