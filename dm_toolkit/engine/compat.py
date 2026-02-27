@@ -828,15 +828,6 @@ class EngineCompat:
 
     @staticmethod
     def ActionGenerator_generate_legal_commands(state: GameState, card_db: CardDB) -> List[Any]:
-        """
-        Deprecated: Prefer ActionGenerator_generate_legal_commands for new code.
-        Returns raw Actions from the engine.
-        """
-        # Disabled to eliminate Action-based flows. Use dm_toolkit.commands.generate_legal_commands instead.
-        raise RuntimeError("ActionGenerator_generate_legal_commands is deprecated. Use generate_legal_commands.")
-
-    @staticmethod
-    def ActionGenerator_generate_legal_commands(state: GameState, card_db: CardDB) -> List[Any]:
         """Return a list of ICommand-like objects for the given state.
 
         Uses the Python compatibility helper `dm_toolkit.commands.generate_legal_commands`
@@ -845,7 +836,7 @@ class EngineCompat:
         EngineCompat._check_module()
         assert dm_ai_module is not None
         real_db = EngineCompat._resolve_db(card_db)
-        from dm_toolkit import commands_v2 as commands
+        from dm_toolkit import commands
         return commands.generate_legal_commands(state, real_db)
 
     @staticmethod

@@ -128,18 +128,17 @@ class EvolutionEcosystem:
                  if dm_ai_module.PhaseManager.check_game_over(instance.state, res):
                     break
 
+                 # Prefer native command-first generator (non-strict).
+                 cmds = []
                  try:
-                    # Prefer native command-first generator (non-strict).
-                    cmds = []
-                    try:
-                        cmds = commands.generate_legal_commands(instance.state, self.card_db, strict=False, skip_wrapper=True) or []
-                    except TypeError:
-                        cmds = commands.generate_legal_commands(instance.state, self.card_db) or []
-                    except Exception:
-                        cmds = []
+                     cmds = commands.generate_legal_commands(instance.state, self.card_db, strict=False, skip_wrapper=True) or []
+                 except TypeError:
+                     cmds = commands.generate_legal_commands(instance.state, self.card_db) or []
+                 except Exception:
+                     cmds = []
 
                  legal_actions = []
-                 # Legacy ActionGenerator fallback is handled by commands_v2 when available.
+                 # Legacy ActionGenerator fallback is handled by commands when available.
                  if not legal_actions and not cmds:
                      dm_ai_module.PhaseManager.next_phase(instance.state, self.card_db)
                      continue
