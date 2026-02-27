@@ -23,7 +23,8 @@ class MockCommandDef:
 def test_conversion_consistency_basic():
     """Test basic conversion from dict to command."""
     # Using builder but injecting legacy field to verify normalization still works if builder allows kwargs
-    action = build_draw_command(amount=2, value1=2)
+    # native=False needed to ensure we get a dict that we can manipulate/assert against as a dict
+    action = build_draw_command(amount=2, value1=2, native=False)
 
     # 1. to_command_dict
     cmd1 = to_command_dict(action)
@@ -49,7 +50,7 @@ def test_conversion_consistency_conflict():
     """Test behavior when input has conflicting legacy and canonical fields."""
     # Input has both, different values.
     # map_action prioritizes 'amount' if present in input for _finalize_command
-    action = build_draw_command(amount=5, value1=10)
+    action = build_draw_command(amount=5, value1=10, native=False)
 
     cmd1 = to_command_dict(action)
     assert cmd1['amount'] == 5
@@ -66,7 +67,7 @@ def test_conversion_consistency_conflict():
     # Some handlers might copy it.
     # e.g. _handle_specific_moves -> SHIELD_BURN copies value1 explicitly
 
-    action_burn = build_shield_burn_command(amount=5, value1=10)
+    action_burn = build_shield_burn_command(amount=5, value1=10, native=False)
     # _handle_specific_moves:
     # if act_type == "SHIELD_BURN": cmd['amount'] = act.get('value1', 1)
     # It IGNORES 'amount' in input and uses 'value1' for SHIELD_BURN specific logic!
@@ -92,7 +93,7 @@ def test_conversion_consistency_conflict():
 
 def test_ensure_executable_idempotency():
     """Test that ensure_executable_command is idempotent-ish."""
-    action = build_draw_command(amount=2, value1=2)
+    action = build_draw_command(amount=2, value1=2, native=False)
     cmd = ensure_executable_command(action)
 
     # Pass the result back in
@@ -105,7 +106,7 @@ def test_ensure_executable_idempotency():
 def test_object_input():
     """Test conversion from objects."""
     # Build a command then wrap in object
-    base_cmd = build_draw_command(amount=3, value1=3)
+    base_cmd = build_draw_command(amount=3, value1=3, native=False)
     obj = MockAction(base_cmd)
     cmd = ensure_executable_command(obj)
     assert cmd['amount'] == 3
@@ -114,12 +115,12 @@ def test_object_input():
 def test_missing_fields_normalization():
     """Test that missing fields are populated."""
     # Action with only canonical fields
-    action = build_draw_command(amount=4)
+    action = build_draw_command(amount=4, native=False)
     cmd = ensure_executable_command(action)
     assert cmd['value1'] == 4
 
     # Action with only legacy fields (simulated via kwargs)
-    action2 = build_draw_command(amount=0, value1=4)
+    action2 = build_draw_command(amount=0, value1=4, native=False)
     # Note: build_draw_command forces amount=1 default if not provided, so explicit amount=0/None needed or careful construction.
     # Actually build_draw_command default is 1.
     # If we want to test "only legacy fields", we might need to bypass builder default or use explicit dict if builder enforces canonical.
@@ -130,12 +131,12 @@ def test_missing_fields_normalization():
 
 def test_str_normalization():
     """Test string parameter normalization."""
-    action = build_mutate_command(mutation_kind="NONE", str_val="TEST", target_group="NONE")
+    action = build_mutate_command(mutation_kind="NONE", str_val="TEST", target_group="NONE", native=False)
     cmd = ensure_executable_command(action)
     assert cmd['str_param'] == "TEST"
     assert cmd['str_val'] == "TEST"
 
-    action2 = build_mutate_command(mutation_kind="NONE", str_param="TEST2", target_group="NONE")
+    action2 = build_mutate_command(mutation_kind="NONE", str_param="TEST2", target_group="NONE", native=False)
     cmd2 = ensure_executable_command(action2)
     assert cmd2['str_val'] == "TEST2"
     assert cmd2['str_param'] == "TEST2"

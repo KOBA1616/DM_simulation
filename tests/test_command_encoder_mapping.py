@@ -6,6 +6,12 @@ repo_root = str(pathlib.Path(__file__).resolve().parents[1])
 if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 import dm_ai_module as dm
+from dm_toolkit.command_builders import (
+    build_pass_command,
+    build_mana_charge_command,
+    build_play_card_command,
+    build_attack_player_command
+)
 
 def show(cmd_dict):
     try:
@@ -30,15 +36,16 @@ def show(cmd_dict):
         idx = f"ERROR: {e}"
     print(json.dumps({'cmd': cmd_dict, 'index': idx}, ensure_ascii=False))
 
+# Construct commands using builders where possible, falling back to dicts for edge cases or non-supported fields
 samples = [
-    {'type': 'PASS'},
-    {'type': 'MANA_CHARGE', 'slot_index': 3},
-    {'type': 'MANA_CHARGE'},
-    {'type': 'PLAY_FROM_ZONE', 'slot_index': 5},
-    {'type': 'PLAY', 'slot_index': 7},
-    {'type': 'PLAY_FROM_ZONE'},
-    {'type': 'ATTACK', 'instance_id': 42},
-    {'type': 'ATTACK'},
+    build_pass_command(native=False),
+    build_mana_charge_command(source_instance_id=0, slot_index=3, native=False), # instance_id 0 dummy
+    build_mana_charge_command(source_instance_id=0, native=False),
+    build_play_card_command(card_id=0, source_instance_id=0, slot_index=5, native=False),
+    {'type': 'PLAY', 'slot_index': 7}, # Legacy type explicit test
+    build_play_card_command(card_id=0, source_instance_id=0, native=False),
+    build_attack_player_command(attacker_instance_id=42, target_player=0, native=False),
+    {'type': 'ATTACK'}, # Legacy/Partial
     {'type': 'UNKNOWN', 'foo': 'bar'},
 ]
 

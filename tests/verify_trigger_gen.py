@@ -6,6 +6,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+from dm_toolkit.command_builders import build_destroy_command
 
 def test_trigger_text_generation():
     # Define a card with the new trigger and target
@@ -17,13 +18,13 @@ def test_trigger_text_generation():
             {
                 "trigger": "ON_OPPONENT_CREATURE_ENTER",
                 "commands": [
-                    {
-                        "type": "DESTROY",
-                        "filter": {
+                    build_destroy_command(
+                        native=False,
+                        target_filter={
                             "is_trigger_source": True,
                             "types": ["CREATURE"]
                         }
-                    }
+                    )
                 ]
             }
         ]

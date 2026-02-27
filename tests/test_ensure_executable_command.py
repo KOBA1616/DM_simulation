@@ -1,6 +1,6 @@
 import json
 from dm_toolkit.unified_execution import ensure_executable_command, to_command_dict
-from dm_toolkit.command_builders import build_play_card_command
+from dm_toolkit.command_builders import build_play_card_command, build_pass_command
 
 
 def test_dict_action_play_card():
@@ -30,7 +30,7 @@ def test_attribute_like_action():
 
 class JsonAction:
     def to_json(self):
-        return {"type": "PASS"}
+        return build_pass_command(native=False)
 
 
 def test_to_json_action():

@@ -43,15 +43,13 @@ class TestNativeCommandBuilders(unittest.TestCase):
             "filter": {"zones": ["BATTLE_ZONE"]}
         }
 
-        true_cmd_data = {
-            "type": "DRAW_CARD",
-            "amount": 1
-        }
+        # Using builder instead of dict literal
+        true_cmd = build_draw_command(amount=1, native=True)
 
         cmd = _build_native_command(
             "IF",
             condition=condition,
-            if_true=[true_cmd_data],
+            if_true=[true_cmd],
             target_group="PLAYER_SELF"
         )
 
