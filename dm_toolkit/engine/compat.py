@@ -858,6 +858,24 @@ class EngineCompat:
         EngineCompat._check_module()
         assert dm_ai_module is not None
 
+        # Phase 3: Direct Object Execution (Bypass dict conversion)
+        if hasattr(dm_ai_module, 'CommandDef') and isinstance(cmd, dm_ai_module.CommandDef):
+            get_tracer().log_command({"raw_cmd": str(cmd), "type": str(getattr(cmd, 'type', 'UNKNOWN'))})
+            try:
+                # Extract IDs for execution context
+                source_id = getattr(cmd, 'instance_id', -1)
+                # If owner_id is missing/invalid, default to active player
+                player_id = getattr(cmd, 'owner_id', getattr(state, 'active_player_id', 0))
+
+                # Check for CommandSystem availability
+                if hasattr(dm_ai_module, 'CommandSystem') and hasattr(dm_ai_module.CommandSystem, 'execute_command'):
+                    dm_ai_module.CommandSystem.execute_command(state, cmd, source_id, player_id, {})
+                    return
+            except Exception as e:
+                # Fall through to legacy path if direct execution fails (e.g. binding mismatch)
+                logger.warning(f"Direct CommandDef execution failed: {e}")
+                pass
+
         # Prepare dictionary if input is a dict or has to_dict
         cmd_dict = None
         if isinstance(cmd, dict):
