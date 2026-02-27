@@ -858,6 +858,21 @@ class EngineCompat:
         EngineCompat._check_module()
         assert dm_ai_module is not None
 
+        # Phase 3: Direct CommandDef execution
+        if dm_ai_module and hasattr(dm_ai_module, 'CommandDef') and isinstance(cmd, dm_ai_module.CommandDef):
+            try:
+                if hasattr(dm_ai_module, 'CommandSystem') and hasattr(dm_ai_module.CommandSystem, 'execute_command'):
+                    src = getattr(cmd, 'instance_id', -1)
+                    pid = getattr(cmd, 'owner_id', getattr(state, 'active_player_id', 0))
+
+                    # Call directly with the object
+                    dm_ai_module.CommandSystem.execute_command(state, cmd, src, pid, {})
+                    return
+            except Exception as e:
+                logger.exception(f'EngineCompat: exception during direct CommandDef execution: {e}')
+                # Fallthrough to legacy path if direct execution fails
+                pass
+
         # Prepare dictionary if input is a dict or has to_dict
         cmd_dict = None
         if isinstance(cmd, dict):
