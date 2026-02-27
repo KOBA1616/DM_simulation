@@ -7,9 +7,9 @@ from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.command_describer import describe_command
 from dm_toolkit.gui.dialogs.selection_dialog import CardSelectionDialog
 
-from dm_toolkit import commands_v2
-# Prefer the v2 command-first wrapper
-generate_legal_commands = commands_v2.generate_legal_commands
+from dm_toolkit import commands
+# Prefer the command-first wrapper
+generate_legal_commands = commands.generate_legal_commands
 
 if TYPE_CHECKING:
     from dm_toolkit.gui.app import GameWindow

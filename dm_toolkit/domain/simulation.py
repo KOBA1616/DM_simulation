@@ -139,7 +139,7 @@ class SimulationRunner:
 
                             # Generate legal mask
                     try:
-                        # Prefer command-first generator for legal mask; fallback via commands_v2 shim
+                        # Prefer command-first generator for legal mask; fallback via commands shim
                         from dm_toolkit import commands as commands
                         try:
                             legal_actions = commands.generate_legal_commands(s, self.card_db, strict=False, skip_wrapper=True) or []
