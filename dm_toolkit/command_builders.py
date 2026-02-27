@@ -217,7 +217,7 @@ def build_draw_command(
     to_zone: str = "HAND",
     amount: int = 1,
     owner_id: Optional[int] = None,
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -256,7 +256,7 @@ def build_transition_command(
     amount: int = 1,
     owner_id: Optional[int] = None,
     source_instance_id: Optional[int] = None,
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -296,7 +296,7 @@ def build_transition_command(
 def build_mana_charge_command(
     source_instance_id: int,
     from_zone: str = "HAND",
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -329,7 +329,7 @@ def build_destroy_command(
     source_instance_id: Optional[int] = None,
     from_zone: str = "BATTLE",
     target_filter: Optional[Dict[str, Any]] = None,
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -366,7 +366,7 @@ def build_destroy_command(
 def build_tap_command(
     source_instance_id: Optional[int] = None,
     target_filter: Optional[Dict[str, Any]] = None,
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -399,7 +399,7 @@ def build_tap_command(
 def build_untap_command(
     source_instance_id: Optional[int] = None,
     target_filter: Optional[Dict[str, Any]] = None,
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -434,7 +434,7 @@ def build_mutate_command(
     amount: int = 0,
     source_instance_id: Optional[int] = None,
     target_filter: Optional[Dict[str, Any]] = None,
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -472,7 +472,7 @@ def build_mutate_command(
 def build_attack_player_command(
     attacker_instance_id: int,
     target_player: int,
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -503,7 +503,7 @@ def build_attack_player_command(
 def build_choice_command(
     options: List[List[Dict[str, Any]]],
     amount: int = 1,
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -534,7 +534,7 @@ def build_play_card_command(
     from_zone: str = "HAND",
     to_zone: str = "BATTLE",
     amount: int = 1,
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -570,7 +570,7 @@ def build_play_card_command(
 
 
 def build_pass_command(
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -596,7 +596,7 @@ def build_pass_command(
 def build_shield_burn_command(
     amount: int,
     owner_id: Optional[int] = None,
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -628,7 +628,7 @@ def build_discard_command(
     amount: int,
     from_zone: str = "HAND",
     owner_id: Optional[int] = None,
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -664,7 +664,7 @@ def build_select_target_command(
     target_group: Union[str, int],
     amount: int = 1,
     output_value_key: Optional[str] = None,
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -700,7 +700,7 @@ def build_select_target_command(
 def build_look_to_buffer(
     look_count: int,
     from_zone: str = "DECK",
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -731,7 +731,7 @@ def build_look_to_buffer(
 def build_reveal_to_buffer(
     look_count: int,
     from_zone: str = "DECK",
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -761,7 +761,7 @@ def build_reveal_to_buffer(
 def build_select_from_buffer(
     amount: int,
     allow_duplicates: bool = False,
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -792,7 +792,7 @@ def build_select_from_buffer(
 def build_play_from_buffer(
     max_cost: int,
     to_zone: str = "BATTLE",
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
@@ -823,7 +823,7 @@ def build_play_from_buffer(
 def build_move_buffer_to_zone(
     amount: int,
     to_zone: str = "HAND",
-    native: bool = False,
+    native: bool = True,
     **kwargs: Any
 ) -> Union[Dict[str, Any], Any]:
     """
