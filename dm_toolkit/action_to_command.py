@@ -235,10 +235,6 @@ def map_action(action_data: Any) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # Phase 1: Native Command Pass-through
-    if dm_ai_module and hasattr(dm_ai_module, 'CommandDef') and isinstance(action_data, dm_ai_module.CommandDef):
-        return action_data.to_dict()
-
     # Safe Copy
     try:
         if hasattr(action_data, 'to_dict'):
