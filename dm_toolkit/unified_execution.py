@@ -147,7 +147,8 @@ def ensure_executable_command(obj: Any) -> Union[Dict[str, Any], Any]:
     Returns:
         Validated and normalized Command dictionary ready for engine execution
     """
-    # Phase 3: Pass through native CommandDef objects directly
+    # Phase 3: Pass through native CommandDef objects directly to EngineCompat
+    # This allows bypassing the overhead of dictionary conversion in the main execution path.
     if _HAS_NATIVE and isinstance(obj, CommandDef):
         return obj
 
