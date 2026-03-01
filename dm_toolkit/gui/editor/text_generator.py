@@ -1042,7 +1042,7 @@ class CardTextGenerator:
 
         action_proxy = {
             "type": cmd_type,
-            "scope": command_copy.get("target_group", "NONE"),
+            "scope": command_copy.get("scope") or command_copy.get("target_group", "NONE"),
             "filter": command_copy.get("target_filter") or command_copy.get("filter", {}),
             "value1": command_copy.get("amount") if command_copy.get("amount") is not None else command_copy.get("value1", 0),
             "value2": command_copy.get("val2") or command_copy.get("value2", 0),

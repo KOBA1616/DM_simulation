@@ -317,7 +317,7 @@ class GameWindow(QMainWindow):
             self.log_viewer.log_message(tr("Scenario Mode Disabled"))
 
     def open_simulation_dialog(self) -> None:
-        self.sim_dialog = SimulationDialog(self.card_db, self)
+        self.sim_dialog = SimulationDialog(self.card_db, self, self.p0_deck_ids, self.p1_deck_ids)
         self.sim_dialog.show()
 
     def load_deck_p0(self) -> None:
