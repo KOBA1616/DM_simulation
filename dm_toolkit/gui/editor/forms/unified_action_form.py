@@ -376,12 +376,13 @@ class UnifiedActionForm(BaseEditForm):
                         tf['cost_ref'] = key_var
                         model.params['target_filter'] = tf
 
-                # When using a dynamic cost reference (e.g. from selected number), target ALL matching cards by default
-                # 255 is the internal constant for AMOUNT_ALL
-                if hasattr(model, 'amount'):
-                    model.amount = 255
-                else:
-                    model.params['amount'] = 255
+                    # When using a dynamic cost reference (e.g. from selected number), target ALL matching cards by default
+                    # 255 is the internal constant for AMOUNT_ALL
+                    # Only apply this if target_filter is present (implying the command supports filtering)
+                    if hasattr(model, 'amount'):
+                        model.amount = 255
+                    else:
+                        model.params['amount'] = 255
 
             # Merge model back to dict
             dump = model.model_dump(exclude_none=True)
