@@ -36,27 +36,8 @@ def verify_enum_alignment():
         print(f"WARNING: The following enums exist in implementation but not in expectation: {new_in_impl}")
 
     # 5. Check action_to_command mapping logic (Simulation)
-    # We want to ensure map_action produces types present in actual_enums
-    try:
-        from dm_toolkit.action_to_command import map_action
-
-        test_cases = [
-            ({'type': 'DESTROY', 'source_zone': 'BATTLE_ZONE', 'to_zone': 'GRAVEYARD'}, 'DESTROY'),
-            # The plan says DESTROY should map to TRANSITION or DESTROY depending on engine expectation.
-            # But the primary goal is that the produced type MUST be in actual_enums.
-            ({'type': 'DRAW_CARD', 'player': 'p1'}, 'DRAW_CARD'), # or TRANSITION
-            ({'type': 'MANA_CHARGE', 'from_zone': 'HAND'}, 'MANA_CHARGE'),
-        ]
-
-        for action, name in test_cases:
-            cmd = map_action(action)
-            cmd_type = cmd.get('type')
-            if cmd_type not in actual_enums:
-                print(f"FAIL: map_action produced invalid type '{cmd_type}' for action '{name}'")
-                sys.exit(1)
-
-    except ImportError:
-        print("SKIP: dm_toolkit not found, skipping mapping verification.")
+    # 再発防止: action_to_command は削除済み。この検証セクションはスキップ。
+    print("SKIP: action_to_command は削除済みのためマッピング検証セクションをスキップ。")
 
     print("SUCCESS: CommandType enums are aligned.")
     sys.exit(0)

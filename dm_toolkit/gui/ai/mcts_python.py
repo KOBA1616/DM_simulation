@@ -149,13 +149,11 @@ class PythonMCTS:
     def _expand(self, node):
         action = node.untried_actions.pop()
         next_state = node.state.clone()
-        # Support both Action and ICommand objects
+        # 再発防止: unified_execution は削除済み。EngineCompat を直接使用する。
         try:
-            from dm_toolkit.unified_execution import ensure_executable_command
             from dm_toolkit.engine.compat import EngineCompat
             if hasattr(action, 'type'):
-                cmd = ensure_executable_command(action)
-                EngineCompat.ExecuteCommand(next_state, cmd, self.card_db)
+                EngineCompat.ExecuteCommand(next_state, action, self.card_db)
             else:
                 # ICommand-like
                 try:
@@ -278,21 +276,16 @@ class PythonMCTS:
                             # Fallback to random (includes PASS)
                             action = random.choice(actions)
                 
+                # 再発防止: unified_execution / compat_wrappers は削除済み。直接 EngineCompat を使用する。
                 try:
-                    from dm_toolkit.unified_execution import ensure_executable_command
                     from dm_toolkit.engine.compat import EngineCompat
-                    cmd = ensure_executable_command(action)
-                    EngineCompat.ExecuteCommand(current_state, cmd, self.card_db)
+                    EngineCompat.ExecuteCommand(current_state, action, self.card_db)
                 except Exception:
                     try:
-                        from dm_toolkit.compat_wrappers import execute_action_compat
-                        execute_action_compat(current_state, action, self.card_db)
+                        # Last resort: call native EffectResolver
+                        dm_ai_module.EffectResolver.resolve_action(current_state, action, self.card_db)
                     except Exception:
-                        try:
-                            # Last resort: call native EffectResolver
-                            dm_ai_module.EffectResolver.resolve_action(current_state, action, self.card_db)
-                        except Exception:
-                            pass
+                        pass
                 # Phase advancement: detect both Action and ICommand representations
                 try:
                     if hasattr(action, 'type') and getattr(action, 'type', None) in (dm_ai_module.CommandType.PASS, dm_ai_module.CommandType.MANA_CHARGE):

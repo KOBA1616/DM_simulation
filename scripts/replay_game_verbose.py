@@ -83,15 +83,11 @@ def replay(seed, deck=None, max_steps=200):
             action = ag1.get_action(gs, legal) if ag1 else None
         print('  Chosen action type:', getattr(action, 'type', None))
 
+        # 再発防止: compat_wrappers は削除済み。直接 resolve_action_oneshot を使用する。
         try:
-            from dm_toolkit.compat_wrappers import execute_action_compat
-            execute_action_compat(inst.state, action, card_db)
+            dm_ai_module.GameLogicSystem.resolve_action_oneshot(gs, action, card_db)
         except Exception as e:
             print('  resolve_action exception:', e)
-            try:
-                dm_ai_module.GameLogicSystem.resolve_action_oneshot(gs, action, card_db)
-            except Exception as e2:
-                print('  fallback resolve exception:', e2)
         # after action
         # after action
     print('Replay finished')

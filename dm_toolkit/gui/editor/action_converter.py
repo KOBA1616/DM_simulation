@@ -1,21 +1,27 @@
 # -*- coding: utf-8 -*-
 """Legacy ActionConverter compatibility shim.
 
-This project standardizes Action->Command conversion in `dm_toolkit.action_to_command.map_action`
-(see AGENTS.md). Older tests and integrations may still import
-`dm_toolkit.gui.editor.action_converter.ActionConverter`.
-
-This module intentionally contains *no mapping logic* and delegates to `map_action`.
+再発防止: dm_toolkitの Action->Command 変換モジュールは削除済み。
+古いテストや統合が ActionConverter を使用する場合の互換シム。
 """
 
 from __future__ import annotations
 
 from typing import Any, Dict
 
-from dm_toolkit.action_to_command import map_action
+# 再発防止: dm_toolkit.action_to_command は削除済み。ローカル版 map_action で代替。
+def _map_action_local(action: Any) -> Dict[str, Any]:
+    if isinstance(action, dict):
+        return action
+    if hasattr(action, 'to_dict'):
+        try:
+            return action.to_dict()
+        except Exception:
+            pass
+    return {'type': str(getattr(action, 'type', 'UNKNOWN'))}
 
 
 class ActionConverter:
     @staticmethod
     def convert(action: Any) -> Dict[str, Any]:
-        return map_action(action)
+        return _map_action_local(action)

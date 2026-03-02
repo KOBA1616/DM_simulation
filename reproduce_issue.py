@@ -17,7 +17,12 @@ class MockCommandDef:
 mock_dm.CommandDef = MockCommandDef
 sys.modules['dm_ai_module'] = mock_dm
 
-from dm_toolkit.unified_execution import ensure_executable_command, execute_command
+# 再発防止: unified_execution は削除済み。ローカルスタブに置き換え。
+def ensure_executable_command(cmd):
+    return cmd
+def execute_command(state, cmd):
+    import dm_ai_module as _dm
+    _dm.CommandSystem.execute_command(state, cmd, None, None, None)
 from dm_toolkit.engine.compat import EngineCompat
 
 def test_direct_execution():

@@ -18,9 +18,9 @@ Usage:
     draw_cmd = build_draw_command(amount=2)
     transition_cmd = build_transition_command(from_zone="HAND", to_zone="MANA", amount=1)
     
-    # Execute via unified execution path
-    from dm_toolkit.unified_execution import ensure_executable_command
-    cmd = ensure_executable_command(draw_cmd)
+    # Execute via EngineCompat (unified_execution は削除済み)
+    # from dm_toolkit.engine.compat import EngineCompat
+    # EngineCompat.ExecuteCommand(state, draw_cmd, card_db)
 
 Migration Path:
     Phase 1: Use alongside map_action for gradual transition

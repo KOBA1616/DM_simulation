@@ -441,10 +441,13 @@ class EngineCompat:
     @staticmethod
     def EffectResolver_resolve_action(state: GameState, action: Any, card_db: CardDB) -> None:
         # Improved logging with structured data
+        # 再発防止: action_to_command は削除済み。ローカル変換でログする。
         log_data: Dict[str, Any] = {"action_str": str(action)}
         try:
-            from dm_toolkit.action_to_command import map_action
-            log_data["command_map"] = map_action(action)
+            if isinstance(action, dict):
+                log_data["command_map"] = action
+            elif hasattr(action, 'to_dict'):
+                log_data["command_map"] = action.to_dict()
         except Exception:
             pass
         get_tracer().log_event(TraceEventType.EFFECT_RESOLUTION, "Resolving Action", log_data)
@@ -467,22 +470,15 @@ class EngineCompat:
         except Exception:
             pass
 
-        # Attempt unified conversion to Command dict and execute via EngineCompat
+        # 再発防止: unified_execution は削除済み。直接 ExecuteCommand を尋る。
         try:
-            from dm_toolkit.unified_execution import ensure_executable_command
-            cmd = ensure_executable_command(action)
-            # If conversion is inconclusive (NONE or legacy_warning), defer to native resolver
-            if isinstance(cmd, dict) and (cmd.get('type') in (None, 'NONE') or cmd.get('legacy_warning')):
-                raise RuntimeError('Inconclusive unified conversion; use native resolver')
-            EngineCompat.ExecuteCommand(state, cmd, card_db)
+            EngineCompat.ExecuteCommand(state, action, card_db)
             return
         except Exception:
             pass
 
-        # Legacy fallback: call native resolver directly if available
-        # REMOVED: GenericCardSystem (EffectResolver.resolve_action) is incomplete.
-        # All actions must be convertible to commands via ensure_executable_command.
-        logger.warning("EffectResolver_resolve_action: Action could not be converted to Command: %s", action)
+        # Legacy fallback
+        logger.warning("EffectResolver_resolve_action: Action could not be executed: %s", action)
 
     @staticmethod
     def PhaseManager_next_phase(state: GameState, card_db: CardDB) -> None:

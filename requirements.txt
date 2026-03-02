@@ -1,6 +1,5 @@
+# コア・ヘッドレス専用依存（PyQt6 は含まない）
+# 再発防止: GUI ライブラリをここに追加しないこと。GUI 依存は requirements-gui.txt に記載する。
 numpy
-torch
-PyQt6
-onnx
 onnxruntime>=1.18.0
 pydantic>=2.0

@@ -46,8 +46,22 @@ import dm_ai_module as dm
 import random
 import time
 from dm_toolkit.engine.compat import EngineCompat
-from dm_toolkit.action_to_command import map_action
 from dm_toolkit import commands as commands
+
+# 再発防止: dm_toolkit.action_to_command は削除済み。ローカル版 map_action で代替。
+def map_action(act):
+    """アクション/コマンドを辞書にシリアライズする診断ユーティリティ（ローカル版）。"""
+    if isinstance(act, dict):
+        return act
+    if hasattr(act, 'to_dict'):
+        try:
+            return act.to_dict()
+        except Exception:
+            pass
+    return {
+        'type': str(getattr(act, 'type', 'UNKNOWN')),
+        'source_instance_id': getattr(act, 'source_instance_id', getattr(act, 'instance_id', -1)),
+    }
 
 # Robustly ensure ActionEncoder availability
 try:
@@ -776,14 +790,11 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 tb[act_type] = tb.get(act_type, 0) + 1
             except Exception:
                 pass
+            # 再発防止: compat_wrappers は削除済み。直接 GameLogicSystem.resolve_action を使用する。
             try:
-                from dm_toolkit.compat_wrappers import execute_action_compat
-                execute_action_compat(instances[game_idx].state, chosen, CARD_DB)
+                dm.GameLogicSystem.resolve_action(instances[game_idx].state, chosen, CARD_DB)
             except Exception:
-                try:
-                    dm.GameLogicSystem.resolve_action(instances[game_idx].state, chosen, CARD_DB)
-                except Exception:
-                    pass
+                pass
             try:
                 if is_command_type(chosen, dm.CommandType.PASS):
                     dm.PhaseManager.next_phase(instances[game_idx].state, CARD_DB)
@@ -954,14 +965,11 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 tb[act_type] = tb.get(act_type, 0) + 1
             except Exception:
                 pass
+            # 再発防止: compat_wrappers は削除済み。直接 GameLogicSystem.resolve_action を使用する。
             try:
-                from dm_toolkit.compat_wrappers import execute_action_compat
-                execute_action_compat(instances[game_idx].state, chosen, CARD_DB)
+                dm.GameLogicSystem.resolve_action(instances[game_idx].state, chosen, CARD_DB)
             except Exception:
-                try:
-                    dm.GameLogicSystem.resolve_action(instances[game_idx].state, chosen, CARD_DB)
-                except Exception:
-                    pass
+                pass
             try:
                 if is_command_type(chosen, dm.CommandType.PASS):
                     dm.PhaseManager.next_phase(instances[game_idx].state, CARD_DB)

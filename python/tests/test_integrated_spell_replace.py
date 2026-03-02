@@ -8,7 +8,9 @@ import sys
 sys.path.insert(0, r'C:\Users\ichirou\DM_simulation')
 
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-from dm_toolkit.unified_execution import ensure_executable_command
+# 再発防止: unified_execution は削除済み。ローカルスタブに置き換え。
+def ensure_executable_command(cmd):
+    return cmd
 
 def test_text_generation():
     """テキスト生成の確認"""

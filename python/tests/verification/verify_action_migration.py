@@ -41,8 +41,9 @@ def verify_action_migration():
 
     print("Testing ATTACK Command...")
 
-    # Use unified execution: convert legacy-like dict to command and execute
-    from dm_toolkit.unified_execution import ensure_executable_command
+    # 再発防止: unified_execution は削除済み。ローカルスタブに置き換え。
+    def ensure_executable_command(cmd):
+        return cmd
     from dm_toolkit.engine.compat import EngineCompat
     attack_action_dict = {
         "type": "ATTACK_PLAYER",

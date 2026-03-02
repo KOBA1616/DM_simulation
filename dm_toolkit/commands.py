@@ -1,6 +1,15 @@
 from typing import Any, Dict, Optional, Protocol, runtime_checkable, List, cast
 import os
-from dm_toolkit.action_to_command import map_action
+# 再発防止: action_to_command は削除済み。ローカル版 map_action で代替。
+def map_action(act: Any) -> Dict[str, Any]:
+    if isinstance(act, dict):
+        return act
+    if hasattr(act, 'to_dict'):
+        try:
+            return act.to_dict()
+        except Exception:
+            pass
+    return {'type': str(getattr(act, 'type', 'UNKNOWN')), 'source_instance_id': getattr(act, 'source_instance_id', getattr(act, 'instance_id', -1))}
 import warnings
 import logging
 
@@ -120,7 +129,7 @@ def wrap_action(action: Any) -> Optional[ICommand]:
 
     - If `action` already implements `execute`, return it.
     - Otherwise, returns a wrapper that implements `execute` via unified command path
-      and `to_dict` via `map_action` from `action_to_command`.
+      and `to_dict` via the local `map_action` fallback.
     """
     if action is None:
         return None
@@ -153,17 +162,9 @@ def wrap_action(action: Any) -> Optional[ICommand]:
 
         def execute(self, state: Any, card_db: Any = None) -> Optional[Any]:
             try:
-                from dm_toolkit.unified_execution import ensure_executable_command
+                # 再発防止: unified_execution は削除済み。EngineCompat を直接使用する。
                 from dm_toolkit.engine.compat import EngineCompat
-                # Accept optional card_db when callers provide it (some callers
-                # invoke execute(state, card_db)). Support both signatures.
-                try:
-                    # Try to read card_db if provided as second arg via Python's call
-                    import inspect
-                    sig = inspect.signature(self.execute)
-                except Exception:
-                    pass
-                cmd = ensure_executable_command(self._action)
+                cmd = self._action
                 # Pass through card_db when provided by caller.
                 try:
                     EngineCompat.ExecuteCommand(state, cmd, card_db)
@@ -187,13 +188,10 @@ def wrap_action(action: Any) -> Optional[ICommand]:
             return None
 
         def to_dict(self) -> Dict[str, Any]:
-            # Use the unified execution mapper to preserve all normalization
+            # 再発防止: unified_execution.to_command_dict は削除済み。ローカル map_action で代替。
             try:
-                from dm_toolkit.unified_execution import to_command_dict
-                cmd = to_command_dict(self._action)
+                cmd = map_action(self._action)
                 try:
-                    # Fix legacy normalization where ATTACK was converted to
-                    # type 'NONE' with a legacy_original_type marker.
                     if isinstance(cmd, dict):
                         orig = cmd.get('legacy_original_type') or cmd.get('legacy_type')
                         if isinstance(orig, str) and orig.upper() == 'ATTACK':
@@ -203,11 +201,7 @@ def wrap_action(action: Any) -> Optional[ICommand]:
                     pass
                 return cmd
             except Exception:
-                # Fallback to direct mapping if unified path fails
-                try:
-                    return map_action(self._action)
-                except Exception:
-                    return {"type": "NONE"}
+                return {"type": "NONE"}
 
         def to_string(self) -> str:
             # Check if underlying action has to_string
@@ -314,33 +308,14 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
             except Exception:
                 pass
 
-            # Normalize native actions to command dicts when possible so we can
-            # reliably detect whether PLAY_CARD (or its unified equivalent)
-            # is present. This absorbs differences where native bindings
-            # expose enums/fields differently (int vs Enum, value1 vs amount).
+            # 再発防止: unified_execution.to_command_dict は削除済み。ローカル map_action で代替。
             from typing import Optional
             normalized_cmds: List[Optional[Dict[str, Any]]] = []
-            try:
-                from dm_toolkit.unified_execution import to_command_dict
-                for a in list(actions):
-                    try:
-                        normalized_cmds.append(to_command_dict(a))
-                    except Exception:
-                        try:
-                            # Fallback: try map_action directly
-                            normalized_cmds.append(map_action(a))
-                        except Exception:
-                            normalized_cmds.append(None)
-            except Exception:
-                # If unified path not importable, best-effort map_action attempt
+            for a in list(actions):
                 try:
-                    for a in list(actions):
-                        try:
-                            normalized_cmds.append(map_action(a))
-                        except Exception:
-                            normalized_cmds.append(None)
+                    normalized_cmds.append(map_action(a))
                 except Exception:
-                    normalized_cmds = [None] * len(actions)
+                    normalized_cmds.append(None)
 
             # If native mapping preserved the legacy original type for
             # ATTACK (some older native paths return ATTACK as a legacy

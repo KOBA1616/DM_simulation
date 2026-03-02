@@ -200,7 +200,7 @@ class EvolutionEcosystem:
                              break
 
                  # Execute via unified command path; convert action if needed
-                 from dm_toolkit.unified_execution import ensure_executable_command
+                 # 再発防武: unified_execution / compat_wrappers は削除済み。直接 EngineCompat を使用する。
                  from dm_toolkit.engine.compat import EngineCompat
                  if best_cmd is not None:
                     try:
@@ -216,18 +216,12 @@ class EvolutionEcosystem:
                  else:
                      if best_action is not None:
                          try:
-                            cmd = ensure_executable_command(best_action)
-                            EngineCompat.ExecuteCommand(instance.state, cmd)
+                            EngineCompat.ExecuteCommand(instance.state, best_action)
                          except Exception:
-                             # Last resort: try central compat wrapper, then fall back to EngineCompat resolver
                              try:
-                                 from dm_toolkit.compat_wrappers import execute_action_compat
-                                 execute_action_compat(instance.state, best_action, cast(Dict[int, Any], self.card_db))
+                                 EngineCompat.EffectResolver_resolve_action(instance.state, best_action, cast(Dict[int, Any], self.card_db))
                              except Exception:
-                                 try:
-                                     EngineCompat.EffectResolver_resolve_action(instance.state, best_action, cast(Dict[int, Any], self.card_db))
-                                 except Exception:
-                                     pass
+                                 pass
                  steps += 1
 
             # Game finished (or max steps), collect stats

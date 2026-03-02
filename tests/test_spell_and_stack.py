@@ -79,14 +79,11 @@ class TestSpellAndStack(unittest.TestCase):
         cmd.from_zone = "HAND"
         cmd.to_zone = "BATTLE"
 
+        # 再発防止: compat_wrappers は削除済み。直接 execute_command を使用する。
         try:
-            from dm_toolkit.compat_wrappers import execute_action_compat
-            execute_action_compat(self.game.state, cmd, None)
+            self.game.execute_command(cmd)
         except Exception:
-            try:
-                self.game.execute_command(cmd)
-            except Exception:
-                pass
+            pass
 
         # Verification 1: Card removed from hand
         card_in_hand = any(c.instance_id == hand_card.instance_id for c in self.p0.hand)
@@ -111,14 +108,11 @@ class TestSpellAndStack(unittest.TestCase):
             resolve_cmd.type = CommandType.RESOLVE_EFFECT
             resolve_cmd.amount = 0 # slot index
 
+            # 再発防止: compat_wrappers は削除済み。直接 execute_command を使用する。
             try:
-                from dm_toolkit.compat_wrappers import execute_action_compat
-                execute_action_compat(self.game.state, resolve_cmd, None)
+                self.game.execute_command(resolve_cmd)
             except Exception:
-                try:
-                    self.game.execute_command(resolve_cmd)
-                except Exception:
-                    pass
+                pass
 
             self.assertEqual(len(self.game.state.pending_effects), 0, "Pending effects should be empty after resolution")
 

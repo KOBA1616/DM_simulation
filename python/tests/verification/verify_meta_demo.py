@@ -56,12 +56,8 @@ if play_cmd is not None:
 		try:
 			play_cmd.execute(game)
 		except Exception:
-			# Last resort: try compatibility wrapper against legacy action if available
-			try:
-				from dm_toolkit.compat_wrappers import execute_action_compat
-				execute_action_compat(game, None, card_db)
-			except Exception:
-				pass
+			# 再発防止: compat_wrappers は削除済み。フォールバックなし。
+			pass
 # pay cost
 actions = generate_legal_commands(game, card_db) if generate_legal_commands else []
 print('after declare, actions:', [(getattr(a,'type',None), getattr(a,'card_id',None)) for a in actions])
@@ -75,21 +71,10 @@ if pay_cmd is not None:
 		try:
 			pay_cmd.execute(game)
 		except Exception:
-				try:
-					from dm_toolkit.compat_wrappers import execute_action_compat
-					execute_action_compat(game, pay, card_db)
-				except Exception:
-						try:
-							from dm_toolkit.compat_wrappers import execute_action_compat
-							execute_action_compat(game, pay, card_db)
-						except Exception:
-							dm_ai_module.GameLogicSystem.resolve_action(game, pay, card_db)
+			# 再発防止: compat_wrappers は削除済み。直接 resolve_action を使用。
+			dm_ai_module.GameLogicSystem.resolve_action(game, pay, card_db)
 else:
-	try:
-		from dm_toolkit.compat_wrappers import execute_action_compat
-		execute_action_compat(game, pay, card_db)
-	except Exception:
-		dm_ai_module.GameLogicSystem.resolve_action(game, pay, card_db)
+	dm_ai_module.GameLogicSystem.resolve_action(game, pay, card_db)
 # resolve
 actions = generate_legal_commands(game, card_db) if generate_legal_commands else []
 print('before resolve, actions:', [(getattr(a,'type',None), getattr(a,'card_id',None)) for a in actions])
@@ -103,21 +88,10 @@ if res_cmd is not None:
 		try:
 			res_cmd.execute(game)
 		except Exception:
-				try:
-					from dm_toolkit.compat_wrappers import execute_action_compat
-					execute_action_compat(game, res, card_db)
-				except Exception:
-						try:
-							from dm_toolkit.compat_wrappers import execute_action_compat
-							execute_action_compat(game, res, card_db)
-						except Exception:
-							dm_ai_module.GameLogicSystem.resolve_action(game, res, card_db)
+			# 再発防止: compat_wrappers は削除済み。直接 resolve_action を使用。
+			dm_ai_module.GameLogicSystem.resolve_action(game, res, card_db)
 else:
-	try:
-		from dm_toolkit.compat_wrappers import execute_action_compat
-		execute_action_compat(game, res, card_db)
-	except Exception:
-		dm_ai_module.GameLogicSystem.resolve_action(game, res, card_db)
+	dm_ai_module.GameLogicSystem.resolve_action(game, res, card_db)
 print('turn_stats played_without_mana:', getattr(game.turn_stats, 'played_without_mana', None))
 # advance phases
 game.current_phase = dm_ai_module.Phase.ATTACK

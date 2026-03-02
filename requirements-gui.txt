@@ -1,0 +1,5 @@
+# GUI 専用依存（PyQt6 あり環境でのみインストール）
+# 使い方: pip install -r requirements-gui.txt
+# または: pip install -e ".[gui]"
+# 再発防止: python/dm_env/ 配下のヘッドレス層からこれらを import しないこと。
+PyQt6

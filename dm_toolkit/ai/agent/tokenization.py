@@ -251,19 +251,13 @@ class ActionEncoder:
         cmd_type = None
         action_dict = None
         try:
-            try:
-                from dm_toolkit.unified_execution import to_command_dict
-                action_dict = to_command_dict(action)
-            except Exception:
-                # Fall back to wrappers or dicts
-                if isinstance(action, dict):
-                    action_dict = action
-                else:
-                    try:
-                        d = action.to_dict()
-                        action_dict = d
-                    except Exception:
-                        action_dict = None
+            # 再発防止: unified_execution.to_command_dict は削除済み。ローカル変換で代替。
+            if isinstance(action, dict):
+                action_dict = action
+            elif hasattr(action, 'to_dict'):
+                action_dict = action.to_dict()
+            else:
+                action_dict = None
 
             if action_dict is not None:
                 # Prefer normalized dict type

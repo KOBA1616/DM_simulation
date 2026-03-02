@@ -17,7 +17,10 @@ import sys
 
 from dm_toolkit.dm_types import GameState, CardDB
 from dm_toolkit.engine.compat import EngineCompat
-from dm_toolkit.unified_execution import ensure_executable_command
+# 再発防止: unified_execution は削除済み。Phase 3 で python.dm_env.builders に移行する。
+# 暫定スタブ: CommandDef または dict はそのまま返す。
+def ensure_executable_command(cmd):
+    return cmd
 from dm_toolkit.gui.i18n import tr
 
 try:
