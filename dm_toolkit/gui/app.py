@@ -39,6 +39,7 @@ from dm_toolkit.gui.utils.command_describer import describe_command
 from dm_toolkit.gui.deck_builder import DeckBuilder
 from dm_toolkit.gui.editor.window import CardEditor
 from dm_toolkit.gui.simulation_dialog import SimulationDialog
+from dm_toolkit.gui.dialogs.setup_config_dialog import SetupConfigDialog
 from dm_toolkit.gui.widgets.log_viewer import LogViewer
 from dm_toolkit.gui.game_session import GameSession
 from dm_toolkit.gui.input_handler import GameInputHandler
@@ -91,6 +92,9 @@ class GameWindow(QMainWindow):
             self.p0_deck_ids: Optional[List[int]] = None
             self.p1_deck_ids: Optional[List[int]] = None
             self.last_command_index: int = 0
+            # セットアップ設定（SetupConfigDialog で変更可能）
+            # 再発防止: None の場合はデフォルトメタデッキを使用する
+            self._setup_config: Optional[dict] = None
 
             # Defer heavy Game initialization until after the window is shown
             # to avoid blocking the Qt event loop during construction.
@@ -340,6 +344,77 @@ class GameWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load deck')}: {e}")
 
+    def open_setup_config(self) -> None:
+        """セットアップ設定ダイアログを開く。OKなら設定を保存する。"""
+        dlg = SetupConfigDialog(parent=self, current_config=self._setup_config or {})
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self._setup_config = dlg.get_config()
+            self.log_viewer.log_message(tr("Setup config saved."))
+
+    def do_setup(self) -> None:
+        """セットアップ: 設定に従ってデッキをシャッフルし、カード配置（デッキ・シールド・手札）を行う。
+
+        再発防止: reset_game() が PhaseManager.start_game() を呼びシールド/手札配置を行う。
+                  デッキのシャッフルはここで実行し、reset_game()へ渡す。
+                  _setup_config は {"p0_file_path": str, "p1_file_path": str} 形式。
+                  空文字の場合はデフォルトメタデッキを使用する。
+        """
+        import random as _random
+
+        def _load_from_file(path: str) -> Optional[List[int]]:
+            """デッキ読み込みボタンと同方式でJSONファイルからデッキIDリストを取得。"""
+            try:
+                with open(path, "r", encoding="utf-8") as _f:
+                    ids = json.load(_f)
+                if isinstance(ids, list) and ids:
+                    return ids
+            except Exception as e:
+                self.log_viewer.log_message(f"do_setup: failed to load deck file '{path}': {e}")
+            return None
+
+        def _load_default_deck() -> Optional[List[int]]:
+            """meta_decks.json の先頭デッキを返す。"""
+            try:
+                meta_path = os.path.join(os.getcwd(), "data", "meta_decks.json")
+                if os.path.exists(meta_path):
+                    with open(meta_path, "r", encoding="utf-8") as _mf:
+                        _md = json.load(_mf)
+                    _decks = _md.get("decks", []) if isinstance(_md, dict) else []
+                    if _decks:
+                        _cards = list(_decks[0].get("cards", []))
+                        if _cards:
+                            _d = _cards[:40]
+                            while len(_d) < 40:
+                                _d.extend(_cards[:(40 - len(_d))])
+                            return _d
+            except Exception as e:
+                self.log_viewer.log_message(f"do_setup: default deck load error: {e}")
+            return None
+
+        cfg = self._setup_config or {}
+        p0_path = cfg.get("p0_file_path", "").strip()
+        p1_path = cfg.get("p1_file_path", "").strip()
+
+        p0_deck: Optional[List[int]] = _load_from_file(p0_path) if p0_path else None
+        p1_deck: Optional[List[int]] = _load_from_file(p1_path) if p1_path else None
+
+        if p0_deck is None:
+            p0_deck = _load_default_deck()
+        if p1_deck is None:
+            p1_deck = _load_default_deck()
+
+        # デッキをシャッフル（デッキ読み込みボタンと同様）
+        if p0_deck:
+            _random.shuffle(p0_deck)
+        if p1_deck:
+            _random.shuffle(p1_deck)
+
+        # p0_deck_ids / p1_deck_ids を更新してから reset_game()（シールド・手札配置まで行う）
+        self.p0_deck_ids = p0_deck
+        self.p1_deck_ids = p1_deck
+        self.reset_game()
+        self.log_viewer.log_message(tr("Setup complete: deck shuffled, shields and hand placed."))
+
     def load_deck_p1(self) -> None:
         os.makedirs("data/decks", exist_ok=True)
         fname, _ = QFileDialog.getOpenFileName(self, tr("Load Deck P1"), "data/decks", "JSON Files (*.json)")
@@ -487,18 +562,13 @@ class GameWindow(QMainWindow):
         # when UI filters actions by active player). For performance this is
         # lightweight and avoids edge cases where PASS exists but the
         # per-player filtered list is empty.
+        # 再発防止: skip_wrapper=True はレガシー raw CommandDef を渡す経路のため使用しない。
+        # wrap_action 済みの _ActionWrapper を返すことで execute_action が
+        # game_instance.resolve_command() を使う C++ 経路に乗る。
+        # EngineCompat.ActionGenerator_generate_legal_commands() はレガシー経路のため削除。
         all_legal_actions = []
         try:
-            # Prefer native command-first generator via commands wrapper; only call EngineCompat fallback when empty
-            try:
-                all_legal_actions = commands.generate_legal_commands(self.gs, self.card_db, strict=False, skip_wrapper=True) or []
-            except Exception:
-                all_legal_actions = []
-            if not all_legal_actions:
-                try:
-                    all_legal_actions = EngineCompat.ActionGenerator_generate_legal_commands(self.gs, self.card_db) or []
-                except Exception:
-                    all_legal_actions = []
+            all_legal_actions = commands.generate_legal_commands(self.gs, self.card_db, strict=False) or []
         except Exception:
             all_legal_actions = []
 

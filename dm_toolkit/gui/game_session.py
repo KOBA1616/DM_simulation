@@ -238,62 +238,77 @@ class GameSession:
     def execute_action(self, raw_action: Any):
         """
         Execute an action and update UI immediately.
-        
-        This method:
-        1. Converts action to command dict
-        2. Executes via C++ engine
-        3. Updates UI to show the result
-        
-        Note: Does NOT advance the game - that's step_game()'s responsibility
-        """
-        if not self.gs:
-            return
 
-        try:
-            # Convert to command dict
-            cmd_dict = ensure_executable_command(raw_action)
-        except Exception as e:
-            self.callback_log(f"Command conversion error: {e}")
+        コマンド方式へ統一した実行経路（レガシーアクション不使用）:
+          1. _ActionWrapper._action → game_instance.resolve_command()  (C++ 最優先)
+          2. raw C++ CommandDef     → game_instance.resolve_command()  (ネイティブ直接)
+          3. 上記失敗時のみ         → EngineCompat.ExecuteCommand()     (最終手段)
+          4. 実行後は必ず fast_forward() でゲームを次の判断点まで進める
+
+        再発防止: EngineCompat.ExecuteCommand() や CommandSystem.execute_command() を
+                  直接呼ぶ経路はゲーム状態の再同期(gs = game_instance.state)と
+                  fast_forward が行われないため、ここ以外で使用しないこと。
+        """
+        if not self.gs or not self.game_instance:
             return
 
         active_pid = EngineCompat.get_active_player_id(self.gs)
-        is_human = (self.player_modes.get(active_pid) == 'Human')
 
+        # ログ用コマンド辞書（取得失敗は無視）
+        cmd_dict: dict = {}
         try:
-            # Prefer executing native C++ Action objects directly to keep all game logic in C++
-            if hasattr(raw_action, '_action') and raw_action._action is not None and dm_ai_module:
-                # Direct C++ Action execution - all logic handled by C++ GameInstance.resolve_command()
-                action = raw_action._action
-                
-                try:
-                    self.game_instance.resolve_command(action)
-                    # IMPORTANT: Re-sync gs after C++ modifies GameInstance
-                    # This ensures Python sees the latest state
-                    self.gs = self.game_instance.state
-                except Exception as e:
-                    self.callback_log(f"ERROR: resolve_command failed: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    return
-                # Log action type for UI feedback
-                action_type_name = str(action.type).split('.')[-1] if hasattr(action.type, 'name') else str(action.type)
-                self.callback_log(f"P{active_pid}: {action_type_name}")
-                
-            else:
-                # Fallback: Execute as command dict (for commands without native Action)
-                EngineCompat.ExecuteCommand(self.gs, cmd_dict, self.card_db)
-                cmd_type = cmd_dict.get('type', 'UNKNOWN')
-                self.callback_log(f"P{active_pid}: {cmd_type}")
+            cmd_dict = ensure_executable_command(raw_action)
+        except Exception:
+            pass
 
-            if self.callback_action_executed:
-                self.callback_action_executed(cmd_dict)
+        executed = False
+        try:
+            # --- 経路 1: _ActionWrapper._action (wrap_action 経由の C++ Action) ---
+            native_action = getattr(raw_action, '_action', None)
+            if native_action is not None and dm_ai_module and self.game_instance:
+                self.game_instance.resolve_command(native_action)
+                self.gs = self.game_instance.state
+                action_type = str(getattr(native_action, 'type', '')).split('.')[-1]
+                self.callback_log(f"P{active_pid}: {action_type}")
+                executed = True
+
+            # --- 経路 2: raw C++ CommandDef (skip_wrapper なしで生オブジェクトが来た場合) ---
+            elif dm_ai_module and self.game_instance and hasattr(dm_ai_module, 'CommandDef') and isinstance(raw_action, dm_ai_module.CommandDef):
+                self.game_instance.resolve_command(raw_action)
+                self.gs = self.game_instance.state
+                action_type = str(getattr(raw_action, 'type', 'CMD')).split('.')[-1]
+                self.callback_log(f"P{active_pid}: {action_type}")
+                executed = True
+
+            # --- 経路 3: 最終手段 (EngineCompat 経由、ゲーム状態再同期を必ず行う) ---
+            else:
+                EngineCompat.ExecuteCommand(self.gs, cmd_dict if cmd_dict else raw_action, self.card_db)
+                if self.game_instance:
+                    self.gs = self.game_instance.state
+                cmd_type = cmd_dict.get('type', 'CMD') if cmd_dict else str(raw_action)
+                self.callback_log(f"P{active_pid}: {cmd_type} (compat)")
+                executed = True
 
         except Exception as e:
             self.callback_log(f"Execution error: {e}")
             self.callback_update_ui()
             return
 
-        # Update UI immediately to show action result
+        if not executed:
+            return
+
+        if self.callback_action_executed:
+            try:
+                self.callback_action_executed(cmd_dict)
+            except Exception:
+                pass
+
+        # --- 実行後は必ず fast_forward で次の判断点まで進める ---
+        # 再発防止: ここを省くとヒューマンターン後にゲームが止まる
+        self._fast_forward()
+        if self.game_instance:
+            self.gs = self.game_instance.state
+
         self.callback_update_ui()
 
     def _fast_forward(self):
@@ -349,26 +364,17 @@ class GameSession:
         return deck
 
     def generate_legal_commands(self) -> List[Any]:
-        """Get legal commands from C++ engine."""
+        """Get legal commands from C++ engine.
+
+        再発防止: skip_wrapper=True は使用しない。必ず _ActionWrapper でラップして
+                  execute_action が game_instance.resolve_command() 経路を使えるようにする。
+        """
         if not self.gs:
             return []
         try:
-            try:
-                cmds = _generate_legal_commands(self.gs, self.card_db, strict=False, skip_wrapper=True) or []
-            except TypeError:
-                cmds = _generate_legal_commands(self.gs, self.card_db) or []
-            except Exception:
-                cmds = []
+            cmds = _generate_legal_commands(self.gs, self.card_db, strict=False) or []
         except Exception:
             cmds = []
-
-        if not cmds:
-            try:
-                # Legacy fallback via EngineCompat/ActionGenerator
-                return EngineCompat.ActionGenerator_generate_legal_commands(self.gs, self.card_db)
-            except Exception:
-                return []
-
         return cmds
 
     def is_game_over(self) -> bool:

@@ -124,6 +124,10 @@ class LayoutBuilder:
         window.control_panel.load_deck_p1_clicked.connect(window.load_deck_p1)
         window.control_panel.god_view_toggled.connect(window.update_ui)
         window.control_panel.help_clicked.connect(window.show_help)
+        # セットアップ系シグナルを接続
+        # 再発防止: setup_config_clicked → open_setup_config, setup_clicked → do_setup の対応を守ること。
+        window.control_panel.setup_config_clicked.connect(window.open_setup_config)
+        window.control_panel.setup_clicked.connect(window.do_setup)
 
         # Mode update connections
         window.control_panel.p0_human_radio.toggled.connect(lambda c: window.session.set_player_mode(0, 'Human' if c else 'AI'))

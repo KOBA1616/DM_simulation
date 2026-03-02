@@ -29,6 +29,11 @@ class ControlPanel(QWidget):
     # Signal for God View
     god_view_toggled = pyqtSignal(bool)
 
+    # Setup signals
+    # 再発防止: setup_clicked (セットアップ実行) と setup_config_clicked (設定ダイアログ) は必ず分けること。
+    setup_clicked = pyqtSignal()
+    setup_config_clicked = pyqtSignal()
+
     # Help
     help_clicked = pyqtSignal()
 
@@ -80,6 +85,25 @@ class ControlPanel(QWidget):
 
         self.game_ctrl_group.setLayout(game_ctrl_layout)
         self.layout_main.addWidget(self.game_ctrl_group)
+
+        # --- セットアップグループ
+        self.setup_group = QGroupBox(tr("Setup"))
+        setup_layout = QHBoxLayout()
+
+        self.setup_config_btn = QPushButton(tr("セットアップ設定"))
+        self.setup_config_btn.setToolTip(tr("Configure decks and setup options"))
+        self.setup_config_btn.clicked.connect(self.setup_config_clicked.emit)
+        setup_layout.addWidget(self.setup_config_btn)
+
+        self.setup_btn = QPushButton(tr("セットアップ"))
+        self.setup_btn.setToolTip(tr("Shuffle decks and place cards (deck / shields / hand)"))
+        self.setup_btn.setStyleSheet("background-color: #2196F3; color: white; font-weight: bold;")
+        self.setup_btn.setShortcut("Ctrl+Shift+S")
+        self.setup_btn.clicked.connect(self.setup_clicked.emit)
+        setup_layout.addWidget(self.setup_btn)
+
+        self.setup_group.setLayout(setup_layout)
+        self.layout_main.addWidget(self.setup_group)
 
         # --- Player Mode Group
         self.mode_group = QGroupBox(tr("Player Mode"))

@@ -88,7 +88,12 @@ if not _disable_native:
         IS_NATIVE = False
 
 if not IS_NATIVE:
-    raise ImportError("Native module dm_ai_module not found or failed to load. Please build the C++ extension (cmake).")
+    # DM_DISABLE_NATIVE=1 のときはPythonフォールバックで続行する。
+    # ネイティブが期待されている（DM_DISABLE_NATIVEが未設定）が見つからない場合のみ例外を投げる。
+    # 再発防止: _disable_native チェックを必ず入れること。ネイティブが無効化されている場合は
+    # ImportError を投げずにPythonフォールバック実装にフォールスルーさせる。
+    if not _disable_native:
+        raise ImportError("Native module dm_ai_module not found or failed to load. Please build the C++ extension (cmake).")
 
 
 try:
@@ -151,8 +156,24 @@ if 'ParallelRunner' not in globals() and not IS_NATIVE:
     # This block is unreachable now if IS_NATIVE enforces True, but kept for logic structure
     pass
 
-if 'JsonLoader' not in globals() and not IS_NATIVE:
-    pass
+if 'JsonLoader' not in globals():
+    # DM_DISABLE_NATIVE=1 時のPythonフォールバック実装
+    # 再発防止: JsonLoader は GUI/テストで必ず使われるため、必ずフォールバックを提供すること。
+    class JsonLoader:
+        @staticmethod
+        def load_cards(path: str) -> dict:
+            """cards.jsonをロードしてid->カードデータの辞書を返す。"""
+            import json as _json
+            import os as _os
+            # 相対パスの場合はワークスペースルートから解決を試みる
+            if not _os.path.isabs(path):
+                _root = _os.path.dirname(_os.path.abspath(__file__))
+                path = _os.path.join(_root, path)
+            with open(path, 'r', encoding='utf-8') as _f:
+                _cards = _json.load(_f)
+            if isinstance(_cards, list):
+                return {c['id']: c for c in _cards if 'id' in c}
+            return _cards
 
 if 'ExecuteActionCompat' not in globals():
     def ExecuteActionCompat(target: Any, action: Any, player_id: int = 0, ctx: Any = None) -> bool:
