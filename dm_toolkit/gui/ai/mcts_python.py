@@ -279,16 +279,12 @@ class PythonMCTS:
                             # Fallback to random (includes PASS)
                             action = random.choice(actions)
                 
-                # 再発防止: unified_execution / compat_wrappers は削除済み。直接 EngineCompat を使用する。
+                # 再発防止: GameLogicSystem/EffectResolver.resolve_action は未バインドのため削除済み。ExecuteCommand を使用。
                 try:
                     from dm_toolkit.engine.compat import EngineCompat
                     EngineCompat.ExecuteCommand(current_state, action, self.card_db)
                 except Exception:
-                    try:
-                        # Last resort: call native EffectResolver
-                        dm_ai_module.EffectResolver.resolve_action(current_state, action, self.card_db)
-                    except Exception:
-                        pass
+                    pass
                 # Phase advancement: detect both Action and ICommand representations
                 try:
                     if hasattr(action, 'type') and getattr(action, 'type', None) in (dm_ai_module.CommandType.PASS, dm_ai_module.CommandType.MANA_CHARGE):

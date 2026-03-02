@@ -141,13 +141,7 @@ class SolitaireRunner:
                     try:
                         EngineCompat.ExecuteCommand(state, best_action, self.card_db)
                     except Exception:
-                        try:
-                            dm.GameLogicSystem.resolve_action(state, best_action, self.card_db)
-                        except Exception:
-                            try:
-                                dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
-                            except Exception:
-                                pass
+                        pass  # 再発防止: GameLogicSystem/EffectResolver.resolve_action は未バインドのため削除済み。
 
     def _choose_action(self, actions: List[Any], state: Any) -> Any:
         # Prioritize:

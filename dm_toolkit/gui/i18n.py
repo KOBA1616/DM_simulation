@@ -66,7 +66,7 @@ def load_translations():
         enum_list = [
             'CardType',
             'EffectActionType',
-            'ActionType',
+            # 再発防止: 'ActionType' は削除済みレガシー。CommandType を使用すること。
             'TriggerType',
             'Civilization',
             'Zone',

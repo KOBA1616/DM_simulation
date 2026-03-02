@@ -6,6 +6,11 @@ try:
 	generate_legal_commands = commands.generate_legal_commands
 except Exception:
 	generate_legal_commands = None
+# 再発防止: GameLogicSystem は Python 未公開（EffectResolver として公開）のため削除済み。EngineCompat.ExecuteCommand を使用。
+try:
+	from dm_toolkit.engine.compat import EngineCompat as _EngineCompat
+except Exception:
+	_EngineCompat = None
 
 # Setup card_db as in test
 card_db = {}
@@ -71,10 +76,16 @@ if pay_cmd is not None:
 		try:
 			pay_cmd.execute(game)
 		except Exception:
-			# 再発防止: compat_wrappers は削除済み。直接 resolve_action を使用。
-			dm_ai_module.GameLogicSystem.resolve_action(game, pay, card_db)
+			# 再発防止: GameLogicSystem は Python 未公開のため削除済み。EngineCompat.ExecuteCommand を使用。
+			try:
+				if _EngineCompat: _EngineCompat.ExecuteCommand(game, pay, card_db)
+			except Exception:
+				pass
 else:
-	dm_ai_module.GameLogicSystem.resolve_action(game, pay, card_db)
+	try:
+		if _EngineCompat: _EngineCompat.ExecuteCommand(game, pay, card_db)
+	except Exception:
+		pass
 # resolve
 actions = generate_legal_commands(game, card_db) if generate_legal_commands else []
 print('before resolve, actions:', [(getattr(a,'type',None), getattr(a,'card_id',None)) for a in actions])
@@ -88,10 +99,16 @@ if res_cmd is not None:
 		try:
 			res_cmd.execute(game)
 		except Exception:
-			# 再発防止: compat_wrappers は削除済み。直接 resolve_action を使用。
-			dm_ai_module.GameLogicSystem.resolve_action(game, res, card_db)
+			# 再発防止: GameLogicSystem は Python 未公開のため削除済み。EngineCompat.ExecuteCommand を使用。
+			try:
+				if _EngineCompat: _EngineCompat.ExecuteCommand(game, res, card_db)
+			except Exception:
+				pass
 else:
-	dm_ai_module.GameLogicSystem.resolve_action(game, res, card_db)
+	try:
+		if _EngineCompat: _EngineCompat.ExecuteCommand(game, res, card_db)
+	except Exception:
+		pass
 print('turn_stats played_without_mana:', getattr(game.turn_stats, 'played_without_mana', None))
 # advance phases
 game.current_phase = dm_ai_module.Phase.ATTACK

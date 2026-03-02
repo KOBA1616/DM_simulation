@@ -116,9 +116,9 @@ def test_generated_scenario(scenario_path, card_db):
 
             action = MockAction()
 
-            # Execute (legacy generated tests expect direct GameInstance execution)
+            # 再発防止: execute_action は削除済み。execute_command を使用すること。
             try:
-                game.execute_action(action)
+                game.execute_command(action)
             except Exception:
                 pass
 

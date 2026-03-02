@@ -175,15 +175,7 @@ if 'JsonLoader' not in globals():
                 return {c['id']: c for c in _cards if 'id' in c}
             return _cards
 
-if 'ExecuteActionCompat' not in globals():
-    def ExecuteActionCompat(target: Any, action: Any, player_id: int = 0, ctx: Any = None) -> bool:
-        try:
-            if hasattr(target, 'execute_command'):
-                target.execute_command(action)
-                return True
-        except Exception:
-            pass
-        return False
+# 再発防止: ExecuteActionCompat は削除済み。execute_command を直接呼ぶこと。
 
 # Ensure core symbols exist on the module object even if a native extension
 # was loaded earlier and didn't export them (Shim injection into Native module object)

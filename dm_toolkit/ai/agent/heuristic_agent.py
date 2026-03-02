@@ -10,8 +10,8 @@ class HeuristicAgent:
         import dm_ai_module
         import random
 
-        # 再発防止: dm_ai_module.CommandType を使用。ActionType は C++ レガシースタブ。
-        CommandType = getattr(dm_ai_module, 'CommandType', None) or getattr(dm_ai_module, 'ActionType', None)
+        # 再発防止: CommandType を使用。ActionType は削除済みレガシースタブ。
+        CommandType = getattr(dm_ai_module, 'CommandType', None)
 
         def _type_is(cmd_obj: Any, name: str) -> bool:
             try:

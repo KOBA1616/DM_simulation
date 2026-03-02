@@ -426,16 +426,9 @@ class EngineCompat:
         else:
             logger.warning("dm_ai_module.EffectResolver.resume not found.")
 
-    @staticmethod
-    def EffectResolver_resolve_action(state: GameState, action: Any, card_db: CardDB) -> None:
-        # 再発防止: action_to_command / unified_execution は削除済み。
-        # ExecuteCommand 一本化。Action オブジェクト直接実行経路は廃止。
-        get_tracer().log_event(TraceEventType.EFFECT_RESOLUTION, "Resolving command", {"action_str": str(action)})
-        EngineCompat._check_module()
-        try:
-            EngineCompat.ExecuteCommand(state, action, card_db)
-        except Exception as e:
-            logger.warning("EffectResolver_resolve_action: failed to execute: %s", e)
+    # 再発防止: EffectResolver_resolve_action は削除済み（呼び出し元なし）。
+    # EffectResolver.resolve_action は C++ 側にバインドされておらず、常に失敗するデッドコードだった。
+    # 代替: EngineCompat.ExecuteCommand を使用すること。
 
     @staticmethod
     def PhaseManager_next_phase(state: GameState, card_db: CardDB) -> None:

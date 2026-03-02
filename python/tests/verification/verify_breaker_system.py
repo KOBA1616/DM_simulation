@@ -8,7 +8,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../../bin'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '../../'))
 
 import dm_ai_module as dm
-from dm_ai_module import GameState, CardDefinition, CardType, Civilization, ActionType, EffectType, TriggerType, FilterDef, InstructionOp, CardKeywords, PassiveType, PassiveEffect, EffectResolver, CardDatabase
+# 再発防止: ActionType は削除済み。CommandType を使用すること。
+from dm_ai_module import GameState, CardDefinition, CardType, Civilization, EffectType, TriggerType, FilterDef, InstructionOp, CardKeywords, PassiveType, PassiveEffect, EffectResolver, CardDatabase
 
 def test_breaker_logic():
     print("Initializing GameState...", flush=True)

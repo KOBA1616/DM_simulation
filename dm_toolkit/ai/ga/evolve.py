@@ -142,18 +142,12 @@ class DeckEvolution:
                             # Fallback to action path if available
                             if actions:
                                 action = random.choice(actions)
-                                # 再発防止: unified_execution / compat_wrappers は削除済み。直接フォールバック。
+                                # 再発防止: GameLogicSystem/EffectResolver.resolve_action は未バインドのため削除済み。ExecuteCommand を使用。
                                 try:
                                     from dm_toolkit.engine.compat import EngineCompat
                                     EngineCompat.ExecuteCommand(gs, action, self.card_db)
                                 except Exception:
-                                    try:
-                                        dm.GameLogicSystem.resolve_action(gs, action, self.card_db)
-                                    except Exception:
-                                        try:
-                                            dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
-                                        except Exception:
-                                            pass
+                                    pass
 
                 # Best-effort: if the chosen command is a flow/pass-like command, advance phase
                 try:
@@ -166,18 +160,12 @@ class DeckEvolution:
             else:
                 # No ICommand available; pick an Action and try to run it
                 action = random.choice(actions)
-                # 再発防止: unified_execution / compat_wrappers は削除済み。直接フォールバック。
+                # 再発防止: GameLogicSystem/EffectResolver.resolve_action は未バインドのため削除済み。ExecuteCommand を使用。
                 try:
                     from dm_toolkit.engine.compat import EngineCompat
                     EngineCompat.ExecuteCommand(gs, action, self.card_db)
                 except Exception:
-                    try:
-                        dm.GameLogicSystem.resolve_action(gs, action, self.card_db)
-                    except Exception:
-                        try:
-                            dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
-                        except Exception:
-                            pass
+                    pass
                 try:
                     if action.type == dm_ai_module.CommandType.PASS:
                         dm_ai_module.PhaseManager.next_phase(gs)

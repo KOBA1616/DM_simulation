@@ -330,9 +330,7 @@ class GameSession:
 
         self.callback_update_ui()
 
-    # 後方互換エイリアス（段階的廃止予定）— 再発防止: 新規コードは execute_command を使用すること
-    def execute_action(self, raw_action: Any):
-        return self.execute_command(raw_action)
+    # 再発防止: execute_action は削除済み。execute_command を使用すること。
 
     def _fast_forward(self):
         """Call C++ fast_forward to progress game until next decision point."""

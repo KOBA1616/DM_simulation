@@ -22,28 +22,8 @@ class PlayerMode(IntEnum):
 	AI = 0
 	HUMAN = 1
 
-class ActionType(IntEnum):
-    PLAY_CARD = 1
-    ATTACK_PLAYER = 2
-    ATTACK_CREATURE = 3
-    BLOCK_CREATURE = 4
-    PASS = 5
-    USE_SHIELD_TRIGGER = 6
-    MANA_CHARGE = 7
-    RESOLVE_EFFECT = 8
-    SELECT_TARGET = 9
-    TAP = 10
-    UNTAP = 11
-    BREAK_SHIELD = 14
-
-class Action:
-    type: ActionType
-    target_player: int
-    source_instance_id: int
-    card_id: int
-    slot_index: int
-    value1: int
-    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+# 再発防止: ActionType / Action は C++ レガシースタブ。削除済み。
+# 新規コードは CommandType / CommandDef を使用すること。
 
 class CardDatabase:
     @staticmethod
@@ -139,7 +119,7 @@ class GameInstance:
 	def undo(self) -> None: ...
 	def reset_with_scenario(self, config: Any) -> None: ...
 	def initialize_card_stats(self, *args: Any, **kwargs: Any) -> None: ...
-	def resolve_action(self, action: Any) -> None: ...  # deprecated: use resolve_command
+	# 再発防止: resolve_action は C++ 側にバインドされていない。resolve_command を使用すること。
 
 class GameResult:
 	NONE: int

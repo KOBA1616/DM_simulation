@@ -793,9 +793,9 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 tb[act_type] = tb.get(act_type, 0) + 1
             except Exception:
                 pass
-            # 再発防止: compat_wrappers は削除済み。直接 GameLogicSystem.resolve_action を使用する。
+            # 再発防止: GameLogicSystem は Python 未公開（EffectResolver として公開）のため削除済み。EngineCompat.ExecuteCommand を使用。
             try:
-                dm.GameLogicSystem.resolve_action(instances[game_idx].state, chosen, CARD_DB)
+                EngineCompat.ExecuteCommand(instances[game_idx].state, chosen, CARD_DB)
             except Exception:
                 pass
             try:
@@ -968,9 +968,9 @@ def play_games_batch(sess_a, sess_b, seeds, max_steps=1000, progress_callback=No
                 tb[act_type] = tb.get(act_type, 0) + 1
             except Exception:
                 pass
-            # 再発防止: compat_wrappers は削除済み。直接 GameLogicSystem.resolve_action を使用する。
+            # 再発防止: GameLogicSystem は Python 未公開（EffectResolver として公開）のため削除済み。EngineCompat.ExecuteCommand を使用。
             try:
-                dm.GameLogicSystem.resolve_action(instances[game_idx].state, chosen, CARD_DB)
+                EngineCompat.ExecuteCommand(instances[game_idx].state, chosen, CARD_DB)
             except Exception:
                 pass
             try:
