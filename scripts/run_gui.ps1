@@ -4,7 +4,9 @@
     [ValidateSet('msvc', 'mingw')]
     [string]$Toolchain = 'msvc',
     [switch]$Build,
-    [switch]$AllowFallback
+    [switch]$AllowFallback,
+    [switch]$InstallPyQt,
+    [switch]$Review
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,14 +16,24 @@ $projectRoot = Split-Path -Parent $scriptDir
 $buildDirName = if ($Toolchain -eq 'mingw') { 'build-mingw' } else { 'build-msvc' }
 $buildDir = Join-Path $projectRoot $buildDirName
 
+function Get-ProjectPythonExe {
+    param([string]$root)
+    $venv = Join-Path $root '.venv\Scripts\python.exe'
+    if (Test-Path $venv) { return $venv }
+    $sys = (Get-Command python -ErrorAction SilentlyContinue).Source
+    if ($sys) { return $sys }
+    return $null
+}
+
 # Ensure Python output is UTF-8 regardless of Windows locale.
 $env:PYTHONUTF8 = '1'
 $env:PYTHONIOENCODING = 'utf-8'
 
 # Prefer venv python if available.
-$pythonExe = Join-Path $projectRoot ".venv\Scripts\python.exe"
-if (-not (Test-Path $pythonExe)) {
-    $pythonExe = "python"
+$pythonExe = Get-ProjectPythonExe -root $projectRoot
+if (-not $pythonExe) {
+    Write-Error "Python executable not found. Activate a venv or ensure 'python' is on PATH."
+    exit 1
 }
 
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
@@ -29,6 +41,33 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 if ($Build) {
     Write-Host "Building project before launching GUI..."
     & "$scriptDir/build.ps1" -Config $Config -Toolchain $Toolchain
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Build failed (build.ps1 returned $LASTEXITCODE). Aborting."
+        exit $LASTEXITCODE
+    }
+}
+
+# Optionally ensure PyQt6 is installed (installs into selected Python; venv preferred)
+if ($InstallPyQt) {
+    Write-Host "Installing PyQt6 into: $pythonExe"
+    & $pythonExe -m pip install --upgrade pip setuptools wheel
+    & $pythonExe -m pip install PyQt6
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to install PyQt6 into $pythonExe. Aborting."
+        exit 1
+    }
+}
+
+# Review mode: launch the GUI review helper if requested
+if ($Review) {
+    $reviewScript = Join-Path $scriptDir 'run_gui_review.ps1'
+    if (Test-Path $reviewScript) {
+        Write-Host "Launching GUI review mode via run_gui_review.ps1"
+        & $reviewScript
+        exit $LASTEXITCODE
+    } else {
+        Write-Warning "run_gui_review.ps1 not found; falling back to standard GUI launcher."
+    }
 }
 
 if (-not (Test-Path $buildDir)) {
@@ -127,4 +166,4 @@ if (-not $env:DM_SELECT_NUMBER_MODE) { $env:DM_SELECT_NUMBER_MODE = 'evaluator' 
 
 
 Write-Host "Starting GUI..."
-& $pythonExe "$projectRoot/dm_toolkit/gui/app.py"
+& $pythonExe -m dm_toolkit.gui.app

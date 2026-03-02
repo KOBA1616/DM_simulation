@@ -6,8 +6,8 @@
   - `init_env.ps1`（venv準備/起動の入口）
   - `setup_build_env.ps1` / `setup_mingw_env.ps1`
   - `setup_clone_windows.ps1`（クローン配布向け: 環境確認→venv→依存導入→ビルド→スモークテスト）
-  - `setup_gui_review_windows.ps1`（GUIレビュー専用: PyQt6のみ導入→カードエディタ起動。ネイティブ不要）
-  - `setup_run_gui_review_windows.ps1`（GUIレビュー最小セットアップのみ: PyQt6導入まで。起動は run_gui_review.ps1）
+  - `setup_gui_review_windows.ps1`（GUIレビュー専用: PyQt6導入→カードエディタ起動。`-NoLaunch`でセットアップのみ実行可）
+  - `setup_run_gui_review_windows.ps1`（薄いラッパー: `setup_gui_review_windows.ps1 -NoLaunch` を呼び出します）
 
 - ビルド/テスト/CI
   - `build.ps1`（ローカルビルド）
@@ -16,9 +16,9 @@
 
 - GUI
   - `run_gui.ps1`
-  - `run_gui_with_real_pyqt.ps1`
-  - `run_gui_review.ps1`（GUIレビュー用途: カードエディタを素早く起動。事前に setup_gui_review_windows.ps1 実行）
-    - セットアップだけ行う場合は `setup_run_gui_review_windows.ps1` を使用
+  - `run_gui_with_real_pyqt.ps1` はアーカイブされています。代わりに `run_gui.ps1 -InstallPyQt` を使用してください。
+  - `run_gui_review.ps1`（GUIレビュー用途: カードエディタを素早く起動。事前に `setup_gui_review_windows.ps1 -NoLaunch` 実行でセットアップ可能）
+    - 旧 `setup_run_gui_review_windows.ps1` はアーカイブ済み（`scripts/archive/`）です。
 
 - メンテ/クリーン
   - `clean_workspace.ps1`
