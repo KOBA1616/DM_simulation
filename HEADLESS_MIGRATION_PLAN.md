@@ -3,8 +3,9 @@
 **作成日**: 2026-03-02
 **改訂**: 2026-03-02 — GUI削除方針を撤回し「GUI保持・依存オプション化」に変更  
 **改訂**: 2026-03-02 — フェーズ 1 完了
+**改訂**: 2026-03-02 — フェーズ 2 完了
 **対象ブランチ**: `feature/headless-v3-command-architecture`（メインから分岐）
-**ステータス**: フェーズ 1 完了 / フェーズ 2 着手前
+**ステータス**: フェーズ 2 完了 / フェーズ 3 着手前
 
 ---
 
@@ -664,9 +665,12 @@ __all__ = ["builders", "headless_runner", "renderers", "repl"]
 ```
 
 **Phase 2 完了基準:**
-- [ ] `python -c "from python.dm_env import builders; print(builders.make_pass())"` が成功
-- [ ] `python -c "from python.dm_env.headless_runner import run_game; print(run_game([],[]))"` が成功
-- [ ] `python/dm_env/` 内全ファイルで `PyQt6` の import が 0 件
+- [x] `python -c "from python.dm_env import builders; print(builders.make_pass())"` が成功
+- [x] `python -c "from python.dm_env.headless_runner import run_game; print(run_game([],[]))"` が成功
+- [x] `python/dm_env/` 内全ファイルで `PyQt6` の import が 0 件
+
+**Phase 2 完了日**: 2026-03-02  
+**新設ファイル**: `python/__init__.py`, `python/dm_env/__init__.py`, `python/dm_env/_native.py`, `python/dm_env/builders.py`, `python/dm_env/headless_runner.py`, `python/dm_env/renderers.py`, `python/dm_env/repl.py`
 
 ---
 
