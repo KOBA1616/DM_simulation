@@ -413,18 +413,6 @@ class EngineCompat:
         return None
 
     # -------------------------------------------------------------------------
-    # Action Object Wrappers
-    # -------------------------------------------------------------------------
-
-    @staticmethod
-    def get_action_slot_index(action: Any) -> int:
-        return getattr(action, 'slot_index', -1)
-
-    @staticmethod
-    def get_action_source_id(action: Any) -> int:
-        return getattr(action, 'source_instance_id', -1)
-
-    # -------------------------------------------------------------------------
     # API Call Wrappers
     # -------------------------------------------------------------------------
 
@@ -440,45 +428,14 @@ class EngineCompat:
 
     @staticmethod
     def EffectResolver_resolve_action(state: GameState, action: Any, card_db: CardDB) -> None:
-        # Improved logging with structured data
-        # 再発防止: action_to_command は削除済み。ローカル変換でログする。
-        log_data: Dict[str, Any] = {"action_str": str(action)}
-        try:
-            if isinstance(action, dict):
-                log_data["command_map"] = action
-            elif hasattr(action, 'to_dict'):
-                log_data["command_map"] = action.to_dict()
-        except Exception:
-            pass
-        get_tracer().log_event(TraceEventType.EFFECT_RESOLUTION, "Resolving Action", log_data)
-
+        # 再発防止: action_to_command / unified_execution は削除済み。
+        # ExecuteCommand 一本化。Action オブジェクト直接実行経路は廃止。
+        get_tracer().log_event(TraceEventType.EFFECT_RESOLUTION, "Resolving command", {"action_str": str(action)})
         EngineCompat._check_module()
-        assert dm_ai_module is not None
-        real_db = EngineCompat._resolve_db(card_db)
-        # Phase 1 (Specs/AGENTS.md Policy): Route action through unified execution when possible
-        # Prefer action.execute first (may already encapsulate command behavior)
-        try:
-            if hasattr(action, 'execute') and callable(getattr(action, 'execute')):
-                try:
-                    try:
-                        action.execute(state, real_db)
-                    except TypeError:
-                        action.execute(state)
-                    return
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
-        # 再発防止: unified_execution は削除済み。直接 ExecuteCommand を尋る。
         try:
             EngineCompat.ExecuteCommand(state, action, card_db)
-            return
-        except Exception:
-            pass
-
-        # Legacy fallback
-        logger.warning("EffectResolver_resolve_action: Action could not be executed: %s", action)
+        except Exception as e:
+            logger.warning("EffectResolver_resolve_action: failed to execute: %s", e)
 
     @staticmethod
     def PhaseManager_next_phase(state: GameState, card_db: CardDB) -> None:

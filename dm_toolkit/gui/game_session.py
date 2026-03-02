@@ -253,12 +253,12 @@ class GameSession:
         finally:
             self.is_processing = False
 
-    def execute_action(self, raw_action: Any):
+    def execute_command(self, raw_action: Any):
         """
-        Execute an action and update UI immediately.
+        Execute a command and update UI immediately.
 
         コマンド方式へ統一した実行経路（レガシーアクション不使用）:
-          1. _ActionWrapper._action → game_instance.resolve_command()  (C++ 最優先)
+          1. _CommandWrapper._action → game_instance.resolve_command()  (C++ 最優先)
           2. raw C++ CommandDef     → game_instance.resolve_command()  (ネイティブ直接)
           3. 上記失敗時のみ         → EngineCompat.ExecuteCommand()     (最終手段)
           4. 実行後は必ず fast_forward() でゲームを次の判断点まで進める
@@ -281,7 +281,8 @@ class GameSession:
 
         executed = False
         try:
-            # --- 経路 1: _ActionWrapper._action (wrap_action 経由の C++ Action) ---
+            # --- 経路 1: _CommandWrapper._action (wrap_action 経由の C++ CommandDef) ---
+            # 再発防止: _CommandWrapper は旧 _ActionWrapper の後継。_action 属性でネイティブオブジェクト保持。
             native_action = getattr(raw_action, '_action', None)
             if native_action is not None and dm_ai_module and self.game_instance:
                 self.game_instance.resolve_command(native_action)
@@ -328,6 +329,10 @@ class GameSession:
             self.gs = self.game_instance.state
 
         self.callback_update_ui()
+
+    # 後方互換エイリアス（段階的廃止予定）— 再発防止: 新規コードは execute_command を使用すること
+    def execute_action(self, raw_action: Any):
+        return self.execute_command(raw_action)
 
     def _fast_forward(self):
         """Call C++ fast_forward to progress game until next decision point."""
@@ -384,7 +389,7 @@ class GameSession:
     def generate_legal_commands(self) -> List[Any]:
         """Get legal commands from C++ engine.
 
-        再発防止: skip_wrapper=True は使用しない。必ず _ActionWrapper でラップして
+        再発防止: skip_wrapper=True は使用しない。必ず _CommandWrapper でラップして
                   execute_action が game_instance.resolve_command() 経路を使えるようにする。
         """
         if not self.gs:

@@ -472,7 +472,7 @@ class GameWindow(QMainWindow):
 
     def pass_turn(self) -> None:
         if hasattr(self, 'current_pass_action') and self.current_pass_action:
-            self.session.execute_action(self.current_pass_action)
+            self.session.execute_command(self.current_pass_action)  # 再発防止: execute_action は削除済み
 
     def confirm_selection(self) -> None:
         self.input_handler.confirm_selection()
@@ -566,31 +566,29 @@ class GameWindow(QMainWindow):
         # lightweight and avoids edge cases where PASS exists but the
         # per-player filtered list is empty.
         # 再発防止: skip_wrapper=True はレガシー raw CommandDef を渡す経路のため使用しない。
-        # wrap_action 済みの _ActionWrapper を返すことで execute_action が
+        # wrap_command 済みの _CommandWrapper を返すことで execute_action が
         # game_instance.resolve_command() を使う C++ 経路に乗る。
         # EngineCompat.ActionGenerator_generate_legal_commands() はレガシー経路のため削除。
-        all_legal_actions = []
+        all_legal_commands = []
         try:
             # 再発防止: generate_legal_actions（旧名）ではなく generate_legal_commands を使用。
             # bind_engine.cpp で両名ともバインド済み（旧名はエイリアス）。
             dm = _get_dm()
-            all_legal_actions = dm.IntentGenerator.generate_legal_commands(self.gs, self.card_db) or []
+            all_legal_commands = dm.IntentGenerator.generate_legal_commands(self.gs, self.card_db) or []
         except Exception:
-            all_legal_actions = []
+            all_legal_commands = []
 
-        legal_actions = []
+        legal_commands = []
         is_human = False
         if hasattr(self, 'control_panel'):
             is_human = self.control_panel.is_p0_human()
 
         if active_pid == 0 and is_human and not self.gs.game_over:
-             legal_actions = all_legal_actions
+             legal_commands = all_legal_commands
 
-        # Determine if a PASS action exists in the full engine-provided set
-        # (not only the filtered per-player list). This prevents missing a
-        # pass action when view/filtering logic hides other commands.
+        # Determine if a PASS command exists in the full engine-provided set
         self.current_pass_action = None
-        for cmd in all_legal_actions:
+        for cmd in all_legal_commands:
             try: d = cmd.to_dict()
             except: d = {}
             if d.get('type') == 'PASS' or d.get('legacy_original_type') == 'PASS':
@@ -602,7 +600,7 @@ class GameWindow(QMainWindow):
             god_view = self.control_panel.is_god_view()
 
         if hasattr(self, 'game_board'):
-            self.game_board.update_state(p0, p1, self.card_db, legal_actions, god_view)
+            self.game_board.update_state(p0, p1, self.card_db, legal_commands, god_view)
             if EngineCompat.is_waiting_for_user_input(self.gs):
                  self.game_board.set_selection_mode(self.input_handler.selected_targets)
 

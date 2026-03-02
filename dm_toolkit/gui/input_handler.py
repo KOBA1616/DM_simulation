@@ -78,10 +78,10 @@ class GameInputHandler:
             item, ok = QInputDialog.getItem(self.window, tr("Select Action"), tr("Choose action to perform:"), options, 0, False)
             if ok and item:
                 idx = options.index(item)
-                self.session.execute_action(items[idx]['command'])
+                self.session.execute_command(items[idx]['command'])
             return
 
-        self.session.execute_action(relevant_cmds[0])
+        self.session.execute_command(relevant_cmds[0])
 
     def on_card_double_clicked(self, card_id: int, instance_id: int) -> None:
         """Handle double-click to quickly play the most common action (Play or Mana Charge)."""
@@ -121,13 +121,13 @@ class GameInputHandler:
                 other_cmd = cmd
 
         if play_cmd:
-            self.session.execute_action(play_cmd)
+            self.session.execute_command(play_cmd)
         elif attack_cmd:
-            self.session.execute_action(attack_cmd)
+            self.session.execute_command(attack_cmd)
         elif other_cmd:
-            self.session.execute_action(other_cmd)
+            self.session.execute_command(other_cmd)
         elif mana_cmd:
-            self.session.execute_action(mana_cmd)
+            self.session.execute_command(mana_cmd)
 
     def handle_user_input_request(self) -> None:
         """Called by GameSession when input is needed."""
@@ -220,9 +220,9 @@ class GameInputHandler:
                 break
         if target_cmd:
             logger.debug(f"[InputHandler] Executing RESOLVE_EFFECT command")
-            self.session.execute_action(target_cmd)
+            self.session.execute_command(target_cmd)
         elif len(resolve_cmds) == 1:
             logger.debug(f"[InputHandler] Only one RESOLVE_EFFECT, executing it")
-            self.session.execute_action(resolve_cmds[0][0])
+            self.session.execute_command(resolve_cmds[0][0])
         else:
             logger.warning(f"[InputHandler] No matching RESOLVE_EFFECT command found for index {index}")

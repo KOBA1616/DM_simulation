@@ -105,22 +105,23 @@ from dm_toolkit.gui.i18n import tr
 class CardWidget(QFrame):
     clicked = pyqtSignal(int)  # Emits instance_id
     hovered = pyqtSignal(int)  # Emits card_id
-    action_triggered = pyqtSignal(object) # Emits the action object
+    command_triggered = pyqtSignal(object)  # CommandDef を emit（旧: action_triggered）
+    # 再発防止: シグナル名を command_triggered に統一。action_triggered は削除済み。
     double_clicked = pyqtSignal(int)  # Emits instance_id for quick play
 
     def __init__(self, card_id, card_name, cost, power, civ, tapped=False,
-                 instance_id=-1, parent=None, is_face_down=False, legal_actions=None):
+                 instance_id=-1, parent=None, is_face_down=False, legal_commands=None):
         """
         civ: Can be a single string (e.g. "FIRE")
         or a list of strings (e.g. ["FIRE", "NATURE"]).
-        legal_actions: List of actions available for this card.
+        legal_commands: List of CommandDef objects available for this card.
         """
         super().__init__(parent)
         self.card_id = card_id
         self.card_name = card_name
         self.cost = cost
         self.power = power
-        self.legal_actions = legal_actions if legal_actions else []
+        self.legal_commands = legal_commands if legal_commands else []
 
         # Normalize civ to list
         if isinstance(civ, list):
@@ -157,8 +158,12 @@ class CardWidget(QFrame):
         self.init_ui()
         self.update_style()
 
+    def update_legal_commands(self, commands):
+        self.legal_commands = commands
+
+    # 後方互換エイリアス（段階的廃止）
     def update_legal_actions(self, actions):
-        self.legal_actions = actions
+        self.update_legal_commands(actions)
 
     def enterEvent(self, event):
         self.hovered.emit(self.card_id)
@@ -178,16 +183,16 @@ class CardWidget(QFrame):
 
     def contextMenuEvent(self, event):
         """Show context menu on right click."""
-        if not self.legal_actions:
+        if not self.legal_commands:
             return
 
         menu = QMenu(self)
 
-        # Categorize actions
+        # Categorize commands
         # Simplified categorization logic
         added_types = set()
 
-        for action in self.legal_actions:
+        for action in self.legal_commands:
             action_str = action.to_string() # Fallback description
 
             # Simple heuristic for display text (localized)
@@ -213,7 +218,7 @@ class CardWidget(QFrame):
 
             act = QAction(label, self)
             # Use a closure to capture the specific action
-            act.triggered.connect(lambda checked, a=action: self.action_triggered.emit(a))
+            act.triggered.connect(lambda checked, a=action: self.command_triggered.emit(a))
             menu.addAction(act)
 
         menu.exec(event.globalPos())

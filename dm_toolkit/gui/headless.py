@@ -54,140 +54,75 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
     try:
         sess.card_db = card_db
 
-        # If native dm_ai_module is present but missing ActionGenerator/ActionType,
-        # inject lightweight Python stubs so generate_legal_commands fallback works
+        # 再発防止: ActionGenerator/Action/ActionType スタブは削除済み。
+        # CommandGenerator/Command/CommandType スタブのみ提供する。
         try:
             import dm_ai_module as _native
-            need_stub = False
-            if not hasattr(_native, 'ActionGenerator') or not hasattr(_native, 'Action') or not hasattr(_native, 'ActionType'):
-                need_stub = True
+            need_stub = not hasattr(_native, 'CommandGenerator')
             if need_stub:
-                # Minimal Action/ActionType/ActionGenerator stubs
-                class _ActionType:
+                class _CommandType:
                     PASS = 'PASS'
                     MANA_CHARGE = 'MANA_CHARGE'
                     PLAY_CARD = 'PLAY_CARD'
 
-                class _Action:
-                    def __init__(self):
-                        self.type = None
-                        self.card_id = None
-                        self.source_instance_id = None
-                    def __repr__(self):
-                        return f"<StubAction type={self.type} card_id={self.card_id} src={self.source_instance_id}>"
+                class _Command:
+                    def __init__(self, type_, instance_id=None, source_instance_id=None, card_id=None):
+                        self.type = type_
+                        self.instance_id = instance_id
+                        self.source_instance_id = source_instance_id
+                        self.card_id = card_id
 
-                class _ActionGenerator:
+                    def to_dict(self):
+                        out = {'type': self.type}
+                        if self.instance_id is not None:
+                            out['instance_id'] = self.instance_id
+                        if self.source_instance_id is not None:
+                            out['source_instance_id'] = self.source_instance_id
+                        if self.card_id is not None:
+                            out['card_id'] = self.card_id
+                        return out
+
+                    def __repr__(self):
+                        return f"<_StubCommand type={self.type} card_id={self.card_id} src={self.source_instance_id}>"
+
+                class _CommandGenerator:
                     @staticmethod
                     def generate_legal_commands(state, card_db):
                         out = []
                         try:
-                            pid = getattr(state, 'active_player_id', 0)
-                            player = state.players[pid]
-                            # Always allow PASS
-                            a = _Action(); a.type = _ActionType.PASS; out.append(a)
-                            # Mana-charge candidates for each card in hand
+                            acts = []
                             try:
-                                for c in list(getattr(player, 'hand', []) or []):
-                                    ac = _Action(); ac.type = _ActionType.MANA_CHARGE
-                                    ac.card_id = getattr(c, 'card_id', c)
-                                    ac.source_instance_id = getattr(c, 'instance_id', -1)
-                                    out.append(ac)
+                                from dm_toolkit import commands as _commands
+                                acts = _commands.generate_legal_commands(state, card_db) or []
                             except Exception:
-                                pass
-                            # Heuristic: propose PLAY_CARD for any hand card if mana_zone non-empty
-                            try:
-                                usable = sum(1 for m in getattr(player, 'mana_zone', []) if not getattr(m, 'is_tapped', False))
-                                if usable > 0:
-                                    for c in list(getattr(player, 'hand', []) or []):
-                                        ac = _Action(); ac.type = _ActionType.PLAY_CARD
-                                        ac.card_id = getattr(c, 'card_id', c)
-                                        ac.source_instance_id = getattr(c, 'instance_id', -1)
-                                        out.append(ac)
-                            except Exception:
-                                pass
+                                acts = []
+                            if not acts:
+                                try:
+                                    from dm_toolkit import commands as _commands
+                                    acts = _commands._call_native_action_generator(state, card_db) or []
+                                except Exception:
+                                    acts = []
+
+                            if acts:
+                                for a in acts:
+                                    try:
+                                        t = getattr(a, 'type', None)
+                                        iid = getattr(a, 'instance_id', None) or getattr(a, 'source_instance_id', None)
+                                        cid = getattr(a, 'card_id', None)
+                                        out.append(_Command(t, instance_id=iid, source_instance_id=getattr(a, 'source_instance_id', None), card_id=cid))
+                                    except Exception:
+                                        continue
+                            else:
+                                out.append(_Command(_CommandType.PASS))
                         except Exception:
                             pass
                         return out
 
-                # Attach stubs into native module so existing fallbacks can import them
                 try:
-                    _native.ActionType = _ActionType
-                    _native.Action = _Action
-                    _native.ActionGenerator = _ActionGenerator
-                    # Also provide minimal Command-based stubs so command-first codepaths
-                    # (generate_legal_commands / Command.to_dict) can fall back safely.
-                    class _CommandType:
-                        PASS = 'PASS'
-                        MANA_CHARGE = 'MANA_CHARGE'
-                        PLAY_CARD = 'PLAY_CARD'
-
-                    class _Command:
-                        def __init__(self, type_, instance_id=None, source_instance_id=None, card_id=None):
-                            self.type = type_
-                            self.instance_id = instance_id
-                            self.source_instance_id = source_instance_id
-                            self.card_id = card_id
-
-                        def to_dict(self):
-                            out = {'type': self.type}
-                            if self.instance_id is not None:
-                                out['instance_id'] = self.instance_id
-                            if self.source_instance_id is not None:
-                                out['source_instance_id'] = self.source_instance_id
-                            if self.card_id is not None:
-                                out['card_id'] = self.card_id
-                            return out
-
-                        def __repr__(self):
-                            return f"<_StubCommand type={self.type} card_id={self.card_id} src={self.source_instance_id}>"
-
-                    class _CommandGenerator:
-                        @staticmethod
-                        def generate_legal_commands(state, card_db):
-                            out = []
-                            try:
-                                # Prefer command-first generator when possible, else adapt from ActionGenerator
-                                acts = []
-                                try:
-                                    try:
-                                        from dm_toolkit import commands as _commands
-                                        acts = _commands.generate_legal_commands(state, card_db) or []
-                                    except Exception:
-                                        acts = []
-                                except Exception:
-                                    acts = []
-                                if not acts:
-                                    try:
-                                        # Centralized native fallback helper
-                                        from dm_toolkit import commands as _commands
-                                        acts = _commands._call_native_action_generator(state, card_db) or []
-                                    except Exception:
-                                        try:
-                                            if hasattr(_native, 'ActionGenerator'):
-                                                acts = _native.ActionGenerator.generate_legal_commands(state, card_db)
-                                        except Exception:
-                                            acts = []
-
-                                if acts:
-                                    for a in acts:
-                                        try:
-                                            t = getattr(a, 'type', None)
-                                            iid = getattr(a, 'instance_id', None) or getattr(a, 'source_instance_id', None)
-                                            cid = getattr(a, 'card_id', None)
-                                            out.append(_Command(t, instance_id=iid, source_instance_id=getattr(a, 'source_instance_id', None), card_id=cid))
-                                        except Exception:
-                                            continue
-                                else:
-                                    # Fallback: build a PASS command
-                                    out.append(_Command(_CommandType.PASS))
-                            except Exception:
-                                pass
-                            return out
-
                     _native.CommandType = _CommandType
                     _native.Command = _Command
                     _native.CommandGenerator = _CommandGenerator
-                    print("headless: injected dm_ai_module stubs for Action/Command and generators")
+                    print("headless: injected CommandType/Command/CommandGenerator stubs")
                 except Exception:
                     pass
         except Exception:
@@ -363,7 +298,7 @@ def play_instance(sess: GameSession, instance_id: int) -> bool:
         play_cmd = cmds[0]
 
     try:
-        sess.execute_action(play_cmd)
+        sess.execute_command(play_cmd)
         return True
     except Exception:
         return False

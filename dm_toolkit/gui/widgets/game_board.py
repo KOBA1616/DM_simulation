@@ -10,7 +10,7 @@ class GameBoard(QWidget):
     """
     Manages the game board layout including player zones.
     """
-    action_triggered = pyqtSignal(object)  # Emits action object
+    command_triggered = pyqtSignal(object)  # CommandDef を emit（再発防止: 旧 action_triggered）
     card_clicked = pyqtSignal(int, int) # card_id, instance_id
     card_double_clicked = pyqtSignal(int, int) # card_id, instance_id
     card_hovered = pyqtSignal(int) # card_id
@@ -85,12 +85,12 @@ class GameBoard(QWidget):
         self.layout_main.addWidget(self.board_splitter)
 
     def _connect_zone(self, zone: ZoneWidget):
-        zone.action_triggered.connect(self.action_triggered.emit)
+        zone.command_triggered.connect(self.command_triggered.emit)
         zone.card_clicked.connect(self.card_clicked.emit)
         zone.card_double_clicked.connect(self.card_double_clicked.emit)
         zone.card_hovered.connect(self.card_hovered.emit)
 
-    def update_state(self, p0_data: Any, p1_data: Any, card_db: Any, legal_actions: List[Any], god_view: bool = False):
+    def update_state(self, p0_data: Any, p1_data: Any, card_db: Any, legal_commands: List[Any], god_view: bool = False):
         """
         Updates all zones based on player data objects (EngineCompat.get_player result).
         """
@@ -105,12 +105,12 @@ class GameBoard(QWidget):
             return [{'id': getattr(c, 'card_id', -1), 'tapped': getattr(c, 'is_tapped', False), 'instance_id': getattr(c, 'instance_id', -1)} for c in zone_cards]
 
         # P0 Update (Self)
-        self.p0_hand.update_cards(convert_zone(p0_data.hand), card_db_dict, legal_actions=legal_actions)
-        self.p0_mana.update_cards(convert_zone(p0_data.mana_zone), card_db_dict, legal_actions=legal_actions)
-        self.p0_battle.update_cards(convert_zone(p0_data.battle_zone), card_db_dict, legal_actions=legal_actions)
-        self.p0_shield.update_cards(convert_zone(p0_data.shield_zone), card_db_dict, legal_actions=legal_actions)
-        self.p0_graveyard.update_cards(convert_zone(p0_data.graveyard), card_db_dict, legal_actions=legal_actions)
-        self.p0_deck_zone.update_cards(convert_zone(p0_data.deck, hide=True), card_db_dict, legal_actions=legal_actions)
+        self.p0_hand.update_cards(convert_zone(p0_data.hand), card_db_dict, legal_commands=legal_commands)
+        self.p0_mana.update_cards(convert_zone(p0_data.mana_zone), card_db_dict, legal_commands=legal_commands)
+        self.p0_battle.update_cards(convert_zone(p0_data.battle_zone), card_db_dict, legal_commands=legal_commands)
+        self.p0_shield.update_cards(convert_zone(p0_data.shield_zone), card_db_dict, legal_commands=legal_commands)
+        self.p0_graveyard.update_cards(convert_zone(p0_data.graveyard), card_db_dict, legal_commands=legal_commands)
+        self.p0_deck_zone.update_cards(convert_zone(p0_data.deck, hide=True), card_db_dict, legal_commands=legal_commands)
 
         # P1 Update (Opponent)
         self.p1_hand.update_cards(convert_zone(p1_data.hand, hide=not god_view), card_db_dict)

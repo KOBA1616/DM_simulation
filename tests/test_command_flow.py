@@ -5,7 +5,7 @@
   IntentGenerator.generate_legal_commands() → CommandDef リスト
   → game_instance.resolve_command(cmd) → GameState 検証
 
-再発防止: map_action / action_to_command / execute_action は使用禁止。
+再発防止: map_action / action_to_command / execute_action は使用禁止。execute_command を使用すること。
 再発防止: dm_toolkit.commands 等の旧レイヤーを呼び出してはならない。
 """
 from __future__ import annotations

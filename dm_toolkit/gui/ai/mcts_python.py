@@ -48,17 +48,19 @@ class PythonMCTS:
                 legal_commands = commands.generate_legal_commands(self.root.state, self.card_db) or []
             except Exception:
                 legal_commands = []
-            legal_actions = []
+            # 再発防止: legal_actions は CommandDef を保持していたため legal_cmds_retry に改名。
+            # legal_commands が空の場合に同一関数を再試行するフォールバックパス。
+            legal_cmds_retry = []
             if not legal_commands:
                 try:
-                    legal_actions = commands.generate_legal_commands(self.root.state, self.card_db, strict=False, skip_wrapper=True) or []
+                    legal_cmds_retry = commands.generate_legal_commands(self.root.state, self.card_db, strict=False, skip_wrapper=True) or []
                 except Exception:
                     try:
-                        legal_actions = commands.generate_legal_commands(self.root.state, self.card_db) or []
+                        legal_cmds_retry = commands.generate_legal_commands(self.root.state, self.card_db) or []
                     except Exception:
-                        legal_actions = []
+                        legal_cmds_retry = []
         except Exception:
-            legal_actions = []
+            legal_cmds_retry = []
             legal_commands = []
 
         def _is_pass(obj):
@@ -84,30 +86,31 @@ class PythonMCTS:
 
         # Rule: Always charge mana until turn 5
         if self.root.state.current_phase == dm_ai_module.Phase.MANA and self.root.state.turn_number <= 5:
-            has_charge = any((getattr(a, 'type', None) == dm_ai_module.CommandType.MANA_CHARGE) for a in legal_actions) or any((getattr(c, 'payload', {}).get('add_mana') is not None) for c in legal_commands)
+            has_charge = any((getattr(a, 'type', None) == dm_ai_module.CommandType.MANA_CHARGE) for a in legal_cmds_retry) or any((getattr(c, 'payload', {}).get('add_mana') is not None) for c in legal_commands)
             if has_charge:
-                # Remove PASS action to force charge
-                legal_actions = [a for a in legal_actions if not (getattr(a, 'type', None) == dm_ai_module.CommandType.PASS)]
+                # Remove PASS to force charge
+                legal_cmds_retry = [a for a in legal_cmds_retry if not (getattr(a, 'type', None) == dm_ai_module.CommandType.PASS)]
                 # also filter commands similarly by payload
                 legal_commands = [c for c in legal_commands if not (getattr(c, 'payload', {}).get('pass'))]
 
         # Rule: Prioritize playing cards in Main Phase (80% chance to force play if possible)
         elif self.root.state.current_phase == dm_ai_module.Phase.MAIN:
-            has_play = any((getattr(a, 'type', None) == dm_ai_module.CommandType.PLAY_CARD) for a in legal_actions) or any((getattr(c, 'payload', {}).get('play')) for c in legal_commands)
+            has_play = any((getattr(a, 'type', None) == dm_ai_module.CommandType.PLAY_CARD) for a in legal_cmds_retry) or any((getattr(c, 'payload', {}).get('play')) for c in legal_commands)
             if has_play and random.random() < 0.8:
-                 legal_actions = [a for a in legal_actions if not (getattr(a, 'type', None) == dm_ai_module.CommandType.PASS)]
+                 legal_cmds_retry = [a for a in legal_cmds_retry if not (getattr(a, 'type', None) == dm_ai_module.CommandType.PASS)]
                  legal_commands = [c for c in legal_commands if not (getattr(c, 'payload', {}).get('pass'))]
 
         # Rule: Prioritize attacking in Attack Phase (80% chance to force attack if possible)
         elif self.root.state.current_phase == dm_ai_module.Phase.ATTACK:
-            has_attack = any((getattr(a, 'type', None) in (dm_ai_module.CommandType.ATTACK_PLAYER, dm_ai_module.CommandType.ATTACK_CREATURE)) for a in legal_actions) or any((getattr(c, 'payload', {}).get('attack')) for c in legal_commands)
+            has_attack = any((getattr(a, 'type', None) in (dm_ai_module.CommandType.ATTACK_PLAYER, dm_ai_module.CommandType.ATTACK_CREATURE)) for a in legal_cmds_retry) or any((getattr(c, 'payload', {}).get('attack')) for c in legal_commands)
             if has_attack and random.random() < 0.8:
-                 legal_actions = [a for a in legal_actions if not (getattr(a, 'type', None) == dm_ai_module.CommandType.PASS)]
+                 legal_cmds_retry = [a for a in legal_cmds_retry if not (getattr(a, 'type', None) == dm_ai_module.CommandType.PASS)]
                  legal_commands = [c for c in legal_commands if not (getattr(c, 'payload', {}).get('pass'))]
 
-        # Prefer to store Action objects (for EffectResolver compatibility); if absent, store command objects
-        if legal_actions:
-            self.root.untried_actions = legal_actions
+        # Prefer retry-CommandDef objects when available; otherwise use wrapper-CommandDef objects.
+        # 再発防止: どちらも CommandDef 型。legal_cmds_retry は skip_wrapper=True 経路のフォールバック。
+        if legal_cmds_retry:
+            self.root.untried_actions = legal_cmds_retry
         else:
             self.root.untried_actions = legal_commands
 

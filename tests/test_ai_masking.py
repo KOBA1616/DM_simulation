@@ -15,7 +15,8 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 from dm_ai_module import GameInstance, CommandType, CardStub, GameCommand
-from dm_toolkit.ai.agent.tokenization import ActionEncoder, StateTokenizer
+# 再発防止: ActionEncoder は CommandEncoder の後方互換エイリアス。CommandEncoder を使用すること。
+from dm_toolkit.ai.agent.tokenization import CommandEncoder, StateTokenizer
 if torch:
     from training.ai_player import AIPlayer
     from dm_toolkit.ai.agent.transformer_model import DuelTransformer
@@ -28,7 +29,7 @@ class TestAIMasking(unittest.TestCase):
         if torch is None:
             self.skipTest("Torch not installed")
         self.game = GameInstance()
-        self.encoder = ActionEncoder()
+        self.encoder = CommandEncoder()
 
         # Setup dummy model for AIPlayer
         self.model_path = os.path.join(project_root, "models", "test_masking_model.pth")
@@ -44,11 +45,11 @@ class TestAIMasking(unittest.TestCase):
         if os.path.exists(self.model_path):
             os.remove(self.model_path)
 
-    def test_encode_action(self):
+    def test_encode_command(self):
         # 1. Test PASS
         cmd = GameCommand()
         cmd.type = CommandType.PASS
-        idx = self.encoder.encode_action(cmd, self.game.state, 0)
+        idx = self.encoder.encode_command(cmd, self.game.state, 0)
         self.assertEqual(idx, 0)
 
         # 2. Test MANA_CHARGE
@@ -57,16 +58,16 @@ class TestAIMasking(unittest.TestCase):
         cmd = GameCommand()
         cmd.type = CommandType.MANA_CHARGE
         cmd.source_instance_id = 123
-        idx = self.encoder.encode_action(cmd, self.game.state, 0)
+        idx = self.encoder.encode_command(cmd, self.game.state, 0)
         self.assertEqual(idx, 1) # 1 + 0
 
-        # 3. Test PLAY_CARD
+        # 3. Test PLAY_FROM_ZONE
         # Add another card
         self.game.state.add_card_to_hand(0, 101, 124) # Hand[1], inst=124
         cmd = GameCommand()
         cmd.type = CommandType.PLAY_CARD
         cmd.source_instance_id = 124
-        idx = self.encoder.encode_action(cmd, self.game.state, 0)
+        idx = self.encoder.encode_command(cmd, self.game.state, 0)
         self.assertEqual(idx, 11 + 1) # 12
 
         # 4. Test ATTACK_PLAYER
@@ -75,47 +76,31 @@ class TestAIMasking(unittest.TestCase):
         cmd = GameCommand()
         cmd.type = CommandType.ATTACK_PLAYER
         cmd.source_instance_id = 125
-        idx = self.encoder.encode_action(cmd, self.game.state, 0)
+        idx = self.encoder.encode_command(cmd, self.game.state, 0)
         self.assertEqual(idx, 21 + 0) # 21
 
     def test_ai_masking(self):
-        # We want to force the AI to pick a specific action by masking everything else
-        # The model is random, so logits are random.
-        # But if we mask all but one index, argmax MUST pick that one.
-
+        # マスクで 1 カスのみ有効にすることで AI に特定コマンドを強制選択させる
         valid_indices = [5] # Random valid index
 
         # We don't care about state content for this test, just masking logic
-        cmd = self.ai.get_action(self.game.state, 0, valid_indices)
+        cmd = self.ai.get_command(self.game.state, 0, valid_indices)
 
-        # We need to reverse map the command to check index
-        # Or check if get_action returns command corresponding to index 5
-        # Index 5 -> Mana Charge Hand[4]
-
-        # Let's check internal logic by mocking or spying?
-        # Simpler: decode the command back
-        # But for index 5 to be valid decoding, we need Hand[4] to exist!
-
-        # So we must setup state such that index 5 is valid decoding
+        # Index 5 -> Mana Charge Hand[4] → Hand[4] が必要
         for i in range(10):
             self.game.state.add_card_to_hand(0, 200+i, 1000+i)
 
-        cmd = self.ai.get_action(self.game.state, 0, valid_indices)
+        cmd = self.ai.get_command(self.game.state, 0, valid_indices)
 
-        # Verify result is index 5
-        # Index 5 -> Mana Charge Hand[4] (indices are 1-based offset for Mana Charge 1-10)
-        # Wait, MANA_CHARGE range is 1-10.
-        # 1 -> Hand[0]
-        # 5 -> Hand[4]
-
+        # Index 5 -> MANA_CHARGE Hand[4]
+        # 1 -> Hand[0], 5 -> Hand[4]
         self.assertEqual(cmd.type, CommandType.MANA_CHARGE)
-        # Check source instance id matches Hand[4]
         hand_card_4 = self.game.state.players[0].hand[4]
         self.assertEqual(cmd.source_instance_id, hand_card_4.instance_id)
 
     def test_ai_masking_pass(self):
         valid_indices = [0] # PASS
-        cmd = self.ai.get_action(self.game.state, 0, valid_indices)
+        cmd = self.ai.get_command(self.game.state, 0, valid_indices)
         self.assertEqual(cmd.type, CommandType.PASS)
 
 if __name__ == '__main__':

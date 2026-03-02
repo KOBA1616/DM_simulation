@@ -1,36 +1,36 @@
 from typing import Any, Dict, Optional, Protocol, runtime_checkable, List, cast
 import os
-# 再発防止: action_to_command は削除済み。ローカル版 map_action で代替。
-def map_action(act: Any) -> Dict[str, Any]:
-    if isinstance(act, dict):
-        return act
-    if hasattr(act, 'to_dict'):
+# 再発防止: action_to_command は削除済み。command_to_dict で代替。
+# 再発防止: map_action は command_to_dict に改名済み。旧名 map_action はエイリアスとして保持。
+def command_to_dict(cmd: Any) -> Dict[str, Any]:
+    """CommandDef / dict をシリアライズ可能な辞書に変換するユーティリティ。"""
+    if isinstance(cmd, dict):
+        return cmd
+    if hasattr(cmd, 'to_dict'):
         try:
-            return act.to_dict()
+            return cmd.to_dict()
         except Exception:
             pass
-    return {'type': str(getattr(act, 'type', 'UNKNOWN')), 'source_instance_id': getattr(act, 'source_instance_id', getattr(act, 'instance_id', -1))}
-import warnings
+    return {'type': str(getattr(cmd, 'type', 'UNKNOWN')), 'source_instance_id': getattr(cmd, 'source_instance_id', getattr(cmd, 'instance_id', -1))}
+
+# 後方互換エイリアス
+map_action = command_to_dict
 import logging
 
 # module logger
 logger = logging.getLogger('dm_toolkit.commands')
 
 
-def _call_native_action_generator(state: Any, card_db: Any) -> List[Any]:
-    """Call the native action generator with fallbacks.
+def _call_native_command_generator(state: Any, card_db: Any) -> List[Any]:
+    """C++ IntentGenerator.generate_legal_commands を呼び出し CommandDef リストを返す。
 
-    Handles multiple possible native names for compatibility:
-    - dm_ai_module.generate_commands
-    - dm_ai_module.IntentGenerator.generate_legal_commands
-    - dm_ai_module.IntentGenerator.generate_legal_commands
-    - instance.generate(state, player_id)
+    再発防止: ActionGenerator（旧API）は削除済み。
+    再発防止: _call_native_action_generator は _call_native_command_generator に改名済み。
+    C++ IntentGenerator.generate_legal_commands のみを使用する。
     """
-    # Allow disabling native engine calls when running tests or debugging
-    # Set `DM_DISABLE_NATIVE=1` in the environment to force Python-only paths.
     try:
         if os.getenv('DM_DISABLE_NATIVE') in ('1', 'true', 'True'):
-            logger.debug('DM_DISABLE_NATIVE is set; skipping native action generator')
+            logger.debug('DM_DISABLE_NATIVE is set; skipping native command generator')
             return []
     except Exception:
         pass
@@ -40,59 +40,24 @@ def _call_native_action_generator(state: Any, card_db: Any) -> List[Any]:
     except Exception:
         return []
 
-    # Convert Python dict to C++ CardDatabase if needed
     try:
         from dm_toolkit.engine.compat import EngineCompat
         native_db = EngineCompat._resolve_db(card_db)
     except Exception:
-        native_db = card_db  # Fallback to original if conversion fails
+        native_db = card_db
 
-    # 1) Prefer a top-level generate_commands (command-first) if present
+    # IntentGenerator.generate_legal_commands が唯一の正規 API
     try:
-        if hasattr(dm_ai_module, 'generate_commands'):
-            try:
-                return dm_ai_module.generate_commands(state, native_db) or []
-            except Exception:
-                pass
-    except Exception:
-        pass
-
-    AG = getattr(dm_ai_module, 'ActionGenerator', None)
-    if AG is None:
-        return []
-
-    # 2) Try static/classmethod generate_legal_commands (preferred)
-    try:
-        if hasattr(AG, 'generate_legal_commands'):
-            try:
-                return AG.generate_legal_commands(state, native_db) or []
-            except Exception:
-                pass
-    except Exception:
-        pass
-
-    # 3) Fallback to generate_legal_commands if it exists
-    try:
-        if hasattr(AG, 'generate_legal_commands'):
-            try:
-                return AG.generate_legal_commands(state, native_db) or []
-            except Exception:
-                pass
-    except Exception:
-        pass
-
-    # 4) Try instance-based generator
-    try:
-        inst = AG()
-        if hasattr(inst, 'generate'):
-            try:
-                return inst.generate(state, getattr(state, 'active_player_id', 0)) or []
-            except Exception:
-                pass
+        IG = getattr(dm_ai_module, 'IntentGenerator', None)
+        if IG is not None and hasattr(IG, 'generate_legal_commands'):
+            return IG.generate_legal_commands(state, native_db) or []
     except Exception:
         pass
 
     return []
+
+# 後方互換エイリアス
+_call_native_action_generator = _call_native_command_generator
 
 
 @runtime_checkable
@@ -124,111 +89,60 @@ class BaseCommand:
 # Python no longer maintains duplicate state.
 
 
-def wrap_action(action: Any) -> Optional[ICommand]:
-    """Return an `ICommand`-like object for the provided `action`.
+def wrap_command(action: Any) -> Optional[ICommand]:
+    """CommandDef を ICommand 互換オブジェクトとして返す。
 
-    - If `action` already implements `execute`, return it.
-    - Otherwise, returns a wrapper that implements `execute` via unified command path
-      and `to_dict` via the local `map_action` fallback.
+    再発防止: _ActionWrapper（レガシーActionラッパー）は削除済み。
+    再発防止: wrap_action は wrap_command に改名済み。後方互換エイリアス wrap_action を末尾に保持。
+    CommandDef または execute 付きオブジェクトはそのまま返す。
+    それ以外は EngineCompat.ExecuteCommand に委譲する薄いラッパーを返す。
     """
     if action is None:
         return None
 
-    # If it's already command-like, return as-is
+    # 既に execute を持つ場合はそのまま返す（CommandDef / ICommand）
     if hasattr(action, "execute") and callable(getattr(action, "execute")):
         return action  # type: ignore
 
-    # Warn when wrapping legacy Action-like objects that do not provide a
-    # precomputed `command` attribute. This helps surface places that still
-    # rely on Action-only execution so they can migrate to command-first.
-    try:
-        has_cmd_attr = hasattr(action, 'command')
-    except Exception:
-        has_cmd_attr = False
-    if not has_cmd_attr:
-        try:
-            warnings.warn(
-                "Wrapping legacy Action-like object for execution; attach a 'command' attribute or migrate to ICommand/command dict to avoid this deprecation warning.",
-                DeprecationWarning,
-                stacklevel=3,
-            )
-        except Exception:
-            pass
-
-    # Unified wrapper: convert action-like object to command dict and execute via EngineCompat
-    class _ActionWrapper(BaseCommand):
+    # 薄いラッパー: EngineCompat.ExecuteCommand に委譲
+    class _CommandWrapper(BaseCommand):
         def __init__(self, a: Any):
             self._action = a
 
         def execute(self, state: Any, card_db: Any = None) -> Optional[Any]:
             try:
-                # 再発防止: unified_execution は削除済み。EngineCompat を直接使用する。
                 from dm_toolkit.engine.compat import EngineCompat
-                cmd = self._action
-                # Pass through card_db when provided by caller.
                 try:
-                    EngineCompat.ExecuteCommand(state, cmd, card_db)
+                    EngineCompat.ExecuteCommand(state, self._action, card_db)
                 except TypeError:
-                    # Fallback if older signature expects two args
-                    EngineCompat.ExecuteCommand(state, cmd)
-                # NOTE: Mana charge tracking moved to C++ side (turn_stats.mana_charged_this_turn).
-                # Python no longer maintains duplicate state after action execution.
+                    EngineCompat.ExecuteCommand(state, self._action)
             except Exception:
                 return None
             return None
 
-        def invert(self, state: Any) -> Optional[Any]:
-            # Best-effort: delegate to underlying object if available
-            try:
-                inv = getattr(self._action, "invert", None)
-                if callable(inv):
-                    return inv(state)
-            except Exception:
-                pass
-            return None
-
         def to_dict(self) -> Dict[str, Any]:
-            # 再発防止: unified_execution.to_command_dict は削除済み。ローカル map_action で代替。
-            try:
-                cmd = map_action(self._action)
-                try:
-                    if isinstance(cmd, dict):
-                        orig = cmd.get('legacy_original_type') or cmd.get('legacy_type')
-                        if isinstance(orig, str) and orig.upper() == 'ATTACK':
-                            cmd['type'] = 'ATTACK'
-                            cmd['unified_type'] = 'ATTACK'
-                except Exception:
-                    pass
-                return cmd
-            except Exception:
-                return {"type": "NONE"}
-
-        def to_string(self) -> str:
-            # Check if underlying action has to_string
-            if hasattr(self._action, "to_string") and callable(getattr(self._action, "to_string")):
-                return str(self._action.to_string())
-            # Fallback to dict description
-            d = self.to_dict()
-            return str(d)
+            return command_to_dict(self._action)
 
         def __getattr__(self, name: str) -> Any:
-            # Delegate attribute access to underlying action
             return getattr(self._action, name)
 
-    return _ActionWrapper(action)
+    return _CommandWrapper(action)
+
+# 後方互換エイリアス: 既存の zone_widget.py / test_zone_display.py が import している
+wrap_action = wrap_command
 
 
 def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = False, skip_wrapper: bool = False) -> list:
-    """Compatibility helper: generate legal actions and return wrapped commands.
+    """Legal commands を生成するヘルパー。
 
-    Calls `dm_ai_module.IntentGenerator.generate_legal_commands` and maps each
-    `Action` (or its attached `command`) to an `ICommand` via `wrap_action`.
+    C++ IntentGenerator.generate_legal_commands を呼び出し CommandDef を返す。
+    skip_wrapper=True の場合はネイティブオブジェクトをそのまま返す。
 
     Args:
         state: GameState object
         card_db: CardDatabase object or dict
-        strict: If True, raise RuntimeError if native generator is unavailable or fails.
-        skip_wrapper: If True, return raw native objects (CommandDef) without wrapping.
+        strict: True の場合、ネイティブジェネレーター不在時に RuntimeError。
+        skip_wrapper: True の場合、生の CommandDef を返す。
     """
     try:
         import dm_ai_module
@@ -237,12 +151,12 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
             raise RuntimeError("Native dm_ai_module not available")
         pass
 
-    # Validate native generator availability if strict
+    # strict 時: IntentGenerator の存在確認
     if strict:
         try:
             import dm_ai_module
-            if not hasattr(dm_ai_module, 'generate_commands') and not hasattr(dm_ai_module, 'ActionGenerator'):
-                raise RuntimeError("Native generator not found (strict mode)")
+            if not hasattr(dm_ai_module, 'IntentGenerator'):
+                raise RuntimeError("IntentGenerator not found in dm_ai_module (strict mode)")
         except Exception:
             if strict: raise
 
@@ -262,7 +176,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
             # historical names and generator shapes (generate_commands, 
             # generate_legal_commands, generate_legal_commands, instance.generate).
             try:
-                actions = _call_native_action_generator(state, card_db) or []
+                actions = _call_native_command_generator(state, card_db) or []
             except Exception:
                 if strict:
                     raise
@@ -308,12 +222,12 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
             except Exception:
                 pass
 
-            # 再発防止: unified_execution.to_command_dict は削除済み。ローカル map_action で代替。
+            # 再発防止: unified_execution.to_command_dict は削除済み。command_to_dict で代替。
             from typing import Optional
             normalized_cmds: List[Optional[Dict[str, Any]]] = []
             for a in list(actions):
                 try:
-                    normalized_cmds.append(map_action(a))
+                    normalized_cmds.append(command_to_dict(a))
                 except Exception:
                     normalized_cmds.append(None)
 
@@ -416,8 +330,8 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
                     from dm_toolkit.engine.compat import EngineCompat
                     native_db = EngineCompat._resolve_db(card_db)
                     dm_ai_module.PhaseManager.fast_forward(state, native_db)
-                    # Re-query actions after fast_forward
-                    actions = _call_native_action_generator(state, card_db) or []
+                    # Re-query commands after fast_forward
+                    actions = _call_native_command_generator(state, card_db) or []
             except Exception:
                 pass  # Silent fallback - if fast_forward fails, return empty actions
 
@@ -425,6 +339,8 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
         # play candidates from Python state as a best-effort fallback so tests
         # and tools can exercise play logic without the C++ engine.
         try:
+            # 再発防止: DM_DISABLE_NATIVE フォールバックで Action/ActionType オブジェクトは使用禁止。
+            # CommandDef 互換の辞書のみを生成する。
             if not actions and os.getenv('DM_DISABLE_NATIVE') in ('1', 'true', 'True'):
                 pid = getattr(state, 'active_player_id', 0)
                 hand = []
@@ -436,39 +352,12 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
                 for c in hand:
                     try:
                         iid = getattr(c, 'instance_id', None) or getattr(c, 'id', None)
-                        # Prefer creating an Action-like object when the shim exposes Action/ActionType
-                        act_obj = None
-                        try:
-                            import dm_ai_module
-                            ActionCls = getattr(dm_ai_module, 'Action', None)
-                            ActionType = getattr(dm_ai_module, 'ActionType', None)
-                            if ActionCls is not None:
-                                act_obj = ActionCls()
-                                # Set type to PLAY_CARD when ActionType exists
-                                try:
-                                    if ActionType is not None and hasattr(ActionType, 'PLAY_CARD'):
-                                        act_obj.type = getattr(ActionType, 'PLAY_CARD')
-                                    else:
-                                        act_obj.type = 'PLAY_CARD'
-                                except Exception:
-                                    act_obj.type = 'PLAY_CARD'
-                                # Attach identifiers
-                                try:
-                                    setattr(act_obj, 'instance_id', iid)
-                                except Exception:
-                                    pass
-                        except Exception:
-                            act_obj = None
-
-                        if act_obj is not None:
-                            synth.append(act_obj)
-                        else:
-                            synth.append({'type': 'PLAY_FROM_ZONE', 'instance_id': iid, 'player_id': pid, 'unified_type': 'PLAY'})
+                        synth.append({'type': 'PLAY_FROM_ZONE', 'instance_id': iid, 'player_id': pid})
                     except Exception:
                         continue
                 actions = synth
                 if actions:
-                    logger.debug(f"Synthesized {len(actions)} play actions as Python fallback (DM_DISABLE_NATIVE)")
+                    logger.debug(f"Synthesized {len(actions)} PLAY_FROM_ZONE commands as Python fallback (DM_DISABLE_NATIVE)")
         except Exception:
             pass
         
@@ -478,7 +367,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
 
         cmds = []
         for a in actions:
-            w = wrap_action(a)
+            w = wrap_command(a)
             if w is not None:
                 cmds.append(w)
         return cmds
@@ -491,4 +380,5 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
         return []
 
 
-__all__ = ["ICommand", "BaseCommand", "wrap_action", "generate_legal_commands"]
+__all__ = ["ICommand", "BaseCommand", "wrap_command", "wrap_action", "generate_legal_commands", "command_to_dict"]
+# 再発防止: wrap_action / map_action は後方互換エイリアス。新規コードでは wrap_command / command_to_dict を使用すること。

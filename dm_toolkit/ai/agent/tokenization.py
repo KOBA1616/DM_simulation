@@ -171,25 +171,27 @@ class StateTokenizer:
 
             tokens.append(self.BASE_COMMAND_MARKER + ctype)
 
-class ActionEncoder:
+# 再発防止: ActionEncoder は CommandEncoder に改名。GameCommand/CommandType を扱うクラスのため。
+# 再発防止: decode_action / encode_action は decode_command / encode_command に改名済み。後方互揜エイリアスを末尾に保持。
+class CommandEncoder:
     def __init__(self, action_dim: int = 600):
         self.action_dim = action_dim
 
-    def decode_action(self, action_idx: int, state: Any, player_id: int) -> GameCommand:
+    def decode_command(self, command_idx: int, state: Any, player_id: int) -> GameCommand:
         """
-        Maps an integer index back to a GameCommand.
-        Mapping logic (updated for larger support):
+        整数インデックスを GameCommand にマップする。
+        マッピング冗长（大型サポート向けに更新）:
         0: PASS
-        1..40: MANA_CHARGE (Hand Index 0-39)
-        41..80: PLAY_CARD (Hand Index 0-39)
-        81..120: ATTACK_PLAYER (Battle Zone Index 0-39)
-        121..160: ATTACK_CREATURE (Battle Zone Index 0-39, Target defaults to first tapped? Simplified)
+        1..40: MANA_CHARGE (手札 Index 0-39)
+        41..80: PLAY_FROM_ZONE (手札 Index 0-39)
+        81..120: ATTACK_PLAYER (バトルゾーン Index 0-39)
+        121..160: ATTACK_CREATURE (バトルゾーン Index 0-39)
         """
         cmd = GameCommand()
         cmd.target_player = player_id
 
         # 0: PASS
-        if action_idx == 0:
+        if command_idx == 0:
             cmd.type = CommandType.PASS
             return cmd
 
@@ -198,8 +200,8 @@ class ActionEncoder:
         from dm_toolkit.ai.agent.tokenization import BLOCK as GLOBAL_BLOCK
 
         # 1..10: MANA_CHARGE (Hand Index 0-9)
-        if 1 <= action_idx <= BLOCK:
-            hand_idx = action_idx - 1
+        if 1 <= command_idx <= BLOCK:
+            hand_idx = command_idx - 1
             p = state.players[player_id]
             if hand_idx < len(p.hand):
                 c = p.hand[hand_idx]
@@ -211,9 +213,9 @@ class ActionEncoder:
                 # Invalid index fallbacks to PASS
                 cmd.type = CommandType.PASS
                 return cmd
-        # 11..20: PLAY_CARD (Hand Index 0-9)
-        if (BLOCK + 1) <= action_idx <= (2 * BLOCK):
-            hand_idx = action_idx - (BLOCK + 1)
+        # 11..20: PLAY_FROM_ZONE (Hand Index 0-9)
+        if (BLOCK + 1) <= command_idx <= (2 * BLOCK):
+            hand_idx = command_idx - (BLOCK + 1)
             p = state.players[player_id]
             if hand_idx < len(p.hand):
                 c = p.hand[hand_idx]
@@ -225,8 +227,8 @@ class ActionEncoder:
                 cmd.type = CommandType.PASS
                 return cmd
         # 21..30: ATTACK_PLAYER (Battle Zone Index 0-9)
-        if (2 * BLOCK + 1) <= action_idx <= (3 * BLOCK):
-            bz_idx = action_idx - (2 * BLOCK + 1)
+        if (2 * BLOCK + 1) <= command_idx <= (3 * BLOCK):
+            bz_idx = command_idx - (2 * BLOCK + 1)
             p = state.players[player_id]
             if bz_idx < len(p.battle_zone):
                 c = p.battle_zone[bz_idx]
@@ -242,20 +244,23 @@ class ActionEncoder:
         cmd.type = CommandType.PASS
         return cmd
 
-    def encode_action(self, action: GameCommand, state: Any, player_id: int) -> int:
+    # 後方互換エイリアス
+    decode_action = decode_command
+
+    def encode_command(self, command: GameCommand, state: Any, player_id: int) -> int:
         """
-        Maps a GameCommand to an integer index.
-        Returns -1 if the command cannot be encoded (invalid or out of range).
+        GameCommand を整数インデックスにマップする。
+        エンコードできない場合は -1 を返す。
         """
-        # Try to normalize the action/command into a dict using unified helper
+        # Try to normalize the command into a dict
         cmd_type = None
         action_dict = None
         try:
             # 再発防止: unified_execution.to_command_dict は削除済み。ローカル変換で代替。
-            if isinstance(action, dict):
-                action_dict = action
-            elif hasattr(action, 'to_dict'):
-                action_dict = action.to_dict()
+            if isinstance(command, dict):
+                action_dict = command
+            elif hasattr(command, 'to_dict'):
+                action_dict = command.to_dict()
             else:
                 action_dict = None
 
@@ -263,8 +268,8 @@ class ActionEncoder:
                 # Prefer normalized dict type
                 cmd_type = action_dict.get('type')
             else:
-                if hasattr(action, 'type'):
-                    cmd_type = getattr(action, 'type')
+                if hasattr(command, 'type'):
+                    cmd_type = getattr(command, 'type')
         except Exception:
             cmd_type = None
 
@@ -297,17 +302,17 @@ class ActionEncoder:
         # Check MANA_CHARGE (1-10)
         if _type_matches(cmd_type, CommandType.MANA_CHARGE):
             p = state.players[player_id]
-            # Determine source id from action (support dict/wrapper)
+            # Determine source id from command (support dict/wrapper)
             # Try normalized dict first
             if action_dict is not None:
                 cmd_src = action_dict.get('source_instance_id') or action_dict.get('instance_id')
             else:
                 try:
-                    cmd_src = getattr(action, 'source_instance_id', None)
+                    cmd_src = getattr(command, 'source_instance_id', None)
                 except Exception:
                     cmd_src = None
-                if cmd_src is None and isinstance(action, dict):
-                    cmd_src = action.get('source_instance_id') or action.get('instance_id')
+                if cmd_src is None and isinstance(command, dict):
+                    cmd_src = command.get('source_instance_id') or command.get('instance_id')
 
             for i, c in enumerate(p.hand):
                 if i >= 10: break
@@ -316,7 +321,7 @@ class ActionEncoder:
                     return 1 + i
             return -1
 
-        # Check PLAY_CARD (11-20)
+        # Check PLAY_FROM_ZONE (11-20)
         # Accept normalized command types
         if _type_matches(cmd_type, CommandType.PLAY_FROM_ZONE) or (
             isinstance(action_dict, dict) and str(action_dict.get('type', '')).upper() in ('PLAY_FROM_ZONE', 'PLAY')
@@ -326,11 +331,11 @@ class ActionEncoder:
                 cmd_src = action_dict.get('source_instance_id') or action_dict.get('instance_id')
             else:
                 try:
-                    cmd_src = getattr(action, 'source_instance_id', None)
+                    cmd_src = getattr(command, 'source_instance_id', None)
                 except Exception:
                     cmd_src = None
-                if cmd_src is None and isinstance(action, dict):
-                    cmd_src = action.get('source_instance_id') or action.get('instance_id')
+                if cmd_src is None and isinstance(command, dict):
+                    cmd_src = command.get('source_instance_id') or command.get('instance_id')
             for i, c in enumerate(p.hand):
                 if i >= 10: break
                 c_id = getattr(c, 'instance_id', -1)
@@ -345,11 +350,11 @@ class ActionEncoder:
                 cmd_src = action_dict.get('source_instance_id') or action_dict.get('instance_id')
             else:
                 try:
-                    cmd_src = getattr(action, 'source_instance_id', None)
+                    cmd_src = getattr(command, 'source_instance_id', None)
                 except Exception:
                     cmd_src = None
-                if cmd_src is None and isinstance(action, dict):
-                    cmd_src = action.get('source_instance_id') or action.get('instance_id')
+                if cmd_src is None and isinstance(command, dict):
+                    cmd_src = command.get('source_instance_id') or command.get('instance_id')
             for i, c in enumerate(p.battle_zone):
                 if i >= 10: break
                 c_id = getattr(c, 'instance_id', -1)
@@ -358,3 +363,11 @@ class ActionEncoder:
             return -1
 
         return -1
+
+    # 後方互換エイリアス
+    encode_action = encode_command
+
+# 再発防止: ActionEncoder は CommandEncoder に改名済み。後方互換エイリアス。
+# 新規コードでは CommandEncoder を使用すること。
+ActionEncoder = CommandEncoder
+

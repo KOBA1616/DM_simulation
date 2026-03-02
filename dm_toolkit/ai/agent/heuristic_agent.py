@@ -6,17 +6,18 @@ class HeuristicAgent:
     def __init__(self, player_id: int) -> None:
         self.player_id: int = player_id
 
-    def get_action(self, state: Any, legal_actions: List[Any], card_db: Dict[int, Any]) -> Optional[Any]:
+    def get_command(self, state: Any, legal_commands: List[Any], card_db: Dict[int, Any]) -> Optional[Any]:
         import dm_ai_module
         import random
 
-        ActionType = getattr(dm_ai_module, 'ActionType', None)
+        # 再発防止: dm_ai_module.CommandType を使用。ActionType は C++ レガシースタブ。
+        CommandType = getattr(dm_ai_module, 'CommandType', None) or getattr(dm_ai_module, 'ActionType', None)
 
-        def _type_is(action_obj: Any, name: str) -> bool:
+        def _type_is(cmd_obj: Any, name: str) -> bool:
             try:
-                t = getattr(action_obj, 'type', None)
-                if ActionType is not None and hasattr(ActionType, name):
-                    return bool(t == getattr(ActionType, name))
+                t = getattr(cmd_obj, 'type', None)
+                if CommandType is not None and hasattr(CommandType, name):
+                    return bool(t == getattr(CommandType, name))
                 # Fallbacks: compare by enum name or string match
                 if isinstance(t, str) and t.upper().endswith(name):
                     return True
@@ -27,7 +28,7 @@ class HeuristicAgent:
             except Exception:
                 return False
 
-        if not legal_actions:
+        if not legal_commands:
             return None
 
         def get_def(cid: int) -> Optional[Any]:
@@ -36,48 +37,51 @@ class HeuristicAgent:
             return None
 
         # 1. Mana Charge
-        mana_actions = [a for a in legal_actions if _type_is(a, 'MANA_CHARGE')]
-        if mana_actions:
+        mana_cmds = [c for c in legal_commands if _type_is(c, 'MANA_CHARGE')]
+        if mana_cmds:
             current_mana = len(state.players[self.player_id].mana_zone)
             if current_mana < 8:
-                return random.choice(mana_actions)
+                return random.choice(mana_cmds)
 
         # 2. Play Card
-        play_actions = [a for a in legal_actions if _type_is(a, 'PLAY_CARD')]
-        if play_actions:
-            def get_cost(action: Any) -> int:
-                cdef = get_def(action.card_id)
+        play_cmds = [c for c in legal_commands if _type_is(c, 'PLAY_CARD') or _type_is(c, 'DECLARE_PLAY') or _type_is(c, 'PLAY_FROM_ZONE')]
+        if play_cmds:
+            def get_cost(cmd: Any) -> int:
+                cdef = get_def(getattr(cmd, 'card_id', 0))
                 return int(cdef.cost) if cdef and hasattr(cdef, 'cost') else 0
 
-            play_actions.sort(key=get_cost, reverse=True)
-            return play_actions[0]
+            play_cmds.sort(key=get_cost, reverse=True)
+            return play_cmds[0]
 
         # 3. Attack Player (Aggro)
-        attack_player = [a for a in legal_actions if _type_is(a, 'ATTACK_PLAYER')]
-        if attack_player:
-            return random.choice(attack_player)
+        attack_player_cmds = [c for c in legal_commands if _type_is(c, 'ATTACK_PLAYER')]
+        if attack_player_cmds:
+            return random.choice(attack_player_cmds)
 
         # 4. Attack Creature
-        attack_creature = [a for a in legal_actions if _type_is(a, 'ATTACK_CREATURE')]
-        if attack_creature:
-            return random.choice(attack_creature)
+        attack_creature_cmds = [c for c in legal_commands if _type_is(c, 'ATTACK_CREATURE')]
+        if attack_creature_cmds:
+            return random.choice(attack_creature_cmds)
 
         # 5. Block
-        block_actions = [a for a in legal_actions if _type_is(a, 'BLOCK')]
-        if block_actions:
+        block_cmds = [c for c in legal_commands if _type_is(c, 'BLOCK')]
+        if block_cmds:
             if len(state.players[self.player_id].shield_zone) <= 2:
-                return random.choice(block_actions)
+                return random.choice(block_cmds)
             if random.random() < 0.5:
-                return random.choice(block_actions)
+                return random.choice(block_cmds)
 
         # 6. Select Target (for effects)
-        select_actions = [a for a in legal_actions if _type_is(a, 'SELECT_TARGET')]
-        if select_actions:
-            return random.choice(select_actions)
+        select_cmds = [c for c in legal_commands if _type_is(c, 'SELECT_TARGET')]
+        if select_cmds:
+            return random.choice(select_cmds)
 
         # 7. Shield Trigger
-        st_actions = [a for a in legal_actions if _type_is(a, 'USE_SHIELD_TRIGGER')]
-        if st_actions:
-            return st_actions[0]
+        st_cmds = [c for c in legal_commands if _type_is(c, 'USE_SHIELD_TRIGGER')]
+        if st_cmds:
+            return st_cmds[0]
 
-        return random.choice(legal_actions)
+        return random.choice(legal_commands)
+
+    # 後方互換エイリアス。新規コードでは get_command を使用すること。
+    get_action = get_command

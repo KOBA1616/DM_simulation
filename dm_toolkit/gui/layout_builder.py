@@ -146,7 +146,7 @@ class LayoutBuilder:
 
         # Board Panel
         window.game_board = GameBoard()
-        window.game_board.action_triggered.connect(window.session.execute_action)
+        window.game_board.command_triggered.connect(window.session.execute_command)  # 再発防止: action_triggered/execute_action は削除済み
         window.game_board.card_clicked.connect(window.on_card_clicked)
         window.game_board.card_double_clicked.connect(window.on_card_double_clicked)
         window.game_board.card_hovered.connect(window.on_card_hovered)

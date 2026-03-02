@@ -85,14 +85,14 @@ def inspect_game(max_steps=500, seed=42):
                     t = choice.to_dict().get('type', '')
                 except Exception:
                     pass
-                sess.execute_action(choice)
+                sess.execute_command(choice)
                 if t == 'PLAY_FROM_ZONE':
                     play_count += 1
                     ap = getattr(gs, 'active_player_id', None)
                     ap = ap if ap is not None else getattr(gs, 'active_player', None)
                     print(f"Step {steps}: PLAY_FROM_ZONE executed by player={ap}; battle_zone now={dump_battle_zone(ap)}")
             except Exception as e:
-                print('execute_action raised', e)
+                print('execute_command raised', e)
 
         # advance phase
         try:

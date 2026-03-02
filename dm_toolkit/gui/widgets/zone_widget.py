@@ -45,7 +45,8 @@ except Exception:
 from .card_widget import CardWidget
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.card_helpers import get_card_civilization
-from dm_toolkit.commands import wrap_action
+# 再発防止: wrap_action は wrap_command の後方互換エイリアス。wrap_command を使用すること。
+from dm_toolkit.commands import wrap_command
 import logging
 
 # module logger
@@ -54,14 +55,14 @@ logger = logging.getLogger('dm_toolkit.gui.widgets.zone_widget')
 class ZoneWidget(QWidget):
     card_clicked = pyqtSignal(int, int) # card_id, instance_id
     card_hovered = pyqtSignal(int) # card_id
-    action_triggered = pyqtSignal(object) # Action object (or Command)
+    command_triggered = pyqtSignal(object)  # CommandDef を emit（再発防止: 旧 action_triggered）
     card_double_clicked = pyqtSignal(int, int) # card_id, instance_id
 
     def __init__(self, title, parent=None):
         super().__init__(parent)
         self.title = title
         self.cards = []
-        self.legal_actions = []
+        self.legal_commands = []  # 再発防止: legal_actions から legal_commands に改名
         
         self.init_ui()
 
@@ -138,19 +139,22 @@ class ZoneWidget(QWidget):
                 pass
         main_layout.addWidget(self.scroll_area)
 
-    def set_legal_actions(self, actions):
-        self.legal_actions = actions
+    def set_legal_commands(self, commands: list) -> None:
+        self.legal_commands = commands
         # Update existing widgets if possible, but usually update_cards handles recreation
-        # If we want live updates without recreation:
         for widget in self.cards:
              if widget.instance_id != -1:
-                 relevant = [a for a in self.legal_actions if getattr(a, 'source_instance_id', -1) == widget.instance_id]
-                 widget.update_legal_actions(relevant)
+                 relevant = [c for c in self.legal_commands if getattr(c, 'source_instance_id', -1) == widget.instance_id]
+                 widget.update_legal_commands(relevant)
 
-    def update_cards(self, card_data_list, card_db, civ_map=None, legal_actions=None, collapsed=None):
-        # Update cached legal actions if provided
-        if legal_actions is not None:
-            self.legal_actions = legal_actions
+    # 後方互換エイリアス
+    def set_legal_actions(self, actions: list) -> None:
+        self.set_legal_commands(actions)
+
+    def update_cards(self, card_data_list, card_db, civ_map=None, legal_commands=None, collapsed=None):
+        # Update cached legal commands if provided
+        if legal_commands is not None:
+            self.legal_commands = legal_commands
 
         # Save necessary data for potential popup
         self.card_db = card_db
@@ -165,7 +169,7 @@ class ZoneWidget(QWidget):
 
         # If popup is active, update it too
         if hasattr(self, 'active_popup') and self.active_popup and self.active_popup.isVisible():
-            self.active_popup.update_content(card_data_list, card_db, civ_map, legal_actions)
+            self.active_popup.update_content(card_data_list, card_db, civ_map, legal_commands)
 
         # Clear existing
         for i in reversed(range(self.card_layout.count())):
@@ -262,8 +266,8 @@ class ZoneWidget(QWidget):
             # Filter actions for this card
             relevant_actions = []
             if instance_id != -1:
-                for a in self.legal_actions:
-                    # Support both dict and object action representations
+                for a in self.legal_commands:
+                    # Support both dict and object command representations
                     if hasattr(a, 'source_instance_id'):
                         if a.source_instance_id == instance_id:
                             relevant_actions.append(a)
@@ -291,21 +295,21 @@ class ZoneWidget(QWidget):
                 widget = CardWidget(
                     cid, card_name, card_cost, card_power, 
                     civ, tapped, instance_id,
-                    legal_actions=relevant_actions
+                    legal_commands=relevant_actions
                 )
                 widget.clicked.connect(lambda i_id, c_id=cid: self.card_clicked.emit(c_id, i_id))
                 widget.hovered.connect(self.card_hovered.emit)
-                widget.action_triggered.connect(self._handle_action_triggered)
+                widget.command_triggered.connect(self._handle_command_triggered)
                 widget.double_clicked.connect(lambda i_id, c_id=cid: self.card_double_clicked.emit(c_id, i_id))
                 self.card_layout.addWidget(widget)
                 self.cards.append(widget)
             else:
                 # Unknown/Masked
                 # Pass is_face_down=True
-                widget = CardWidget(0, "???", 0, 0, "COLORLESS", False, instance_id, None, True, legal_actions=relevant_actions)
+                widget = CardWidget(0, "???", 0, 0, "COLORLESS", False, instance_id, None, True, legal_commands=relevant_actions)
                 widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
                 widget.hovered.connect(self.card_hovered.emit)
-                widget.action_triggered.connect(self._handle_action_triggered)
+                widget.command_triggered.connect(self._handle_command_triggered)
                 widget.double_clicked.connect(lambda i_id, c_id=0: self.card_double_clicked.emit(c_id, i_id))
                 self.card_layout.addWidget(widget)
 
@@ -315,27 +319,19 @@ class ZoneWidget(QWidget):
                 widget.set_selected(selected)
                 return
 
-    def _handle_action_triggered(self, action):
+    def _handle_command_triggered(self, cmd):
         """
-        Intercepts action triggered signal to potentially wrap it as a Command
-        before bubbling up.
+        コマンドトリガーシグナルをインターセプトし、上位にバブルアップする前に wrap_command でラップする。
         """
-        # For now, we emit the wrapped command if possible, or just the action.
-        # But to be safe and ensure backward compatibility in the receiver (app.py),
-        # we might want to emit the ICommand interface which provides .to_dict() etc.
-        # But app.py likely expects the raw action object (Action struct from C++ or dict).
-
-        # Pilot Implementation:
-        # We wrap it, but ensure the receiver can handle it.
-        # Since this is a partial rollout, let's assume the receiver checks for 'execute'.
-        cmd = wrap_action(action)
-        self.action_triggered.emit(cmd)
+        # 再発防止: wrap_action は wrap_command に改名済み。
+        wrapped = wrap_command(cmd)
+        self.command_triggered.emit(wrapped)
 
     def _open_popup(self, *args):
         from dm_toolkit.gui.widgets.zone_popup import ZonePopup
         # Pass civ_map if available
         civ_map = getattr(self, 'civ_map', None)
-        popup = ZonePopup(self.title, self.last_card_data_list, self.card_db, self.civ_map, self.legal_actions, parent=self.window())
+        popup = ZonePopup(self.title, self.last_card_data_list, self.card_db, self.civ_map, self.legal_commands, parent=self.window())
 
         # Track active popup to update it if game state changes while it's open
         self.active_popup = popup
@@ -344,7 +340,7 @@ class ZoneWidget(QWidget):
         # So if user clicks a card in popup, it behaves as if they clicked it in the zone
         popup.zone_widget.card_clicked.connect(self.card_clicked.emit)
         popup.zone_widget.card_double_clicked.connect(self.card_double_clicked.emit)
-        popup.zone_widget.action_triggered.connect(self.action_triggered.emit)
+        popup.zone_widget.command_triggered.connect(self.command_triggered.emit)
         popup.zone_widget.card_hovered.connect(self.card_hovered.emit)
 
         popup.exec()

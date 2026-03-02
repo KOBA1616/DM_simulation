@@ -196,7 +196,7 @@ class GameSessionSimplified:
 
             if is_human:
                 # Human player - wait for input
-                # UI will call execute_action() when user selects an action
+                # UI will call execute_command() when user selects a command
                 self.callback_update_ui()
                 return
 
@@ -204,7 +204,7 @@ class GameSessionSimplified:
             # For now, execute first non-PASS action, then fast_forward
             best_cmd = self._select_ai_action(cmds)
             if best_cmd:
-                self.execute_action(best_cmd)
+                self.execute_command(best_cmd)
                 # After AI action, fast_forward to next decision point
                 self._fast_forward()
 
@@ -213,12 +213,12 @@ class GameSessionSimplified:
         finally:
             self.is_processing = False
 
-    def execute_action(self, raw_action: Any):
+    def execute_command(self, raw_action: Any):
         """
-        Execute an action and let C++ engine progress automatically.
+        Execute a command and let C++ engine progress automatically.
         
         This method:
-        1. Converts action to command dict
+        1. Converts command to command dict
         2. Executes via C++ engine
         3. Calls fast_forward to progress to next decision point
         """
@@ -261,9 +261,13 @@ class GameSessionSimplified:
         except Exception as e:
             self.callback_log(f"Execution error: {e}")
 
-        # After executing action, fast_forward to next decision point
+        # After executing command, fast_forward to next decision point
         self._fast_forward()
         self.callback_update_ui()
+
+    # 後方互換エイリアス（段階的廃止予定）— 再発防止: 新規コードは execute_command を使用すること
+    def execute_action(self, raw_action: Any):
+        return self.execute_command(raw_action)
 
     def _fast_forward(self):
         """Call C++ fast_forward to progress game until next decision point."""
