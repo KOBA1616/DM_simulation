@@ -13,6 +13,34 @@ from python.dm_env._native import get_module
 MAX_TURNS: int = 300  # 無限ループ防止
 
 
+def _serialize_winner(winner: Any) -> Optional[int]:
+    """GameResult を JSON シリアライズ可能な int/None に変換する。
+
+    再発防止: C++ GameResult enum は json.dump できないため必ずこの関数を通す。
+    - GameResult.NONE  → None（ゲーム継続中）
+    - GameResult.P1_WIN → 0
+    - GameResult.P2_WIN → 1
+    - GameResult.DRAW   → -1
+    """
+    if winner is None:
+        return None
+    try:
+        # C++ enum: str 表現で判定
+        name = getattr(winner, "name", str(winner))
+        if "NONE" in name:
+            return None
+        if "P1_WIN" in name:
+            return 0
+        if "P2_WIN" in name:
+            return 1
+        if "DRAW" in name:
+            return -1
+        # fallback: int へ強制変換
+        return int(winner)
+    except Exception:
+        return None
+
+
 def run_game(
     deck_p0: List[int],
     deck_p1: List[int],
@@ -67,7 +95,8 @@ def run_game(
         log.append(f"[MaxTurns {MAX_TURNS}] 上限ターンに達しました。")
 
     result: Dict[str, Any] = {
-        "winner": getattr(game.state, "winner", None),
+        # 再発防止: GameResult は C++ enum で JSON 非シリアライザブルのため int/None に変換
+        "winner": _serialize_winner(getattr(game.state, "winner", None)),
         "turns": turn,
         "log": log,
     }

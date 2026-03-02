@@ -56,11 +56,10 @@ def _fmt_cards(cards: List[Any]) -> str:
 
 def _fmt_command(cmd: Any) -> str:
     ctype = str(getattr(cmd, "type", "UNKNOWN"))
-    src   = getattr(cmd, "source_instance_id", -1)
-    tgt   = getattr(cmd, "target_instance_id", -1)
-    tplr  = getattr(cmd, "target_player_id", -1)
+    # 再発防止: CommandDef フィールドは instance_id / target_instance。
+    # source_instance_id / target_instance_id は存在しない（bind_core.cpp 参照）。
+    src  = getattr(cmd, "instance_id", -1)
+    tgt  = getattr(cmd, "target_instance", -1)
     if tgt >= 0:
         return f"{ctype}  src=#{src} → target=#{tgt}"
-    if tplr >= 0:
-        return f"{ctype}  src=#{src} → Player{tplr}"
     return f"{ctype}  src=#{src}"

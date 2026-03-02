@@ -3,7 +3,8 @@ import unittest
 import pytest
 import dm_ai_module
 from dm_ai_module import GameInstance, CommandType, CardStub, GameState, CommandDef, CardType, JsonLoader, PhaseManager, Phase
-from dm_toolkit import commands
+# 再発防止: dm_toolkit.commands 経由の呼び出しは廃止。
+#           IntentGenerator.generate_legal_commands を直接使用すること。
 
 @pytest.mark.skipif(not getattr(dm_ai_module, 'IS_NATIVE', False), reason="Requires native engine")
 class TestSpellAndStack(unittest.TestCase):
@@ -56,7 +57,7 @@ class TestSpellAndStack(unittest.TestCase):
         # DEBUG: Check legal commands
         try:
             db = JsonLoader.load_cards("data/cards.json")
-            legal_cmds = commands.generate_legal_commands(self.game.state, db)
+            legal_cmds = dm_ai_module.IntentGenerator.generate_legal_commands(self.game.state, db)
             play_cmds = [c for c in legal_cmds if c.type == CommandType.PLAY_FROM_ZONE]
 
             found = False
@@ -140,7 +141,7 @@ class TestSpellAndStack(unittest.TestCase):
         # Check legality before playing to avoid crashing
         try:
             db = JsonLoader.load_cards("data/cards.json")
-            legal_cmds = commands.generate_legal_commands(self.game.state, db)
+            legal_cmds = dm_ai_module.IntentGenerator.generate_legal_commands(self.game.state, db)
             play_ids = [c.instance_id for c in legal_cmds if c.type == CommandType.PLAY_FROM_ZONE]
 
             if hand_card_A.instance_id not in play_ids:
@@ -162,7 +163,7 @@ class TestSpellAndStack(unittest.TestCase):
 
         # Check legality for B
         try:
-            legal_cmds = commands.generate_legal_commands(self.game.state, db)
+            legal_cmds = dm_ai_module.IntentGenerator.generate_legal_commands(self.game.state, db)
             play_ids = [c.instance_id for c in legal_cmds if c.type == CommandType.PLAY_FROM_ZONE]
             if hand_card_B.instance_id not in play_ids:
                  # B might depend on A resolving? Or can we stack?

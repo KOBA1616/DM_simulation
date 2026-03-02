@@ -3,7 +3,7 @@ import sys
 import os
 import dm_ai_module
 from dm_ai_module import GameInstance, CommandSystem, CardInstance, DecideCommand, JsonLoader
-from dm_toolkit import commands
+# 再発防止: dm_toolkit.commands は削除候補。このテストは command_builders のみ使用する。
 import pytest
 
 # Ensure dm_toolkit is importable
