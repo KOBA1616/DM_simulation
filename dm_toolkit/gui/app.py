@@ -44,7 +44,10 @@ from dm_toolkit.gui.widgets.log_viewer import LogViewer
 from dm_toolkit.gui.game_session import GameSession
 from dm_toolkit.gui.input_handler import GameInputHandler
 from dm_toolkit.gui.layout_builder import LayoutBuilder
-from dm_toolkit import commands
+# 再発防止: dm_toolkit.commands.generate_legal_commands はレガシー経路。
+#           コマンド生成は必ず python.dm_env._native 経由を使用する。
+from python.dm_env._native import get_module as _get_dm
+from python.dm_env import builders as _builders
 
 class GameWindow(QMainWindow):
     def __init__(self) -> None:
@@ -568,7 +571,10 @@ class GameWindow(QMainWindow):
         # EngineCompat.ActionGenerator_generate_legal_commands() はレガシー経路のため削除。
         all_legal_actions = []
         try:
-            all_legal_actions = commands.generate_legal_commands(self.gs, self.card_db, strict=False) or []
+            # 再発防止: generate_legal_actions（旧名）ではなく generate_legal_commands を使用。
+            # bind_engine.cpp で両名ともバインド済み（旧名はエイリアス）。
+            dm = _get_dm()
+            all_legal_actions = dm.IntentGenerator.generate_legal_commands(self.gs, self.card_db) or []
         except Exception:
             all_legal_actions = []
 

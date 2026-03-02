@@ -67,6 +67,8 @@ def _read_choice(n: int) -> int:
 
 
 def _pass_cmd(dm: Any) -> Any:
+    # 再発防止: CommandDef フィールドは instance_id / target_instance。
+    # source_instance_id / target_instance_id は存在しない（bind_core.cpp 参照）。
     cmd = dm.CommandDef()
     cmd.type = dm.CommandType.PASS
     return cmd

@@ -131,15 +131,88 @@ class GameState:
 	def get_zone(self, player_id: int, zone: Any) -> List[Any]: ...
 
 class GameInstance:
-	def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+	def __init__(self, seed: int, card_db: Any) -> None: ...
 	state: GameState
+	def start_game(self) -> None: ...
+	def resolve_command(self, cmd: 'CommandDef') -> None: ...
+	def step(self) -> bool: ...
+	def undo(self) -> None: ...
 	def reset_with_scenario(self, config: Any) -> None: ...
 	def initialize_card_stats(self, *args: Any, **kwargs: Any) -> None: ...
-	def resolve_action(self, action: Any) -> None: ...
-	def step(self) -> bool: ...
+	def resolve_action(self, action: Any) -> None: ...  # deprecated: use resolve_command
 
 class GameResult:
 	NONE: int
 	P1_WIN: int
 	P2_WIN: int
 	DRAW: int
+
+# ── CommandDef / CommandType ─────────────────────────────────────────────────
+# 再発防止: CommandType は dm/core/card_json_types.hpp の enum class。
+#           Python 側は必ず CommandDef を使い、Action / dict は使わないこと。
+
+class CommandType(IntEnum):
+    # フェーズ自動遷移用プリミティブ
+    TRANSITION = 0
+    MUTATE = 1
+    FLOW = 2
+    QUERY = 3
+    # マクロ
+    DRAW_CARD = 4
+    DISCARD = 5
+    DESTROY = 6
+    BOOST_MANA = 7
+    TAP = 8
+    UNTAP = 9
+    BREAK_SHIELD = 10
+    SHIELD_TRIGGER = 11
+    # 移動系
+    MOVE_CARD = 12
+    SEND_TO_MANA = 13
+    PLAYER_MANA_CHARGE = 14
+    MANA_CHARGE = 15       # メインの「マナチャージ」コマンド
+    # 攻撃/ブロック
+    ATTACK_PLAYER = 16
+    ATTACK_CREATURE = 17
+    BLOCK = 18
+    # カードプレイ（クリーチャー召喚 / 呪文詠唱）
+    PLAY_FROM_ZONE = 19    # 手札からのプレイ（creature & spell 兼用）
+    CAST_SPELL = 20
+    # その他
+    PASS = 21
+    SELECT_TARGET = 22
+    CHOICE = 23
+    NONE = 24
+
+class CommandDef:
+    """C++ CommandDef の Python バインディング。
+    再発防止: source_instance_id / target_instance_id は存在しない。
+              正しいフィールド名: instance_id, target_instance, owner_id
+    """
+    type: CommandType
+    instance_id: int         # ソース（主語）カードの instance_id
+    target_instance: int     # ターゲットカードの instance_id
+    owner_id: int            # 操作プレイヤー ID
+    amount: int              # 枚数・値など
+    slot_index: int          # 手札インデックス等
+    target_slot_index: int
+    str_param: str
+    def __init__(self) -> None: ...
+    def to_dict(self) -> Dict[str, Any]: ...
+
+class IntentGenerator:
+    """合法コマンドリストを生成する C++ ユーティリティ。
+    再発防止: generate_legal_actions は後方互換エイリアス。
+              新規コードは必ず generate_legal_commands を使う。
+    """
+    @staticmethod
+    def generate_legal_commands(
+        state: GameState,
+        card_db: Any,
+    ) -> List[CommandDef]: ...
+    # deprecated alias — 新規コードでは使用しないこと
+    @staticmethod
+    def generate_legal_actions(
+        state: GameState,
+        card_db: Any,
+    ) -> List[CommandDef]: ...

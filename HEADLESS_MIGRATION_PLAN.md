@@ -4,8 +4,9 @@
 **改訂**: 2026-03-02 — GUI削除方針を撤回し「GUI保持・依存オプション化」に変更  
 **改訂**: 2026-03-02 — フェーズ 1 完了
 **改訂**: 2026-03-02 — フェーズ 2 完了
+**改訂**: 2026-03-02 — フェーズ 3 完了
 **対象ブランチ**: `feature/headless-v3-command-architecture`（メインから分岐）
-**ステータス**: フェーズ 2 完了 / フェーズ 3 着手前
+**ステータス**: フェーズ 3 完了 / フェーズ 4 着手前
 
 ---
 
@@ -798,11 +799,16 @@ if ($Output)      { $cmdArgs += @("--output", $Output) }
 ```
 
 **Phase 3 完了基準:**
-- [ ] `python tools/run_headless.py --mode ai-vs-ai` が正常終了する
-- [ ] `python tools/run_headless.py --mode human-vs-ai` でプロンプトが表示される
-- [ ] `python tools/run_headless.py --mode batch --games 10` が完走する
-- [ ] `.\scripts\run_gui.ps1` が引き続き起動する（GUI 保持確認）
-- [ ] `dm_toolkit/gui/game_session.py` に `action_to_command` / `unified_execution` の import が 0 件
+- [x] `python tools/run_headless.py --mode ai-vs-ai` が正常終了する
+- [x] `python tools/run_headless.py --mode human-vs-ai` でプロンプトが表示される
+- [x] `python tools/run_headless.py --mode batch --games 10` が完走する
+- [ ] `.\scripts\run_gui.ps1` が引き続き起動する（GUI 保持確認）— Phase 4 で検証予定
+- [x] `dm_toolkit/gui/game_session.py` に `action_to_command` / `unified_execution` の import が 0 件
+
+**Phase 3 完了日**: 2026-03-02  
+**新設ファイル**: `tools/run_headless.py`, `scripts/run_headless.ps1`  
+**修正ファイル**: `dm_toolkit/gui/game_session.py`, `game_session_simplified.py`, `app.py`  
+**リネーム**: `IntentGenerator.generate_legal_actions` → `generate_legal_commands`（C++ バインディング + 後方互換エイリアスそのまま維持）
 
 ---
 

@@ -17,10 +17,28 @@ import sys
 
 from dm_toolkit.dm_types import GameState, CardDB
 from dm_toolkit.engine.compat import EngineCompat
-# 再発防止: unified_execution は削除済み。Phase 3 で python.dm_env.builders に移行する。
-# 暫定スタブ: CommandDef または dict はそのまま返す。
-def ensure_executable_command(cmd):
+# 再発防止: unified_execution は削除済み。dm_env 経由で CommandDef を操作する（Phase 3 完了）。
+# 再発防止: dm_toolkit.commands.generate_legal_commands はレガシー経路。
+#           コマンド生成は必ず _generate_legal_commands() を使用すること。
+from python.dm_env._native import get_module as _get_dm
+from python.dm_env import builders as _builders
+
+
+def ensure_executable_command(cmd: Any) -> Any:
+    """暫定パススルー: CommandDef または dict はそのまま返す。"""
     return cmd
+
+
+def _generate_legal_commands(state: Any, card_db: Any) -> list:
+    """合法コマンドを dm_ai_module.IntentGenerator.generate_legal_commands 経由で生成する。
+
+    再発防止: generate_legal_actions（旧名）は後方互換エイリアスとして残存するが
+    新規コードでは必ず generate_legal_commands を使用すること。
+    """
+    dm = _get_dm()
+    return dm.IntentGenerator.generate_legal_commands(state, card_db)
+
+
 from dm_toolkit.gui.i18n import tr
 
 try:
@@ -167,8 +185,8 @@ class GameSessionSimplified:
             is_human = (self.player_modes.get(active_pid) == 'Human')
 
             # Get legal commands from C++ engine
-            from dm_toolkit import commands
-            cmds = commands.generate_legal_commands(self.gs, self.card_db)
+            # 再発防止: commands.generate_legal_commands は削除済み経路。_generate_legal_commands() を使用する。
+            cmds = _generate_legal_commands(self.gs, self.card_db)
 
             if not cmds:
                 # No commands - let C++ fast_forward progress the game
@@ -472,8 +490,8 @@ class GameSessionSimplified:
         """Get legal commands from C++ engine."""
         if not self.gs:
             return []
-        from dm_toolkit import commands
-        return commands.generate_legal_commands(self.gs, self.card_db)
+        # 再発防止: commands.generate_legal_commands は削除済み経路。_generate_legal_commands() を使用する。
+        return _generate_legal_commands(self.gs, self.card_db)
 
     def is_game_over(self) -> bool:
         """Check if game is over."""

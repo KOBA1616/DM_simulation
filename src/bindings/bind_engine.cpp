@@ -427,23 +427,27 @@ void bind_engine(py::module &m) {
       .def("clear", &dm::engine::systems::TriggerManager::clear);
 
   // Systems
+  // Binding: generate_legal_commands (コマンド方式統一名)
+  // 再発防止: generate_legal_actions は旧名。Python 側は必ず generate_legal_commands を使用する。
+  auto intent_impl = [](const GameState &gs, const std::map<CardID, CardDefinition> &db) {
+    try {
+      std::filesystem::create_directories("logs");
+      std::ofstream diag("logs/crash_diag.txt", std::ios::app);
+      if (diag) {
+        diag << "BINDING generate_legal_commands entry player="
+             << static_cast<int>(gs.active_player_id)
+             << " phase=" << static_cast<int>(gs.current_phase) << "\n";
+        diag.close();
+      }
+    } catch (...) {
+    }
+    return IntentGenerator::generate_legal_commands(gs, db);
+  };
+
   py::class_<IntentGenerator>(m, "IntentGenerator")
-      .def_static(
-          "generate_legal_actions",
-          [](const GameState &gs, const std::map<CardID, CardDefinition> &db) {
-            try {
-              std::filesystem::create_directories("logs");
-              std::ofstream diag("logs/crash_diag.txt", std::ios::app);
-              if (diag) {
-                diag << "BINDING generate_legal_actions entry player="
-                     << static_cast<int>(gs.active_player_id)
-                     << " phase=" << static_cast<int>(gs.current_phase) << "\n";
-                diag.close();
-              }
-            } catch (...) {
-            }
-            return IntentGenerator::generate_legal_commands(gs, db);
-          });
+      .def_static("generate_legal_commands", intent_impl)
+      // 後方互換エイリアス（deprecated: 新規コードでは generate_legal_commands を使用する）
+      .def_static("generate_legal_actions", intent_impl);
 
   auto effect_resolver =
       py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver");
