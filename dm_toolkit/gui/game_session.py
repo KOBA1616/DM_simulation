@@ -203,10 +203,6 @@ class GameSession:
 
         self.is_processing = True
         try:
-            # Check for user input wait state
-            if self._check_and_handle_input_wait():
-                return
-            
             # Check game over  
             if self.is_game_over():
                 self.callback_log("Game Over")
@@ -216,8 +212,14 @@ class GameSession:
             # Human players: need to check if it's their turn and wait for input
             active_pid = EngineCompat.get_active_player_id(self.gs)
             is_human = self.gs.is_human_player(active_pid)
-            
+
             if is_human:
+                # 再発防止: _check_and_handle_input_wait はヒューマンプレイヤー専用。
+                #           AI プレイヤー時に呼ぶと waiting_for_user_input=True で無限ブロックになる。
+                #           game_instance.step() が SELECT_NUMBER 等を含めてすべて処理するため
+                #           AI 側では _check_and_handle_input_wait を呼ばないこと。
+                if self._check_and_handle_input_wait():
+                    return
                 # For human players, we still need to generate actions and wait
                 # C++ step() is for AI only
                 cmds = _generate_legal_commands(self.gs, self.card_db)
@@ -389,11 +391,13 @@ class GameSession:
 
         再発防止: skip_wrapper=True は使用しない。必ず _CommandWrapper でラップして
                   execute_action が game_instance.resolve_command() 経路を使えるようにする。
+        再発防止: _generate_legal_commands は strict キーワード引数を持たない。
+                  strict=False 等のキーワード引数を渡すと TypeError でサイレントに [] が返る。
         """
         if not self.gs:
             return []
         try:
-            cmds = _generate_legal_commands(self.gs, self.card_db, strict=False) or []
+            cmds = _generate_legal_commands(self.gs, self.card_db) or []
         except Exception:
             cmds = []
         return cmds

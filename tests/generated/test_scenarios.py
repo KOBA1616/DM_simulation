@@ -31,7 +31,9 @@ def test_generated_scenario(scenario_path, card_db):
     data = load_scenario(scenario_path)
 
     # 1. Setup Game State
-    game = dm_ai_module.GameInstance(42)
+    # 再発防止: GameInstance(seed) のみは空 CardDatabase を使う。
+    #           必ず JsonLoader.load_cards() でロードした card_db を渡すこと。
+    game = dm_ai_module.GameInstance(42, card_db)
     gs = game.state
 
     setup = data.get("setup", {})

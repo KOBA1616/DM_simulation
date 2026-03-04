@@ -5,7 +5,11 @@ from dm_toolkit.gui import headless
 @pytest.mark.skipif(not getattr(dm_ai_module, 'IS_NATIVE', False), reason="Requires native engine")
 @pytest.mark.slow
 def test_headless_smoke_runs():
-    """Run the smoke test logic directly using headless module."""
+    """ヘッドレスモジュール経由のスモークテスト。
+
+    再発防止: headless.find_legal_commands_for_instance の import バグ修正後も
+              クラッシュなくリストを返すことをここで確認する。
+    """
     sess = headless.create_session(p0_human=True)
     assert sess.gs is not None, "No GameState available"
 
@@ -28,11 +32,17 @@ def test_headless_smoke_runs():
     if hand_ids:
         iid = hand_ids[0]
         cmds = headless.find_legal_commands_for_instance(sess, iid)
-        # We don't strictly assert cmds is non-empty because it depends on game state (mana etc)
-        # But calling it should not crash.
+        # 再発防止: cmds は必ず list を返すこと（NameError で [] が返るバグが再発していないか確認）
+        assert isinstance(cmds, list), (
+            f"find_legal_commands_for_instance が list を返していない: {type(cmds)}\n"
+            "再発防止: from dm_toolkit import commands を return [] の後に書かないこと"
+        )
 
-        # Try to play it
-        headless.play_instance(sess, iid)
+        # Try to play it (result is bool regardless of whether a command was found)
+        result = headless.play_instance(sess, iid)
+        assert isinstance(result, bool), (
+            f"play_instance が bool を返していない: {type(result)}"
+        )
 
     # Run some steps
     steps, over = headless.run_steps(sess, max_steps=50)

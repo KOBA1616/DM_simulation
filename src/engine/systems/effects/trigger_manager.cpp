@@ -65,6 +65,17 @@ namespace dm::engine::systems {
         TriggerType trigger_type = map_event_to_trigger(event);
         if (trigger_type == TriggerType::NONE) return;
 
+        // 再発防止: ON_PLAYはpipelineのCHECK_CREATURE_ENTER_TRIGGERSで処理済み。
+        // TransitionCommand→ZONE_ENTER経由でTriggerManagerが発火すると、
+        // TriggerSystem::resolve_triggerと合わせてON_PLAYが二重発火する。
+        // MCTSクローン状態ではevent_dispatcherがコピーされないため、
+        // クローンでは1回・ルートゲームでは2回と不整合になる。
+        // ON_CASTSPELLもCHECK_SPELL_CAST_TRIGGERSで処理されるため同様にスキップ。
+        if (trigger_type == TriggerType::ON_PLAY ||
+            trigger_type == TriggerType::ON_CAST_SPELL) {
+            return;
+        }
+
         // Standard self-trigger logic + iteration over active cards
         // Zones to check for potential listeners
         std::vector<Zone> zones_to_check = {Zone::BATTLE};

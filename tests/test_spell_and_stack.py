@@ -6,37 +6,30 @@ from dm_ai_module import GameInstance, CommandType, CardStub, GameState, Command
 # 再発防止: dm_toolkit.commands 経由の呼び出しは廃止。
 #           IntentGenerator.generate_legal_commands を直接使用すること。
 
+_CARDS_JSON = "data/cards.json"
+
 @pytest.mark.skipif(not getattr(dm_ai_module, 'IS_NATIVE', False), reason="Requires native engine")
 class TestSpellAndStack(unittest.TestCase):
     def setUp(self):
-        # Load the card database
-        try:
-            JsonLoader.load_cards("data/cards.json")
-        except Exception:
-            pass
+        # 再発防止: GameInstance() 引数なしは空 CardDatabase を使うため
+        #           カードコスト・文明・種別が未定義になり PLAY_FROM_ZONE が生成されない。
+        #           必ず JsonLoader.load_cards() + GameInstance(seed, db) を使うこと。
+        self._db = JsonLoader.load_cards(_CARDS_JSON)
+        self.game = GameInstance(42, self._db)
+        gs = self.game.state
+        gs.set_deck(0, [1] * 40)
+        gs.set_deck(1, [1] * 40)
+        PhaseManager.start_game(gs, self._db)
+        # MAIN フェーズまで fast_forward（先攻1ターン目ドロースキップ後の最初の手番）
+        PhaseManager.fast_forward(gs, self._db)
 
-        self.game = GameInstance()
-        self.game.start_game()
-        self.p0 = self.game.state.players[0]
-        self.p1 = self.game.state.players[1]
+        self.p0 = gs.players[0]
+        self.p1 = gs.players[1]
 
-        # Advance to MAIN phase (cards can only be played in MAIN)
-        limit = 10
-        while self.game.state.current_phase != Phase.MAIN and limit > 0:
-             try:
-                 PhaseManager.next_phase(self.game.state)
-             except TypeError:
-                 try:
-                     db = JsonLoader.load_cards("data/cards.json")
-                     PhaseManager.next_phase(self.game.state, db)
-                 except:
-                     pass
-             limit -= 1
-
-        # Add Mana for Player 0
+        # Add Mana for Player 0 (Water x5, Fire x5)
         for i in range(5):
-            self.game.state.add_card_to_mana(0, 1, 1000 + i) # Water
-            self.game.state.add_card_to_mana(0, 4, 1100 + i) # Fire
+            self.game.state.add_card_to_mana(0, 1, 1000 + i)  # Water
+            self.game.state.add_card_to_mana(0, 4, 1100 + i)  # Fire
 
     def test_spell_casting_stub(self):
         # Setup: Add a "Spell" card to hand.
@@ -55,9 +48,9 @@ class TestSpellAndStack(unittest.TestCase):
         self.assertEqual(hand_card.card_id, spell_card_id)
 
         # DEBUG: Check legal commands
+        # 再発防止: setUp で既にロード済みの self._db を再利用すること。
         try:
-            db = JsonLoader.load_cards("data/cards.json")
-            legal_cmds = dm_ai_module.IntentGenerator.generate_legal_commands(self.game.state, db)
+            legal_cmds = dm_ai_module.IntentGenerator.generate_legal_commands(self.game.state, self._db)
             play_cmds = [c for c in legal_cmds if c.type == CommandType.PLAY_FROM_ZONE]
 
             found = False
@@ -69,7 +62,14 @@ class TestSpellAndStack(unittest.TestCase):
             if not found:
                  # If legal commands don't include play, we can't expect execute to work.
                  # Skip instead of failing, as engine logic might be stricter than this test setup covers.
-                 pytest.skip("Engine did not allow playing spell (likely mana/phase requirements not fully simulated)")
+                 # 再発防止: IntentGenerator が spell PLAY_FROM_ZONE を生成するようになったら
+                 #           このスキップは自動的に解除され、以下のアサーションが有効になる。
+                 pytest.skip(
+                     "Engine did not generate PLAY_FROM_ZONE for spell card 7 "
+                     "(呪文詠唱が C++ に未実装の場合は PLAY_FROM_ZONE は生成されない)。"
+                     "IntentGenerator が spell の PLAY_FROM_ZONE を生成するようになったら"
+                     "このスキップを除去してテストをパスさせること。"
+                 )
         except Exception:
             pass
 
@@ -146,13 +146,18 @@ class TestSpellAndStack(unittest.TestCase):
         self.assertIsNotNone(hand_card_B)
 
         # Check legality before playing to avoid crashing
+        # 再発防止: setUp で既にロード済みの self._db を再利用すること。
         try:
-            db = JsonLoader.load_cards("data/cards.json")
-            legal_cmds = dm_ai_module.IntentGenerator.generate_legal_commands(self.game.state, db)
+            legal_cmds = dm_ai_module.IntentGenerator.generate_legal_commands(self.game.state, self._db)
             play_ids = [c.instance_id for c in legal_cmds if c.type == CommandType.PLAY_FROM_ZONE]
 
             if hand_card_A.instance_id not in play_ids:
-                 pytest.skip("Cannot play Spell A")
+                 pytest.skip(
+                     "Engine did not generate PLAY_FROM_ZONE for spell card A "
+                     "(呪文詠唱が C++ に未実装の場合は PLAY_FROM_ZONE は生成されない)。"
+                     "IntentGenerator が spell の PLAY_FROM_ZONE を生成するようになったら"
+                     "このスキップを除去してテストをパスさせること。"
+                 )
         except Exception:
             pass
 
@@ -171,7 +176,7 @@ class TestSpellAndStack(unittest.TestCase):
 
         # Check legality for B
         try:
-            legal_cmds = dm_ai_module.IntentGenerator.generate_legal_commands(self.game.state, db)
+            legal_cmds = dm_ai_module.IntentGenerator.generate_legal_commands(self.game.state, self._db)
             play_ids = [c.instance_id for c in legal_cmds if c.type == CommandType.PLAY_FROM_ZONE]
             if hand_card_B.instance_id not in play_ids:
                  # B might depend on A resolving? Or can we stack?

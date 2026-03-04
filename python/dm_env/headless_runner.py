@@ -6,9 +6,12 @@ PyQt6 import 禁止。JSON ログ出力オプション付き。
 """
 from __future__ import annotations
 import json
+import os
 import random
 from typing import Any, Dict, List, Optional
 from python.dm_env._native import get_module
+
+_CARDS_JSON = os.path.join(os.path.dirname(__file__), "..", "..", "data", "cards.json")
 
 MAX_TURNS: int = 300  # 無限ループ防止
 
@@ -62,7 +65,16 @@ def run_game(
     """
     dm = get_module()
     _seed = seed if seed is not None else random.randint(0, 999999)
-    db = dm.CardDatabase()
+    # 再発防止: CardDatabase() は空DBを返すため cards.json をロードすること。
+    # GameSession は JsonLoader.load_cards() を使用しており整合性を保つ必要がある。
+    try:
+        cards_path = os.path.normpath(_CARDS_JSON)
+        if hasattr(dm, "JsonLoader") and os.path.exists(cards_path):
+            db = dm.JsonLoader.load_cards(cards_path)
+        else:
+            db = dm.CardDatabase()
+    except Exception:
+        db = dm.CardDatabase()
     game = dm.GameInstance(_seed, db)
     # 初期化: 可能ならネイティブの PhaseManager.start_game を使って
     # シールドや手札の初期配置を確実に行う（GameInstance.start_game のみでは不足する場合がある）
@@ -117,15 +129,23 @@ def run_game(
             init_log = ["[init] GameInstance.start_game invoked"]
     except Exception as exc:
         return {"winner": None, "turns": 0, "log": [f"start_game error: {exc}"]}
-    log: List[str] = []
-    turn = 0
+    # 再発防止: turn はアクション数(resolve_commandの呼出回数)であり "ゲームのターン数" ではない。
+    # game_rounds でプレイヤーターン数（active_player_id の切り替わり回数）を別途計測する。
+    action_count: int = 0
+    game_rounds: int = 0
+    _prev_active_player: Optional[int] = None
 
     # 初期化ログを先頭に置く
     log: List[str] = init_log if 'init_log' in locals() else []
-    for turn in range(MAX_TURNS):
+    for _loop_idx in range(MAX_TURNS):
         state = game.state
         if state.game_over:
             break
+        # プレイヤーターン数カウント: active_player_id が変わったら1ターン追加
+        _cur_player = getattr(state, 'active_player_id', None)
+        if _cur_player is not None and _cur_player != _prev_active_player:
+            game_rounds += 1
+            _prev_active_player = _cur_player
         try:
             # Prefer toolkit wrapper which includes fast_forward and python fallbacks
             try:
@@ -134,7 +154,7 @@ def run_game(
             except Exception:
                 legal: List[Any] = dm.IntentGenerator.generate_legal_commands(state, db) or []
         except Exception as exc:
-            log.append(f"[Turn {turn}] generate_legal_commands error: {exc}")
+            log.append(f"[Action {action_count}] generate_legal_commands error: {exc}")
             break
         if not legal:
             # 合法手が見つからない場合、初期化不足の可能性があるため
@@ -149,7 +169,7 @@ def run_game(
                     except Exception:
                         legal = dm.IntentGenerator.generate_legal_commands(state, db) or []
                 except Exception as exc:
-                    log.append(f"[Turn {turn}] reinit generate_legal_commands error: {exc}")
+                    log.append(f"[Action {action_count}] reinit generate_legal_commands error: {exc}")
             if not legal:
                 # 追加診断情報を収集
                 try:
@@ -177,26 +197,32 @@ def run_game(
                     log.extend(diag)
                 except Exception:
                     log.append("[diag] failed to collect state diagnostics")
-                log.append(f"[Turn {turn}] No legal commands — 強制終了。")
+                log.append(f"[Action {action_count}] No legal commands — 強制終了。")
                 break
         # SimpleAI: 先頭コマンドを選択（MCTS等への差し替えポイント）
         cmd = legal[0]
         try:
             game.resolve_command(cmd)
         except Exception as exc:
-            log.append(f"[Turn {turn}] resolve_command error: {exc}")
+            log.append(f"[Action {action_count}] resolve_command error: {exc}")
             break
+        action_count += 1
         if verbose:
             log.append(
-                f"[Turn {turn}] P{state.active_player_id} → {getattr(cmd, 'type', '?')}"
+                f"[Action {action_count} / Round {game_rounds}]"
+                f" P{state.active_player_id} → {getattr(cmd, 'type', '?')}"
             )
     else:
-        log.append(f"[MaxTurns {MAX_TURNS}] 上限ターンに達しました。")
+        log.append(f"[MaxActions {MAX_TURNS}] 上限アクション数に達しました。")
 
     result: Dict[str, Any] = {
         # 再発防止: GameResult は C++ enum で JSON 非シリアライザブルのため int/None に変換
         "winner": _serialize_winner(getattr(game.state, "winner", None)),
-        "turns": turn,
+        # 再発防止: "turns" = プレイヤーターン数（active_player_id の切り替わり件数）。
+        # 旧実装では resolve_command のループカウンタ（アクション数）を誤って "turns" としていた。
+        # アクション数は "actions" キーで提供する。
+        "turns": game_rounds,
+        "actions": action_count,
         "log": log,
     }
     if output_json:

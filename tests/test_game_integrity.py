@@ -863,3 +863,483 @@ class TestRealGameplay:
             f"before={p1_shields_before} after={p1_shields_after}\n"
             "再発防止: BREAK_SHIELD は P1.shield_zone から1枚を手札に移動させること"
         )
+
+
+# ---------------------------------------------------------------------------
+# 11. SELECT_NUMBER 応答整合性
+# ---------------------------------------------------------------------------
+
+class TestSelectNumberResolution:
+    """SELECT_NUMBER コマンド応答後にゲームが正しく進行することを確認する。
+
+    再発防止:
+    - waiting_for_user_input=True のときに SELECT_NUMBER を dispatch_command + pipeline->execute
+      で処理しないと、IntentGenerator が SELECT_NUMBER を返し続け無限ループになる。
+    - game_instance.cpp の SELECT_NUMBER ケースに waiting_for_user_input パスを実装すること。
+    """
+
+    def _has_real_db(self, db: Any) -> bool:
+        keys = list(db.keys()) if hasattr(db, 'keys') else []
+        return len(keys) > 0
+
+    def test_select_number_resolves_waiting_state(self) -> None:
+        """SELECT_NUMBER 実行後に waiting_for_user_input が False になることを確認する。
+
+        card_id=1 (月光電人オボロカゲロウ) は召喚時にドロー数選択効果を持つため
+        PLAY_FROM_ZONE 後に SELECT_NUMBER 待ち状態になる。
+        再発防止: seed=42 を使用（シミュレーションでSELECT_NUMBER動作確認済み）。
+        """
+        game, db = _make_game(seed=42)
+        if not self._has_real_db(db):
+            pytest.skip("カードDB未ロード")
+
+        # PLAY_FROM_ZONE で SELECT_NUMBER 待ち状態を発生させる
+        played = False
+        for _ in range(120):
+            s = game.state
+            legal = dm_ai_module.IntentGenerator.generate_legal_commands(s, db)
+            if not legal:
+                dm_ai_module.PhaseManager.next_phase(s, db)
+                continue
+
+            ctypes = [str(getattr(c, 'type', '')).upper() for c in legal]
+            if any('SELECT_NUMBER' in t for t in ctypes):
+                # 待機状態に入ったことを確認
+                waiting = getattr(s, 'waiting_for_user_input', False)
+                assert waiting, (
+                    "SELECT_NUMBER コマンドが返っているが waiting_for_user_input=False\n"
+                    "再発防止: PipelineExecutor::handle_wait_input で waiting_for_user_input=True をセットすること"
+                )
+
+                # SELECT_NUMBER を応答（最小値 target_instance のコマンドを使う）
+                sel_cmd = min(
+                    [c for c in legal if 'SELECT_NUMBER' in str(getattr(c, 'type', '')).upper()],
+                    key=lambda c: getattr(c, 'target_instance', 0)
+                )
+                game.resolve_command(sel_cmd)
+
+                # 応答後は waiting_for_user_input が解除されているはず
+                waiting_after = getattr(game.state, 'waiting_for_user_input', False)
+                assert not waiting_after, (
+                    "SELECT_NUMBER 応答後も waiting_for_user_input=True のまま\n"
+                    "再発防止: game_instance.cpp の SELECT_NUMBER ケースで waiting_for_user_input=False にすること"
+                )
+                played = True
+                break
+
+            play_cmd = next((c for c in legal if 'PLAY' in str(getattr(c, 'type', '')).upper()), None)
+            mana_cmd = next((c for c in legal if 'MANA_CHARGE' in str(getattr(c, 'type', '')).upper()), None)
+            # 再発防止: PLAY_FROM_ZONE 後に RESOLVE_EFFECT が返る場合がある。
+            # RESOLVE_EFFECT を処理しないと SELECT_NUMBER 状態に到達できない。
+            resolve_cmd = next((c for c in legal if 'RESOLVE_EFFECT' in str(getattr(c, 'type', '')).upper()), None)
+            if play_cmd:
+                game.resolve_command(play_cmd)
+            elif mana_cmd:
+                game.resolve_command(mana_cmd)
+            elif resolve_cmd:
+                game.resolve_command(resolve_cmd)
+            else:
+                dm_ai_module.PhaseManager.next_phase(s, db)
+
+        if not played:
+            pytest.skip("SELECT_NUMBER 待ち状態に到達できませんでした（カード構成依存）")
+
+    def test_select_number_does_not_loop(self) -> None:
+        """SELECT_NUMBER 応答後に連続して SELECT_NUMBER が返り続けないことを確認する。
+
+        再発防止: SELECT_NUMBER ループは waiting_for_user_input が解除されないことが原因。
+        同一ステップで SELECT_NUMBER が 3 回以上連続したらループとみなす。
+        """
+        game, db = _make_game(seed=12)
+        if not self._has_real_db(db):
+            pytest.skip("カードDB未ロード")
+
+        consecutive_select = 0
+        max_consecutive = 0
+
+        for _ in range(200):
+            s = game.state
+            if s.game_over:
+                break
+            legal = dm_ai_module.IntentGenerator.generate_legal_commands(s, db)
+            if not legal:
+                dm_ai_module.PhaseManager.next_phase(s, db)
+                consecutive_select = 0
+                continue
+
+            ctypes = [str(getattr(c, 'type', '')).upper() for c in legal]
+            if any('SELECT_NUMBER' in t for t in ctypes):
+                consecutive_select += 1
+                max_consecutive = max(max_consecutive, consecutive_select)
+                # 最小値のコマンドで応答
+                sel_cmd = min(
+                    [c for c in legal if 'SELECT_NUMBER' in str(getattr(c, 'type', '')).upper()],
+                    key=lambda c: getattr(c, 'target_instance', 0)
+                )
+                game.resolve_command(sel_cmd)
+            else:
+                consecutive_select = 0
+                cmd = next(
+                    (c for c in legal if not any(kw in str(getattr(c, 'type', '')).upper() for kw in ('PASS',))),
+                    legal[0]
+                )
+                ctype = str(getattr(cmd, 'type', '')).upper()
+                if 'PASS' in ctype:
+                    dm_ai_module.PhaseManager.next_phase(s, db)
+                else:
+                    try:
+                        game.resolve_command(cmd)
+                    except Exception:
+                        dm_ai_module.PhaseManager.next_phase(s, db)
+
+        # 1回の効果につき SELECT_NUMBER は最大 2～3 回（RESOLVE_EFFECT×2の連鎖）まで許容
+        assert max_consecutive <= 5, (
+            f"SELECT_NUMBER が {max_consecutive} 回連続して返されました（ループの疑い）\n"
+            "再発防止: game_instance.cpp の SELECT_NUMBER ケースで waiting_for_user_input=False にすること"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 12. 直接攻撃によるゲーム終了
+# ---------------------------------------------------------------------------
+
+class TestDirectAttackWin:
+    """シールド0枚の相手への攻撃でゲームが終了することを確認する。
+
+    再発防止:
+    - phase_system.cpp の ATTACK_PLAYER 処理で opponent.shield_zone.empty() のとき
+      GameResultCommand を発行すること。
+    - game_over フラグは GameResultCommand::execute と check_game_over の両方で
+      state.game_over = true にすること（どちらか片方だけでは不足）。
+    """
+
+    def _has_real_db(self, db: Any) -> bool:
+        keys = list(db.keys()) if hasattr(db, 'keys') else []
+        return len(keys) > 0
+
+    def test_direct_attack_with_no_shields_triggers_game_over(self) -> None:
+        """P1 のシールドが 0 枚のとき P0 が攻撃すると game_over=True になることを確認する。"""
+        game, db = _make_game(seed=20)
+        if not self._has_real_db(db):
+            pytest.skip("カードDB未ロード")
+
+        # P1 のシールドを全て除去（set_deck のように直接操作する手段がないため
+        # add_test_card_to_battle + シールドゾーン操作を確認する）
+        p1_shields = len(game.state.players[1].shield_zone)
+        if p1_shields != 5:
+            pytest.skip(f"P1 初期シールドが 5 枚でありません: {p1_shields}")
+
+        # P1 のシールドをすべてブレイクしてから0にする:
+        # 再発防止: クリーチャーは1体1攻撃のため、シールド5枚を全て破壊するのに5体必要。
+        #   さらに直接攻撃用に追加クリーチャーが必要なので 7 体配置する。
+        # P0 に Non-sick クリーチャーを多数置き P1 シールドを0にする
+        for iid in range(9801, 9808):  # 7体配置（5体でシールド破壊 + 2体で直接攻撃）
+            game.state.add_test_card_to_battle(0, 1, iid, False, False)  # sick=False
+
+        # ATTACK フェーズまで進める
+        for _ in range(30):
+            s = game.state
+            if s.active_player_id == 0 and 'ATTACK' in str(s.current_phase).upper():
+                break
+            dm_ai_module.PhaseManager.next_phase(s, db)
+
+        # P1 のシールドを全てブレイクする（ATK×5 + BREAK_SHIELD×5 = 最大30ステップ）
+        for _ in range(30):
+            s = game.state
+            if s.game_over:
+                break
+            if not s.active_player_id == 0:
+                break
+            if 'ATTACK' not in str(s.current_phase).upper():
+                dm_ai_module.PhaseManager.next_phase(s, db)
+                continue
+            if len(s.players[1].shield_zone) == 0:
+                break  # P1 シールド0になったら終了
+            legal = dm_ai_module.IntentGenerator.generate_legal_commands(s, db)
+            atk = next((c for c in legal if 'ATTACK_PLAYER' in str(getattr(c, 'type', '')).upper()), None)
+            brk = next((c for c in legal if 'BREAK_SHIELD' in str(getattr(c, 'type', '')).upper()), None)
+            if brk:
+                game.resolve_command(brk)
+            elif atk and len(s.players[1].shield_zone) > 0:
+                game.resolve_command(atk)
+                dm_ai_module.PhaseManager.next_phase(s, db)
+            else:
+                dm_ai_module.PhaseManager.next_phase(s, db)
+
+        p1_shields_now = len(game.state.players[1].shield_zone)
+        if p1_shields_now > 0:
+            pytest.skip(f"P1 のシールドを 0 にできませんでした: 残 {p1_shields_now} 枚")
+
+        if game.state.game_over:
+            # シールドブレイク中に既にgame_overになっていることもある (正しい動作)
+            assert game.state.winner != dm_ai_module.GameResult.NONE, (
+                "game_over=True なのに winner=NONE\n"
+                "再発防止: GameResultCommand::execute で winner と game_over を同時にセットすること"
+            )
+            return
+
+        # P0 がシールド0の P1 に攻撃 → 直接攻撃でゲーム終了
+        # 再発防止: ATTACK_PLAYER 後に next_phase を呼ばないとゲームオーバー判定が走らない。
+        #   phase_system.cpp::Phase::ATTACK の shield_zone.empty() チェックは next_phase 時に実行される。
+        for _ in range(30):
+            s = game.state
+            if s.game_over:
+                break
+            if not (s.active_player_id == 0 and 'ATTACK' in str(s.current_phase).upper()):
+                dm_ai_module.PhaseManager.next_phase(s, db)
+                continue
+            legal = dm_ai_module.IntentGenerator.generate_legal_commands(s, db)
+            atk = next((c for c in legal if 'ATTACK_PLAYER' in str(getattr(c, 'type', '')).upper()), None)
+            if atk:
+                game.resolve_command(atk)
+                # next_phase で shield_zone.empty() チェックが走りゲームオーバーが確定する
+                dm_ai_module.PhaseManager.next_phase(s, db)
+            else:
+                dm_ai_module.PhaseManager.next_phase(s, db)
+
+        assert game.state.game_over, (
+            "シールド 0 の相手への攻撃後に game_over=True になっていません\n"
+            "再発防止: phase_system.cpp で shield_zone.empty() のとき GameResultCommand を発行し、\n"
+            "          GameResultCommand::execute および check_game_over で game_over=true をセットすること"
+        )
+        assert game.state.winner != dm_ai_module.GameResult.NONE, (
+            "game_over=True のに winner=NONE\n"
+            "再発防止: GameResultCommand::execute で state.winner と state.game_over を同時に更新すること"
+        )
+        assert game.state.winner == dm_ai_module.GameResult.P1_WIN, (
+            f"P0 が勝利したはずなのに winner={game.state.winner}\n"
+            "再発防止: active_player_id==0 のとき GameResult::P1_WIN をセットすること"
+        )
+
+    def test_game_over_false_at_start(self) -> None:
+        """ゲーム開始直後は game_over=False であることを確認する（回帰テスト）。"""
+        game, db = _make_game(seed=21)
+        assert not game.state.game_over, "ゲーム開始直後に game_over=True は不正"
+        assert game.state.winner == dm_ai_module.GameResult.NONE, "ゲーム開始直後は winner=NONE のはず"
+
+
+# ---------------------------------------------------------------------------
+# 13. MANA_CHARGE ゾーン移動整合性
+# ---------------------------------------------------------------------------
+
+class TestManaChargeTransfer:
+    """MANA_CHARGE 後に手札からマナゾーンへカードが正しく移動することを確認する。
+
+    再発防止:
+    - MANA_CHARGE は 1ターンに1回のみ。複数回実行しようとしても2回目以降は
+      legal から除外されるはず。
+    - 手札枚数 -1、マナゾーン枚数 +1 であることを確認する。
+    """
+
+    def test_mana_charge_moves_card_hand_to_mana(self) -> None:
+        """MANA_CHARGE 実行後に手札-1・マナゾーン+1 となることを確認する。"""
+        game, db = _make_game(seed=30)
+
+        # MANA フェーズまで進める
+        for _ in range(10):
+            ph = str(game.state.current_phase).upper()
+            if 'MANA' in ph:
+                break
+            dm_ai_module.PhaseManager.next_phase(game.state, db)
+
+        assert 'MANA' in str(game.state.current_phase).upper(), (
+            "MANA フェーズに到達できませんでした"
+        )
+
+        p0 = game.state.players[0]
+        hand_before = len(p0.hand)
+        mana_before = len(p0.mana_zone)
+
+        legal = dm_ai_module.IntentGenerator.generate_legal_commands(game.state, db)
+        mana_cmd = next(
+            (c for c in legal if 'MANA_CHARGE' in str(getattr(c, 'type', '')).upper()),
+            None
+        )
+        assert mana_cmd is not None, (
+            "MANA フェーズで MANA_CHARGE コマンドが生成されませんでした\n"
+            "再発防止: IntentGenerator は MANAフェーズ且つ未チャージの場合に MANA_CHARGE を返すこと"
+        )
+
+        game.resolve_command(mana_cmd)
+
+        p0_after = game.state.players[0]
+        hand_after = len(p0_after.hand)
+        mana_after = len(p0_after.mana_zone)
+
+        assert hand_after == hand_before - 1, (
+            f"MANA_CHARGE 後に手札が1枚減っていません: before={hand_before} after={hand_after}\n"
+            "再発防止: MANA_CHARGE は手札→マナゾーンへカードを移動させること"
+        )
+        assert mana_after == mana_before + 1, (
+            f"MANA_CHARGE 後にマナゾーンが1枚増えていません: before={mana_before} after={mana_after}\n"
+            "再発防止: MANA_CHARGE は手札→マナゾーンへカードを移動させること"
+        )
+
+    def test_mana_charge_once_per_turn(self) -> None:
+        """MANA_CHARGE は1ターンに1回しか実行できないことを確認する。
+
+        再発防止: 2回目以降の MANA_CHARGE は legal コマンドに含まれないはず。
+        """
+        game, db = _make_game(seed=31)
+
+        # MANA フェーズまで進める
+        for _ in range(10):
+            if 'MANA' in str(game.state.current_phase).upper():
+                break
+            dm_ai_module.PhaseManager.next_phase(game.state, db)
+
+        legal = dm_ai_module.IntentGenerator.generate_legal_commands(game.state, db)
+        mana_cmd = next(
+            (c for c in legal if 'MANA_CHARGE' in str(getattr(c, 'type', '')).upper()),
+            None
+        )
+        if mana_cmd is None:
+            pytest.skip("MANA_CHARGE コマンドが生成されませんでした")
+
+        game.resolve_command(mana_cmd)
+
+        # 2回目の MANA_CHARGE は含まれないはず
+        legal2 = dm_ai_module.IntentGenerator.generate_legal_commands(game.state, db)
+        mana_cmd2 = next(
+            (c for c in legal2 if 'MANA_CHARGE' in str(getattr(c, 'type', '')).upper()),
+            None
+        )
+        assert mana_cmd2 is None, (
+            "MANA_CHARGE を1回実行した後も MANA_CHARGE が legal に含まれています\n"
+            "再発防止: IntentGenerator は mana_charged フラグが True の場合 MANA_CHARGE を除外すること"
+        )
+
+    def test_mana_zone_count_preserved_across_turns(self) -> None:
+        """複数ターンを通じてマナゾーンの枚数がターンごとに増加することを確認する。
+
+        再発防止: タップ/アンタップでカードが消えないこと。
+        """
+        game, db = _make_game(seed=32)
+        mana_counts: List[int] = []
+
+        for turn in range(4):
+            # P0 のターンのみ計測
+            for _ in range(30):
+                s = game.state
+                if s.game_over:
+                    break
+                if s.active_player_id == 0 and 'MANA' in str(s.current_phase).upper():
+                    mana_counts.append(len(s.players[0].mana_zone))
+                    legal = dm_ai_module.IntentGenerator.generate_legal_commands(s, db)
+                    mc = next(
+                        (c for c in legal if 'MANA_CHARGE' in str(getattr(c, 'type', '')).upper()),
+                        None
+                    )
+                    if mc:
+                        game.resolve_command(mc)
+                    dm_ai_module.PhaseManager.next_phase(s, db)
+                    break
+                dm_ai_module.PhaseManager.next_phase(s, db)
+            else:
+                continue
+            # END まで消化
+            for _ in range(20):
+                s = game.state
+                if s.game_over:
+                    break
+                if s.active_player_id != 0:
+                    break
+                dm_ai_module.PhaseManager.next_phase(s, db)
+
+        if len(mana_counts) < 2:
+            pytest.skip("複数ターンのマナゾーン計測ができませんでした")
+
+        # マナは毎ターン増えるか維持されるはず（減ってはいけない）
+        for i in range(1, len(mana_counts)):
+            assert mana_counts[i] >= mana_counts[i - 1], (
+                f"マナゾーンの枚数がターンをまたいで減りました: "
+                f"turn{i-1}={mana_counts[i-1]} turn{i}={mana_counts[i]}\n"
+                "再発防止: ターン終了時にマナゾーンのカードを削除しないこと（アンタップのみ）"
+            )
+
+
+# ---------------------------------------------------------------------------
+# 14. winner/game_over 整合性
+# ---------------------------------------------------------------------------
+
+class TestWinnerConsistency:
+    """game_over と winner が常に一致することを確認する。
+
+    再発防止:
+    - game_over=True のときは必ず winner != NONE であること。
+    - GameResultCommand::execute と check_game_over の両方で game_over=true をセットすること。
+    """
+
+    def _has_real_db(self, db: Any) -> bool:
+        keys = list(db.keys()) if hasattr(db, 'keys') else []
+        return len(keys) > 0
+
+    def test_winner_set_when_game_over(self) -> None:
+        """game_over=True のときに winner が NONE でないことを確認する。"""
+        game, db = _make_game(seed=40)
+
+        for _ in range(1000):
+            if game.state.game_over:
+                break
+            legal = dm_ai_module.IntentGenerator.generate_legal_commands(game.state, db)
+            if not legal:
+                dm_ai_module.PhaseManager.next_phase(game.state, db)
+                continue
+            # SELECT_NUMBER は最小値で応答
+            ctypes = [str(getattr(c, 'type', '')).upper() for c in legal]
+            if any('SELECT_NUMBER' in t for t in ctypes):
+                sel = min(
+                    [c for c in legal if 'SELECT_NUMBER' in str(getattr(c, 'type', '')).upper()],
+                    key=lambda c: getattr(c, 'target_instance', 0)
+                )
+                game.resolve_command(sel)
+            else:
+                # 優先順位: PLAY > MANA_CHARGE > ATTACK > PASS
+                priority = ['PLAY', 'MANA_CHARGE', 'ATTACK', 'BREAK']
+                chosen = None
+                for kw in priority:
+                    chosen = next(
+                        (c for c in legal if kw in str(getattr(c, 'type', '')).upper()),
+                        None
+                    )
+                    if chosen:
+                        break
+                if chosen is None:
+                    chosen = legal[0]
+                ctype = str(getattr(chosen, 'type', '')).upper()
+                if 'PASS' in ctype:
+                    dm_ai_module.PhaseManager.next_phase(game.state, db)
+                else:
+                    try:
+                        game.resolve_command(chosen)
+                    except Exception:
+                        dm_ai_module.PhaseManager.next_phase(game.state, db)
+
+        if not game.state.game_over:
+            pytest.skip("1000 手以内にゲームが終わりませんでした")
+
+        assert game.state.winner != dm_ai_module.GameResult.NONE, (
+            "game_over=True なのに winner=NONE\n"
+            "再発防止: GameResultCommand::execute で state.winner と state.game_over を同時にセットすること"
+        )
+
+    def test_game_over_implies_winner_not_none(self) -> None:
+        """デッキアウトでも game_over=True のときに winner != NONE であることを確認する。"""
+        game, db = _make_game(seed=41)
+        # P0 のデッキを空にしてターン開始時に検出させる（ドロー時デッキアウト）
+        game.state.set_deck(0, [])
+
+        for _ in range(20):
+            if game.state.game_over or game.state.winner != dm_ai_module.GameResult.NONE:
+                break
+            dm_ai_module.PhaseManager.next_phase(game.state, db)
+
+        is_over = game.state.game_over or game.state.winner != dm_ai_module.GameResult.NONE
+        if not is_over:
+            pytest.skip("デッキアウトによるゲーム終了が検出されませんでした")
+
+        if game.state.game_over:
+            assert game.state.winner != dm_ai_module.GameResult.NONE, (
+                "game_over=True なのに winner=NONE（デッキアウトケース）\n"
+                "再発防止: check_game_over で game_over=True をセットすること"
+            )

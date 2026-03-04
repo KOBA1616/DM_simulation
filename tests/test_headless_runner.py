@@ -2,7 +2,10 @@
 """ヘッドレスランナー結合テスト。PyQt6 不要。
 
 再発防止: このファイルに PyQt6/PySide6 を import してはならない。
-再発防止: turns の初期値は 0 のため "> 0" でなく ">= 0" でアサートする
+再発防止: turns はプレイヤーターン数 (active_player_id の切り替え回数) を指す。
+          旧実装では resolve_command のループカウンタ(アクション数)を誤って "turns" と
+          していたが、現在は "actions" キーがアクション数を保持する。
+          turns の初期値は 0 のため "> 0" でなく ">= 0" でアサートする
           (ゲームが初手即終了する場合がある)。
 """
 from __future__ import annotations
@@ -24,8 +27,14 @@ def test_game_completes() -> None:
     result = run_game(deck_p0=[], deck_p1=[])
     assert "winner" in result, f"結果に 'winner' キーがない: {result}"
     assert "turns" in result, f"結果に 'turns' キーがない: {result}"
-    # 再発防止: turns は 0 以上であればよい（即時終了ケースを許容）
+    assert "actions" in result, f"結果に 'actions' キーがない: {result}"
+    # 再発防止: turns はプレイヤーターン数 (>= 0)
     assert result["turns"] >= 0, f"turns が負: {result['turns']}"
+    # 再発防止: actions はアクション数 (>= turns)
+    # 1ターンに複数アクションが存在するため actions >= turns が成立する
+    assert result["actions"] >= result["turns"], (
+        f"actions({result['actions']}) < turns({result['turns']}) は想定外"
+    )
 
 
 def test_json_output(tmp_path: Path) -> None:
