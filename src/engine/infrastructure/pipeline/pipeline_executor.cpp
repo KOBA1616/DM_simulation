@@ -1303,22 +1303,25 @@ void PipelineExecutor::handle_wait_input(const Instruction &inst,
             << std::endl;
 
   // Setup pending query with min/max for SELECT_NUMBER
-  nlohmann::json params;
+  std::map<std::string, int> param_map;
   if (inst.args.contains("min")) {
     int min_val = resolve_int(inst.args["min"]);
-    params["min"] = min_val;
+    param_map["min"] = min_val;
     std::cerr << "[PipelineExecutor::handle_wait_input] min=" << min_val
               << std::endl;
   }
   if (inst.args.contains("max")) {
     int max_val = resolve_int(inst.args["max"]);
-    params["max"] = max_val;
+    param_map["max"] = max_val;
     std::cerr << "[PipelineExecutor::handle_wait_input] max=" << max_val
               << std::endl;
   }
 
-  state.pending_query =
-      GameState::QueryContext{0, query_type, {}, params, options};
+  // Ensure valid_targets is initialized as an empty array (vector<int>), not
+  // an empty JSON object. Construct QueryContext with correctly-typed
+  // parameters to avoid aggregate-initializer type/order mismatches.
+  state.pending_query = GameState::QueryContext{0, query_type, param_map,
+                                                std::vector<int>{}, options};
   std::cerr
       << "[PipelineExecutor::handle_wait_input] pending_query set: query_type="
       << state.pending_query.query_type << std::endl;

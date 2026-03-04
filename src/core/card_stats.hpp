@@ -70,6 +70,8 @@ namespace dm::core {
         int spells_cast_this_turn = 0;
         int current_chain_depth = 0;
         bool mana_charged_by_player[2] = {false, false};  // DM Rule: max 1 mana charge per turn per player
+        // 再発防止: OPPONENT_DRAW_COUNT 条件評価のために相手のドロー数をプレイヤー別に追跡する
+        int player_draw_count[2] = {0, 0};  // プレイヤー別ドロー数 (player_draw_count[player_id])
     };
 
 }

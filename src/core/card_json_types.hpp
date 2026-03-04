@@ -189,6 +189,17 @@ namespace dm::core {
         MANA_CHARGE,
         SELECT_TARGET,
 
+        // cards.json で使用される追加コマンドタイプ
+        // 再発防止: cards.json に新コマンドタイプを追加したら必ずここにも追加すること
+        APPLY_MODIFIER,      // 一時的な修正効果付与 (APPLY_MODIFIER in JSON)
+        GRANT_KEYWORD,       // キーワード付与 (GRANT_KEYWORD in JSON)
+        PUT_CREATURE,        // クリーチャーを場に出す (PUT_CREATURE in JSON)
+        REPLACE_CARD_MOVE,   // カード移動の置換効果 (REPLACE_CARD_MOVE in JSON)
+        ADD_RESTRICTION,     // 制約追加 (ADD_RESTRICTION in JSON)
+        SELECT_OPTION,       // 選択肢提示 (SELECT_OPTION in JSON, alias of CHOICE)
+        DRAW,                // カードを引く (DRAW_CARD の別名, FLOW内で使用)
+        REPLACE_MOVE_CARD,   // 置換効果: カードの移動先を墓地に変更 (マグナム系)
+
         NONE
     };
 
@@ -232,6 +243,16 @@ namespace dm::core {
         std::optional<std::string> cost_ref;  // Reference to execution_context variable for exact_cost
 
         std::vector<FilterDef> and_conditions;
+
+        // 再発防止: IF コマンドの target_filter に条件データを埋め込む場合に使用する:
+        //   type に評価タイプ (例: OPPONENT_DRAW_COUNT, COMPARE_INPUT) → JSONキー "type" に対応
+        //   value に閾値 → JSONキー "value" に対応
+        //   op に比較演算子 (>=, <=, == 等) → JSONキー "op" に対応
+        //   注意: types (vector) と type (optional単体) は別フィールドで非競合
+        std::optional<std::string> type;   // 条件タイプ: OPPONENT_DRAW_COUNT, COMPARE_INPUT 等
+        std::optional<int>         value;  // 条件の閾値
+        std::optional<std::string> op;     // 比較演算子: >=, <=, ==, <, > 等
+        std::vector<std::string>   flags;  // フラグリスト (S_TRIGGER 等)
     };
 
     struct CostDef {
@@ -543,7 +564,18 @@ namespace dm::core {
         {CommandType::PASS, "PASS"},
         {CommandType::USE_ABILITY, "USE_ABILITY"},
         {CommandType::MANA_CHARGE, "MANA_CHARGE"},
-        {CommandType::SELECT_TARGET, "SELECT_TARGET"}
+        {CommandType::SELECT_TARGET, "SELECT_TARGET"},
+
+        // cards.json 追加コマンドタイプ
+        // 再発防止: 新コマンドタイプを追加したら NLOHMANN と CommandType enum の両方を更新すること
+        {CommandType::APPLY_MODIFIER, "APPLY_MODIFIER"},
+        {CommandType::GRANT_KEYWORD, "GRANT_KEYWORD"},
+        {CommandType::PUT_CREATURE, "PUT_CREATURE"},
+        {CommandType::REPLACE_CARD_MOVE, "REPLACE_CARD_MOVE"},
+        {CommandType::ADD_RESTRICTION, "ADD_RESTRICTION"},
+        {CommandType::SELECT_OPTION, "SELECT_OPTION"},
+        {CommandType::DRAW, "DRAW"},
+        {CommandType::REPLACE_MOVE_CARD, "REPLACE_MOVE_CARD"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(CostType, {
@@ -560,7 +592,7 @@ namespace dm::core {
         {ReductionType::ACTIVE_PAYMENT, "ACTIVE_PAYMENT"}
     })
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, exact_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, selection_mode, selection_sort_key, power_max_ref, cost_ref, and_conditions)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, exact_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, selection_mode, selection_sort_key, power_max_ref, cost_ref, and_conditions, type, value, op, flags)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter, extra_fields)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, input_value_usage, output_value_key, inverse_target, condition, options, cast_spell_side)

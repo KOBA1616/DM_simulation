@@ -258,6 +258,7 @@ public:
 
   // Undo context
   core::GameResult previous_result;
+  bool previous_game_over = false;  // 再発防止: game_over の undo 用
 
   GameResultCommand(core::GameResult res)
       : result(res), previous_result(core::GameResult::NONE) {}

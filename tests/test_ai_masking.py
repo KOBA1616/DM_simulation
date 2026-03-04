@@ -14,7 +14,8 @@ except ImportError:
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
-from dm_ai_module import GameInstance, CommandType, CardStub, GameCommand
+# 再発防止: GameCommand は抽象C++クラスでインスタンス化不可。CommandDef を使用すること。
+from dm_ai_module import GameInstance, CommandType, CardStub, CommandDef
 # 再発防止: ActionEncoder は CommandEncoder の後方互換エイリアス。CommandEncoder を使用すること。
 from dm_toolkit.ai.agent.tokenization import CommandEncoder, StateTokenizer
 if torch:
@@ -47,7 +48,7 @@ class TestAIMasking(unittest.TestCase):
 
     def test_encode_command(self):
         # 1. Test PASS
-        cmd = GameCommand()
+        cmd = CommandDef()
         cmd.type = CommandType.PASS
         idx = self.encoder.encode_command(cmd, self.game.state, 0)
         self.assertEqual(idx, 0)
@@ -55,27 +56,27 @@ class TestAIMasking(unittest.TestCase):
         # 2. Test MANA_CHARGE
         # Add card to hand
         self.game.state.add_card_to_hand(0, 100, 123) # Hand[0], inst=123
-        cmd = GameCommand()
+        cmd = CommandDef()
         cmd.type = CommandType.MANA_CHARGE
-        cmd.source_instance_id = 123
+        cmd.instance_id = 123  # 再発防止: source_instance_id は CommandDef に存在しない。instance_id を使用すること。
         idx = self.encoder.encode_command(cmd, self.game.state, 0)
         self.assertEqual(idx, 1) # 1 + 0
 
         # 3. Test PLAY_FROM_ZONE
         # Add another card
         self.game.state.add_card_to_hand(0, 101, 124) # Hand[1], inst=124
-        cmd = GameCommand()
-        cmd.type = CommandType.PLAY_CARD
-        cmd.source_instance_id = 124
+        cmd = CommandDef()
+        cmd.type = CommandType.PLAY_FROM_ZONE  # 再発防止: PLAY_CARD は CommandType に存在しない。PLAY_FROM_ZONE を使用すること。
+        cmd.instance_id = 124
         idx = self.encoder.encode_command(cmd, self.game.state, 0)
         self.assertEqual(idx, 11 + 1) # 12
 
         # 4. Test ATTACK_PLAYER
         # Add card to battle zone
         self.game.state.add_test_card_to_battle(0, 102, 125, False, False) # Battle[0], inst=125
-        cmd = GameCommand()
+        cmd = CommandDef()
         cmd.type = CommandType.ATTACK_PLAYER
-        cmd.source_instance_id = 125
+        cmd.instance_id = 125
         idx = self.encoder.encode_command(cmd, self.game.state, 0)
         self.assertEqual(idx, 21 + 0) # 21
 
@@ -96,7 +97,7 @@ class TestAIMasking(unittest.TestCase):
         # 1 -> Hand[0], 5 -> Hand[4]
         self.assertEqual(cmd.type, CommandType.MANA_CHARGE)
         hand_card_4 = self.game.state.players[0].hand[4]
-        self.assertEqual(cmd.source_instance_id, hand_card_4.instance_id)
+        self.assertEqual(cmd.instance_id, hand_card_4.instance_id)  # 再発防止: source_instance_id 不可。instance_id を使用すること。
 
     def test_ai_masking_pass(self):
         valid_indices = [0] # PASS

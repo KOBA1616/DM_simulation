@@ -1580,8 +1580,18 @@ class CardTextGenerator:
         elif atype == "SHUFFLE_DECK":
              return "山札をシャッフルする。"
 
+        elif atype == "BOOST_MANA":
+             # BOOST_MANA: 自分のマナを増加するアクション
+             # 再発防止: BOOST_MANA は ADD_MANA とは別のコマンドタイプ。ACTION_MAP に必ず登録すること
+             count = val1 if val1 > 0 else 1
+             return f"自分のマナを{count}つ増やす。"
+
         elif atype == "BREAK_SHIELD":
              count = val1 if val1 > 0 else 1
+             # 再発防止: target_str がフィルター未指定の場合は「カード」になるが
+             # BREAK_SHIELD では必ずシールドを対象とするため「シールド」に補正する
+             if target_str in ("", "カード", "自分のカード", "それ"):
+                 target_str = "シールド"
              if not action.get("scope") or action.get("scope") == "NONE":
                  if "相手" not in target_str:
                      target_str = "相手の" + target_str

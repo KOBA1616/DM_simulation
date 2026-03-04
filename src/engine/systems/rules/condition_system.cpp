@@ -129,6 +129,48 @@ namespace dm::engine::rules {
         }
     };
 
+    class OpponentDrawCountEvaluator : public IConditionEvaluator {
+    public:
+        // 再発防止: OPPONENT_DRAW_COUNT 条件は turn_stats.player_draw_count[opponent] を参照する。
+        //   例: "opponent drew 2+ cards" → condition.value=2, condition.op=">=" (default: >=)
+        bool evaluate(GameState& state, const ConditionDef& condition, int source_instance_id,
+                      const std::map<CardID, CardDefinition>& /*card_db*/,
+                      const std::map<std::string, int>& /*execution_context*/) override {
+            PlayerID self_id = dm::engine::effects::EffectSystem::get_controller(state, source_instance_id);
+            PlayerID opp_id = (self_id == 0) ? 1 : 0;
+            int draw_count = state.turn_stats.player_draw_count[opp_id];
+            std::string op = condition.op.empty() ? ">=" : condition.op;
+            if (op == ">=") return draw_count >= condition.value;
+            if (op == ">")  return draw_count >  condition.value;
+            if (op == "==") return draw_count == condition.value;
+            if (op == "<=") return draw_count <= condition.value;
+            if (op == "<")  return draw_count <  condition.value;
+            return draw_count >= condition.value;
+        }
+    };
+
+    class CompareInputEvaluator : public IConditionEvaluator {
+    public:
+        // 再発防止: COMPARE_INPUT 条件は execution_context[入力値キー] と condition.value を比較する。
+        //   stat_key に execution_context のキー名を格納する。
+        bool evaluate(GameState& /*state*/, const ConditionDef& condition, int /*source_instance_id*/,
+                      const std::map<CardID, CardDefinition>& /*card_db*/,
+                      const std::map<std::string, int>& execution_context) override {
+            int left_value = 0;
+            const std::string& key = condition.stat_key;
+            if (execution_context.count(key)) {
+                left_value = execution_context.at(key);
+            }
+            std::string op = condition.op.empty() ? ">=" : condition.op;
+            if (op == ">=") return left_value >= condition.value;
+            if (op == ">")  return left_value >  condition.value;
+            if (op == "==") return left_value == condition.value;
+            if (op == "<=") return left_value <= condition.value;
+            if (op == "<")  return left_value <  condition.value;
+            return left_value >= condition.value;
+        }
+    };
+
     class CardsMatchingFilterEvaluator : public IConditionEvaluator {
     public:
         bool evaluate(GameState& state, const ConditionDef& condition, int source_instance_id, const std::map<CardID, CardDefinition>& card_db, const std::map<std::string, int>& execution_context) override {
@@ -198,5 +240,8 @@ namespace dm::engine::rules {
         register_evaluator("COMPARE_STAT", std::make_unique<CompareStatEvaluator>());
         register_evaluator("DECK_EMPTY", std::make_unique<DeckEmptyEvaluator>());
         register_evaluator("CARDS_MATCHING_FILTER", std::make_unique<CardsMatchingFilterEvaluator>());
+        // 再発防止: 新しい条件タイプを追加したら必ず initialize_defaults() にも登録すること
+        register_evaluator("OPPONENT_DRAW_COUNT", std::make_unique<OpponentDrawCountEvaluator>());
+        register_evaluator("COMPARE_INPUT", std::make_unique<CompareInputEvaluator>());
     }
 }

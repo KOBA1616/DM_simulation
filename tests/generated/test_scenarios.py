@@ -46,6 +46,12 @@ def test_generated_scenario(scenario_path, card_db):
 
     # Setup zones
     players = setup.get("players", [])
+    # 再発防止: add_card_to_hand/add_card_to_mana は instance_id 必須。get_next_instance_id() は存在しない。
+    # ローカルカウンタで一意な instance_id を生成する。
+    _iid_counter = iter(range(1000, 100000))
+    def _next_iid() -> int:
+        return next(_iid_counter)
+
     for p_idx, p_data in enumerate(players):
         player = gs.players[p_idx]
 
@@ -59,7 +65,7 @@ def test_generated_scenario(scenario_path, card_db):
 
             for cid in p_data["hand"]:
                 # Use GameState method to ensure IDs are generated
-                gs.add_card_to_hand(p_idx, cid)
+                gs.add_card_to_hand(p_idx, cid, _next_iid())
 
         # Mana
         if "mana_zone" in p_data:
@@ -69,7 +75,7 @@ def test_generated_scenario(scenario_path, card_db):
                 while len(player.mana_zone) > 0: player.mana_zone.pop()
 
              for cid in p_data["mana_zone"]:
-                 gs.add_card_to_mana(p_idx, cid)
+                 gs.add_card_to_mana(p_idx, cid, _next_iid())
 
         # Battle Zone
         if "battle_zone" in p_data:
@@ -79,7 +85,7 @@ def test_generated_scenario(scenario_path, card_db):
                 while len(player.battle_zone) > 0: player.battle_zone.pop()
 
              for cid in p_data["battle_zone"]:
-                 gs.add_test_card_to_battle(p_idx, cid, gs.get_next_instance_id())
+                 gs.add_test_card_to_battle(p_idx, cid, _next_iid())
 
         # Shield Zone - if needed, though add_test_card_to_shield might not be in the minimal stub?
         # Checked dm_ai_module.py: PlayerStub has shield_zone list, GameState doesn't have add_to_shield.
@@ -91,8 +97,8 @@ def test_generated_scenario(scenario_path, card_db):
                 while len(player.shield_zone) > 0: player.shield_zone.pop()
 
              for cid in p_data["shield_zone"]:
-                 c = dm_ai_module.CardStub(cid, gs.get_next_instance_id())
-                 player.shield_zone.append(c)
+                 # 再発防止: CardStub.append は shield_zone(CardList)に使用不可。add_card_to_shield を使用すること。
+                 gs.add_card_to_shield(p_idx, cid, _next_iid())
 
     # 2. Execute Action
     action_data = data.get("action", {})
@@ -106,19 +112,11 @@ def test_generated_scenario(scenario_path, card_db):
         if 0 <= c_idx < len(player.hand):
             card = player.hand[c_idx]
 
-            # Construct an Action-like object
-            class MockAction:
-                def __init__(self):
-                    self.type = dm_ai_module.CommandType.MANA_CHARGE
-                    self.card_id = card.card_id
-                    self.source_instance_id = card.instance_id
-                    self.target_player = p_idx
-
-            action = MockAction()
-
-            # 再発防止: execute_action は削除済み。execute_command を使用すること。
+            # 再発防止: execute_command は CommandDef/MockAction を直接受け付けない（クラッシュ）。
+            # dict 形式で渡すこと。
+            cmd_dict = {'type': 'MANA_CHARGE', 'instance_id': card.instance_id}
             try:
-                game.execute_command(action)
+                game.execute_command(cmd_dict)
             except Exception:
                 pass
 

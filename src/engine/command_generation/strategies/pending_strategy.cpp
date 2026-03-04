@@ -74,6 +74,7 @@ namespace dm::engine {
                 CommandDef resolve;
                 resolve.type = CommandType::RESOLVE_EFFECT;
                 resolve.amount = static_cast<int>(i);
+                resolve.slot_index = static_cast<int>(i);
                 actions.push_back(resolve);
                 
                 CommandDef pass;
@@ -86,6 +87,7 @@ namespace dm::engine {
                     CommandDef resolve;
                     resolve.type = CommandType::RESOLVE_EFFECT;
                     resolve.amount = static_cast<int>(i);
+                    resolve.slot_index = static_cast<int>(i);
                     actions.push_back(resolve);
                     continue;
                 }
@@ -211,6 +213,7 @@ namespace dm::engine {
                 if (eff.optional || !found_target) {
                     CommandDef pass;
                     pass.type = CommandType::PASS;
+                    pass.slot_index = static_cast<int>(i);
                     actions.push_back(pass);
                 }
             }
@@ -219,11 +222,13 @@ namespace dm::engine {
                 use.type = CommandType::SHIELD_TRIGGER;
                 use.instance_id = eff.source_instance_id;
                 use.amount = static_cast<int>(i);
+                use.slot_index = static_cast<int>(i);
                 actions.push_back(use);
 
                 CommandDef pass;
                 pass.type = CommandType::RESOLVE_EFFECT;
                 pass.amount = static_cast<int>(i);
+                pass.slot_index = static_cast<int>(i);
                 actions.push_back(pass);
             }
             else if (eff.type == EffectType::ON_ATTACK_FROM_HAND) {
@@ -257,18 +262,21 @@ namespace dm::engine {
                 CommandDef pass;
                 pass.type = CommandType::RESOLVE_EFFECT;
                 pass.amount = static_cast<int>(i);
+                pass.slot_index = static_cast<int>(i);
                 actions.push_back(pass);
             }
             else if (eff.type == EffectType::RESOLVE_BATTLE) {
                  CommandDef action;
                  action.type = CommandType::RESOLVE_BATTLE;
                  action.amount = static_cast<int>(i);
+                 action.slot_index = static_cast<int>(i);
                  actions.push_back(action);
             }
             else if (eff.type == EffectType::BREAK_SHIELD) {
                  CommandDef action;
                  action.type = CommandType::BREAK_SHIELD;
                  action.amount = static_cast<int>(i);
+                 action.slot_index = static_cast<int>(i);
                  actions.push_back(action);
             }
             else if (eff.type == EffectType::INTERNAL_PLAY || eff.type == EffectType::META_COUNTER) {
@@ -276,6 +284,7 @@ namespace dm::engine {
                 action.type = CommandType::PLAY_FROM_ZONE; // Use unified PLAY_FROM_ZONE
                 action.instance_id = eff.source_instance_id;
                 action.amount = static_cast<int>(i); // slot_index preserved in amount if needed for context
+                action.slot_index = static_cast<int>(i);
                 // spawn_source logic is implicit in PLAY_FROM_ZONE flow?
                 // PLAY_FROM_ZONE defaults to Stack -> Resolve.
                 // This matches legacy behavior mostly.
@@ -314,6 +323,7 @@ namespace dm::engine {
                  CommandDef pass;
                  pass.type = CommandType::RESOLVE_EFFECT;
                  pass.amount = static_cast<int>(i);
+                 pass.slot_index = static_cast<int>(i);
                  actions.push_back(pass);
              }
              else if (eff.type == EffectType::SELECT_OPTION) {
@@ -321,6 +331,7 @@ namespace dm::engine {
                      CommandDef choice;
                      choice.type = CommandType::CHOICE;
                      choice.amount = static_cast<int>(i);
+                     choice.slot_index = static_cast<int>(i);
                      choice.target_instance = static_cast<int>(opt_idx); // Option index
                      actions.push_back(choice);
                  }
@@ -331,6 +342,7 @@ namespace dm::engine {
                     CommandDef select;
                     select.type = CommandType::SELECT_NUMBER;
                     select.amount = static_cast<int>(i);
+                    select.slot_index = static_cast<int>(i);
                     select.target_instance = val;
                     actions.push_back(select);
                 }
@@ -340,6 +352,7 @@ namespace dm::engine {
                      CommandDef resolve;
                      resolve.type = CommandType::RESOLVE_EFFECT;
                      resolve.amount = static_cast<int>(i);
+                     resolve.slot_index = static_cast<int>(i);
                      actions.push_back(resolve);
                  }
             }
@@ -347,12 +360,14 @@ namespace dm::engine {
                 CommandDef resolve;
                 resolve.type = CommandType::RESOLVE_EFFECT;
                 resolve.amount = static_cast<int>(i);
+                resolve.slot_index = static_cast<int>(i);
                 actions.push_back(resolve);
                 
                 if (eff.optional) {
                     CommandDef pass;
                     pass.type = CommandType::PASS;
                     pass.amount = static_cast<int>(i);
+                    pass.slot_index = static_cast<int>(i);
                     actions.push_back(pass);
                 }
             }

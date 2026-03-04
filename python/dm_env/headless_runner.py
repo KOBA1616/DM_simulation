@@ -64,22 +64,121 @@ def run_game(
     _seed = seed if seed is not None else random.randint(0, 999999)
     db = dm.CardDatabase()
     game = dm.GameInstance(_seed, db)
-    game.start_game()
+    # 初期化: 可能ならネイティブの PhaseManager.start_game を使って
+    # シールドや手札の初期配置を確実に行う（GameInstance.start_game のみでは不足する場合がある）
+    # デッキ指定がある場合は state にセットする（空リストは無視）
+    try:
+        gs = game.state
+        if deck_p0:
+            try:
+                gs.set_deck(0, deck_p0)
+            except Exception:
+                pass
+        else:
+            # デフォルトデッキ（テスト用）
+            try:
+                gs.set_deck(0, [1] * 40)
+            except Exception:
+                pass
+        if deck_p1:
+            try:
+                gs.set_deck(1, deck_p1)
+            except Exception:
+                pass
+        else:
+            try:
+                gs.set_deck(1, [1] * 40)
+            except Exception:
+                pass
+
+    except Exception:
+        # state が未設定でも進める
+        pass
+
+    try:
+        pm = getattr(dm, "PhaseManager", None)
+        if pm is not None and hasattr(pm, "start_game"):
+            # 診断: PhaseManager による初期化をトレース
+            try:
+                pm.start_game(game.state, db)
+                # ログは後続の処理で返却するため、一時的に記録しておく
+                init_log = ["[init] PhaseManager.start_game invoked"]
+            except Exception as exc:
+                init_log = [f"[init] PhaseManager.start_game error: {exc}"]
+                # フォールバックで game.start_game を試す
+                try:
+                    game.start_game()
+                    init_log.append("[init] fallback GameInstance.start_game succeeded")
+                except Exception as exc2:
+                    init_log.append(f"[init] fallback GameInstance.start_game error: {exc2}")
+                    return {"winner": None, "turns": 0, "log": init_log}
+        else:
+            game.start_game()
+            init_log = ["[init] GameInstance.start_game invoked"]
+    except Exception as exc:
+        return {"winner": None, "turns": 0, "log": [f"start_game error: {exc}"]}
     log: List[str] = []
     turn = 0
 
+    # 初期化ログを先頭に置く
+    log: List[str] = init_log if 'init_log' in locals() else []
     for turn in range(MAX_TURNS):
         state = game.state
         if state.game_over:
             break
         try:
-            legal: List[Any] = dm.IntentGenerator.generate_legal_commands(state, db)
+            # Prefer toolkit wrapper which includes fast_forward and python fallbacks
+            try:
+                from dm_toolkit.commands import generate_legal_commands
+                legal: List[Any] = generate_legal_commands(state, db, strict=False, skip_wrapper=False) or []
+            except Exception:
+                legal: List[Any] = dm.IntentGenerator.generate_legal_commands(state, db) or []
         except Exception as exc:
             log.append(f"[Turn {turn}] generate_legal_commands error: {exc}")
             break
         if not legal:
-            log.append(f"[Turn {turn}] No legal commands — 強制終了。")
-            break
+            # 合法手が見つからない場合、初期化不足の可能性があるため
+            # PhaseManager.start_game() を試みて再生成する（1度だけフォールバック）
+            pm = getattr(dm, "PhaseManager", None)
+            if pm is not None and hasattr(pm, "start_game"):
+                try:
+                    pm.start_game(game.state, db)
+                    try:
+                        from dm_toolkit.commands import generate_legal_commands
+                        legal = generate_legal_commands(state, db, strict=False, skip_wrapper=False) or []
+                    except Exception:
+                        legal = dm.IntentGenerator.generate_legal_commands(state, db) or []
+                except Exception as exc:
+                    log.append(f"[Turn {turn}] reinit generate_legal_commands error: {exc}")
+            if not legal:
+                # 追加診断情報を収集
+                try:
+                    s = game.state
+                    ap = getattr(s, 'active_player_id', None)
+                    diag = [f"[diag] active_player_id={ap}"]
+                    players = getattr(s, 'players', None)
+                    if players is not None:
+                        for pid, p in enumerate(players):
+                            try:
+                                deck_len = len(getattr(p, 'deck', []))
+                            except Exception:
+                                deck_len = 'NA'
+                            try:
+                                hand_len = len(getattr(p, 'hand', []))
+                            except Exception:
+                                hand_len = 'NA'
+                            try:
+                                shield_len = len(getattr(p, 'shield_zone', []))
+                            except Exception:
+                                shield_len = 'NA'
+                            diag.append(f"[diag] P{pid}: deck={deck_len} hand={hand_len} shields={shield_len}")
+                    else:
+                        diag.append(f"[diag] players attribute missing")
+                    log.extend(diag)
+                except Exception:
+                    log.append("[diag] failed to collect state diagnostics")
+                log.append(f"[Turn {turn}] No legal commands — 強制終了。")
+                break
         # SimpleAI: 先頭コマンドを選択（MCTS等への差し替えポイント）
         cmd = legal[0]
         try:

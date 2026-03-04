@@ -251,6 +251,9 @@ bool PhaseSystem::check_game_over(GameState &game_state, GameResult &result) {
   }
 
   if (is_over) {
+    // 再発防止: game_over フラグを必ず設定する。winner のみ設定すると Python 側で
+    //   s.game_over が常に False のままになりゲーム終了が検知できない。
+    game_state.game_over = true;
     if (!game_state.stats_recorded) {
       game_state.on_game_finished(result);
       game_state.stats_recorded = true;

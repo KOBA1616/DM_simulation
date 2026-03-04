@@ -72,8 +72,9 @@ class TestInferenceIntegration(unittest.TestCase):
         ai = AIPlayer(self.model_path, device='cpu', config=self.config)
 
         # 2. Add cards to hand to give options (CommandEncoder maps index 1-10 to Hand 0-9)
-        self.game.state.add_card_to_hand(player_id, 100) # Hand[0]
-        self.game.state.add_card_to_hand(player_id, 101) # Hand[1]
+        # 再発防止: add_card_to_hand は (player_id, card_id, instance_id) の3引数必須。
+        self.game.state.add_card_to_hand(player_id, 100, 100) # Hand[0]
+        self.game.state.add_card_to_hand(player_id, 101, 101) # Hand[1]
 
         # 3. Get Command
         command = ai.get_command(self.game.state, player_id)
@@ -88,10 +89,16 @@ class TestInferenceIntegration(unittest.TestCase):
         # 5. Execute Command
         # AIPlayer.get_command returns GameCommand; dm_ai_module handles fields via getattr
         # 再発防止: compat_wrappers は削除済み。直接 execute_command を使用する。
+        # 再発防止: execute_command は CommandDef を直接受け付けない（クラッシュ）。dict形式に変換して渡す。
         initial_mana_count = len(self.game.state.players[player_id].mana_zone)
         initial_hand_count = len(self.game.state.players[player_id].hand)
         try:
-            self.game.execute_command(command)
+            type_val = command.type
+            type_name = type_val.name if hasattr(type_val, 'name') else str(type_val)
+            cmd_dict: dict = {'type': type_name}
+            if hasattr(command, 'instance_id') and command.instance_id:
+                cmd_dict['instance_id'] = command.instance_id
+            self.game.execute_command(cmd_dict)
         except Exception:
             pass
 

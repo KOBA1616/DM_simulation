@@ -8,7 +8,8 @@ except ImportError:
         int64 = int
 
 import dm_ai_module
-from dm_ai_module import GameCommand, CommandType
+# 再発防止: GameCommand は抽象C++クラスでPythonから直接インスタンス化不可。CommandDef を使用すること。
+from dm_ai_module import CommandDef, CommandType
 
 # Block size used for action index ranges (kept small to match tests)
 BLOCK = 10
@@ -177,9 +178,9 @@ class CommandEncoder:
     def __init__(self, action_dim: int = 600):
         self.action_dim = action_dim
 
-    def decode_command(self, command_idx: int, state: Any, player_id: int) -> GameCommand:
+    def decode_command(self, command_idx: int, state: Any, player_id: int) -> CommandDef:
         """
-        整数インデックスを GameCommand にマップする。
+        整数インデックスを CommandDef にマップする。
         マッピング冗长（大型サポート向けに更新）:
         0: PASS
         1..40: MANA_CHARGE (手札 Index 0-39)
@@ -187,8 +188,8 @@ class CommandEncoder:
         81..120: ATTACK_PLAYER (バトルゾーン Index 0-39)
         121..160: ATTACK_CREATURE (バトルゾーン Index 0-39)
         """
-        cmd = GameCommand()
-        cmd.target_player = player_id
+        cmd = CommandDef()
+        cmd.owner_id = player_id
 
         # 0: PASS
         if command_idx == 0:
@@ -206,8 +207,7 @@ class CommandEncoder:
             if hand_idx < len(p.hand):
                 c = p.hand[hand_idx]
                 cmd.type = CommandType.MANA_CHARGE
-                cmd.card_id = c.card_id
-                cmd.source_instance_id = c.instance_id
+                cmd.instance_id = c.instance_id
                 return cmd
             else:
                 # Invalid index fallbacks to PASS
@@ -220,8 +220,7 @@ class CommandEncoder:
             if hand_idx < len(p.hand):
                 c = p.hand[hand_idx]
                 cmd.type = CommandType.PLAY_FROM_ZONE
-                cmd.card_id = c.card_id
-                cmd.source_instance_id = c.instance_id
+                cmd.instance_id = c.instance_id
                 return cmd
             else:
                 cmd.type = CommandType.PASS
@@ -233,8 +232,8 @@ class CommandEncoder:
             if bz_idx < len(p.battle_zone):
                 c = p.battle_zone[bz_idx]
                 cmd.type = CommandType.ATTACK_PLAYER
-                cmd.source_instance_id = c.instance_id
-                cmd.target_player = 1 - player_id # Opponent
+                cmd.instance_id = c.instance_id
+                cmd.owner_id = 1 - player_id  # Opponent target player
                 return cmd
             else:
                 cmd.type = CommandType.PASS
@@ -245,11 +244,12 @@ class CommandEncoder:
         return cmd
 
     # 後方互換エイリアス
+    # 再発防止: decode_action は decode_command のエイリアス。新規コードでは decode_command を使用すること。
     decode_action = decode_command
 
-    def encode_command(self, command: GameCommand, state: Any, player_id: int) -> int:
+    def encode_command(self, command: CommandDef, state: Any, player_id: int) -> int:
         """
-        GameCommand を整数インデックスにマップする。
+        CommandDef を整数インデックスにマップする。
         エンコードできない場合は -1 を返す。
         """
         # Try to normalize the command into a dict

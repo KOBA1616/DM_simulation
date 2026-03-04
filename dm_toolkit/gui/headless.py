@@ -119,7 +119,12 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
                         return out
 
                 try:
-                    _native.CommandType = _CommandType
+                    # 再発防止: dm_ai_module の CommandType を上書きしてはならない。
+                    # 既存の CommandType（C++ IntEnum）を破壊するとプロセス内の全テストで
+                    # CommandType.PASS が文字列になりテスト汚染が発生する。
+                    # CommandType は既存のものを保持し、CommandGenerator のみ注入する。
+                    if not hasattr(_native, 'CommandType') or not hasattr(_native.CommandType, 'PASS'):
+                        _native.CommandType = _CommandType
                     _native.Command = _Command
                     _native.CommandGenerator = _CommandGenerator
                     print("headless: injected CommandType/Command/CommandGenerator stubs")

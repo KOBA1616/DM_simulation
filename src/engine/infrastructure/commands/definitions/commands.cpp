@@ -498,6 +498,12 @@ void MutateCommand::execute(core::GameState &state) {
       previous_bool_value = false;
     }
   } break;
+  // 再発防止: SET_SUMMONING_SICKNESS は on_start_turn から毎ターン呼ばれる。
+  // このcaseを省くと召喚酔いが永遠に解除されず攻撃不能になるため、必ず実装すること。
+  case MutationType::SET_SUMMONING_SICKNESS:
+    previous_bool_value = card->summoning_sickness;
+    card->summoning_sickness = (int_value != 0);
+    break;
   default:
     break;
   }
@@ -545,6 +551,9 @@ void MutateCommand::invert(core::GameState &state) {
     if (previous_bool_value) {
       card->added_keywords.push_back(str_value);
     }
+    break;
+  case MutationType::SET_SUMMONING_SICKNESS:
+    card->summoning_sickness = previous_bool_value;
     break;
   default:
     break;
@@ -870,12 +879,20 @@ void StatCommand::invert(core::GameState &state) {
 // --- GameResultCommand ---
 
 void GameResultCommand::execute(core::GameState &state) {
+  // 再発防止: winner セット時に game_over も必ず true にすること。
+  //   game_over を設定しないと Python 側で s.game_over が常に False のままになり
+  //   ゲーム終了が検知されず無限ループになる。
   previous_result = state.winner;
+  previous_game_over = state.game_over;
   state.winner = result;
+  if (result != dm::core::GameResult::NONE) {
+    state.game_over = true;
+  }
 }
 
 void GameResultCommand::invert(core::GameState &state) {
   state.winner = previous_result;
+  state.game_over = previous_game_over;
 }
 
 } // namespace dm::engine::game_command

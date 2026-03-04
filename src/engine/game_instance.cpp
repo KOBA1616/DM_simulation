@@ -298,6 +298,22 @@ void GameInstance::resolve_command(const core::CommandDef &cmd_def) {
     cmd = std::make_unique<PassCommand>();
     break;
   case core::CommandType::CHOICE: {
+    // 再発防止: CHOICE/SELECT_NUMBER にはパイプライン一時停止パスと
+    //   pending_effects パスの2種類がある。waiting_for_user_input=True の場合は
+    //   dispatch_command でパイプラインコンテキストに値をセットし pipeline->execute()
+    //   で再開すること。pending_effects パスのみ実装すると無限ループになる。
+    if (state.waiting_for_user_input) {
+      state.waiting_for_user_input = false;
+      systems::GameLogicSystem::dispatch_command(*pipeline, state, cmd_def,
+                                                 *card_db);
+      systems::ContinuousEffectSystem::recalculate(state, *card_db);
+      try {
+        if (pipeline)
+          pipeline->execute(nullptr, state, *card_db);
+      } catch (...) {
+      }
+      return;
+    }
     int effect_idx = cmd_def.slot_index;
     int option_idx = cmd_def.target_instance;
     (void)option_idx; // Unused for now
@@ -307,6 +323,21 @@ void GameInstance::resolve_command(const core::CommandDef &cmd_def) {
     }
   } break;
   case core::CommandType::SELECT_NUMBER: {
+    // 再発防止: waiting_for_user_input=True のときは dispatch_command + pipeline
+    //   execute で対処する。pending_effects のみだとパイプライン一時停止が解除されず
+    //   IntentGenerator が SELECT_NUMBER を返し続け無限ループになる。
+    if (state.waiting_for_user_input) {
+      state.waiting_for_user_input = false;
+      systems::GameLogicSystem::dispatch_command(*pipeline, state, cmd_def,
+                                                 *card_db);
+      systems::ContinuousEffectSystem::recalculate(state, *card_db);
+      try {
+        if (pipeline)
+          pipeline->execute(nullptr, state, *card_db);
+      } catch (...) {
+      }
+      return;
+    }
     int effect_idx = cmd_def.slot_index;
     int chosen_number = cmd_def.target_instance;
 
