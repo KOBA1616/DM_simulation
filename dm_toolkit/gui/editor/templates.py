@@ -103,6 +103,17 @@ class LogicTemplateManager:
                     elif val == "__RC_RACES__":
                         obj[k] = context.get('rc_races', context.get('races', []))
                         continue
+                    # LOOK_SELECT_TO_ZONE テンプレート用フィルタリストプレースホルダー
+                    # 再発防止: ["__TEMPLATE_CIVS__"] など1要素リストとして書くとリストに展開される。
+                    elif val == "__TEMPLATE_CIVS__":
+                        obj[k] = context.get('template_civs', [])
+                        continue
+                    elif val == "__TEMPLATE_RACES__":
+                        obj[k] = context.get('template_races', [])
+                        continue
+                    elif val == "__TEMPLATE_TYPES__":
+                        obj[k] = context.get('template_types', [])
+                        continue
 
                 # Check for string substitution (e.g. str_param: "__CARD_RACES__")
                 # 再発防止: str_param に単値プレースホルダーが書かれた場合は先頭要素を文字列として返す。
@@ -122,6 +133,17 @@ class LogicTemplateManager:
                     elif v == "__RC_RACES__":
                         rc = context.get('rc_races', context.get('races', []))
                         obj[k] = rc[0] if rc else ""
+                        continue
+                    # 再発防止: LOOK_SELECT_TO_ZONE 用 int/str プレースホルダー。
+                    # 文字列として書かれた値を int/str に型変換して返す。
+                    elif v == "__LOOK_AMOUNT__":
+                        obj[k] = int(context.get('look_amount', 4))
+                        continue
+                    elif v == "__SELECT_AMOUNT__":
+                        obj[k] = int(context.get('select_amount', -1))
+                        continue
+                    elif v == "__TO_ZONE__":
+                        obj[k] = str(context.get('to_zone', "HAND"))
                         continue
 
                 # Recurse if it's a container

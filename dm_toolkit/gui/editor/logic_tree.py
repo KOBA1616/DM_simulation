@@ -66,6 +66,44 @@ class LogicTreeWidget(QTreeView):
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
 
+    def dropEvent(self, event):
+        """ドラッグ&ドロップでのコマンド並び替えを制御する。
+        再発防止: 異なる親への移動を禁止し、同一親内の並び替えのみ許可する。
+        COMMAND/EFFECT/OPTION 型の同一レベル並び替えを許可し、ドロップ後にインスペクタを更新する。"""
+        dragged_index = self.currentIndex()
+        if not dragged_index.isValid():
+            event.ignore()
+            return
+
+        dragged_parent = dragged_index.parent()
+        target_index = self.indexAt(event.position().toPoint())
+
+        if target_index.isValid():
+            target_parent = target_index.parent()
+        else:
+            # ビューの空白部分へのドロップは拒否
+            event.ignore()
+            return
+
+        # 同一親への並び替えのみ許可
+        if dragged_parent != target_parent:
+            event.ignore()
+            return
+
+        # CARD/KEYWORDS への drop は拒否（誤操作防止）
+        target_type = self.data_manager.get_item_type(target_index)
+        if target_type in ("CARD", "KEYWORDS", "SPELL_SIDE"):
+            event.ignore()
+            return
+
+        super().dropEvent(event)
+
+        # ドロップ後にインスペクタ更新のため selectionChanged を再発火
+        sel = self.selectionModel()
+        if sel is not None:
+            current = self.currentIndex()
+            sel.setCurrentIndex(current, sel.SelectionFlag.ClearAndSelect)
+
     def add_keywords(self, parent_index):
         if not parent_index.isValid(): return
         self.add_child_item(parent_index, "KEYWORDS", {}, tr("Keywords"))
@@ -355,7 +393,34 @@ class LogicTreeWidget(QTreeView):
         """メガ・ラスト・バースト効果を削除"""
         if not card_index.isValid(): return
         self.data_manager.remove_logic_by_label(card_index, "Mega Last Burst")
+    def apply_look_select_template(self, index):
+        """LOOK_SELECT_TO_ZONE テンプレートのパラメータ入力ダイアログを表示してテンプレートを適用する。
+        再発防止: index は CARD または SPELL_SIDE のインデックスであること。
+        EFFECTや他の型が渡された場合は親を遥る。"""
+        if not index.isValid():
+            return
+        from PyQt6.QtWidgets import QDialog
+        from dm_toolkit.gui.editor.template_params_dialog import LookSelectTemplateDialog
 
+        # CARD でなければ親さかのぼる
+        card_index = index
+        item_type = self.data_manager.get_item_type(index)
+        if item_type not in ("CARD", "SPELL_SIDE"):
+            card_index = index.parent()
+            if not card_index.isValid():
+                return
+            if self.data_manager.get_item_type(card_index) not in ("CARD", "SPELL_SIDE"):
+                return
+
+        dlg = LookSelectTemplateDialog(self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            extra_context = dlg.get_extra_context()
+            eff_item = self.data_manager.apply_template_by_key(
+                card_index, "LOOK_SELECT_TO_ZONE", tr("めくって選ぶ"), extra_context=extra_context
+            )
+            if eff_item and isinstance(eff_item, QtEditorItem):
+                self.setCurrentIndex(eff_item.get_raw_item().index())
+                self.expand(card_index)
     def request_generate_options(self):
         if not getattr(self, 'current_item', None):
             return

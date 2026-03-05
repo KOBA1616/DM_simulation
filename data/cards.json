@@ -1173,7 +1173,7 @@
           {
             "uid": "ed8b6c93-08f5-4e64-ac59-1dd4fdd7dd6b",
             "type": "SELECT_FROM_BUFFER",
-            "amount": 0,
+            "amount": -1,
             "input_value_usage": "",
             "target_filter": {
               "civilizations": [
@@ -1183,7 +1183,8 @@
           },
           {
             "uid": "4eaa2f66-cae3-4d9d-8f35-c3d66527e66c",
-            "type": "MOVE_BUFFER_TO_ZONE"
+            "type": "MOVE_BUFFER_TO_ZONE",
+            "to_zone": "HAND"
           }
         ]
       }

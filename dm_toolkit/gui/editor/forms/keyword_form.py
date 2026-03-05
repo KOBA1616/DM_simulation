@@ -78,17 +78,7 @@ class KeywordEditForm(BaseEditForm):
         self.rev_change_check.setToolTip("革命チェンジを有効にすると、必要なロジックツリー構造が生成されます。")
         self.rev_change_check.stateChanged.connect(self.toggle_rev_change)
         special_layout.addWidget(self.rev_change_check)
-
-        # Revolution Change Race input (shown when rev_change_check is checked)
-        # 再発防止: 革命チェンジ条件種族はキーワード設定フォームで入力・保存する。
-        self.rc_race_label = QLabel(tr("Revolution Change Race"))
-        self.rc_race_edit = QLineEdit()
-        self.rc_race_edit.setPlaceholderText(tr("Comma separated races (e.g. Dragon, Cyber Lord)"))
-        self.rc_race_edit.setVisible(False)
-        self.rc_race_label.setVisible(False)
-        self.rc_race_edit.textChanged.connect(self.update_data)
-        special_layout.addWidget(self.rc_race_label)
-        special_layout.addWidget(self.rc_race_edit)
+        # 再発防止: 革命チェンジ種族はノード内 target_filter で設定するためフォームに種族欄を持たない。
 
         # Mekraid
         self.mekraid_check = QCheckBox(tr("Mekraid"))
@@ -125,13 +115,10 @@ class KeywordEditForm(BaseEditForm):
 
     def toggle_rev_change(self, state):
         is_checked = (state == Qt.CheckState.Checked.value or state == True)
-        # 再発防止: 革命チェンジ種族入力フィールドはチェック時のみ表示する。
-        self.rc_race_label.setVisible(is_checked)
-        self.rc_race_edit.setVisible(is_checked)
-        self.update_data() # Update the checkbox state in data first
+        # 再発防止: 革命チェンジ種族はノード内 target_filter で設定するため、ここでは races を渡さない。
+        self.update_data()
         if is_checked:
-            races = self._parse_races(self.rc_race_edit.text())
-            self.structure_update_requested.emit(STRUCT_CMD_ADD_REV_CHANGE, {'races': races})
+            self.structure_update_requested.emit(STRUCT_CMD_ADD_REV_CHANGE, {})
         else:
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_REV_CHANGE, {})
 
@@ -181,13 +168,7 @@ class KeywordEditForm(BaseEditForm):
         self.rev_change_check.blockSignals(True)
         rc_checked = data.get('revolution_change', False)
         self.rev_change_check.setChecked(rc_checked)
-        # 再発防止: チェック状態に合わせて革命チェンジ種族入力フィールドの表示/非表示を更新する。
-        self.rc_race_label.setVisible(rc_checked)
-        self.rc_race_edit.setVisible(rc_checked)
-        rc_cond = data.get('revolution_change_condition', {})
-        if isinstance(rc_cond, dict):
-            rc_races = rc_cond.get('races', [])
-            self.rc_race_edit.setText(', '.join(rc_races) if rc_races else '')
+        # 再発防止: 革命チェンジ種族はノード内 target_filter で管理。フォームに種族欄なし。
         self.rev_change_check.blockSignals(False)
 
         self.mekraid_check.blockSignals(True)
@@ -223,18 +204,13 @@ class KeywordEditForm(BaseEditForm):
             if cb.isChecked():
                 data[k] = True
 
-        # Revolution Change
+        # Revolution Change: 種族条件はノード内 target_filter で管理。keywords には boolean のみ保存。
+        # 再発防止: revolution_change_condition をキーワードフォームから保存しないこと。
         if self.rev_change_check.isChecked():
             data['revolution_change'] = True
-            # 再発防止: 革命チェンジ種族は revolution_change_condition.races に保存する。
-            rc_races = self._parse_races(self.rc_race_edit.text())
-            if rc_races:
-                data['revolution_change_condition'] = {'races': rc_races}
-            elif 'revolution_change_condition' in data:
-                del data['revolution_change_condition']
         elif 'revolution_change' in data:
             del data['revolution_change']
-            data.pop('revolution_change_condition', None)
+        data.pop('revolution_change_condition', None)  # 旧データのクリーンアップ
 
         # Mekraid
         if self.mekraid_check.isChecked():

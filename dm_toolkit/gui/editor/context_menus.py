@@ -40,6 +40,12 @@ class LogicTreeContextMenuHandler:
         add_eff_action.triggered.connect(lambda: self.tree_widget.add_effect_interactive(index))
         menu.addAction(add_eff_action)
 
+        # テンプレートサブメニュー
+        template_menu = menu.addMenu(tr("テンプレートを適用"))
+        look_select_action = QAction(tr("めくって選ぶ（文明/種族/タイプ/枚数指定）"), self.tree_widget)
+        look_select_action.triggered.connect(lambda: self.tree_widget.apply_look_select_template(index))
+        template_menu.addAction(look_select_action)
+
         add_static_action = QAction(tr("Add Static Ability"), self.tree_widget)
         add_static_action.triggered.connect(lambda: self.tree_widget.add_static(index))
         menu.addAction(add_static_action)

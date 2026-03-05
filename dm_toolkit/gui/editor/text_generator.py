@@ -123,10 +123,13 @@ class CardTextGenerator:
                 else:
                     # Special keywords: single-line concise style. Show selected tribe/civ as requested.
                     if k == "revolution_change":
-                        # 再発防止: revolution_change_condition はカード直下か keywords 内のどちらにも格納されうる。
+                        # 再発防止: 革命チェンジ条件は REVOLUTION_CHANGE コマンドの target_filter で管理。
+                        # カード直下 / keywords の revolution_change_condition も後方互換として参照。
                         cond = data.get("revolution_change_condition", {})
                         if not cond:
                             cond = data.get("keywords", {}).get("revolution_change_condition", {})
+                        if not cond:
+                            cond = cls._get_rc_filter_from_effects(data)
                         if cond and isinstance(cond, dict):
                             parts = []
 
@@ -298,6 +301,18 @@ class CardTextGenerator:
             return len(sample)
 
         return None
+
+    @classmethod
+    def _get_rc_filter_from_effects(cls, data: dict) -> dict:
+        """REVOLUTION_CHANGE コマンドの target_filter を効果ノードから探して返す。
+        再発防止: 革命チェンジ条件がノード内 target_filter で管理される設計に対応。"""
+        for eff in data.get("effects", []):
+            for cmd in (eff.get("commands", []) if isinstance(eff, dict) else []):
+                if isinstance(cmd, dict) and cmd.get("type") == "REVOLUTION_CHANGE":
+                    tf = cmd.get("target_filter")
+                    if tf and isinstance(tf, dict):
+                        return tf
+        return {}
 
     @classmethod
     def _describe_simple_filter(cls, filter_def: Dict[str, Any]) -> str:

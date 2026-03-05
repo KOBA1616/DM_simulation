@@ -61,5 +61,33 @@
         "keywords": {
             "mega_last_burst": true
         }
+    },
+    "LOOK_SELECT_TO_ZONE": {
+        "root_type": "EFFECT",
+        "_comment": "めくって選んで指定ゾーンへ。__LOOK_AMOUNT__=めくる枚数, __SELECT_AMOUNT__=選ぶ枚数(-1=すべて), __TEMPLATE_CIVS__/RACES/TYPES=フィルタ, __TO_ZONE__=行き先",
+        "data": {
+            "trigger": "ON_PLAY",
+            "commands": [
+                {
+                    "type": "REVEAL_TO_BUFFER",
+                    "amount": "__LOOK_AMOUNT__",
+                    "from_zone": "DECK_TOP"
+                },
+                {
+                    "type": "SELECT_FROM_BUFFER",
+                    "amount": "__SELECT_AMOUNT__",
+                    "target_filter": {
+                        "civilizations": ["__TEMPLATE_CIVS__"],
+                        "races": ["__TEMPLATE_RACES__"],
+                        "types": ["__TEMPLATE_TYPES__"]
+                    }
+                },
+                {
+                    "type": "MOVE_BUFFER_TO_ZONE",
+                    "to_zone": "__TO_ZONE__",
+                    "amount": -1
+                }
+            ]
+        }
     }
 }
