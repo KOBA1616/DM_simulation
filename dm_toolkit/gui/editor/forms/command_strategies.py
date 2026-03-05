@@ -164,6 +164,14 @@ class ChoiceStrategy(CommandUIStrategy):
         form.generate_options_btn.setVisible(True)
         form.allow_duplicates_label.setVisible(self.command_type not in ('IF', 'IF_ELSE'))
         form.allow_duplicates_check.setVisible(self.command_type not in ('IF', 'IF_ELSE'))
+        # 再発防止: CHOICE は条件フィルタを持てるため filter_widget を表示する。
+        # IF/IF_ELSE は CONDITION_TREE を使うため filter_widget を非表示 (ChoiceStrategy が共用されるため)。
+        show_filter = (self.command_type == 'CHOICE')
+        if form.filter_widget:
+            form.filter_widget.setVisible(show_filter)
+            if show_filter:
+                form.filter_widget.setTitle(tr('Condition Filter'))
+                form.filter_widget.set_allowed_fields(['zones', 'civilizations', 'races', 'types', 'min_cost', 'max_cost'])
 
 
 class LookAndAddStrategy(CommandUIStrategy):

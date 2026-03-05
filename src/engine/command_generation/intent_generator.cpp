@@ -71,6 +71,23 @@ namespace dm::engine {
                     cmd.target_instance = val;
                     actions.push_back(cmd);
                 }
+            } else if (query.query_type == "SELECT_FROM_BUFFER") {
+                // 再発防止: SELECT_FROM_BUFFER が未処理の場合 generate_commands が 0 を返し
+                //   fast_forward ループでゲームがフリーズする。バッファ内の各カードに対して
+                //   SELECT_FROM_BUFFER コマンドを生成し AI/プレイヤーが選択できるようにする。
+                const auto& buf = game_state.players[game_state.active_player_id].effect_buffer;
+                for (const auto& card : buf) {
+                    CommandDef cmd;
+                    cmd.type = CommandType::SELECT_FROM_BUFFER;
+                    cmd.instance_id = card.instance_id;
+                    actions.push_back(cmd);
+                }
+                if (actions.empty()) {
+                    // バッファが空の場合は PASS（安全フォールバック）
+                    CommandDef pass_cmd;
+                    pass_cmd.type = CommandType::PASS;
+                    actions.push_back(pass_cmd);
+                }
             }
 
             dump_actions(actions, "waiting_for_user_input");

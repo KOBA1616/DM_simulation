@@ -293,9 +293,13 @@ class LogicTreeWidget(QTreeView):
         if not card_index.isValid(): return
         self.data_manager.remove_spell_side_item(card_index)
 
-    def add_rev_change(self, card_index):
+    def add_rev_change(self, card_index, payload=None):
         if not card_index.isValid(): return
-        eff_item = self.data_manager.apply_template_by_key(card_index, "REVOLUTION_CHANGE", "Revolution Change")
+        # 再発防止: payloadの races を extra_context としてテンプレートに渡す。
+        extra_context = {}
+        if payload and payload.get('races'):
+            extra_context['rc_races'] = payload['races']
+        eff_item = self.data_manager.apply_template_by_key(card_index, "REVOLUTION_CHANGE", "Revolution Change", extra_context=extra_context)
         if eff_item and isinstance(eff_item, QtEditorItem):
             self.setCurrentIndex(eff_item.get_raw_item().index())
             self.expand(card_index)
@@ -319,10 +323,15 @@ class LogicTreeWidget(QTreeView):
         if not card_index.isValid(): return
         self.data_manager.remove_logic_by_label(card_index, "Mekraid")
 
-    def add_friend_burst(self, card_index):
+    def add_friend_burst(self, card_index, payload=None):
         """フレンド・バースト効果を追加"""
         if not card_index.isValid(): return
-        eff_item = self.data_manager.apply_template_by_key(card_index, "FRIEND_BURST", "Friend Burst")
+        # 再発防止: payloadの races を extra_context としてテンプレートに渡す。
+        # フレンドバースト論理ノードの FRIEND_BURSTコマンドに str_param/target_filter.races が設定される。
+        extra_context = {}
+        if payload and payload.get('races'):
+            extra_context['fb_races'] = payload['races']
+        eff_item = self.data_manager.apply_template_by_key(card_index, "FRIEND_BURST", "Friend Burst", extra_context=extra_context)
         if eff_item and isinstance(eff_item, QtEditorItem):
             self.setCurrentIndex(eff_item.get_raw_item().index())
             self.expand(card_index)

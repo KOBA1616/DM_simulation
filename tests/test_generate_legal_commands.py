@@ -1,93 +1,76 @@
-import pytest
-import sys
-import os
+# -*- coding: utf-8 -*-
+"""Python フォールバック generate_legal_commands テスト。
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import dm_ai_module
+再発防止:
+  - このテストは DM_DISABLE_NATIVE=1 で Python フォールバックパスのみを検証する。
+    ネイティブパスは test_command_flow.py / test_game_integrity.py で検証する。
+  - GameInstance(seed) のみ (db なし) は TypeError になる。
+    必ず JsonLoader.load_cards() → GameInstance(seed, db) の順で初期化すること。
+  - add_card_to_hand / add_card_to_mana は常に (player_idx, card_id, instance_id) の
+    3引数形式を使うこと。2引数形式は旧 API であり削除済み。
+"""
+from __future__ import annotations
+import os
+import pytest
+
+dm_ai_module = pytest.importorskip("dm_ai_module", reason="Requires dm_ai_module")
+
 from dm_ai_module import JsonLoader
 from dm_toolkit import commands
 
 
-def test_generate_play_candidates_present():
-    # Setup game instance and card DB
-    # Ensure internal DB is loaded for CommandSystem
-    try:
-        JsonLoader.load_cards("data/cards.json")
-    except Exception:
-        pass
+def test_generate_play_candidates_present() -> None:
+    """DM_DISABLE_NATIVE=1 (Python フォールバック) 時に手札のカードが
+    PLAY_FROM_ZONE コマンドとして返ることを確認する。
 
-    try:
-        gi = dm_ai_module.GameInstance(0)
-    except TypeError:
-        gi = dm_ai_module.GameInstance()
+    再発防止: commands.py の DM_DISABLE_NATIVE フォールバックは
+              state.players[pid].hand の各カードを PLAY_FROM_ZONE に変換する。
+              この動作が壊れていないことをここで回帰テストする。
+    """
+    # 再発防止: GameInstance(seed) のみは TypeError。必ず db を渡すこと。
+    _cards_path = "data/cards.json"
+    db = JsonLoader.load_cards(_cards_path) if os.path.exists(_cards_path) else dm_ai_module.CardDatabase()
+    gi = dm_ai_module.GameInstance(0, db)
     state = gi.state
-    # Some builds expose initialize(); call if present
-    if hasattr(state, 'initialize') and callable(state.initialize):
-        try:
-            state.initialize()
-        except Exception:
-            pass
 
-    # Minimal card DB: id->dict with cost
-    # Note: This python DB is passed to generate_legal_commands, but the native engine uses its own.
-    card_db = {
-        1: {"id": 1, "name": "Cheap Creature", "cost": 1, "type": "CREATURE"},
-        99: {"id": 99, "name": "Expensive", "cost": 99, "type": "CREATURE"}
-    }
-
-    # Place cheap card in hand for active player 0
+    # MAIN フェーズ・アクティブプレイヤー 0 にセット
     state.active_player_id = 0
-    # Set MAIN phase robustly (native builds may expect a Phase enum)
-    try:
-        state.current_phase = dm_ai_module.Phase.MAIN
-    except Exception:
-        state.current_phase = 3  # fallback integer
+    state.current_phase = dm_ai_module.Phase.MAIN
 
-    # Add the cheap card to hand (handle native overloads)
-    try:
-        state.add_card_to_hand(0, 1, 100) # player, card, instance
-    except TypeError:
-        state.add_card_to_hand(0, 1)
+    # 再発防止: add_card_to_hand / add_card_to_mana は(player_idx, card_id, instance_id)の3引数
+    state.add_card_to_hand(0, 1, 100)
+    state.add_card_to_mana(0, 1, 101)
 
-    # Give one untapped mana (handle native overloads)
-    # Using ID 1 (Water) which matches the card we are trying to play (ID 1 is Water creature)
-    try:
-        state.add_card_to_mana(0, 1, 101)
-    except TypeError:
-        state.add_card_to_mana(0, 1)
+    # Python フォールバック用ダミー card_db（コスト判定に使用）
+    card_db = {1: {"id": 1, "name": "Test Creature", "cost": 1, "type": "CREATURE"}}
 
-    # Ensure mana cards are untapped if the attribute exists
+    # DM_DISABLE_NATIVE=1 で Python フォールバックを強制（C++ 生成パスをスキップ）
+    _prev = os.environ.get("DM_DISABLE_NATIVE")
     try:
-        for m in state.players[0].mana_zone:
-            m.is_tapped = False
-    except Exception:
-        pass
-
-    # Call generate_legal_commands
-    # 再発防止: 非初期化ゲーム状態legal_commandsが空になる問題。DM_DISABLE_NATIVE=1 でPythonフォールバックを強制する。
-    import os
-    _prev_native = os.environ.get('DM_DISABLE_NATIVE')
-    try:
-        os.environ['DM_DISABLE_NATIVE'] = '1'
+        os.environ["DM_DISABLE_NATIVE"] = "1"
         cmds = commands.generate_legal_commands(state, card_db)
     finally:
-        if _prev_native is None:
-            os.environ.pop('DM_DISABLE_NATIVE', None)
+        if _prev is None:
+            os.environ.pop("DM_DISABLE_NATIVE", None)
         else:
-            os.environ['DM_DISABLE_NATIVE'] = _prev_native
+            os.environ["DM_DISABLE_NATIVE"] = _prev
 
-    # Expect at least one play-like command
     found_play = False
     for c in cmds:
         try:
-            d = c.to_dict()
-            # Check unified hint or PLAY_FROM_ZONE (ネイティブはCommandType enum、フォールバックは文字列のため両方をチェック)
-            t = d.get('type')
-            type_name = t.name if hasattr(t, 'name') else str(t)
-            if d.get('unified_type') == 'PLAY' or type_name == 'PLAY_FROM_ZONE':
-                found_play = True
-                break
+            d = c.to_dict() if hasattr(c, "to_dict") else c
+            if isinstance(d, dict):
+                t = d.get("type")
+                # 再発防止: ネイティブは CommandType enum、フォールバックは文字列なので両方チェック
+                type_name = t.name if hasattr(t, "name") else str(t)
+                if d.get("unified_type") == "PLAY" or type_name == "PLAY_FROM_ZONE":
+                    found_play = True
+                    break
         except Exception:
             continue
 
-    assert found_play, f"No play candidate found in cmds: {cmds}"
+    assert found_play, (
+        f"PLAY_FROM_ZONE が Python フォールバックで生成されなかった: {cmds}\n"
+        "再発防止: commands.py の DM_DISABLE_NATIVE フォールバックで手札の各カードを"
+        " PLAY_FROM_ZONE に変換していることを確認すること。"
+    )

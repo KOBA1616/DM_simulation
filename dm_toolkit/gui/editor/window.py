@@ -277,7 +277,8 @@ class CardEditor(QMainWindow):
         elif command == STRUCT_CMD_REMOVE_SPELL_SIDE:
             self.tree_widget.remove_spell_side(card_item.index())
         elif command == STRUCT_CMD_ADD_REV_CHANGE:
-            self.tree_widget.add_rev_change(card_item.index())
+            # 再発防止: payload に races がある場合は革命チェンジテンプレートに種族を反映する。
+            self.tree_widget.add_rev_change(card_item.index(), payload=payload)
             self.tree_widget.expand(card_item.index())
         elif command == STRUCT_CMD_REMOVE_REV_CHANGE:
             self.tree_widget.remove_rev_change(card_item.index())
@@ -287,7 +288,8 @@ class CardEditor(QMainWindow):
         elif command == STRUCT_CMD_REMOVE_MEKRAID:
             self.tree_widget.remove_mekraid(card_item.index())
         elif command == STRUCT_CMD_ADD_FRIEND_BURST:
-            self.tree_widget.add_friend_burst(card_item.index())
+            # 再発防止: payload に races がある場合はフレンドバーストテンプレートに種族を反映する。
+            self.tree_widget.add_friend_burst(card_item.index(), payload=payload)
             self.tree_widget.expand(card_item.index())
         elif command == STRUCT_CMD_REMOVE_FRIEND_BURST:
             self.tree_widget.remove_friend_burst(card_item.index())

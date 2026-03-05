@@ -59,6 +59,27 @@
             "output_value_key": "var_DRAW_CARD_1"
           },
           {
+            "uid": "809474b5-e8fb-4b86-af9e-07fd484e76f3",
+            "type": "QUERY",
+            "target_group": "PLAYER_SELF",
+            "target_filter": {
+              "zones": [
+                "HAND"
+              ],
+              "civilizations": [],
+              "races": [],
+              "flags": []
+            },
+            "amount": 0,
+            "str_param": "SELECT_TARGET",
+            "from_zone": "NONE",
+            "to_zone": "NONE",
+            "_input_value_label": "Step 2: ドロー枚数 -> 返却する手札を選択",
+            "format": "command",
+            "input_value_key": "var_DRAW_CARD_1",
+            "output_value_key": "var_return_cards"
+          },
+          {
             "uid": "eed4b5c3-aab7-438f-b8f4-e8a78ba41569",
             "type": "TRANSITION",
             "target_group": "PLAYER_SELF",
@@ -70,11 +91,11 @@
             },
             "amount": 0,
             "str_param": "",
-            "from_zone": "HAND",
+            "from_zone": "",
             "to_zone": "DECK_BOTTOM",
-            "_input_value_label": "Step 1: カードを引く -> Cards Drawn",
+            "_input_value_label": "Step 3: 選択したカードを山札底へ",
             "format": "command",
-            "input_value_key": "var_DRAW_CARD_1",
+            "input_value_key": "var_return_cards",
             "output_value_key": "var_c3ddf179-a6ed-4125-86cb-39a5c70cb2e8"
           }
         ]

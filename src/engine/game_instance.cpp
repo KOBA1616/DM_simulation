@@ -322,6 +322,43 @@ void GameInstance::resolve_command(const core::CommandDef &cmd_def) {
       state.pending_effects.erase(state.pending_effects.begin() + effect_idx);
     }
   } break;
+  case core::CommandType::SELECT_FROM_BUFFER: {
+    // 再発防止: SELECT_FROM_BUFFER も SELECT_NUMBER と同様にパイプライン一時停止から
+    //   再開する必要がある。未実装だと IntentGenerator が SELECT_FROM_BUFFER を返し続け
+    //   ゲームがフリーズする（Turn 27 以降の game stuck パターン）。
+    if (state.waiting_for_user_input) {
+      state.waiting_for_user_input = false;
+      systems::GameLogicSystem::dispatch_command(*pipeline, state, cmd_def,
+                                                 *card_db);
+      systems::ContinuousEffectSystem::recalculate(state, *card_db);
+      try {
+        if (pipeline)
+          pipeline->execute(nullptr, state, *card_db);
+      } catch (...) {
+      }
+      return;
+    }
+    break;
+  }
+  case core::CommandType::SELECT_TARGET: {
+    // 再発防止: SELECT_TARGET も SELECT_NUMBER と同様にパイプライン一時停止パスを
+    //   実装しないと waiting_for_user_input=true のまま残り、IntentGenerator が
+    //   SELECT_TARGET を返し続けて無限ループになる。
+    //   waiting_for_user_input=false をセットしてから dispatch_command+execute で再開。
+    if (state.waiting_for_user_input) {
+      state.waiting_for_user_input = false;
+      systems::GameLogicSystem::dispatch_command(*pipeline, state, cmd_def,
+                                                 *card_db);
+      systems::ContinuousEffectSystem::recalculate(state, *card_db);
+      try {
+        if (pipeline)
+          pipeline->execute(nullptr, state, *card_db);
+      } catch (...) {
+      }
+      return;
+    }
+    break;
+  }
   case core::CommandType::SELECT_NUMBER: {
     // 再発防止: waiting_for_user_input=True のときは dispatch_command + pipeline
     //   execute で対処する。pending_effects のみだとパイプライン一時停止が解除されず

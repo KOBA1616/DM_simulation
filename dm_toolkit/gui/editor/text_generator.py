@@ -123,7 +123,10 @@ class CardTextGenerator:
                 else:
                     # Special keywords: single-line concise style. Show selected tribe/civ as requested.
                     if k == "revolution_change":
+                        # 再発防止: revolution_change_condition はカード直下か keywords 内のどちらにも格納されうる。
                         cond = data.get("revolution_change_condition", {})
+                        if not cond:
+                            cond = data.get("keywords", {}).get("revolution_change_condition", {})
                         if cond and isinstance(cond, dict):
                             parts = []
 
@@ -168,7 +171,11 @@ class CardTextGenerator:
 
                             kw_str += f"：{full_str}"
                     elif k == "friend_burst":
+                        # 再発防止: friend_burst_condition はカード直下か keywords 内のどちらにも格納されうる。
+                        # 両方を検索して種族を表示する。
                         cond = data.get("friend_burst_condition", {})
+                        if not cond:
+                            cond = data.get("keywords", {}).get("friend_burst_condition", {})
                         if cond and isinstance(cond, dict):
                             races = cond.get("races", []) or []
                             if races:
@@ -1164,10 +1171,13 @@ class CardTextGenerator:
             action_proxy["value2"] = command_copy.get("amount", 6)     # Max
         elif original_cmd_type == "CHOICE":
             # Map CHOICE into SELECT_OPTION natural language generation
+            # 再発防止: CHOICE には target_filter(*条件フィルタ*)が付く場合があるため action_proxy に引き継ぐ。
             flags = command_copy.get("flags", []) or []
             if isinstance(flags, list) and "ALLOW_DUPLICATES" in flags:
                 action_proxy["optional"] = True
             action_proxy["value1"] = command_copy.get("amount", 1)
+            if command_copy.get("target_filter"):
+                action_proxy["target_filter"] = command_copy["target_filter"]
         elif original_cmd_type == "SHUFFLE_DECK":
             # No params needed usually
             pass

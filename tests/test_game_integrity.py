@@ -505,6 +505,8 @@ class TestLegalCommandsIntegrity:
         - ただしシールドトリガー効果の SELECT_NUMBER 待ち状態では
           PASS ではなく SELECT_NUMBER コマンドが返る場合がある。
           waiting_for_user_input=True の時はその状態を許容する。
+        - BREAK_SHIELD はシールドを割る強制アクション待ち状態であり PASS は不要。
+          SELECT / CHOOSE / BREAK_SHIELD を含む場合は PASS 不要チェックをスキップ。
         """
         game, db = _make_game(seed=6)
         phases_checked = 0
@@ -515,9 +517,13 @@ class TestLegalCommandsIntegrity:
             legal = dm_ai_module.IntentGenerator.generate_legal_commands(game.state, db)
             if legal:
                 types = [str(c.type).upper() for c in legal]
-                # SELECT_NUMBER 等のユーザー入力待ち状態では PASS が不要
+                # SELECT_NUMBER / CHOOSE / BREAK_SHIELD 等の強制アクション待ち状態では PASS が不要
+                # 再発防止: BREAK_SHIELD はシールド選択の強制アクションであり PASS は不要
                 waiting = getattr(game.state, 'waiting_for_user_input', False)
-                has_select = any("SELECT" in t or "CHOOSE" in t for t in types)
+                has_select = any(
+                    "SELECT" in t or "CHOOSE" in t or "BREAK_SHIELD" in t
+                    for t in types
+                )
                 if not waiting and not has_select:
                     assert any("PASS" in t for t in types), (
                         f"フェーズ {game.state.current_phase} で PASS が見つかりません: {types}\n"

@@ -33,9 +33,17 @@
             "trigger": "ON_ATTACK",
             "commands": [
                 {
-                    "type": "FRIEND_BURST"
+                    "type": "FRIEND_BURST",
+                    "str_param": "__FB_RACES__",
+                    "target_filter": {
+                        "races": ["__FB_RACES__"],
+                        "zones": ["BATTLE_ZONE"]
+                    }
                 }
             ]
+        },
+        "keywords": {
+            "friend_burst": true
         }
     },
     "MEGA_LAST_BURST": {

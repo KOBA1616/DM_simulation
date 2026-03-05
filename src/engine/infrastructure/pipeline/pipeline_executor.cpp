@@ -329,6 +329,20 @@ ContextValue PipelineExecutor::get_context_var(const std::string &key) const {
   auto it = context.find(key);
   if (it != context.end())
     return it->second;
+  // 再発防止: コンテキスト変数の格納キーと参照キーの $ プレフィックス不一致による取得失敗防止。
+  //   set_context_var は "var_X" で格納するが、参照側は "$var_X" を使う場合がある。
+  //   どちらの形式でも取得できるよう、$ あり/なしの両パターンをフォールバック検索する。
+  if (!key.empty() && key[0] == '$') {
+    // "$var_X" → "var_X" を試す
+    auto it2 = context.find(key.substr(1));
+    if (it2 != context.end())
+      return it2->second;
+  } else {
+    // "var_X" → "$var_X" を試す
+    auto it2 = context.find("$" + key);
+    if (it2 != context.end())
+      return it2->second;
+  }
   return std::monostate{}; // Default
 }
 
@@ -558,7 +572,26 @@ void PipelineExecutor::handle_select(
 
   PlayerID player_id = state.active_player_id;
 
-  for (PlayerID pid : {player_id, static_cast<PlayerID>(1 - player_id)}) {
+  std::vector<PlayerID> players_to_check;
+  if (!filter.owner.has_value()) {
+    // デフォルト: 発動プレイヤーのみを対象とする
+    players_to_check.push_back(player_id);
+  } else {
+    const std::string &own = *filter.owner;
+    if (own == "SELF") {
+      players_to_check.push_back(player_id);
+    } else if (own == "OPPONENT") {
+      players_to_check.push_back(static_cast<PlayerID>(1 - player_id));
+    } else if (own == "BOTH") {
+      players_to_check.push_back(player_id);
+      players_to_check.push_back(static_cast<PlayerID>(1 - player_id));
+    } else {
+      // Unknown owner string: fallback to active player only
+      players_to_check.push_back(player_id);
+    }
+  }
+
+  for (PlayerID pid : players_to_check) {
     for (Zone z : zones) {
       std::vector<int> zone_indices;
       if (z == Zone::BUFFER) {
@@ -610,7 +643,14 @@ void PipelineExecutor::handle_select(
     return;
   }
 
-  if (count <= 0 || count >= (int)valid_targets.size()) {
+  // 再発防止: count=0 (ドロー0枚を選択した場合など) のとき valid_targets 全選択は誤り。
+  //   count=0 のときは空ベクターを設定して次の命令へ進む。
+  if (count <= 0) {
+    set_context_var(out_key, std::vector<int>{});
+    return;
+  }
+
+  if (count >= (int)valid_targets.size()) {
     set_context_var(out_key, valid_targets);
     return;
   }
@@ -711,6 +751,27 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
         auto c_val = inst.args.contains("count") ? inst.args["count"]
                                                  : nlohmann::json(1);
         virtual_count = resolve_int(c_val);
+      // 再発防止: HAND/MANA/BATTLE をバーチャルソースとして処理する。
+      //   TRANSITION(from=HAND, input_value_key=...) が生成する MOVE 命令の
+      //   target="HAND" を正しく解決するために追加。
+      } else if (s == "HAND") {
+        is_virtual_target = true;
+        virtual_target_type = "HAND";
+        auto c_val = inst.args.contains("count") ? inst.args["count"]
+                                                 : nlohmann::json(1);
+        virtual_count = resolve_int(c_val);
+      } else if (s == "MANA") {
+        is_virtual_target = true;
+        virtual_target_type = "MANA";
+        auto c_val = inst.args.contains("count") ? inst.args["count"]
+                                                 : nlohmann::json(1);
+        virtual_count = resolve_int(c_val);
+      } else if (s == "BATTLE") {
+        is_virtual_target = true;
+        virtual_target_type = "BATTLE";
+        auto c_val = inst.args.contains("count") ? inst.args["count"]
+                                                 : nlohmann::json(1);
+        virtual_count = resolve_int(c_val);
       }
     } else if (target_val.is_number()) {
       targets.push_back(target_val.get<int>());
@@ -777,6 +838,28 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
       int count = std::min(virtual_count, available);
       for (int i = 0; i < count; ++i) {
         targets.push_back(deck[i].instance_id);
+      }
+    } else if (virtual_target_type == "HAND") {
+      // 再発防止: HAND バーチャルソース — 手札の末尾（最後に追加されたカード）から取る
+      const auto &hand = state.players[pid].hand;
+      int available = (int)hand.size();
+      int count = std::min(virtual_count, available);
+      for (int i = 0; i < count; ++i) {
+        targets.push_back(hand[available - 1 - i].instance_id);
+      }
+    } else if (virtual_target_type == "MANA") {
+      const auto &mana = state.players[pid].mana_zone;
+      int available = (int)mana.size();
+      int count = std::min(virtual_count, available);
+      for (int i = 0; i < count; ++i) {
+        targets.push_back(mana[available - 1 - i].instance_id);
+      }
+    } else if (virtual_target_type == "BATTLE") {
+      const auto &bz = state.players[pid].battle_zone;
+      int available = (int)bz.size();
+      int count = std::min(virtual_count, available);
+      for (int i = 0; i < count; ++i) {
+        targets.push_back(bz[available - 1 - i].instance_id);
       }
     }
   }

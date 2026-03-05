@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
-    QWidget, QFormLayout, QCheckBox, QGroupBox, QGridLayout, QVBoxLayout, QLabel
+    QWidget, QFormLayout, QCheckBox, QGroupBox, QGridLayout, QVBoxLayout, QLabel, QLineEdit
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.i18n import tr
@@ -79,6 +79,17 @@ class KeywordEditForm(BaseEditForm):
         self.rev_change_check.stateChanged.connect(self.toggle_rev_change)
         special_layout.addWidget(self.rev_change_check)
 
+        # Revolution Change Race input (shown when rev_change_check is checked)
+        # 再発防止: 革命チェンジ条件種族はキーワード設定フォームで入力・保存する。
+        self.rc_race_label = QLabel(tr("Revolution Change Race"))
+        self.rc_race_edit = QLineEdit()
+        self.rc_race_edit.setPlaceholderText(tr("Comma separated races (e.g. Dragon, Cyber Lord)"))
+        self.rc_race_edit.setVisible(False)
+        self.rc_race_label.setVisible(False)
+        self.rc_race_edit.textChanged.connect(self.update_data)
+        special_layout.addWidget(self.rc_race_label)
+        special_layout.addWidget(self.rc_race_edit)
+
         # Mekraid
         self.mekraid_check = QCheckBox(tr("Mekraid"))
         self.mekraid_check.setToolTip("メクレイドを有効にすると、プレイ時の効果が自動で追加されます。")
@@ -91,6 +102,18 @@ class KeywordEditForm(BaseEditForm):
         self.friend_burst_check.stateChanged.connect(self.toggle_friend_burst)
         special_layout.addWidget(self.friend_burst_check)
 
+        # Friend Burst Race input (shown when friend_burst_check is checked)
+        # 再発防止: フレンド・バースト種族はキーワード設定フォームで入力・保存する。
+        # friend_burst_condition.races として保存され text_generator でも参照される。
+        self.fb_race_label = QLabel(tr("Friend Burst Race"))
+        self.fb_race_edit = QLineEdit()
+        self.fb_race_edit.setPlaceholderText(tr("Comma separated races (e.g. Dragon, Cyber Lord)"))
+        self.fb_race_edit.setVisible(False)
+        self.fb_race_label.setVisible(False)
+        self.fb_race_edit.textChanged.connect(self.update_data)
+        special_layout.addWidget(self.fb_race_label)
+        special_layout.addWidget(self.fb_race_edit)
+
         # Mega Last Burst
         self.mega_last_burst_check = QCheckBox(tr("Mega Last Burst"))
         self.mega_last_burst_check.setToolTip("メガ・ラスト・バーストを有効にすると、破壊時の効果が自動で追加されます。")
@@ -102,9 +125,13 @@ class KeywordEditForm(BaseEditForm):
 
     def toggle_rev_change(self, state):
         is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        # 再発防止: 革命チェンジ種族入力フィールドはチェック時のみ表示する。
+        self.rc_race_label.setVisible(is_checked)
+        self.rc_race_edit.setVisible(is_checked)
         self.update_data() # Update the checkbox state in data first
         if is_checked:
-            self.structure_update_requested.emit(STRUCT_CMD_ADD_REV_CHANGE, {})
+            races = self._parse_races(self.rc_race_edit.text())
+            self.structure_update_requested.emit(STRUCT_CMD_ADD_REV_CHANGE, {'races': races})
         else:
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_REV_CHANGE, {})
 
@@ -120,9 +147,13 @@ class KeywordEditForm(BaseEditForm):
     def toggle_friend_burst(self, state):
         from dm_toolkit.gui.editor.consts import STRUCT_CMD_ADD_FRIEND_BURST, STRUCT_CMD_REMOVE_FRIEND_BURST
         is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        # 再発防止: フレンド・バースト種族入力フィールドはチェック時のみ表示する。
+        self.fb_race_label.setVisible(is_checked)
+        self.fb_race_edit.setVisible(is_checked)
         self.update_data() # Update the checkbox state in data first
         if is_checked:
-            self.structure_update_requested.emit(STRUCT_CMD_ADD_FRIEND_BURST, {})
+            races = self._parse_races(self.fb_race_edit.text())
+            self.structure_update_requested.emit(STRUCT_CMD_ADD_FRIEND_BURST, {'races': races})
         else:
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_FRIEND_BURST, {})
 
@@ -148,7 +179,15 @@ class KeywordEditForm(BaseEditForm):
             cb.setChecked(is_checked)
 
         self.rev_change_check.blockSignals(True)
-        self.rev_change_check.setChecked(data.get('revolution_change', False))
+        rc_checked = data.get('revolution_change', False)
+        self.rev_change_check.setChecked(rc_checked)
+        # 再発防止: チェック状態に合わせて革命チェンジ種族入力フィールドの表示/非表示を更新する。
+        self.rc_race_label.setVisible(rc_checked)
+        self.rc_race_edit.setVisible(rc_checked)
+        rc_cond = data.get('revolution_change_condition', {})
+        if isinstance(rc_cond, dict):
+            rc_races = rc_cond.get('races', [])
+            self.rc_race_edit.setText(', '.join(rc_races) if rc_races else '')
         self.rev_change_check.blockSignals(False)
 
         self.mekraid_check.blockSignals(True)
@@ -156,7 +195,15 @@ class KeywordEditForm(BaseEditForm):
         self.mekraid_check.blockSignals(False)
 
         self.friend_burst_check.blockSignals(True)
-        self.friend_burst_check.setChecked(data.get('friend_burst', False))
+        fb_checked = data.get('friend_burst', False)
+        self.friend_burst_check.setChecked(fb_checked)
+        # 再発防止: チェック状態に合わせてフレンド・バースト種族入力フィールドの表示/非表示を更新する。
+        self.fb_race_label.setVisible(fb_checked)
+        self.fb_race_edit.setVisible(fb_checked)
+        fb_cond = data.get('friend_burst_condition', {})
+        if isinstance(fb_cond, dict):
+            fb_races = fb_cond.get('races', [])
+            self.fb_race_edit.setText(', '.join(fb_races) if fb_races else '')
         self.friend_burst_check.blockSignals(False)
 
         self.mega_last_burst_check.blockSignals(True)
@@ -179,8 +226,15 @@ class KeywordEditForm(BaseEditForm):
         # Revolution Change
         if self.rev_change_check.isChecked():
             data['revolution_change'] = True
+            # 再発防止: 革命チェンジ種族は revolution_change_condition.races に保存する。
+            rc_races = self._parse_races(self.rc_race_edit.text())
+            if rc_races:
+                data['revolution_change_condition'] = {'races': rc_races}
+            elif 'revolution_change_condition' in data:
+                del data['revolution_change_condition']
         elif 'revolution_change' in data:
             del data['revolution_change']
+            data.pop('revolution_change_condition', None)
 
         # Mekraid
         if self.mekraid_check.isChecked():
@@ -191,14 +245,29 @@ class KeywordEditForm(BaseEditForm):
         # Friend Burst
         if self.friend_burst_check.isChecked():
             data['friend_burst'] = True
+            # 再発防止: フレンド・バースト種族は friend_burst_condition.races に保存する。
+            # text_generator からも keywords dict 内の friend_burst_condition を参照できるよう変更済み。
+            fb_races = self._parse_races(self.fb_race_edit.text())
+            if fb_races:
+                data['friend_burst_condition'] = {'races': fb_races}
+            elif 'friend_burst_condition' in data:
+                del data['friend_burst_condition']
         elif 'friend_burst' in data:
             del data['friend_burst']
+            data.pop('friend_burst_condition', None)
 
         # Mega Last Burst
         if self.mega_last_burst_check.isChecked():
             data['mega_last_burst'] = True
         elif 'mega_last_burst' in data:
             del data['mega_last_burst']
+
+    @staticmethod
+    def _parse_races(text: str) -> list:
+        """カンマ区切りテキストを種族リストに変換する。空文字・空白は除外。"""
+        if not text or not text.strip():
+            return []
+        return [r.strip() for r in text.split(',') if r.strip()]
 
     def _get_display_text(self, data):
         return tr("Keywords")
@@ -207,6 +276,8 @@ class KeywordEditForm(BaseEditForm):
         for cb in self.keyword_checks.values():
             cb.blockSignals(block)
         self.rev_change_check.blockSignals(block)
+        self.rc_race_edit.blockSignals(block)
         self.mekraid_check.blockSignals(block)
         self.friend_burst_check.blockSignals(block)
+        self.fb_race_edit.blockSignals(block)
         self.mega_last_burst_check.blockSignals(block)

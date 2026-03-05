@@ -409,8 +409,10 @@ def register_all_schemas():
     ]))
 
     # CHOICE
+    # 再発防止: CHOICE には条件フィルタ (target_filter) を持てるように FieldType.FILTER を追加。
     register_schema(CommandSchema("CHOICE", [
         f_amount,  # e.g. "Choose 1"
+        FieldSchema("target_filter", tr("Condition Filter"), FieldType.FILTER),
     ]))
 
     # SELECT_OPTION

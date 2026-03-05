@@ -118,9 +118,9 @@ class CardDataManager:
         item = self._ensure_item(parent_index)
         return self.feature_service.add_reaction(item)
 
-    def apply_template_by_key(self, card_item, template_key, display_label=None):
+    def apply_template_by_key(self, card_item, template_key, display_label=None, extra_context=None):
         item = self._ensure_item(card_item)
-        return self.feature_service.apply_template_by_key(item, template_key, display_label)
+        return self.feature_service.apply_template_by_key(item, template_key, display_label, extra_context=extra_context)
 
     def remove_logic_by_label(self, card_item, label_substring):
         item = self._ensure_item(card_item)

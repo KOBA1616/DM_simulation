@@ -10,7 +10,7 @@ Key principles:
    - Initial setup
 3. AI player logic should ideally be in C++ or called from C++
 """
-from typing import Any, List, Optional, Callable, Dict
+from typing import Any, List, Optional, Callable
 import random
 import os
 import sys
@@ -63,10 +63,9 @@ class GameSession:
         self.callback_input_request = callback_input_request or (lambda: None)
         self.callback_action_executed = callback_action_executed or (lambda a: None)
 
-        # NOTE: player_modes is now managed in C++ GameState.player_modes
-        # This is kept for backward compatibility only
-        self.player_modes: Dict[int, str] = {0: 'AI', 1: 'AI'}
-        
+        # 再発防止: player_modes は C++ GameState.player_modes で管理する。
+        #           Python 側のローカル dict は削除済み。set_player_mode() で
+        #           gs.player_modes を直接更新すること。
         self.is_running = False
         self.is_processing = False
         self.card_db: CardDB = {}
@@ -419,9 +418,6 @@ class GameSession:
                 self.gs.player_modes[player_id] = dm_ai_module.PlayerMode.HUMAN
             else:
                 self.gs.player_modes[player_id] = dm_ai_module.PlayerMode.AI
-        
-        # Update local dict for backward compatibility
-        self.player_modes[player_id] = mode
         self.callback_log(f"P{player_id} mode set to: {mode}")
 
     def toggle_auto_step(self):

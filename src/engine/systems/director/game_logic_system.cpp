@@ -268,6 +268,25 @@ namespace dm::engine::systems {
                 }
                 break;
             }
+            case core::CommandType::SELECT_FROM_BUFFER:
+            {
+                // 再発防止: SELECT_FROM_BUFFER の dispatch を実装しないとパイプラインが
+                //   再開されず、ゲームがフリーズする。選択されたカード ID をコンテキスト
+                //   変数（vector<int>）に追記してパイプライン実行を再開する。
+                if (pipeline.execution_paused) {
+                    auto v = pipeline.get_context_var(pipeline.waiting_for_key);
+                    std::vector<int> selection;
+                    if (std::holds_alternative<std::vector<int>>(v)) {
+                        selection = std::get<std::vector<int>>(v);
+                    }
+                    if (cmd.instance_id > 0) {
+                        selection.push_back(cmd.instance_id);
+                    }
+                    pipeline.set_context_var(pipeline.waiting_for_key, selection);
+                    pipeline.execution_paused = false;
+                }
+                break;
+            }
             case core::CommandType::SHIELD_TRIGGER:
             {
                 // Execute Shield Trigger (Play Card Free)
@@ -418,29 +437,66 @@ namespace dm::engine::systems {
             return;
         }
         
-        // Get the pending effect
-        auto& pending_effect = state.pending_effects[effect_idx];
+        // Get the pending effect (copy before erasing, so we can erase safely)
+        auto pending_effect = state.pending_effects[effect_idx];
         
         std::cerr << "Source instance: " << pending_effect.source_instance_id << std::endl;
         std::cerr << "Has effect_def: " << (pending_effect.effect_def.has_value() ? "YES" : "NO") << std::endl;
         
-        // If effect_def is present, resolve the effect
-        if (pending_effect.effect_def.has_value()) {
-            std::cerr << "Resolving effect..." << std::endl;
-            dm::engine::effects::EffectSystem::instance().resolve_effect_with_context(
-                state,
-                pending_effect.effect_def.value(),
-                pending_effect.source_instance_id,
-                pending_effect.execution_context,
-                card_db
-            );
-            
-            std::cerr << "Effect resolved" << std::endl;
-        }
-        
-        // Remove the resolved effect from pending list
+        // 再発防止: エフェクトを pending_effects から先に削除してから命令をコンパイル・推送する。
+        //   これにより WAIT_INPUT でパイプラインが一時停止しても二重解決が起きない。
         state.pending_effects.erase(state.pending_effects.begin() + effect_idx);
         std::cerr << "Removed effect from pending list, new count: " << state.pending_effects.size() << std::endl;
+        
+        // 再発防止: 各コマンドを GAME_ACTION(EXECUTE_COMMAND) としてフレームに積む
+        //   (Lazy Compile パターン)。
+        //   全コマンドを事前コンパイルすると、QUERY の出力変数 (var_DRAW_CARD_0 等) が
+        //   まだ未確定の状態で DRAW_CARD の count が計算され count=0 になる。
+        //   代わりに、各コマンドを実行時にコンパイルすることで、直前の命令の
+        //   exec.context 値 (GET_STAT で設定された var_DRAW_CARD_0 等) を参照できる。
+        if (pending_effect.effect_def.has_value()) {
+            const auto& effect = pending_effect.effect_def.value();
+            
+            // 条件チェック
+            if (!dm::engine::effects::EffectSystem::instance().check_condition(
+                    state, effect.condition,
+                    pending_effect.source_instance_id, card_db,
+                    pending_effect.execution_context)) {
+                std::cerr << "=== condition check failed, skipping ===" << std::endl;
+                return;
+            }
+            
+            core::PlayerID controller =
+                dm::engine::effects::EffectSystem::get_controller(state, pending_effect.source_instance_id);
+            
+            // 実行コンテキストを共有パイプラインに注入
+            for (const auto& kv : pending_effect.execution_context) {
+                exec.set_context_var(kv.first, kv.second);
+            }
+            exec.set_context_var("$controller", (int)controller);
+            exec.set_context_var("$source", pending_effect.source_instance_id);
+            
+            // 各コマンドを EXECUTE_COMMAND ディスパッチャとしてフレームに積む
+            // handle_execute_command が実行時コンテキストでコンパイルしてサブフレームをプッシュする
+            std::vector<core::Instruction> dispatch_frame;
+            for (const auto& cmd : effect.commands) {
+                core::Instruction exec_cmd(core::InstructionOp::GAME_ACTION);
+                exec_cmd.args["type"] = "EXECUTE_COMMAND";
+                // CommandDef を JSON としてシリアライズして命令に埋め込む
+                exec_cmd.args["cmd"] = cmd;  // nlohmann ADL to_json による自動シリアライズ
+                exec_cmd.args["source"] = pending_effect.source_instance_id;
+                exec_cmd.args["controller"] = (int)controller;
+                dispatch_frame.push_back(exec_cmd);
+            }
+            
+            if (!dispatch_frame.empty()) {
+                auto frame_ptr = std::make_shared<const std::vector<core::Instruction>>(std::move(dispatch_frame));
+                exec.call_stack.push_back({frame_ptr, 0, LoopContext{}});
+                std::cerr << "[handle_resolve_effect] Pushed " << frame_ptr->size()
+                          << " EXECUTE_COMMAND dispatchers onto shared pipeline (lazy compile)" << std::endl;
+            }
+        }
+        
         std::cerr << "=== handle_resolve_effect complete ===" << std::endl << std::endl;
     }
 
@@ -597,25 +653,33 @@ namespace dm::engine::systems {
          try {
              CommandDef cmd = inst.args["cmd"].get<CommandDef>();
 
-             int source_id = -1;
-             auto v_source = exec.get_context_var("$source");
-             if (std::holds_alternative<int>(v_source)) source_id = std::get<int>(v_source);
+             int source_id = inst.args.value("source", -1);
+             int controller_id = inst.args.value("controller", (int)state.active_player_id);
 
-             int controller_id = state.active_player_id;
-             auto v_ctrl = exec.get_context_var("$controller");
-             if (std::holds_alternative<int>(v_ctrl)) controller_id = std::get<int>(v_ctrl);
-
+             // 再発防止: ランタイムコンパイルパターン。
+             // 共有パイプラインの現在の exec.context から int 値を抽出し、
+             // その値を使ってコマンドを実行時にコンパイルする。
+             // これによりQUERYの出力変数 (var_DRAW_CARD_0 等) が
+             // 後の DRAW_CARD の count に正しく伝わる。
              std::map<std::string, int> temp_ctx;
              for (const auto& kv : exec.context) {
                  if (std::holds_alternative<int>(kv.second)) {
-                     temp_ctx[kv.first] = std::get<int>(kv.second);
+                     // $ なしキーで格納 (正規化)
+                     std::string k = kv.first;
+                     if (!k.empty() && k[0] == '$') k = k.substr(1);
+                     temp_ctx[k] = std::get<int>(kv.second);
                  }
              }
 
-             CommandSystem::execute_command(state, cmd, source_id, controller_id, temp_ctx);
+             // 実行時コンテキストでコマンドをコンパイル
+             auto compiled = dm::engine::systems::CommandSystem::generate_instructions(
+                 state, cmd, source_id, (core::PlayerID)controller_id, temp_ctx);
 
-             for (const auto& kv : temp_ctx) {
-                 exec.set_context_var(kv.first, kv.second);
+             // コンパイル結果を新フレームとして共有パイプラインの call_stack に積む
+             // (クリエートローカルパイプラインを作らない)
+             if (!compiled.empty()) {
+                 auto frame_ptr = std::make_shared<const std::vector<core::Instruction>>(std::move(compiled));
+                 exec.call_stack.push_back({frame_ptr, 0, LoopContext{}});
              }
 
          } catch (const std::exception& e) {

@@ -98,7 +98,7 @@ class EditorFeatureService:
         parent_item.append_row(item)
         return item
 
-    def apply_template_by_key(self, card_item: IEditorItem, template_key, display_label=None):
+    def apply_template_by_key(self, card_item: IEditorItem, template_key, display_label=None, extra_context=None):
         if display_label is None:
              display_label = tr(template_key)
 
@@ -108,7 +108,8 @@ class EditorFeatureService:
             'races': card_data.get('races', [])
         }
 
-        data, keywords_update, meta = self.template_manager.apply_template(template_key, context)
+        # 再発防止: extra_context (例: fb_races, rc_races) をテンプレート置換に渡す。
+        data, keywords_update, meta = self.template_manager.apply_template(template_key, context, extra_context=extra_context)
 
         if not data:
             print(f"Error: Template '{template_key}' not found or empty.")
