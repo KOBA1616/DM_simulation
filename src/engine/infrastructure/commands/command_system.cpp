@@ -207,6 +207,7 @@ std::vector<Instruction> CommandSystem::generate_instructions(
   case core::CommandType::REVEAL_TO_BUFFER:   // 再発防止: デッキ上からバッファへ表向きに展開
   case core::CommandType::SELECT_FROM_BUFFER: // 再発防止: バッファからプレイヤーが選択
   case core::CommandType::MOVE_BUFFER_TO_ZONE: // 再発防止: バッファ残予を指定ゾーンへ移動
+  case core::CommandType::REGISTER_DELAYED_EFFECT: // 遅延効果登録
     generate_macro_instructions(out, state, cmd, source_instance_id, player_id,
                                 execution_context);
     break;
@@ -272,6 +273,27 @@ void CommandSystem::generate_primitive_instructions(
     Zone from_z = parse_zone_string(cmd.from_zone);
     std::string to_z_str = cmd.to_zone; // Pass string to instruction
 
+    // 再発防止: input_value_key が指定されている場合、生成時にコンテキスト変数を解決しない。
+    // WAIT_INPUT で決定される値は生成時には未確定（ゼロ）のため。
+    if (targets.empty() && !cmd.input_value_key.empty()) {
+      std::string ctx_key = cmd.input_value_key.rfind("$", 0) == 0
+                                ? cmd.input_value_key
+                                : "$" + cmd.input_value_key;
+      Instruction move(InstructionOp::MOVE);
+      if (cmd.from_zone.empty()) {
+        // 再発防止: from_zone が空の場合、input_value_key の値はインスタンスIDリスト
+        //   (SELECT命令の出力) として解釈する。target にコンテキスト変数参照を渡す。
+        move.args["target"] = ctx_key;
+      } else {
+        // from_zone あり: 代山のところから N 枚を取るバーチャルソースモード
+        move.args["target"] = cmd.from_zone; // 例: "HAND" (実行時に他アップバック貴插などで解決)
+        move.args["count"] = ctx_key;        // 枠数（実行時解決）
+      }
+      move.args["to"] = to_z_str;
+      out.push_back(move);
+      return;
+    }
+
     if (targets.empty() && cmd.amount > 0 && from_z != Zone::GRAVEYARD) {
       int count = resolve_amount(cmd, execution_context);
       if (from_z == Zone::DECK) {
@@ -330,38 +352,43 @@ void CommandSystem::generate_primitive_instructions(
           cmd.output_value_key.empty() ? "$temp" : cmd.output_value_key;
       out.push_back(get);
     } else {
-      std::vector<int> targets = resolve_targets(state, cmd, source_instance_id,
-                                                 player_id, execution_context);
-      if (targets.empty()) {
-        if (!cmd.output_value_key.empty()) {
-          // Set output to 0/empty?
-          // For query, usually we select from options.
-        }
-        return;
+      // 再発防止: QUERY(SELECT_TARGET, target_filter={zones:["HAND"]}, input_value_key="var_N",
+      //   output_value_key="var_out") は実行時対象列挙が必要なため
+      //   InstructionOp::SELECT を生成する。
+      //   GAME_ACTION("SELECT_TARGET") は生成時解決が必要で単一パイプラインパターンに
+      //   適合しない。InstructionOp::SELECT は実行時に対象を列挙し、count=
+      //   input_value_key でコンテキスト変数を参照する。
+      const FilterDef& select_filter = cmd.target_filter;
+      Instruction select_inst(InstructionOp::SELECT);
+      // filter を JSON に手動シリアライズ (必要なフィールドのみ)
+      nlohmann::json filter_json = nlohmann::json::object();
+      if (!select_filter.zones.empty()) {
+        filter_json["zones"] = select_filter.zones;
       }
-
-      int amount = resolve_amount(cmd, execution_context);
-
-      Instruction select(InstructionOp::SELECT);
-      // We need to pass targets specifically.
-      // But Pipeline SELECT usually takes filter.
-      // We can synthesize a filter or use valid_targets override if we extended
-      // Pipeline. Current Pipeline `handle_select` doesn't support
-      // `valid_targets` arg override well (logic in game_logic handled it).
-      // Actually `PipelineExecutor::handle_select` logic:
-      // It iterates filter.
-      // BUT `GameLogicSystem::handle_select_target` supports `valid_targets`.
-      // Let's use `GAME_ACTION` "SELECT_TARGET" which we implemented in
-      // PlaySystem/GameLogicSystem.
-
-      nlohmann::json args;
-      args["type"] = "SELECT_TARGET";
-      args["valid_targets"] = targets;
-      args["count"] = amount;
-      args["out"] = cmd.output_value_key;
-
-      Instruction inst(InstructionOp::GAME_ACTION, args);
-      out.push_back(inst);
+      // 再発防止: CommandDef の target_group が指定されている場合は owner を明示する
+      // しないと実行時に両プレイヤーを走査してしまい、対象候補が過剰に生成される。
+      if (cmd.target_group == TargetScope::PLAYER_SELF) {
+        filter_json["owner"] = std::string("SELF");
+      } else if (cmd.target_group == TargetScope::PLAYER_OPPONENT) {
+        filter_json["owner"] = std::string("OPPONENT");
+      } else if (cmd.target_group == TargetScope::ALL_PLAYERS) {
+        filter_json["owner"] = std::string("BOTH");
+      }
+      if (select_filter.owner.has_value()) {
+        filter_json["owner"] = *select_filter.owner;
+      }
+      select_inst.args["filter"] = filter_json;
+      if (!cmd.input_value_key.empty()) {
+        // count をコンテキスト変数参照として指定（$ プレフィックスは get_context_var フォールバックで対応）
+        // 再発防止: resolve_int は $ プレフィックスがある文字列のみコンテキスト参照として処理する。
+        //   $ なし文字列を渡すと即座に 0 を返すため、$ を明示的に付加する。
+        select_inst.args["count"] = "$" + cmd.input_value_key;
+      } else {
+        int amount = resolve_amount(cmd, execution_context);
+        select_inst.args["count"] = amount;
+      }
+      select_inst.args["out"] = cmd.output_value_key;
+      out.push_back(select_inst);
     }
 
   } else if (cmd.type == core::CommandType::MUTATE) {
@@ -414,7 +441,11 @@ void CommandSystem::generate_macro_instructions(
     Instruction move(InstructionOp::MOVE);
     move.args["target"] = "DECK_TOP";
     if (!count_val_key.empty()) {
-      move.args["count"] = count_val_key;
+      // 再発防止: コンテキスト変数参照は $ プレフィックスが必要。
+      //   resolve_int が "$var_X" 形式のみコンテキスト参照として処理するため。
+      //   get_context_var は $ あり/なし両方でフォールバック検索するが、
+      //   resolve_int 自体が $ なし文字列を即座に 0 返するため $ を明示する。
+      move.args["count"] = "$" + count_val_key;
     } else {
       move.args["count"] = count;
     }
@@ -600,6 +631,29 @@ void CommandSystem::generate_macro_instructions(
     args["owner_id"] = static_cast<int>(player_id);
     Instruction inst(InstructionOp::GAME_ACTION, args);
     out.push_back(inst);
+  } else if (cmd.type == core::CommandType::REGISTER_DELAYED_EFFECT) {
+    // Map REGISTER_DELAYED_EFFECT to a GAME_ACTION so the pipeline can register
+    // the delayed effect into the game systems. Include minimal metadata.
+    nlohmann::json args;
+    args["type"] = "REGISTER_DELAYED_EFFECT";
+    args["source_id"] = source_instance_id;
+    args["owner_id"] = static_cast<int>(player_id);
+    if (!cmd.str_param.empty()) {
+      args["effect_key"] = cmd.str_param;
+    }
+    // amount can represent duration/count for the delayed effect
+    if (count > 0) {
+      args["amount"] = count;
+    }
+    // Serialize simple filter information if present
+    if (!cmd.target_filter.zones.empty()) {
+      nlohmann::json f = nlohmann::json::object();
+      f["zones"] = cmd.target_filter.zones;
+      if (cmd.target_filter.owner.has_value()) f["owner"] = *cmd.target_filter.owner;
+      args["filter"] = f;
+    }
+    Instruction inst_delay(InstructionOp::GAME_ACTION, args);
+    out.push_back(inst_delay);
   } else if (cmd.type == core::CommandType::REVEAL_TO_BUFFER) {
     // 再発防止: REVEAL_TO_BUFFER はデッキ上から指定枚数を表向きにバッファへ展開する。
     //   SELECT_FROM_BUFFER で選択し、残余はデッキボトムに戻す。

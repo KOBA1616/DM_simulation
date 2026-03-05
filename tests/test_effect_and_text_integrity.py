@@ -802,6 +802,7 @@ _CPP_IMPLEMENTED_COMMANDS: set = {
     "REPLACE_MOVE_CARD",
     # バッファ操作: デッキトップから選択するシェイパー実装
     "REVEAL_TO_BUFFER", "SELECT_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE",
+    "REGISTER_DELAYED_EFFECT",
 }
 
 
