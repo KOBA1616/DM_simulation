@@ -132,6 +132,9 @@ class CardPreviewWidget(QWidget):
         h_layout.addWidget(self.card_frame)
         h_layout.addStretch()
         layout.addLayout(h_layout)
+        # 再発防止: addStretch() がないと h_layout がペイン全体を占有しカードが下部に
+        # 垂直中央揃えされてしまう。addStretch() でコンテンツを上寄せに固定する。
+        layout.addStretch()
 
         # Main Layout inside the card (Switchable between Standard and Twinpact)
         self.frame_layout = QVBoxLayout(self.card_frame)

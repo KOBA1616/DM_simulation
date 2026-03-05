@@ -338,9 +338,11 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         f_links_in
     ]))
+    # 再発防止: SELECT_FROM_BUFFER の amount は「すべて」(-1) をサポートするため
+    # min_value=-1, widget_hint="amount_all" を指定する。
     register_schema(CommandSchema("SELECT_FROM_BUFFER", [
         f_filter,
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
         f_links_out
     ]))
     register_schema(CommandSchema("PLAY_FROM_BUFFER", [

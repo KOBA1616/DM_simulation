@@ -388,13 +388,17 @@ class UnifiedActionForm(BaseEditForm):
             new_data.update(dump)
 
             # Check outputs config
+            # 再発防止: output_value_key は全コマンドに uid ベースで自動生成する。
+            # row ベースはユニーク性が保証できないため废止。
+            # produces_output=False のコマンドもキーを持つが UI には表示しない。
             schema = get_schema(cmd_type)
-            if schema:
-                produces_output = any(f.produces_output for f in schema.fields)
-                if produces_output and 'output_value_key' not in new_data:
-                    row = 0
-                    if getattr(self, 'current_item', None):
-                        row = self.current_item.row()
+            if 'output_value_key' not in new_data or not new_data.get('output_value_key'):
+                uid_val = new_data.get('uid', '')
+                if uid_val:
+                    new_data['output_value_key'] = f"var_{uid_val[:8]}"
+                elif schema and any(f.produces_output for f in schema.fields):
+                    # uidなしかった場合のフォールバック
+                    row = getattr(self.current_item, 'row', lambda: 0)()
                     new_data['output_value_key'] = f"var_{cmd_type}_{row}"
 
             data.clear()

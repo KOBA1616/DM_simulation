@@ -1325,10 +1325,17 @@ class CardTextGenerator:
              return f"{src_zone}から{amt}枚を表向きにしてバッファに置く。"
 
         elif atype == "SELECT_FROM_BUFFER":
-             if val1 == 0:
-                 return f"見たカードすべてを選ぶ。"
-             amt = val1 if val1 > 0 else 1
-             return f"見たカードの中から{amt}枚を選ぶ。"
+             # 再発防止: target_filter の文明・種族・タイプを生成テキストに反映する。
+             filter_def = action.get("target_filter", {}) or {}
+             filter_text = cls._describe_simple_filter(filter_def) if filter_def else ""
+             if val1 == 0 or val1 == -1:
+                 base = "見たカードすべて"
+             else:
+                 amt = val1 if val1 > 0 else 1
+                 base = f"見たカードの中から{amt}枚"
+             if filter_text and filter_text != "クリーチャー":  # 条件なし時はデフォルト「クリーチャー」は省略
+                 return f"{base}（{filter_text}）を選ぶ。"
+             return f"{base}を選ぶ。"
 
         elif atype == "PLAY_FROM_BUFFER":
              target_str, unit = cls._resolve_target(action, is_spell)
