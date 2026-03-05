@@ -352,11 +352,20 @@ class CardTextGenerator:
         if adj_str:
             adj_str += "の"
 
-        noun_str = "クリーチャー"
+        # 再発防止: types が空のときに「クリーチャー」をデフォルトにしない。
+        #   フィルターでタイプ未指定は「カード」(全タイプ対象)。
+        #   CREATURE のみ指定時だけ「クリーチャー」、SPELL のみなら「呪文」、
+        #   複数タイプ指定時は "/" 区切り、races 指定があればそれを優先する。
         if "ELEMENT" in types:
             noun_str = "エレメント"
-        elif "SPELL" in types:
+        elif "SPELL" in types and "CREATURE" not in types:
             noun_str = "呪文"
+        elif "CREATURE" in types:
+            noun_str = "クリーチャー"
+        elif types:
+            noun_str = "/".join(tr(t) for t in types if t)
+        else:
+            noun_str = "カード"  # タイプ未指定は全タイプ対象
 
         if races:
             noun_str = "/".join(races)
@@ -1329,6 +1338,12 @@ class CardTextGenerator:
     @classmethod
     def _format_buffer_command(cls, atype: str, action: Dict[str, Any], is_spell: bool, val1: int) -> str:
         """Handle buffer-related commands."""
+        # 再発防止: val1 が文字列や float で渡される場合がある。
+        #   int 比較で TypeError を起こさないよう先頭で安全に変換する。
+        try:
+            val1 = int(val1)
+        except (TypeError, ValueError):
+            val1 = 0
         if atype == "LOOK_TO_BUFFER":
              src_zone = tr(action.get("from_zone", "DECK"))
              amt = val1 if val1 > 0 else 1
