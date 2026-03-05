@@ -128,7 +128,7 @@
     "outputs": { "output_value_key": "Selected Number" }
   },
   "SELECT_OPTION": {
-    "visible": ["amount", "option_count", "optional"],
+    "visible": ["amount", "option_count", "optional", "input_link"],
     "labels": { "amount": "Selections Count", "option_count": "Options Count" }
   },
   "CAST_SPELL": {

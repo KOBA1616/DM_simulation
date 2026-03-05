@@ -418,10 +418,13 @@ def register_all_schemas():
     ]))
 
     # SELECT_OPTION
+    # 再発防止: SELECT_OPTION の amount (選択数) は直入力のほか、前のコマンド出力値を参照できる。
+    # input_value_key が設定されない場合は通常度の amount を使用する。
     register_schema(CommandSchema("SELECT_OPTION", [
         FieldSchema("amount", tr("Selections Count"), FieldType.INT, default=1, min_value=1),
         FieldSchema("option_count", tr("Options Count"), FieldType.OPTIONS_CONTROL, default=1, min_value=1),
-        FieldSchema("optional", tr("Allow Duplicates"), FieldType.BOOL, default=False)
+        FieldSchema("optional", tr("Allow Duplicates"), FieldType.BOOL, default=False),
+        f_links_in  # input_value_key に前『コマンド出力値』をセット → C++ resolve_amount が自動利用
     ]))
 
     # IF / IF_ELSE (Use filter as condition)
