@@ -228,20 +228,20 @@
     "labels": { "result": "Result" }
   },
   "SPELL_RESTRICTION": {
-    "visible": ["target_group", "target_filter", "amount"],
-    "labels": { "amount": "Duration (Turns)" }
+    "visible": ["target_group", "target_filter", "duration"],
+    "labels": { "duration": "期間", "target_filter": "対象フィルター (コスト制限など)" }
   },
   "CANNOT_PUT_CREATURE": {
-    "visible": ["target_group", "target_filter", "amount"],
-    "labels": { "amount": "Duration (Turns)" }
+    "visible": ["target_group", "target_filter", "duration"],
+    "labels": { "duration": "期間" }
   },
   "CANNOT_SUMMON_CREATURE": {
-    "visible": ["target_group", "target_filter", "amount"],
-    "labels": { "amount": "Duration (Turns)" }
+    "visible": ["target_group", "target_filter", "duration"],
+    "labels": { "duration": "期間" }
   },
   "PLAYER_CANNOT_ATTACK": {
-    "visible": ["target_group", "target_filter", "amount"],
-    "labels": { "amount": "Duration (Turns)" }
+    "visible": ["target_group", "target_filter", "duration"],
+    "labels": { "duration": "期間" }
   },
   "RESET_INSTANCE": {
     "visible": ["target_group", "target_filter"]

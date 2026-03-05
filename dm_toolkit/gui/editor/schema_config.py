@@ -356,32 +356,35 @@ def register_all_schemas():
     ]))
 
     # Others
+    # 再発防止: 制限コマンドの持続期間は APPLY_MODIFIER と同様 SELECT 式 (DURATION_OPTIONS) で統一する。
+    #   amount (INT) は引数の混入を招くため廃止。duration フィールド単一に統一。
+    #   SPELL_RESTRICTION のコスト制限は f_filter の Stats Filter 内の exact_cost デ 指定する。
     register_schema(CommandSchema("LOCK_SPELL", [
         f_target, # Target player
         f_filter,
-        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
     ]))
 
     # Player Restrictions
     register_schema(CommandSchema("SPELL_RESTRICTION", [
         f_target,
-        f_filter,
-        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+        f_filter,  # Stats Filter 内の exact_cost / min_cost / max_cost で射程コストを指定可能
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
     ]))
     register_schema(CommandSchema("CANNOT_PUT_CREATURE", [
         f_target,
         f_filter,
-        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
     ]))
     register_schema(CommandSchema("CANNOT_SUMMON_CREATURE", [
         f_target,
         f_filter,
-        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
     ]))
     register_schema(CommandSchema("PLAYER_CANNOT_ATTACK", [
         f_target,
         f_filter,
-        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
     ]))
 
     register_schema(CommandSchema("RESET_INSTANCE", [

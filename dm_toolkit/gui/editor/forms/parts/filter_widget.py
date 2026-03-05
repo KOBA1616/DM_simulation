@@ -43,9 +43,10 @@ class FilterEditorWidget(QWidget):
         zone_section_layout.setSpacing(2)
         _zone_toggle_btn = QPushButton(tr("▶ ゾーン"))
         _zone_toggle_btn.setCheckable(True)
-        _zone_toggle_btn.setChecked(True)
+        _zone_toggle_btn.setChecked(False)  # 再発防止: デフォルトで閉じた状態。setVisible を明示設定すること。
         _zone_toggle_btn.setStyleSheet("text-align:left; font-weight:bold; border:none; padding:2px;")
         _zone_content = QWidget()
+        _zone_content.setVisible(False)  # 初期非表示
         _zone_grid = QGridLayout(_zone_content)
         _zone_grid.setContentsMargins(12, 0, 0, 0)
         _zone_grid.setSpacing(2)

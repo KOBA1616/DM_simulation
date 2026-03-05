@@ -1806,8 +1806,10 @@ class CardTextGenerator:
              else:
                   target_str_lock, _ = cls._resolve_target(action, is_spell)
 
-             duration = val1 if val1 > 0 else 1
-             return f"{target_str_lock}は{duration}ターンの間、呪文を唱えられない。"
+             # 再発防止: duration は DURATION_OPTIONS の文字列キー。val1 (整数) に依存しない。
+             duration_key = action.get("duration", "") or ""
+             duration_text = CardTextResources.get_duration_text(duration_key) if duration_key else (f"{val1}ターン" if val1 > 0 else "このターン")
+             return f"{target_str_lock}は{duration_text}の間、呪文を唱えられない。"
 
         elif atype in ["SPELL_RESTRICTION", "CANNOT_PUT_CREATURE", "CANNOT_SUMMON_CREATURE", "PLAYER_CANNOT_ATTACK"]:
              scope = action.get("scope") or action.get("target_group", "NONE")
@@ -1821,10 +1823,9 @@ class CardTextGenerator:
              else:
                   target_str_lock, _ = cls._resolve_target(action, is_spell)
 
-             # Duration MUST be at least 1 for these restrictions to make sense textually.
-             # 0 usually implies "until end of turn" but "0ターンの間" is awkward.
-             # We assume val1=0 or 1 means "this turn" effectively (1 turn duration).
-             duration = val1 if val1 > 0 else 1
+             # 再発防止: duration は DURATION_OPTIONS の文字列キー。val1 (整数) に依存しない。
+             duration_key = action.get("duration", "") or ""
+             duration_text = CardTextResources.get_duration_text(duration_key) if duration_key else (f"{val1}ターン" if val1 > 0 else "このターン")
 
              if atype == "SPELL_RESTRICTION":
                  action_text = "呪文を唱えられない"
@@ -1835,7 +1836,7 @@ class CardTextGenerator:
              elif atype == "PLAYER_CANNOT_ATTACK":
                  action_text = "攻撃できない"
 
-             return f"{target_str_lock}は{duration}ターンの間、{action_text}。"
+             return f"{target_str_lock}は{duration_text}の間、{action_text}。"
 
         elif atype == "RESET_INSTANCE":
              return f"{target_str}の状態を初期化する（効果を無視する）。"
