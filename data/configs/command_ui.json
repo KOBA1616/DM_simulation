@@ -2,23 +2,23 @@
   "NONE": { "visible": [] },
   "DRAW_CARD": {
     "visible": ["target_group", "amount", "optional", "up_to", "input_link", "output_link"],
-    "labels": { "amount": "Cards to Draw" },
+    "labels": { "amount": "ドロー枚数" },
     "produces_output": true,
-    "outputs": { "output_value_key": "Cards Drawn" }
+    "outputs": { "output_value_key": "ドローしたカード" }
   },
   "DISCARD": {
     "visible": ["target_group", "target_filter", "amount", "up_to", "optional", "input_link", "output_link"],
-    "labels": { "amount": "Count" },
+    "labels": { "amount": "枚数" },
     "produces_output": true,
-    "outputs": { "output_value_key": "Discarded Cards" }
+    "outputs": { "output_value_key": "捨てたカード" }
   },
   "DESTROY": {
     "visible": ["target_group", "target_filter", "amount", "input_link", "output_link"],
-    "labels": { "amount": "Count (if selecting)" }
+    "labels": { "amount": "枚数（選択時）" }
   },
   "MANA_CHARGE": {
     "visible": ["target_group", "target_filter", "amount", "input_link", "output_link"],
-    "labels": { "amount": "Count (if selecting)" }
+    "labels": { "amount": "枚数（選択時）" }
   },
   "TAP": {
     "visible": ["target_group", "target_filter", "input_link"]
@@ -28,51 +28,51 @@
   },
   "RETURN_TO_HAND": {
     "visible": ["target_group", "target_filter", "amount", "input_link", "output_link"],
-    "labels": { "amount": "Count (if selecting)" }
+    "labels": { "amount": "枚数（選択時）" }
   },
   "BREAK_SHIELD": {
     "visible": ["target_group", "target_filter", "amount", "input_link", "output_link"],
-    "labels": { "amount": "Count" }
+    "labels": { "amount": "枚数" }
   },
   "TRANSITION": {
     "visible": ["target_group", "target_filter", "from_zone", "to_zone", "amount", "up_to", "optional", "input_link", "output_link"],
-    "labels": { "amount": "Count" },
+    "labels": { "amount": "枚数" },
     "produces_output": true,
-    "outputs": { "output_value_key": "Moved Cards" }
+    "outputs": { "output_value_key": "移動したカード" }
   },
   "MOVE_CARD": {
     "visible": ["target_group", "target_filter", "to_zone", "amount", "up_to", "optional", "input_link", "output_link"],
-    "labels": { "amount": "Count" },
+    "labels": { "amount": "枚数" },
     "produces_output": true,
-    "outputs": { "output_value_key": "Moved Cards" }
+    "outputs": { "output_value_key": "移動したカード" }
   },
   "REPLACE_CARD_MOVE": {
     "visible": ["target_group", "target_filter", "from_zone", "to_zone", "amount", "up_to", "optional", "input_link", "output_link"],
-    "labels": { "from_zone": "Original Destination", "to_zone": "Replacement Destination", "amount": "Count" },
+    "labels": { "from_zone": "元の移動先", "to_zone": "代替移動先", "amount": "枚数" },
     "produces_output": true,
-    "outputs": { "output_value_key": "Replaced Cards" },
-    "tooltip": "Replacement effect: Instead of moving to original destination, move to replacement destination"
+    "outputs": { "output_value_key": "置き換えたカード" },
+    "tooltip": "置き換え効果：元の移動先の代わりに、代替移動先へ移動する"
   },
   "MUTATE": {
     "visible": ["target_group", "target_filter", "mutation_kind", "amount", "str_param", "duration", "input_link"],
-    "labels": { "mutation_kind": "Mutation Type", "amount": "Value (Power)", "str_param": "Extra Param", "duration": "Duration" }
+    "labels": { "mutation_kind": "変化種別", "amount": "値（パワー）", "str_param": "追加パラメータ", "duration": "持続期間" }
   },
   "POWER_MOD": {
     "visible": ["target_group", "target_filter", "amount", "input_link"],
-    "labels": { "amount": "Power Adjustment" }
+    "labels": { "amount": "パワー調整値" }
   },
   "ADD_KEYWORD": {
     "visible": ["target_group", "target_filter", "explicit_self", "str_val", "duration", "amount", "input_link"],
-    "labels": { "explicit_self": "This Card", "str_val": "Keyword", "duration": "Duration", "amount": "Amount (Hidden)" }
+    "labels": { "explicit_self": "このカード", "str_val": "キーワード能力", "duration": "持続期間", "amount": "値（非表示）" }
   },
   "QUERY": {
     "visible": ["target_group", "target_filter", "query_mode", "output_link"],
     "produces_output": true,
-    "outputs": { "output_value_key": "Query Result" }
+    "outputs": { "output_value_key": "クエリ結果" }
   },
   "FLOW": {
     "visible": ["str_param"],
-    "labels": { "str_param": "Flow Instruction" }
+    "labels": { "str_param": "フロー指示" }
   },
   "SEARCH_DECK": {
     "visible": ["target_filter", "amount", "to_zone", "input_link", "output_link"],
@@ -85,46 +85,46 @@
   },
   "LOOK_AND_ADD": {
     "visible": ["target_filter", "amount", "val2", "rest_zone", "input_link", "output_link"],
-    "labels": { "amount": "Look Count", "val2": "Add Count" },
+    "labels": { "amount": "見る枚数", "val2": "加える枚数" },
     "produces_output": true,
     "outputs": { "output_value_key": "加えたカード" }
   },
   "MEKRAID": {
     "visible": ["target_filter", "amount", "val2", "select_count", "input_link", "output_link"],
-    "labels": { "amount": "Level" },
+    "labels": { "amount": "レベル" },
     "produces_output": true,
-    "outputs": { "output_value_key": "Played Card" }
+    "outputs": { "output_value_key": "プレイしたカード" }
   },
   "REVEAL_CARDS": {
     "visible": ["target_group", "target_filter", "amount", "input_link"],
-    "labels": { "amount": "Count" }
+    "labels": { "amount": "枚数" }
   },
   "SHUFFLE_DECK": {
     "visible": ["target_group"]
   },
   "PLAY_FROM_ZONE": {
     "visible": ["from_zone", "to_zone", "amount", "str_param", "play_flags", "input_link", "output_link"],
-    "labels": { "amount": "Max Cost", "str_param": "Hint" },
+    "labels": { "amount": "最大コスト", "str_param": "ヒント" },
     "produces_output": true,
     "outputs": { "output_value_key": "プレイしたカード" }
   },
   "PUT_CREATURE": {
     "visible": ["target_group", "target_filter", "amount", "input_link"],
-    "labels": { "amount": "Count" }
+    "labels": { "amount": "枚数" }
   },
   "SUMMON_TOKEN": {
     "visible": ["amount", "str_param", "input_link"],
-    "labels": { "amount": "Count", "str_param": "Token ID" }
+    "labels": { "amount": "枚数", "str_param": "トークンID" }
   },
   "SELECT_NUMBER": {
     "visible": ["min_value", "amount", "output_link"],
-    "labels": { "amount": "Max", "min_value": "Min" },
+    "labels": { "amount": "最大", "min_value": "最小" },
     "produces_output": true,
-    "outputs": { "output_value_key": "Selected Number" }
+    "outputs": { "output_value_key": "選んだ数字" }
   },
   "SELECT_OPTION": {
     "visible": ["amount", "option_count", "optional", "input_link"],
-    "labels": { "amount": "Selections Count", "option_count": "Options Count" }
+    "labels": { "amount": "選択数", "option_count": "選択肢数" }
   },
   "CAST_SPELL": {
     "visible": ["target_group", "target_filter", "input_link", "output_link"],
@@ -133,21 +133,21 @@
   },
   "FRIEND_BURST": {
     "visible": ["str_param", "target_filter", "input_link", "output_link"],
-    "labels": { "str_param": "Race" },
+    "labels": { "str_param": "種族" },
     "produces_output": true,
     "outputs": { "output_value_key": "出現カード" }
   },
   "REGISTER_DELAYED_EFFECT": {
     "visible": ["str_param", "amount", "input_link"],
-    "labels": { "str_param": "Effect ID", "amount": "Duration (Turns)" }
+    "labels": { "str_param": "効果ID", "amount": "持続ターン数" }
   },
   "APPLY_MODIFIER": {
     "visible": ["target_group", "target_filter", "str_param", "amount", "duration", "input_link"],
-    "labels": { "str_param": "Effect ID", "amount": "Value / Duration", "duration": "Duration" }
+    "labels": { "str_param": "効果ID", "amount": "値/持続期間", "duration": "持続期間" }
   },
   "CHOICE": {
     "visible": ["amount"],
-    "labels": { "amount": "Count" }
+    "labels": { "amount": "選択数" }
   },
   "REVOLUTION_CHANGE": {
     "visible": ["target_filter"]
@@ -155,77 +155,77 @@
   "IF": {
     "visible": ["input_link", "target_filter", "output_link"],
     "produces_output": true,
-    "outputs": { "output_value_key": "Condition Result" }
+    "outputs": { "output_value_key": "条件結果" }
   },
   "IF_ELSE": {
     "visible": ["input_link", "target_filter", "output_link"],
     "produces_output": true,
-    "outputs": { "output_value_key": "Condition Result" }
+    "outputs": { "output_value_key": "条件結果" }
   },
   "ELSE": {
     "visible": ["output_link"],
     "produces_output": true,
-    "outputs": { "output_value_key": "Condition Result" }
+    "outputs": { "output_value_key": "条件結果" }
   },
   "STAT": {
     "visible": ["str_param", "amount"],
-    "labels": { "str_param": "Stat Key", "amount": "Value to Add" }
+    "labels": { "str_param": "統計キー", "amount": "加算値" }
   },
   "COST_REFERENCE": {
     "visible": ["ref_mode", "output_link"],
-    "tooltip": "Reference cost or reduce cost",
+    "tooltip": "コストを参照またはコストを減らす",
     "produces_output": true,
-    "outputs": { "output_value_key": "Reference Value" }
+    "outputs": { "output_value_key": "参照値" }
   },
   "SEARCH_DECK_BOTTOM": {
     "visible": ["amount", "output_link"],
-    "labels": { "amount": "Count" },
+    "labels": { "amount": "枚数" },
     "produces_output": true,
-    "outputs": { "output_value_key": "Found Cards" }
+    "outputs": { "output_value_key": "見つかったカード" }
   },
   "SEND_TO_DECK_BOTTOM": {
     "visible": ["target_group", "target_filter", "amount", "input_link"],
-    "labels": { "amount": "Count" }
+    "labels": { "amount": "枚数" }
   },
   "LOOK_TO_BUFFER": {
     "visible": ["from_zone", "amount", "input_link"],
-    "labels": { "amount": "Count", "from_zone": "Source" }
+    "labels": { "amount": "枚数", "from_zone": "ソース" }
   },
   "REVEAL_TO_BUFFER": {
     "visible": ["from_zone", "amount", "input_link"],
-    "labels": { "amount": "Count", "from_zone": "Source" }
+    "labels": { "amount": "枚数", "from_zone": "ソース" }
   },
   "SELECT_FROM_BUFFER": {
     "visible": ["target_filter", "amount", "output_link"],
-    "labels": { "amount": "Count" },
+    "labels": { "amount": "枚数" },
     "produces_output": true,
-    "outputs": { "output_value_key": "Selected Cards" }
+    "outputs": { "output_value_key": "選んだカード" }
   },
   "PLAY_FROM_BUFFER": {
     "visible": ["target_filter", "input_link"]
   },
   "MOVE_BUFFER_TO_ZONE": {
     "visible": ["to_zone", "amount", "input_link"],
-    "labels": { "amount": "Count", "to_zone": "Destination" }
+    "labels": { "amount": "枚数", "to_zone": "移動先" }
   },
   "RESOLVE_BATTLE": {
     "visible": ["target_group", "target_filter"]
   },
   "ADD_SHIELD": {
     "visible": ["target_group", "amount", "input_link"],
-    "labels": { "amount": "Count" }
+    "labels": { "amount": "枚数" }
   },
   "SEND_SHIELD_TO_GRAVE": {
     "visible": ["target_group", "amount", "input_link"],
-    "labels": { "amount": "Count" }
+    "labels": { "amount": "枚数" }
   },
   "SHIELD_BURN": {
     "visible": ["target_group", "amount", "input_link"],
-    "labels": { "amount": "Count" }
+    "labels": { "amount": "枚数" }
   },
   "GAME_RESULT": {
     "visible": ["result", "target_group"],
-    "labels": { "result": "Result" }
+    "labels": { "result": "結果" }
   },
   "SPELL_RESTRICTION": {
     "visible": ["target_group", "target_filter", "duration"],
@@ -248,18 +248,18 @@
   },
   "MOVE_TO_UNDER_CARD": {
     "visible": ["target_group", "target_filter", "amount", "input_link"],
-    "labels": { "amount": "Count" }
+    "labels": { "amount": "枚数" }
   },
   "DECLARE_NUMBER": {
     "visible": ["min_value", "amount", "output_link"],
-    "labels": { "min_value": "Min", "amount": "Max" },
+    "labels": { "min_value": "最小", "amount": "最大" },
     "produces_output": true,
-    "outputs": { "output_value_key": "Declared Number" }
+    "outputs": { "output_value_key": "宣言した数字" }
   },
   "MEASURE_COUNT": {
     "visible": ["target_group", "target_filter", "output_link"],
     "produces_output": true,
-    "outputs": { "output_value_key": "Count" }
+    "outputs": { "output_value_key": "カウント数" }
   },
   "COMMAND_GROUPS": {
     "DRAW": [ "DRAW_CARD" ],

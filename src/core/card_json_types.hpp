@@ -200,6 +200,15 @@ namespace dm::core {
         DRAW,                // カードを引く (DRAW_CARD の別名, FLOW内で使用)
         REPLACE_MOVE_CARD,   // 置換効果: カードの移動先を墓地に変更 (マグナム系)
 
+        // 再発防止: 制限コマンドタイプ — カードエディタから出力される新形式
+        //   JSON の "type" フィールドに直接これらの文字列が入る。
+        //   duration フィールドは DURATION_OPTIONS 文字列 ("THIS_TURN" 等) で格納される。
+        LOCK_SPELL,             // 呪文使用禁止
+        SPELL_RESTRICTION,      // コスト指定呪文禁止 (target_filter.exact_cost で指定)
+        CANNOT_PUT_CREATURE,    // クリーチャーを出す禁止
+        CANNOT_SUMMON_CREATURE, // クリーチャー召喚禁止
+        PLAYER_CANNOT_ATTACK,   // プレイヤーの攻撃禁止
+
         NONE
     };
 
@@ -322,6 +331,11 @@ namespace dm::core {
         FilterDef target_filter;
         int amount = 0;
         std::string str_param;
+        // 再発防止: str_val と duration はカードエディタが出力する新形式フィールド。
+        //   ADD_KEYWORD の keyword、LOCK_SPELL 系の期間などで使用する。
+        //   NLOHMANN マクロに必ず含めること。
+        std::string str_val;      // キーワード識別子 (ADD_KEYWORD 等)
+        std::string duration;     // 持続期間文字列 (DURATION_OPTIONS 値、例: "THIS_TURN")
         bool optional = false;
         std::string from_zone;
         std::string to_zone;
@@ -575,7 +589,13 @@ namespace dm::core {
         {CommandType::ADD_RESTRICTION, "ADD_RESTRICTION"},
         {CommandType::SELECT_OPTION, "SELECT_OPTION"},
         {CommandType::DRAW, "DRAW"},
-        {CommandType::REPLACE_MOVE_CARD, "REPLACE_MOVE_CARD"}
+        {CommandType::REPLACE_MOVE_CARD, "REPLACE_MOVE_CARD"},
+        // 再発防止: 制限コマンドタイプ — 追加したら command_system.cpp の switch にも追加すること
+        {CommandType::LOCK_SPELL, "LOCK_SPELL"},
+        {CommandType::SPELL_RESTRICTION, "SPELL_RESTRICTION"},
+        {CommandType::CANNOT_PUT_CREATURE, "CANNOT_PUT_CREATURE"},
+        {CommandType::CANNOT_SUMMON_CREATURE, "CANNOT_SUMMON_CREATURE"},
+        {CommandType::PLAYER_CANNOT_ATTACK, "PLAYER_CANNOT_ATTACK"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(CostType, {
@@ -596,7 +616,7 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter, extra_fields)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, input_value_usage, output_value_key, inverse_target, condition, options, cast_spell_side)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, input_value_usage, output_value_key, slot_index, target_slot_index, up_to, options)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, str_val, duration, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, input_value_usage, output_value_key, slot_index, target_slot_index, up_to, options)
 
     // Manual to_json for EffectDef to exclude actions
     inline void to_json(nlohmann::json& j, const EffectDef& e) {

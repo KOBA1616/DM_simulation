@@ -28,7 +28,7 @@ class FilterEditorWidget(QWidget):
         main_layout.setContentsMargins(0, 0, 0, 0)
 
         # 1. Basic Properties (Zones, Types, Civs)
-        self.basic_group = QGroupBox(tr("Basic Filter"))
+        self.basic_group = QGroupBox(tr("基本フィルター"))
         basic_layout = QGridLayout(self.basic_group)
         main_layout.addWidget(self.basic_group)
 
@@ -52,7 +52,7 @@ class FilterEditorWidget(QWidget):
         _zone_grid.setSpacing(2)
         for i, z in enumerate(ALL_ZONES):
             cb = QCheckBox(tr(z))
-            cb.setToolTip(tr("Include {zone} in target selection").format(zone=tr(z)))
+            cb.setToolTip(tr("ゾーン{zone}を対象選択に含める").format(zone=tr(z)))
             self.zone_checks[z] = cb
             _zone_grid.addWidget(cb, i // 2, i % 2)
             cb.stateChanged.connect(self.filterChanged.emit)
@@ -61,7 +61,7 @@ class FilterEditorWidget(QWidget):
         zone_section_layout.addWidget(_zone_toggle_btn)
         zone_section_layout.addWidget(_zone_content)
         self.zone_group_buttons: list = [(_zone_toggle_btn, _zone_content)]
-        basic_layout.addWidget(QLabel(tr("Zones:")), 0, 0, alignment=__import__('PyQt6.QtCore', fromlist=['Qt']).Qt.AlignmentFlag.AlignTop)
+        basic_layout.addWidget(QLabel(tr("ゾーン:")), 0, 0, alignment=__import__('PyQt6.QtCore', fromlist=['Qt']).Qt.AlignmentFlag.AlignTop)
         basic_layout.addWidget(zone_section, 0, 1)
 
         # Types – 単一トグルで折り畳み（デフォルトで閉じた状態）
@@ -93,56 +93,57 @@ class FilterEditorWidget(QWidget):
         basic_layout.addWidget(_type_section, 1, 0, 1, 2)  # 列をまたいで配置
 
         # Civilizations
-        self.civ_label = QLabel(tr("Civilizations:"))
+        self.civ_label = QLabel(tr("文明:"))
         basic_layout.addWidget(self.civ_label, 2, 0)
         self.civ_selector = CivilizationSelector()
         self.civ_selector.changed.connect(self.filterChanged.emit)
         basic_layout.addWidget(self.civ_selector, 2, 1)
 
         # Races
-        self.race_label = QLabel(tr("Races:"))
+        self.race_label = QLabel(tr("種族:"))
         basic_layout.addWidget(self.race_label, 3, 0)
         self.races_edit = QLineEdit()
-        self.races_edit.setPlaceholderText(tr("Comma separated races (e.g. Dragon, Cyber Lord)"))
+        self.races_edit.setPlaceholderText(tr("カンマ区切り (例: ドラゴン, サイバーロード)"))
         self.races_edit.textChanged.connect(self.filterChanged.emit)
         basic_layout.addWidget(self.races_edit, 3, 1)
 
         # 2. Stats (Cost, Power)
-        self.stats_group = QGroupBox(tr("Stats Filter"))
+        # 再発防止: ラベルはすべて日本語で統一。英語表記を追加しないこと。
+        self.stats_group = QGroupBox(tr("ステータスフィルター"))
         stats_layout = QGridLayout(self.stats_group)
         main_layout.addWidget(self.stats_group)
 
-        stats_layout.addWidget(QLabel(tr("Cost:")), 0, 0)
+        stats_layout.addWidget(QLabel(tr("コスト:")), 0, 0)
         self.min_cost_spin = QSpinBox()
         self.min_cost_spin.setRange(-1, 99) # -1 means None
         self.min_cost_spin.setValue(-1)
-        self.min_cost_spin.setSpecialValueText(tr("Any"))
+        self.min_cost_spin.setSpecialValueText(tr("問わない"))
 
         self.max_cost_spin = QSpinBox()
         self.max_cost_spin.setRange(-1, 99)
         self.max_cost_spin.setValue(-1)
-        self.max_cost_spin.setSpecialValueText(tr("Any"))
+        self.max_cost_spin.setSpecialValueText(tr("問わない"))
 
         cost_layout = QGridLayout()
-        cost_layout.addWidget(QLabel(tr("Min:")), 0, 0)
+        cost_layout.addWidget(QLabel(tr("最小:")), 0, 0)
         cost_layout.addWidget(self.min_cost_spin, 0, 1)
-        cost_layout.addWidget(QLabel(tr("Max:")), 0, 2)
+        cost_layout.addWidget(QLabel(tr("最大:")), 0, 2)
         cost_layout.addWidget(self.max_cost_spin, 0, 3)
         stats_layout.addLayout(cost_layout, 0, 1)
 
         # Exact cost and cost reference
-        stats_layout.addWidget(QLabel(tr("Exact Cost:")), 1, 0)
+        stats_layout.addWidget(QLabel(tr("コスト(完全一致):")), 1, 0)
         self.exact_cost_spin = QSpinBox()
         self.exact_cost_spin.setRange(-1, 99) # -1 means not set
         self.exact_cost_spin.setValue(-1)
-        self.exact_cost_spin.setSpecialValueText(tr("Not Set"))
-        self.exact_cost_spin.setToolTip(tr("Exact cost value (overrides min/max)"))
+        self.exact_cost_spin.setSpecialValueText(tr("未指定"))
+        self.exact_cost_spin.setToolTip(tr("コストがこの値に完全一致するカードのみ対象(最小/最大より優先)"))
         stats_layout.addWidget(self.exact_cost_spin, 1, 1)
 
-        stats_layout.addWidget(QLabel(tr("Cost Ref:")), 2, 0)
+        stats_layout.addWidget(QLabel(tr("コスト参照:")), 2, 0)
         self.cost_ref_edit = QLineEdit()
-        self.cost_ref_edit.setPlaceholderText(tr("Variable name (e.g., chosen_cost)"))
-        self.cost_ref_edit.setToolTip(tr("Reference to execution_context variable for cost"))
+        self.cost_ref_edit.setPlaceholderText(tr("変数名 (例: chosen_cost)"))
+        self.cost_ref_edit.setToolTip(tr("実行コンテキストのコスト参照変数名"))
         stats_layout.addWidget(self.cost_ref_edit, 2, 1)
 
         self.exact_cost_spin.valueChanged.connect(self.filterChanged.emit)
@@ -151,23 +152,23 @@ class FilterEditorWidget(QWidget):
         self.min_cost_spin.valueChanged.connect(self.filterChanged.emit)
         self.max_cost_spin.valueChanged.connect(self.filterChanged.emit)
 
-        stats_layout.addWidget(QLabel(tr("Power:")), 3, 0)
+        stats_layout.addWidget(QLabel(tr("パワー:")), 3, 0)
         self.min_power_spin = QSpinBox()
         self.min_power_spin.setRange(-1, 99999)
         self.min_power_spin.setSingleStep(500)
         self.min_power_spin.setValue(-1)
-        self.min_power_spin.setSpecialValueText(tr("Any"))
+        self.min_power_spin.setSpecialValueText(tr("問わない"))
 
         self.max_power_spin = QSpinBox()
         self.max_power_spin.setRange(-1, 99999)
         self.max_power_spin.setSingleStep(500)
         self.max_power_spin.setValue(-1)
-        self.max_power_spin.setSpecialValueText(tr("Any"))
+        self.max_power_spin.setSpecialValueText(tr("問わない"))
 
         power_layout = QGridLayout()
-        power_layout.addWidget(QLabel(tr("Min:")), 0, 0)
+        power_layout.addWidget(QLabel(tr("最小:")), 0, 0)
         power_layout.addWidget(self.min_power_spin, 0, 1)
-        power_layout.addWidget(QLabel(tr("Max:")), 0, 2)
+        power_layout.addWidget(QLabel(tr("最大:")), 0, 2)
         power_layout.addWidget(self.max_power_spin, 0, 3)
         stats_layout.addLayout(power_layout, 3, 1)
 
@@ -175,7 +176,8 @@ class FilterEditorWidget(QWidget):
         self.max_power_spin.valueChanged.connect(self.filterChanged.emit)
 
         # 3. Flags (Tapped, Blocker, Evolution)
-        self.flags_group = QGroupBox(tr("Flags Filter"))
+        # 再発防止: ラベルはすべて日本語で統一。英語表記を追加しないこと。
+        self.flags_group = QGroupBox(tr("フラグフィルター"))
         flags_layout = QGridLayout(self.flags_group)
         main_layout.addWidget(self.flags_group)
 
@@ -183,47 +185,48 @@ class FilterEditorWidget(QWidget):
         def create_tristate(label):
             l = QLabel(tr(label))
             c = QComboBox()
-            c.addItem(tr("Any"), -1)
-            c.addItem(tr("Yes (True)"), 1)
-            c.addItem(tr("No (False)"), 0)
+            c.addItem(tr("問わない"), -1)
+            c.addItem(tr("はい"), 1)
+            c.addItem(tr("いいえ"), 0)
             c.currentIndexChanged.connect(self.filterChanged.emit)
             return l, c
 
-        lbl_tapped, self.tapped_combo = create_tristate("Is Tapped?")
+        lbl_tapped, self.tapped_combo = create_tristate("タップ状態?")
         flags_layout.addWidget(lbl_tapped, 0, 0)
         flags_layout.addWidget(self.tapped_combo, 0, 1)
 
-        lbl_blocker, self.blocker_combo = create_tristate("Is Blocker?")
+        lbl_blocker, self.blocker_combo = create_tristate("ブロッカー?")
         flags_layout.addWidget(lbl_blocker, 1, 0)
         flags_layout.addWidget(self.blocker_combo, 1, 1)
 
-        lbl_evo, self.evolution_combo = create_tristate("Is Evolution?")
+        lbl_evo, self.evolution_combo = create_tristate("進化クリーチャー?")
         flags_layout.addWidget(lbl_evo, 2, 0)
         flags_layout.addWidget(self.evolution_combo, 2, 1)
 
-        lbl_card, self.card_designation_combo = create_tristate("Card Designation")
+        lbl_card, self.card_designation_combo = create_tristate("カード指定")
         flags_layout.addWidget(lbl_card, 3, 0)
         flags_layout.addWidget(self.card_designation_combo, 3, 1)
 
-        self.trigger_source_check = QCheckBox(tr("Match Trigger Source"))
-        self.trigger_source_check.setToolTip(tr("Target the specific card/object that triggered the event."))
+        self.trigger_source_check = QCheckBox(tr("トリガー発生源と一致"))
+        self.trigger_source_check.setToolTip(tr("イベントを発生させた特定のカード/オブジェクトを対象にします。"))
         self.trigger_source_check.stateChanged.connect(self.filterChanged.emit)
         flags_layout.addWidget(self.trigger_source_check, 4, 0, 1, 2)
 
         # 4. Count / Selection Mode (Keep at bottom)
-        self.sel_group = QGroupBox(tr("Selection"))
+        # 再発防止: ラベルはすべて日本語で統一。英語表記を追加しないこと。
+        self.sel_group = QGroupBox(tr("選択設定"))
         sel_layout = QGridLayout(self.sel_group)
         main_layout.addWidget(self.sel_group)
 
-        self.mode_label = QLabel(tr("Count Mode"))
+        self.mode_label = QLabel(tr("選択モード"))
         self.mode_combo = QComboBox()
-        self.mode_combo.addItem(tr("Selection_All"), 0)
-        self.mode_combo.addItem(tr("Selection_Any"), 2)
-        self.mode_combo.addItem(tr("Fixed Number"), 1)
+        self.mode_combo.addItem(tr("全て"), 0)
+        self.mode_combo.addItem(tr("任意"), 2)
+        self.mode_combo.addItem(tr("固定数"), 1)
 
         self.count_spin = QSpinBox()
         self.count_spin.setRange(1, 99)
-        self.count_spin.setToolTip(tr("Number of cards to select/count."))
+        self.count_spin.setToolTip(tr("選択/カウントする枚数。"))
         self.count_spin.setVisible(False) # Default hidden
 
         sel_layout.addWidget(self.mode_label, 0, 0)
@@ -234,25 +237,25 @@ class FilterEditorWidget(QWidget):
         self.count_spin.valueChanged.connect(self.filterChanged.emit)
 
         # External control label (initially hidden)
-        self.external_count_label = QLabel(tr("Defined by Input Variable"))
+        self.external_count_label = QLabel(tr("入力変数で決定"))
         self.external_count_label.setStyleSheet("color: gray; font-style: italic;")
         self.external_count_label.setVisible(False)
         sel_layout.addWidget(self.external_count_label, 0, 1)
 
         # 5. Sort / Auto-Select Logic
-        self.sort_mode_label = QLabel(tr("Selection Method"))
+        self.sort_mode_label = QLabel(tr("選択方法"))
         self.sort_mode_combo = QComboBox()
-        self.sort_mode_combo.addItem(tr("Manual (Default)"), None)
-        self.sort_mode_combo.addItem(tr("Random"), "RANDOM")
-        self.sort_mode_combo.addItem(tr("Lowest (MIN)"), "MIN")
-        self.sort_mode_combo.addItem(tr("Highest (MAX)"), "MAX")
-        self.sort_mode_combo.addItem(tr("All (Override)"), "ALL")
+        self.sort_mode_combo.addItem(tr("手動（デフォルト）"), None)
+        self.sort_mode_combo.addItem(tr("ランダム"), "RANDOM")
+        self.sort_mode_combo.addItem(tr("最小値 (MIN)"), "MIN")
+        self.sort_mode_combo.addItem(tr("最大値 (MAX)"), "MAX")
+        self.sort_mode_combo.addItem(tr("全て（上書き）"), "ALL")
 
-        self.sort_key_label = QLabel(tr("Sort Key"))
+        self.sort_key_label = QLabel(tr("ソートキー"))
         self.sort_key_combo = QComboBox()
-        self.sort_key_combo.addItem(tr("None"), None)
-        self.sort_key_combo.addItem(tr("Cost"), "COST")
-        self.sort_key_combo.addItem(tr("Power"), "POWER")
+        self.sort_key_combo.addItem(tr("なし"), None)
+        self.sort_key_combo.addItem(tr("コスト"), "COST")
+        self.sort_key_combo.addItem(tr("パワー"), "POWER")
 
         sel_layout.addWidget(self.sort_mode_label, 2, 0)
         sel_layout.addWidget(self.sort_mode_combo, 2, 1)

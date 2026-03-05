@@ -208,6 +208,12 @@ std::vector<Instruction> CommandSystem::generate_instructions(
   case core::CommandType::SELECT_FROM_BUFFER: // 再発防止: バッファからプレイヤーが選択
   case core::CommandType::MOVE_BUFFER_TO_ZONE: // 再発防止: バッファ残予を指定ゾーンへ移動
   case core::CommandType::REGISTER_DELAYED_EFFECT: // 遅延効果登録
+  // 再発防止: 制限コマンド — ADD_PASSIVE 命令にマップしてパッシブ効果を登録する
+  case core::CommandType::LOCK_SPELL:
+  case core::CommandType::SPELL_RESTRICTION:
+  case core::CommandType::CANNOT_PUT_CREATURE:
+  case core::CommandType::CANNOT_SUMMON_CREATURE:
+  case core::CommandType::PLAYER_CANNOT_ATTACK:
     generate_macro_instructions(out, state, cmd, source_instance_id, player_id,
                                 execution_context);
     break;
@@ -596,6 +602,62 @@ void CommandSystem::generate_macro_instructions(
         out.push_back(mod);
       }
     }
+
+  } else if (cmd.type == core::CommandType::LOCK_SPELL ||
+             cmd.type == core::CommandType::SPELL_RESTRICTION ||
+             cmd.type == core::CommandType::CANNOT_PUT_CREATURE ||
+             cmd.type == core::CommandType::CANNOT_SUMMON_CREATURE ||
+             cmd.type == core::CommandType::PLAYER_CANNOT_ATTACK) {
+    // 再発防止: 制限コマンドは ADD_PASSIVE 命令でパッシブ効果を登録する。
+    //   duration 文字列（"THIS_TURN" 等）を整数ターン数に変換する。
+    //   target_group から対象プレイヤーを自動設定。
+    auto dur_str_to_int = [](const std::string& d) -> int {
+      if (d == "PERMANENT") return -1;
+      if (d == "UNTIL_END_OF_OPPONENT_TURN" || d == "UNTIL_START_OF_OPPONENT_TURN") return 2;
+      if (d == "DURING_OPPONENT_TURN") return 1;
+      return 1; // THIS_TURN およびその他は 1 ターン
+    };
+    int dur = dur_str_to_int(cmd.duration);
+
+    // target_group から filter.owner を設定する
+    // 再発防止: TargetScope に ALL は存在しない。ALL_PLAYERS を使用すること。
+    std::string owner_str = "OPPONENT"; // デフォルト: 相手を対象
+    if (cmd.target_group == core::TargetScope::PLAYER_SELF || cmd.target_group == core::TargetScope::SELF)
+      owner_str = "SELF";
+    else if (cmd.target_group == core::TargetScope::ALL_PLAYERS)
+      owner_str = "BOTH";
+
+    Instruction mod(InstructionOp::MODIFY);
+    mod.args["duration"] = dur;
+    mod.args["type"] = "ADD_PASSIVE";
+
+    if (cmd.type == core::CommandType::LOCK_SPELL) {
+      mod.args["str_value"] = "LOCK_SPELL";
+      mod.args["filter"]["owner"] = owner_str;
+      mod.args["filter"]["types"] = nlohmann::json::array({"SPELL"});
+    } else if (cmd.type == core::CommandType::SPELL_RESTRICTION) {
+      mod.args["str_value"] = "LOCK_SPELL";
+      mod.args["filter"]["owner"] = owner_str;
+      mod.args["filter"]["types"] = nlohmann::json::array({"SPELL"});
+      // target_filter のコスト指定を引き継ぐ
+      if (cmd.target_filter.exact_cost.has_value())
+        mod.args["filter"]["exact_cost"] = *cmd.target_filter.exact_cost;
+      if (cmd.target_filter.min_cost.has_value())
+        mod.args["filter"]["min_cost"] = *cmd.target_filter.min_cost;
+      if (cmd.target_filter.max_cost.has_value())
+        mod.args["filter"]["max_cost"] = *cmd.target_filter.max_cost;
+    } else if (cmd.type == core::CommandType::CANNOT_PUT_CREATURE ||
+               cmd.type == core::CommandType::CANNOT_SUMMON_CREATURE) {
+      mod.args["str_value"] = "CANNOT_SUMMON";
+      mod.args["filter"]["owner"] = owner_str;
+      mod.args["filter"]["types"] = nlohmann::json::array({"CREATURE"});
+    } else if (cmd.type == core::CommandType::PLAYER_CANNOT_ATTACK) {
+      mod.args["str_value"] = "CANNOT_ATTACK";
+      mod.args["filter"]["owner"] = owner_str;
+      mod.args["filter"]["types"] = nlohmann::json::array({"CREATURE"});
+    }
+
+    out.push_back(mod);
 
   } else if (cmd.type == core::CommandType::PUT_CREATURE) {
     // 再発防止: PUT_CREATURE はクリーチャーを場に直接出す（コスト支払なし）。

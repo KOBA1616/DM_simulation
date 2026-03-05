@@ -1590,7 +1590,8 @@ class CardTextGenerator:
     def _format_game_action_command(cls, atype: str, action: Dict[str, Any], is_spell: bool, val1: int, val2: int, target_str: str, unit: str, input_key: str, input_usage: str, sample: List[Any]) -> str:
         """Handle general game action commands (SEARCH, SHIELD, BATTLE, etc)."""
 
-        scope = action.get("scope", action.get('target_group', "NONE"))
+        # 再発防止: target_group (editor新形式) を scope (legacy) より優先する。同一関数内で混在させないこと。
+        scope = action.get("target_group") or action.get("scope", "NONE")
 
         if atype == "SEARCH_DECK":
             dest_zone = action.get("destination_zone", "HAND")
@@ -1661,7 +1662,8 @@ class CardTextGenerator:
              # BREAK_SHIELD では必ずシールドを対象とするため「シールド」に補正する
              if target_str in ("", "カード", "自分のカード", "それ"):
                  target_str = "シールド"
-             if not action.get("scope") or action.get("scope") == "NONE":
+             if not action.get("target_group") and not action.get("scope") or \
+                     (action.get("target_group") or action.get("scope")) == "NONE":
                  if "相手" not in target_str:
                      target_str = "相手の" + target_str
              return f"{target_str}を{count}つブレイクする。"
@@ -1795,7 +1797,8 @@ class CardTextGenerator:
              return f"{target_str}を{amt}{unit}カードの下に重ねる。"
 
         elif atype == "LOCK_SPELL":
-             scope = action.get("scope") or action.get("target_group", "NONE")
+             # 再発防止: target_group 優先。scope は後方互換。
+             scope = action.get("target_group") or action.get("scope", "NONE")
              target_str_lock = "プレイヤー"
              if scope in ["PLAYER_OPPONENT", "OPPONENT"]:
                   target_str_lock = "相手"
@@ -1812,7 +1815,8 @@ class CardTextGenerator:
              return f"{target_str_lock}は{duration_text}の間、呪文を唱えられない。"
 
         elif atype in ["SPELL_RESTRICTION", "CANNOT_PUT_CREATURE", "CANNOT_SUMMON_CREATURE", "PLAYER_CANNOT_ATTACK"]:
-             scope = action.get("scope") or action.get("target_group", "NONE")
+             # 再発防止: target_group 優先。scope は後方互換。
+             scope = action.get("target_group") or action.get("scope", "NONE")
              target_str_lock = "プレイヤー"
              if scope in ["PLAYER_OPPONENT", "OPPONENT"]:
                   target_str_lock = "相手"
@@ -1889,7 +1893,8 @@ class CardTextGenerator:
             return f"（{tr(key)}を参照）"
 
         elif atype == "REVEAL_CARDS":
-            scope = action.get("scope") or action.get("target_group", "NONE")
+            # 再発防止: target_group 優先。scope は後方互換。
+            scope = action.get("target_group") or action.get("scope", "NONE")
             deck_owner = "相手の" if scope in ["OPPONENT", "PLAYER_OPPONENT"] else ""
 
             if input_key:
@@ -2042,7 +2047,8 @@ class CardTextGenerator:
             orig_zone_str = cls._zone_to_japanese(src_zone) if src_zone else "元のゾーン"
             up_to_flag = bool(action.get('up_to', False))
 
-            scope = action.get("scope", action.get('target_group', "NONE"))
+            # 再発防止: target_group 優先。scope は後方互換。
+            scope = action.get("target_group") or action.get("scope", "NONE")
             is_self_ref = scope == "SELF"
 
             if input_key:
@@ -2517,7 +2523,8 @@ class CardTextGenerator:
                       del temp_filter["max_cost"]
 
             if "zones" in temp_filter: temp_filter["zones"] = []
-            scope = action.get("scope", "NONE")
+            # 再発防止: target_group 優先。scope は後方互換。
+            scope = action.get("target_group") or action.get("scope", "NONE")
             if scope in ["PLAYER_SELF", "SELF"]: action["scope"] = "NONE"
 
             target_str, unit = cls._resolve_target(action)
@@ -2644,7 +2651,8 @@ class CardTextGenerator:
         Returns (target_description, unit_counter)
         """
         # Accept either new ('scope'filter') or legacy ('target_group'target_filter') keys
-        scope = action.get("scope", action.get('target_group', "NONE"))
+        # 再発防止: target_group 優先。scope は後方互換。
+        scope = action.get("target_group") or action.get("scope", "NONE")
         filter_def = action.get("filter", action.get('target_filter', {}))
         atype = action.get("type", "")
 
