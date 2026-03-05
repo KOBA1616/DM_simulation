@@ -1340,8 +1340,9 @@ class CardTextGenerator:
              return f"{src_zone}から{amt}枚を表向きにしてバッファに置く。"
 
         elif atype == "SELECT_FROM_BUFFER":
-             # 再発防止: target_filter の文明・種族・タイプを生成テキストに反映する。
-             filter_def = action.get("target_filter", {}) or {}
+             # 再発防止: action_proxy は target_filter を "filter" キーにマッピングする。
+             #   "target_filter" で取得すると常に空になるため "filter" を優先参照すること。
+             filter_def = action.get("filter") or action.get("target_filter") or {}
              filter_text = cls._describe_simple_filter(filter_def) if filter_def else ""
              if val1 == 0 or val1 == -1:
                  base = "見たカードすべて"
@@ -1357,9 +1358,12 @@ class CardTextGenerator:
              return f"選んだカード（{target_str}）を使う。"
 
         elif atype == "MOVE_BUFFER_TO_ZONE":
+             # 再発防止: amount 未指定(val1==0)や全選択(-1)の場合は "すべて" と表示する。
+             #   1枚固定表示はSELECT_FROM_BUFFER で全選択した場合と矛盾するため。
              to_zone = tr(action.get("to_zone", "HAND"))
-             amt = val1 if val1 > 0 else 1
-             return f"選んだカードを{amt}枚{to_zone}に置く。"
+             if val1 > 0:
+                 return f"選んだカードを{val1}枚{to_zone}に置く。"
+             return f"選んだカードをすべて{to_zone}に置く。"
 
         return ""
 

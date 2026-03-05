@@ -32,38 +32,34 @@ class FilterEditorWidget(QWidget):
         basic_layout = QGridLayout(self.basic_group)
         main_layout.addWidget(self.basic_group)
 
-        # Zones – カテゴリ別折り畳み表示
-        # 再発防止: ゾーンリストの平展が UI が辺になるためカテゴリ toggle 方式に切り替えた。
+        # Zones – 1つのトグルでまとめて折り畳み
+        # 再発防止: カテゴリ別2分割は UI が煩雑になるため単一 toggle にまとめた。
+        #   zone_group_buttons は後方互換のため維持 (1要素のリスト)。
         self.zone_checks = {}
-        ZONE_GROUPS = [
-            (tr("▶ フィールド系"), ["BATTLE_ZONE", "MANA_ZONE", "SHIELD_ZONE"]),
-            (tr("▶ 手札/デッキ/墓地"), ["HAND", "DECK", "GRAVEYARD"]),
-        ]
+        ALL_ZONES = ["BATTLE_ZONE", "MANA_ZONE", "SHIELD_ZONE", "HAND", "DECK", "GRAVEYARD"]
         zone_section = QWidget()
         zone_section_layout = QVBoxLayout(zone_section)
         zone_section_layout.setContentsMargins(0, 0, 0, 0)
         zone_section_layout.setSpacing(2)
-        self.zone_group_buttons: list = []
-        for group_label, group_zones in ZONE_GROUPS:
-            toggle_btn = QPushButton(group_label)
-            toggle_btn.setCheckable(True)
-            toggle_btn.setChecked(True)
-            toggle_btn.setStyleSheet("text-align:left; font-weight:bold; border:none; padding:2px;")
-            content_widget = QWidget()
-            grid = QGridLayout(content_widget)
-            grid.setContentsMargins(12, 0, 0, 0)
-            grid.setSpacing(2)
-            for i, z in enumerate(group_zones):
-                cb = QCheckBox(tr(z))
-                cb.setToolTip(tr("Include {zone} in target selection").format(zone=tr(z)))
-                self.zone_checks[z] = cb
-                grid.addWidget(cb, i // 2, i % 2)
-                cb.stateChanged.connect(self.filterChanged.emit)
-            # toggle button が押されたとき content を折り畳み / 展開
-            toggle_btn.toggled.connect(content_widget.setVisible)
-            zone_section_layout.addWidget(toggle_btn)
-            zone_section_layout.addWidget(content_widget)
-            self.zone_group_buttons.append((toggle_btn, content_widget))
+        _zone_toggle_btn = QPushButton(tr("▶ ゾーン"))
+        _zone_toggle_btn.setCheckable(True)
+        _zone_toggle_btn.setChecked(True)
+        _zone_toggle_btn.setStyleSheet("text-align:left; font-weight:bold; border:none; padding:2px;")
+        _zone_content = QWidget()
+        _zone_grid = QGridLayout(_zone_content)
+        _zone_grid.setContentsMargins(12, 0, 0, 0)
+        _zone_grid.setSpacing(2)
+        for i, z in enumerate(ALL_ZONES):
+            cb = QCheckBox(tr(z))
+            cb.setToolTip(tr("Include {zone} in target selection").format(zone=tr(z)))
+            self.zone_checks[z] = cb
+            _zone_grid.addWidget(cb, i // 2, i % 2)
+            cb.stateChanged.connect(self.filterChanged.emit)
+        # toggle button が押されたとき content を折り畳み / 展開
+        _zone_toggle_btn.toggled.connect(_zone_content.setVisible)
+        zone_section_layout.addWidget(_zone_toggle_btn)
+        zone_section_layout.addWidget(_zone_content)
+        self.zone_group_buttons: list = [(_zone_toggle_btn, _zone_content)]
         basic_layout.addWidget(QLabel(tr("Zones:")), 0, 0, alignment=__import__('PyQt6.QtCore', fromlist=['Qt']).Qt.AlignmentFlag.AlignTop)
         basic_layout.addWidget(zone_section, 0, 1)
 

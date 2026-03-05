@@ -249,10 +249,10 @@ class KeywordEditForm(BaseEditForm):
         return tr("Keywords")
 
     def block_signals_all(self, block):
+        # 再発防止: rc_race_editはセッションで削除済み。参照すると AttributeError になるため除去。
         for cb in self.keyword_checks.values():
             cb.blockSignals(block)
         self.rev_change_check.blockSignals(block)
-        self.rc_race_edit.blockSignals(block)
         self.mekraid_check.blockSignals(block)
         self.friend_burst_check.blockSignals(block)
         self.fb_race_edit.blockSignals(block)
