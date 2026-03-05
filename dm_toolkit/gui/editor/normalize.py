@@ -46,11 +46,12 @@ def canonicalize(node: Dict[str, Any]) -> Dict[str, Any]:
             'uid': uid
         }
 
-    # Action heuristic
+    # Command heuristic (旧名: ACTION → COMMAND に統一。エンジン移行完了に伴う変更)
+    # 再発防止: kind='ACTION' は廃止。新規コードは 'COMMAND' のみ使用すること。
     if 'type' in payload:
         options = _normalize_options_list(payload.get('options', []))
         return {
-            'kind': 'ACTION',
+            'kind': 'COMMAND',
             'type': payload.get('type'),
             'options': options,
             'payload': payload,

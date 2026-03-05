@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-# command_config.py (ACTION_UI_CONFIG)
-# アクション設定の構成ファイル。unified_action_form.py および schema_def.py が使用するデータを定義します。
+# command_config.py
+# コマンド設定の構成ファイル（旧名: ACTION_UI_CONFIG）。unified_action_form.py および schema_def.py が使用するデータを定義します。
+# 再発防止: ファイル内「アクション(Action)」表記はすべて「コマンド(Command)」に移行済み。
 # 備考: AIが編集する際は unified_action_form.py や schema_def.py とセットで同期する必要があります。
 # 重要: このファイルは削除しないでください。動的フォーム生成の構成基盤です。
 

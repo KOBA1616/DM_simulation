@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QWidget, QCheckBox, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QLineEdit, QComboBox
 )
 from dm_toolkit.gui.editor.widgets.common import (
-    ZoneCombo, ScopeCombo, TextWidget, NumberWidget, BoolCheckWidget, EditorWidgetMixin
+    ZoneCombo, ScopeCombo, TextWidget, NumberWidget, AmountWithAllWidget, BoolCheckWidget, EditorWidgetMixin
 )
 from dm_toolkit.gui.editor.forms.unified_widgets import (
     make_player_scope_selector, make_measure_mode_combo, make_ref_mode_combo
@@ -267,7 +267,12 @@ def _create_string_widget(parent, schema, cb):
     return widget
 
 def _create_int_widget(parent, schema, cb):
-    widget = NumberWidget(parent, min_val=schema.min_value or 0, max_val=schema.max_value or 99999)
+    # widget_hint="amount_all" または min_value==-1 のとき「すべて」オプション付きウィジェットを使用
+    # 再発防止: AmountWithAllWidget では -1 が「すべて」として表示される
+    if schema.widget_hint == "amount_all" or schema.min_value == -1:
+        widget = AmountWithAllWidget(parent, max_val=schema.max_value or 9999)
+    else:
+        widget = NumberWidget(parent, min_val=schema.min_value or 0, max_val=schema.max_value or 99999)
     widget.valueChanged.connect(lambda: cb())
     return widget
 

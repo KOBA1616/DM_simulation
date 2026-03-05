@@ -73,7 +73,7 @@ class LoopRecorderWidget(QWidget):
     def record_action(self, action_str):
         if self.recording:
             self.action_history.append(action_str)
-            self.log_text.append(tr("Action: {action}").format(action=action_str))
+            self.log_text.append(tr("Command: {action}").format(action=action_str))
 
     def stop_and_verify(self):
         if not self.gs_ref or not self.gs_ref():

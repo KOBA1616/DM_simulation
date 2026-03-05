@@ -46,8 +46,8 @@ class CardEditForm(BaseEditForm):
         if self.ai_widgets_created:
             self.form_layout.addRow(self.ai_group)
 
-        # Actions Section
-        actions_group = QGroupBox(tr("Actions"))
+        # Commands Section
+        actions_group = QGroupBox(tr("Commands"))
         actions_layout = QVBoxLayout(actions_group)
 
         self.add_effect_btn = QPushButton(tr("Add Effect"))

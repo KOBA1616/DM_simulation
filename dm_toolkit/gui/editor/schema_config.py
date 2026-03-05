@@ -63,7 +63,7 @@ def register_all_schemas():
     # DRAW_CARD
     register_schema(CommandSchema("DRAW_CARD", [
         f_target,
-        FieldSchema("amount", tr("Cards to Draw"), FieldType.INT, default=1, min_value=1),
+        FieldSchema("amount", tr("Cards to Draw"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
         f_optional,
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_links_out # Handles both input (amount) and output (cards drawn)
@@ -74,7 +74,7 @@ def register_all_schemas():
     register_schema(CommandSchema("DISCARD", [
         f_target,
         f_filter,
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=1),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
         f_links_out  # Enables output_value_key for discarded count and input linking
@@ -86,7 +86,7 @@ def register_all_schemas():
         register_schema(CommandSchema(cmd, [
             f_target,
             f_filter,
-            FieldSchema("amount", tr("Count (if selecting)"), FieldType.INT, default=1),
+            FieldSchema("amount", tr("Count (if selecting)"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
             f_links_out  # Enables output_value_key for card movement tracking and input linking
         ]))
 
@@ -113,7 +113,7 @@ def register_all_schemas():
         f_filter,
         FieldSchema("from_zone", tr("Source Zone"), FieldType.ZONE, default="NONE"),
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
         f_links_out  # Enables output_value_key for card movement tracking and input linking
@@ -124,7 +124,7 @@ def register_all_schemas():
         f_target,
         f_filter,
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="GRAVEYARD"),
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
         f_links_out
@@ -145,7 +145,7 @@ def register_all_schemas():
     # SEARCH_DECK
     register_schema(CommandSchema("SEARCH_DECK", [
         f_filter,
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
         f_links_out
     ]))

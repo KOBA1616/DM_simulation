@@ -91,7 +91,7 @@ class MCTSGraphView(QGraphicsView):
         item = self._scene.addEllipse(rect, pen, brush)
         if item is not None:
             item.setToolTip(
-                tr("Action: {name}\nVisits: {visits}\nValue: {value}").format(
+                tr("Command: {name}\nVisits: {visits}\nValue: {value}").format(
                     name=data.get('name'),
                     visits=visits,
                     value=f"{avg_val:.2f}",

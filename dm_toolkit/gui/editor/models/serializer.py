@@ -251,7 +251,7 @@ class ModelSerializer:
         else:
             cmd_model = model_or_dict
 
-        label = f"{tr('Action')}: {tr(cmd_model.type)}"
+        label = f"{tr('Command')}: {tr(cmd_model.type)}"
         item = model.create_item(label)
         item.set_data("COMMAND", ROLE_TYPE)
         item.set_data(cmd_model, ROLE_DATA)

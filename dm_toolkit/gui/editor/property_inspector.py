@@ -101,8 +101,9 @@ class PropertyInspector(QWidget):
         self.form_map = {
             "CARD": self.card_form,
             "EFFECT": self.effect_form,
-            # Use UnifiedActionForm for both ACTION and COMMAND types
-            "ACTION": self.unified_form,
+            # 再発防止: "ACTION" キーは旧形式 JSON との後方互换用に残す。
+            # 新規コードは必ず "COMMAND" を使用すること。ACTION 表記は廃止。
+            "ACTION": self.unified_form,  # レガシー後方互换用
             "COMMAND": self.unified_form,
             "SPELL_SIDE": self.spell_side_form,
             "REACTION_ABILITY": self.reaction_form,

@@ -171,7 +171,8 @@ class CardDataManager:
     def format_command_label(self, cmd_data):
         """Format a label for a command item."""
         cmd_type = cmd_data.get('type', 'UNKNOWN')
-        return f"{tr('Action')}: {tr(cmd_type)}"
+        # 再発防止: ラベルは "コマンド: TYPE" に統一。"アクション" 表記は廃止。
+        return f"{tr('Command')}: {tr(cmd_type)}"
 
     def add_child_item(self, parent_index, item_type, data, label):
         parent_item = self._ensure_item(parent_index)
@@ -296,7 +297,9 @@ class CardDataManager:
             except Exception:
                 role_type = None
 
-            if role_type == "ACTION":
+            # 再発防止: "ACTION" は旧形式 JSON を読み込んだ時のレガシー値。
+            # 新規作成アイテムは必ず "COMMAND" を使用すること。
+            if role_type in ("ACTION", "COMMAND"):
                 try:
                     label = item.text()
                 except Exception:
