@@ -1356,17 +1356,35 @@ class CardTextGenerator:
 
         elif atype == "SELECT_FROM_BUFFER":
              # 再発防止: action_proxy は target_filter を "filter" キーにマッピングする。
-             #   "target_filter" で取得すると常に空になるため "filter" を優先参照すること。
+             #   テンプレート: "見た_{文明}の_{タイプ}_{量}を選ぶ。"
+             #   各パーツはフィルターと量から自律的に許決される。
              filter_def = action.get("filter") or action.get("target_filter") or {}
-             filter_text = cls._describe_simple_filter(filter_def) if filter_def else ""
-             if val1 == 0 or val1 == -1:
-                 base = "見たカードすべて"
+             civs = filter_def.get("civilizations", []) if filter_def else []
+             types = filter_def.get("types", []) if filter_def else []
+             races = filter_def.get("races", []) if filter_def else []
+             # 文明部分: "水の"
+             civ_part = ""
+             if civs:
+                 civ_part = "/".join(CardTextResources.get_civilization_text(c) for c in civs) + "の"
+             # タイプ部分: "クリーチャー" / "呪文" / "カード"
+             if races:
+                 type_part = "/".join(races)
+             elif "ELEMENT" in types:
+                 type_part = "エレメント"
+             elif "SPELL" in types and "CREATURE" not in types:
+                 type_part = "呪文"
+             elif "CREATURE" in types:
+                 type_part = "クリーチャー"
+             elif types:
+                 type_part = "/".join(tr(t) for t in types if t)
              else:
-                 amt = val1 if val1 > 0 else 1
-                 base = f"見たカードの中から{amt}枚"
-             if filter_text and filter_text != "クリーチャー":  # 条件なし時はデフォルト「クリーチャー」は省略
-                 return f"{base}（{filter_text}）を選ぶ。"
-             return f"{base}を選ぶ。"
+                 type_part = "カード"
+             # 量部分: "すべて" / "N枚"
+             if val1 <= 0:
+                 qty_part = "すべて"
+             else:
+                 qty_part = f"{val1}枚"
+             return f"見た{civ_part}{type_part}{qty_part}を選ぶ。"
 
         elif atype == "PLAY_FROM_BUFFER":
              target_str, unit = cls._resolve_target(action, is_spell)

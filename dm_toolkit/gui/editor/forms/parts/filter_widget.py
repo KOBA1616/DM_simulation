@@ -63,19 +63,33 @@ class FilterEditorWidget(QWidget):
         basic_layout.addWidget(QLabel(tr("Zones:")), 0, 0, alignment=__import__('PyQt6.QtCore', fromlist=['Qt']).Qt.AlignmentFlag.AlignTop)
         basic_layout.addWidget(zone_section, 0, 1)
 
-        # Types
-        self.type_label = QLabel(tr("Types:"))
-        basic_layout.addWidget(self.type_label, 1, 0)
+        # Types – 単一トグルで折り畳み（デフォルトで閉じた状態）
+        # 再発防止: ゾーンと同様、カードタイプもトグル展開式にして UI をコンパクトに保つ。
+        #   setChecked(False) で初期状態を「閉じた」にする。
         self.type_checks = {}
-        # Use centralized CARD_TYPES definition
+        _type_toggle_btn = QPushButton(tr("▶ カードタイプ"))
+        _type_toggle_btn.setCheckable(True)
+        _type_toggle_btn.setChecked(False)  # デフォルトで閉じた状態
+        _type_toggle_btn.setStyleSheet("text-align:left; font-weight:bold; border:none; padding:2px;")
+        _type_content = QWidget()
+        _type_content.setVisible(False)  # 初期非表示
+        _type_grid = QGridLayout(_type_content)
+        _type_grid.setContentsMargins(12, 0, 0, 0)
+        _type_grid.setSpacing(2)
         types = CARD_TYPES
-        type_grid = QGridLayout()
         for i, t in enumerate(types):
             cb = QCheckBox(tr(t))
             self.type_checks[t] = cb
-            type_grid.addWidget(cb, i//3, i%3) # Adjusted grid to fit more types
+            _type_grid.addWidget(cb, i // 3, i % 3)
             cb.stateChanged.connect(self.filterChanged.emit)
-        basic_layout.addLayout(type_grid, 1, 1)
+        _type_toggle_btn.toggled.connect(_type_content.setVisible)
+        _type_section = QWidget()
+        _type_section_layout = QVBoxLayout(_type_section)
+        _type_section_layout.setContentsMargins(0, 0, 0, 0)
+        _type_section_layout.setSpacing(2)
+        _type_section_layout.addWidget(_type_toggle_btn)
+        _type_section_layout.addWidget(_type_content)
+        basic_layout.addWidget(_type_section, 1, 0, 1, 2)  # 列をまたいで配置
 
         # Civilizations
         self.civ_label = QLabel(tr("Civilizations:"))
