@@ -1,5 +1,10 @@
 # PlayerIntentアクション クイックリファレンス
 
+> **Legacy Terminology Note:**
+> This document uses the term "Action" to describe player moves and game state transitions.
+> In the current implementation, these are implemented as `CommandDef` structures within the Command System.
+> The high-level logic described here remains valid, but "Action" should be interpreted as "Command" or "Player Intent".
+
 ## 📋 全22種類 一覧表
 
 | # | アクション名 | カテゴリ | 生成フェーズ | 優先度 | 頻度 |
@@ -131,10 +136,8 @@ DECLARE_PLAY → PAY_COST → RESOLVE_PLAY → RESOLVE_EFFECT
 
 ## 🔗 関連リンク
 
-- [完全リファレンス](../PLAYER_INTENT_REFERENCE.md) - 全アクション詳細
-- [アクション分類図](action_classification.md) - Mermaid図
-- [生成フロー図](action_generation_flow.md) - フロー図
-- [優先度仕様](../PHASE_ACTION_PRIORITY_SPEC.md) - フェーズ別優先度
+- [アクション分類図](classification.md) - Mermaid図
+- [生成フロー図](generation_flow.md) - フロー図
 
 ---
 
