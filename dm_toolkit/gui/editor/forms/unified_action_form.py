@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # unified_action_form.py
-# \x83X\x83L\x81[\x83}\x8b쓮\x82̓\xae\x93I\x83t\x83H\x81[\x83\x80\x90\xb6\x90\xac\x81B\x95\xa1\x8eG\x82\xbe\x82\xaa\x81A\x92P\x88\xea\x82̐Ӗ\xb1\x81i\x83A\x83N\x83V\x83\x87\x83\x93\x90ݒ\xe8\x81j\x82ɏW\x92\x86\x82\xb5\x82Ă\xa2\x82\xe9\x81B
-# \x88ێ\x9d: AI\x82\xaa\x95ҏW\x82\xb7\x82\xe9\x8dۂ\xcd schema_def.py \x82\xe2 ACTION_UI_CONFIG (command_config.py) \x82ƃZ\x83b\x83g\x82ŗ\x9d\x89\xf0\x82\xb7\x82\xe9\x95K\x97v\x82\xaa\x82\xa0\x82\xe8\x82܂\xb7\x81B
-# \x8fd\x97v: \x82\xb1\x82̃t\x83@\x83C\x83\x8b\x82͍폜\x82\xb5\x82Ȃ\xa2\x82ł\xad\x82\xbe\x82\xb3\x82\xa2\x81Bschema_def.py \x82\xa8\x82\xe6\x82\xd1 command_config.py \x82Ɩ\xa7\x90ڂɘA\x8cg\x82\xb5\x82ē\xae\x8d삵\x82܂\xb7\x81B
+# スキーマ駆動の動的フォーム生成。復数だが、単一の責務（アクション設定）に集中している。
+# 依存: AIが編集する際は schema_def.py や ACTION_UI_CONFIG (command_config.py) とセットで理解する必要があります。
+# 重要: このファイルは削除しないでください。schema_def.py および command_config.py と密接に連携して動作します。
 
 import json
 import os
@@ -20,6 +20,7 @@ from dm_toolkit.gui.editor.schema_def import SchemaLoader, get_schema, FieldSche
 from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_OPTIONS
 
 COMMAND_GROUPS = EditorConfigLoader.get_command_groups()
+UI_CONFIG = EditorConfigLoader.get_command_ui_config()
 
 class UnifiedActionForm(BaseEditForm):
     """Schema-driven Unified Action Form using WidgetFactory and External Config."""
@@ -114,12 +115,53 @@ class UnifiedActionForm(BaseEditForm):
         if not schema:
             return
 
+        # Load UI config overrides
+        ui_cfg = UI_CONFIG.get(cmd_type, {})
+        visible_fields = ui_cfg.get("visible", [])
+        labels = ui_cfg.get("labels", {})
+        tooltips = ui_cfg.get("tooltip", {})
+        if isinstance(tooltips, str): tooltips = {"_root": tooltips} # Handle root tooltip
+
+        # Prepare fields list, respecting 'visible' order if available
+        # If 'visible' is empty, fall back to schema order
+        schema_fields_map = {f.key: f for f in schema.fields}
+        ordered_fields = []
+
+        # Mapping for pseudo-fields in visible list to actual schema keys
+        # e.g. input_link/output_link -> links
+        processed_schema_keys = set()
+
+        if visible_fields:
+            for vk in visible_fields:
+                if vk in schema_fields_map:
+                    ordered_fields.append(schema_fields_map[vk])
+                    processed_schema_keys.add(vk)
+                elif vk in ['input_link', 'output_link'] and 'links' in schema_fields_map:
+                    # Map pseudo-keys to 'links' field
+                    if 'links' not in processed_schema_keys:
+                        ordered_fields.append(schema_fields_map['links'])
+                        processed_schema_keys.add('links')
+
+            # Add any remaining schema fields that weren't in visible list (fallback)
+            for f in schema.fields:
+                if f.key not in processed_schema_keys:
+                    ordered_fields.append(f)
+        else:
+            ordered_fields = schema.fields
+
         # Group optional and up_to fields for horizontal layout
         optional_field = None
         up_to_field = None
         other_fields = []
         
-        for field_schema in schema.fields:
+        for field_schema in ordered_fields:
+            # Apply Label Override
+            if field_schema.key in labels:
+                # We clone the schema temporarily or just pass label to creation?
+                # FieldSchema is likely shared, so better not modify it.
+                # We will handle label override at addRow time.
+                pass
+
             if field_schema.key == 'optional':
                 optional_field = field_schema
             elif field_schema.key == 'up_to':
@@ -129,7 +171,11 @@ class UnifiedActionForm(BaseEditForm):
         
         # Add regular fields first
         for field_schema in other_fields:
-            self._create_widget_for_field(field_schema)
+            # Determine label: Override > Schema Label
+            label_text = labels.get(field_schema.key, field_schema.label)
+            # Determine tooltip: Override > Schema Tooltip
+            tooltip_text = tooltips.get(field_schema.key, field_schema.tooltip)
+            self._create_widget_for_field(field_schema, label_override=label_text, tooltip_override=tooltip_text)
         
         # Add optional and up_to in a horizontal layout if both exist
         if optional_field or up_to_field:
@@ -142,18 +188,32 @@ class UnifiedActionForm(BaseEditForm):
                 opt_widget = WidgetFactory.create_widget(self, optional_field, self.update_data)
                 if opt_widget:
                     self.widgets_map['optional'] = opt_widget
+                    # Apply override label for checkbox if supported?
+                    # BoolCheckWidget handles its own label.
+                    if hasattr(opt_widget, 'setText'):
+                        opt_label = labels.get('optional', optional_field.label)
+                        opt_widget.setText(tr(opt_label))
+                    if hasattr(opt_widget, 'setToolTip'):
+                        opt_tooltip = tooltips.get('optional', optional_field.tooltip)
+                        if opt_tooltip: opt_widget.setToolTip(tr(opt_tooltip))
                     options_layout.addWidget(opt_widget)
             
             if up_to_field:
                 upto_widget = WidgetFactory.create_widget(self, up_to_field, self.update_data)
                 if upto_widget:
                     self.widgets_map['up_to'] = upto_widget
+                    if hasattr(upto_widget, 'setText'):
+                        upto_label = labels.get('up_to', up_to_field.label)
+                        upto_widget.setText(tr(upto_label))
+                    if hasattr(upto_widget, 'setToolTip'):
+                        upto_tooltip = tooltips.get('up_to', up_to_field.tooltip)
+                        if upto_tooltip: upto_widget.setToolTip(tr(upto_tooltip))
                     options_layout.addWidget(upto_widget)
             
             options_layout.addStretch()
             self.dynamic_layout.addRow(tr("Options"), options_widget)
 
-    def _create_widget_for_field(self, field_schema: FieldSchema):
+    def _create_widget_for_field(self, field_schema: FieldSchema, label_override: str = None, tooltip_override: str = None):
         key = field_schema.key
 
         # Wrap update_data to also check for auto-generation triggers
@@ -171,8 +231,14 @@ class UnifiedActionForm(BaseEditForm):
             if field_schema.field_type == FieldType.LINK and hasattr(widget, 'set_output_hint'):
                 widget.set_output_hint(field_schema.produces_output)
             
+            # Apply Tooltip
+            if tooltip_override and hasattr(widget, 'setToolTip'):
+                widget.setToolTip(tr(tooltip_override))
+
             self.widgets_map[key] = widget
-            self.dynamic_layout.addRow(tr(field_schema.label), widget)
+
+            label = tr(label_override if label_override else field_schema.label)
+            self.dynamic_layout.addRow(label, widget)
 
     def _check_auto_generation(self, changed_key):
         """Checks if a field change should trigger structure updates (e.g. generating options)."""
