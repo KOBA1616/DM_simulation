@@ -149,6 +149,17 @@ class CardDataManager:
         )
         return model.model_dump()
 
+    def create_default_replacement_data(self):
+        """置換効果のデフォルトデータを生成する（ON_DESTROY を置換対象イベントとして初期設定）。"""
+        model = EffectModel(
+            trigger="ON_DESTROY",
+            condition=None,
+            commands=[]
+        )
+        data = model.model_dump()
+        data['mode'] = 'REPLACEMENT'
+        return data
+
     def create_default_static_data(self):
         """Create default data for a static ability."""
         model = ModifierModel(
@@ -331,6 +342,8 @@ class CardDataManager:
             internal_type = "EFFECT"
         elif target_type == tr("Static Ability"):
             internal_type = "MODIFIER"
+        elif target_type == tr("Replacement Ability"):
+            internal_type = "EFFECT"  # 置換能力はEFFECTツリー項目に格納、data['mode']='REPLACEMENT'で識別
         elif target_type == tr("Reaction Ability"):
             internal_type = "REACTION_ABILITY"
 
@@ -419,8 +432,12 @@ class CardDataManager:
 
         # Add option items
         for i, opt in enumerate(new_options):
-            opt_item = self.model.create_item(f"{tr('Option')} {i+1}")
+            default_label = f"{tr('Option')} {i+1}"
+            opt_item = self.model.create_item(default_label)
             opt_item.set_data("OPTION", ROLE_TYPE)
+            # 再発防止: option item に ROLE_DATA を設定してラベル編集をサポートする。
+            # label フィールドが空の場合は "Option N" をデフォルトとして OptionForm で表示する。
+            opt_item.set_data({'label': '', 'uid': str(__import__('uuid').uuid4())}, ROLE_DATA)
             item.append_row(opt_item)
             # Add commands inside option
             for cmd in opt:

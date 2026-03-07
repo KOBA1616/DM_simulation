@@ -1,0 +1,23 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.0, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\ichirou\DM_simulation\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\ichirou\DM_simulation
+configfile: pytest.ini
+collecting ... Total tests: 4
+collected 4 items
+
+tests/test_card1_hand_quality.py::TestCard1HandQuality::test_select_target_appears_after_draw FAILED [ 25%]
+[=======                       ] 1/4 ( 25.0%) passed=0 failed=1 skipped=0
+tests/test_card1_hand_quality.py::TestCard1HandQuality::test_specific_old_card_goes_to_deck_bottom FAILED [ 50%]
+[===============               ] 2/4 ( 50.0%) passed=0 failed=2 skipped=0
+tests/test_card1_hand_quality.py::TestCard1HandQuality::test_hand_net_change_correct_with_target_selection FAILED [ 75%]
+[======================        ] 3/4 ( 75.0%) passed=0 failed=3 skipped=0
+tests/test_card1_hand_quality.py::TestCard1HandQuality::test_select_target_count_equals_hand_size FAILED [100%]
+[==============================] 4/4 (100.0%) passed=0 failed=4 skipped=0
+
+=========================== short test summary info ===========================
+FAILED tests/test_card1_hand_quality.py::TestCard1HandQuality::test_select_target_appears_after_draw
+FAILED tests/test_card1_hand_quality.py::TestCard1HandQuality::test_specific_old_card_goes_to_deck_bottom
+FAILED tests/test_card1_hand_quality.py::TestCard1HandQuality::test_hand_net_change_correct_with_target_selection
+FAILED tests/test_card1_hand_quality.py::TestCard1HandQuality::test_select_target_count_equals_hand_size
+============================== 4 failed in 1.82s ==============================

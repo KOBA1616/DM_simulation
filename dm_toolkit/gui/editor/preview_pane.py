@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+import hashlib
+import json
+from typing import Dict, Any, List, Tuple
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QGroupBox, QTextEdit, QFrame, QGridLayout,
     QHBoxLayout, QGraphicsDropShadowEffect
@@ -102,6 +105,11 @@ class CardPreviewWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.current_data = None
+        # 再発防止: render_card のたびにテキスト生成や stylesheet 更新が走らないよう
+        # ハッシュとキャッシュを保持する。同一データの連続レンダリングをスキップする。
+        self._last_render_hash: str | None = None  # data の JSON sha256
+        self._last_civs: list = []                 # apply_civ_style 差分チェック用
+        self._body_text_cache: Dict[str, str] = {} # hash → body text キャッシュ
         self.setup_ui()
 
     def setup_ui(self):
@@ -279,9 +287,25 @@ class CardPreviewWidget(QWidget):
         self.standard_widget.hide()
         self.twinpact_widget.hide()
         self.raw_text_preview.clear()
+        # キャッシュをクリアして次回必ず再描画させる
+        self._last_render_hash = None
+        self._last_civs = []
+        self._body_text_cache.clear()
 
     def render_card(self, data):
-        # When raw text preview is hidden, skip expensive text generation.
+        # 再発防止: 同一データの連続 render_card（デバウンス後も起きうる）をスキップ。
+        # JSON シリアライズのハッシュで同一性を判定する。
+        try:
+            _h = hashlib.sha256(
+                json.dumps(data, sort_keys=True, ensure_ascii=False, default=str).encode()
+            ).hexdigest()
+            if _h == self._last_render_hash:
+                return  # データ未変更 → 再描画不要
+            self._last_render_hash = _h
+        except Exception:
+            _h = None  # シリアライズ失敗時はキャッシュを使わず毎回描画
+
+        self.current_data = data
         if self.raw_text_preview.isVisible():
             full_text = CardTextGenerator.generate_text(data)
             # Generate canonical summaries for preview (CIR) to help detect action/command mismatches
@@ -319,12 +343,12 @@ class CardPreviewWidget(QWidget):
                 else:
                     self.raw_text_preview.setText(full_text)
 
-        # Check Twinpact
-        is_twinpact = 'spell_side' in data and data['spell_side'] is not None
-
+        # When raw text preview is hidden, skip expensive text generation.
         civs = data.get('civilizations', [])
         if not civs and 'civilization' in data:
             civs = [data['civilization']]
+
+        is_twinpact = 'spell_side' in data and data['spell_side'] is not None
 
         if is_twinpact:
             self.standard_widget.hide()
@@ -336,6 +360,26 @@ class CardPreviewWidget(QWidget):
             self.render_standard(data, civs)
 
         self.apply_civ_style(civs)
+
+    def _get_body_text(self, data: Dict[str, Any], include_twinpact: bool = True) -> str:
+        """generate_body_text_lines の結果をデータハッシュでキャッシュする。
+        再発防止: テキスト生成は 3000 行超の処理のため，同一データでの重複呼び出しをキャッシュで防ぐ。"""
+        try:
+            key = hashlib.sha256(
+                json.dumps({'d': data, 'tp': include_twinpact},
+                           sort_keys=True, ensure_ascii=False, default=str).encode()
+            ).hexdigest()
+        except Exception:
+            return CardTextGenerator.generate_body_text_lines(data, include_twinpact=include_twinpact)
+
+        if key not in self._body_text_cache:
+            # キャッシュが肥大化しないよう上限を設ける（例: 最大50エントリ）
+            if len(self._body_text_cache) >= 50:
+                self._body_text_cache.clear()
+            self._body_text_cache[key] = CardTextGenerator.generate_body_text_lines(
+                data, include_twinpact=include_twinpact
+            )
+        return self._body_text_cache[key]
 
     def _should_show_power(self, data):
         """
@@ -376,7 +420,7 @@ class CardPreviewWidget(QWidget):
         self.type_label.setText(f"[{type_str}]")
 
         # Use new structure (generator returns a string)
-        body_text = CardTextGenerator.generate_body_text_lines(data)
+        body_text = self._get_body_text(data)
         self.text_body.setText(body_text)
 
         if self._should_show_power(data):
@@ -403,7 +447,7 @@ class CardPreviewWidget(QWidget):
             self.tp_power_label.setVisible(False)
 
         # Generate text for ONLY the creature part (generator returns a string)
-        creature_text = CardTextGenerator.generate_body_text_lines(data, include_twinpact=False)
+        creature_text = self._get_body_text(data, include_twinpact=False)
         self.tp_body_label.setText(creature_text)
 
         # Spell Side
@@ -418,7 +462,7 @@ class CardPreviewWidget(QWidget):
         if 'type' not in spell_data:
             spell_data['type'] = 'SPELL'
 
-        spell_text = CardTextGenerator.generate_body_text_lines(spell_data)
+        spell_text = self._get_body_text(spell_data)
         self.tp_spell_body_label.setText(spell_text)
 
     def _build_natural_summaries(self, data):
@@ -429,7 +473,7 @@ class CardPreviewWidget(QWidget):
         effects = data.get('effects', []) or data.get('triggers', []) or []
         for eff in effects:
             trig = eff.get('trigger', 'NONE')
-            trigger_text = CardTextGenerator.trigger_to_japanese(trig)
+            trigger_text = CardTextGenerator.trigger_to_japanese(trig, effect=eff)
 
             # Commands-First Policy
             raw_ops = eff.get('commands', [])
@@ -514,6 +558,12 @@ class CardPreviewWidget(QWidget):
         # All cost labels should be ManaCostLabel instances.
 
     def apply_civ_style(self, civs):
+        # 再発防止: 文明が変わっていなければ setStyleSheet を呼ばない。
+        # stylesheet の再計算は Qt のレイアウト再計算を誘発するため差分チェックで防ぐ。
+        if civs == self._last_civs:
+            return
+        self._last_civs = list(civs)
+
         # Requirement: "All borders should be thin black lines"
         border_color = "#000000"
 

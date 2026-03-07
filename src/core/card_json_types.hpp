@@ -10,21 +10,34 @@ namespace dm::core {
 
     // Enums for JSON mapping
     enum class TriggerType {
-        ON_PLAY,
-        ON_ATTACK,
-        ON_DESTROY,
-        S_TRIGGER,
-        TURN_START,
-        PASSIVE_CONST,
-        ON_OTHER_ENTER,
-        ON_ATTACK_FROM_HAND,
-        ON_BLOCK,
-        AT_BREAK_SHIELD,
-        BEFORE_BREAK_SHIELD,
-        ON_SHIELD_ADD,
-        ON_CAST_SPELL,
-        ON_OPPONENT_DRAW,
-        ON_DRAW,
+        // --- ゾーン移動系 ---
+        ON_PLAY,              // バトルゾーン参入（CIP: Come Into Play）
+        ON_OTHER_ENTER,       // 自分の他クリーチャーが参入した時
+        ON_OPPONENT_CREATURE_ENTER, // 相手クリーチャーが参入した時（Python側から移植）
+        ON_DESTROY,           // バトルゾーン→墓地（破壊）
+        ON_EXIT,              // バトルゾーンからの離脱（破壊・手札・マナ問わず）
+        ON_DISCARD,           // 手札からの捨て（手札→墓地）
+        // --- ターン・フェイズ系 ---
+        TURN_START,           // ターン開始時
+        ON_TURN_END,          // ターン終了時
+        // --- アクション系 ---
+        ON_ATTACK,            // 攻撃宣言時
+        ON_ATTACK_FROM_HAND,  // 手札から攻撃（革命チェンジ等の起点）
+        ON_BLOCK,             // ブロック宣言時
+        ON_BATTLE_WIN,        // バトル勝利時
+        ON_BATTLE_LOSE,       // バトル敗北時
+        ON_CAST_SPELL,        // 呪文詠唱時
+        ON_DRAW,              // カードを引いた時
+        ON_OPPONENT_DRAW,     // 相手がカードを引いた時
+        ON_TAP,               // タップした時
+        ON_UNTAP,             // アンタップした時
+        // --- シールド系 ---
+        AT_BREAK_SHIELD,      // シールドブレイク時
+        BEFORE_BREAK_SHIELD,  // シールドブレイク直前（置換起点）
+        ON_SHIELD_ADD,        // シールドゾーンへの追加時
+        // --- 特殊・常在型 ---
+        S_TRIGGER,            // シールドトリガー（割り込み型）
+        PASSIVE_CONST,        // 常在型能力（後方互換のため保持）
         NONE
     };
 
@@ -291,6 +304,30 @@ namespace dm::core {
         nlohmann::json extra_fields = nlohmann::json::object();  // Added: to handle unknown JSON fields
     };
 
+    // フェーズ3: ConditionTree — AND/OR/NOT の再帰的条件木
+    // 使い方:
+    //   LEAF: op="LEAF", type/value/str_val/stat_key/op_str/filter で単一条件を表現（旧ConditionDefと対応）
+    //   AND:  op="AND",  children に子ノードリスト（全て真なら誘発）
+    //   OR:   op="OR",   children に子ノードリスト（いずれか真なら誘発）
+    //   NOT:  op="NOT",  children[0] の反転
+    // 再発防止: C++は再帰構造を直接保持できないため children を nlohmann::json で格納し
+    //   エフェクト評価時にパースする。新しい条件タイプを追加したら effect_system.cpp も更新。
+    // 再発防止: to_json/from_json は FilterDef の NLOHMANN マクロの後で定義すること
+    //   (前方宣言の問題を避けるため、namespace以下の ConditionNode シリアライザセクションに記述)
+    struct ConditionNode {
+        std::string op = "LEAF"; // "LEAF" | "AND" | "OR" | "NOT"
+        // LEAF 時のフィールド（旧 ConditionDef と同等）
+        std::string type;
+        int value = 0;
+        std::string str_val;
+        std::string stat_key;
+        std::string op_str; // 比較演算子: ">=", "<=", "==", ">", "<"
+        std::optional<FilterDef> filter;
+        // AND/OR/NOT 時の子ノード（再帰を nlohmann::json で表現）
+        nlohmann::json children = nlohmann::json::array();
+    };
+    // ConditionNode の to_json/from_json は NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef,...) の後で定義する
+
     struct ModifierDef {
         ModifierType type = ModifierType::NONE;
         int value = 0;
@@ -352,6 +389,18 @@ namespace dm::core {
         std::vector<std::vector<CommandDef>> options;
     };
 
+    // TriggerDescriptor: EffectDef の誘発条件を多次元で記述する構造体
+    // trigger_list に複数のTriggerTypeを指定するとOR結合で誘発する（《超次元の王家》のパンドラ・シフト等）
+    // timing_mode:  "POST"(デフォルト,「～た時」) / "PRE"(「出る時」=置換効果起点)
+    // multiplicity: "ONCE"(デフォルト,「時」) / "WHENEVER"(「たび」=複数誘発)
+    // trigger_zones: ゾーン移動系トリガー用ゾーン指定（"BATTLE_ZONE","HAND","MANA" 等）
+    struct TriggerDescriptor {
+        std::vector<TriggerType> trigger_list;  // OR結合トリガーリスト（空なら trigger フィールドを使用）
+        std::vector<std::string> trigger_zones; // ON_ZONE_ENTER/EXIT 用ゾーン指定
+        std::string timing_mode  = "POST";      // "POST" | "PRE"
+        std::string multiplicity = "ONCE";      // "ONCE" | "WHENEVER"
+    };
+
     struct EffectDef {
         TriggerType trigger = TriggerType::NONE;
         TargetScope trigger_scope = TargetScope::NONE;
@@ -359,6 +408,12 @@ namespace dm::core {
         ConditionDef condition;
         std::vector<ActionDef> actions;
         std::vector<CommandDef> commands;
+        // フェーズ2追加: TriggerDescriptor（後方互換のため optional）
+        // 再発防止: trigger_descriptor を使う場合は trigger フィールドを NONE のままにせず
+        //   trigger_descriptor.trigger_list[0] と一致させると可読性が上がる
+        std::optional<TriggerDescriptor> trigger_descriptor;
+        // フェーズ3追加: ConditionTree（後方互換のため optional、設定時は condition より優先）
+        std::optional<ConditionNode> condition_tree;
     };
 
     struct ReactionCondition {
@@ -426,21 +481,34 @@ namespace nlohmann {
 namespace dm::core {
     NLOHMANN_JSON_SERIALIZE_ENUM(TriggerType, {
         {TriggerType::NONE, "NONE"},
+        // ゾーン移動系
         {TriggerType::ON_PLAY, "ON_PLAY"},
-        {TriggerType::ON_ATTACK, "ON_ATTACK"},
-        {TriggerType::ON_DESTROY, "ON_DESTROY"},
-        {TriggerType::S_TRIGGER, "S_TRIGGER"},
-        {TriggerType::TURN_START, "TURN_START"},
-        {TriggerType::PASSIVE_CONST, "PASSIVE_CONST"},
         {TriggerType::ON_OTHER_ENTER, "ON_OTHER_ENTER"},
+        {TriggerType::ON_OPPONENT_CREATURE_ENTER, "ON_OPPONENT_CREATURE_ENTER"},
+        {TriggerType::ON_DESTROY, "ON_DESTROY"},
+        {TriggerType::ON_EXIT, "ON_EXIT"},
+        {TriggerType::ON_DISCARD, "ON_DISCARD"},
+        // ターン・フェイズ系
+        {TriggerType::TURN_START, "TURN_START"},
+        {TriggerType::ON_TURN_END, "ON_TURN_END"},
+        // アクション系
+        {TriggerType::ON_ATTACK, "ON_ATTACK"},
         {TriggerType::ON_ATTACK_FROM_HAND, "ON_ATTACK_FROM_HAND"},
         {TriggerType::ON_BLOCK, "ON_BLOCK"},
+        {TriggerType::ON_BATTLE_WIN, "ON_BATTLE_WIN"},
+        {TriggerType::ON_BATTLE_LOSE, "ON_BATTLE_LOSE"},
+        {TriggerType::ON_CAST_SPELL, "ON_CAST_SPELL"},
+        {TriggerType::ON_DRAW, "ON_DRAW"},
+        {TriggerType::ON_OPPONENT_DRAW, "ON_OPPONENT_DRAW"},
+        {TriggerType::ON_TAP, "ON_TAP"},
+        {TriggerType::ON_UNTAP, "ON_UNTAP"},
+        // シールド系
         {TriggerType::AT_BREAK_SHIELD, "AT_BREAK_SHIELD"},
         {TriggerType::BEFORE_BREAK_SHIELD, "BEFORE_BREAK_SHIELD"},
         {TriggerType::ON_SHIELD_ADD, "ON_SHIELD_ADD"},
-        {TriggerType::ON_CAST_SPELL, "ON_CAST_SPELL"},
-        {TriggerType::ON_OPPONENT_DRAW, "ON_OPPONENT_DRAW"},
-        {TriggerType::ON_DRAW, "ON_DRAW"}
+        // 特殊・常在型
+        {TriggerType::S_TRIGGER, "S_TRIGGER"},
+        {TriggerType::PASSIVE_CONST, "PASSIVE_CONST"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(ReactionType, {
@@ -618,6 +686,38 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, input_value_usage, output_value_key, inverse_target, condition, options, cast_spell_side)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, str_val, duration, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, input_value_usage, output_value_key, slot_index, target_slot_index, up_to, options)
 
+    // フェーズ3: ConditionNode の JSON シリアライズ
+    // 再発防止: FilterDef の NLOHMANN マクロの後でないとコンパイルエラーになるため、ここに定義。
+    inline void to_json(nlohmann::json& j, const ConditionNode& n) {
+        j["op"] = n.op;
+        if (n.op == "LEAF") {
+            if (!n.type.empty())     j["type"]     = n.type;
+            if (n.value != 0)        j["value"]    = n.value;
+            if (!n.str_val.empty())  j["str_val"]   = n.str_val;
+            if (!n.stat_key.empty()) j["stat_key"]  = n.stat_key;
+            if (!n.op_str.empty())   j["op_str"]    = n.op_str;
+            if (n.filter.has_value()) j["filter"]   = n.filter.value();
+        } else {
+            j["children"] = n.children;
+        }
+    }
+
+    inline void from_json(const nlohmann::json& j, ConditionNode& n) {
+        n.op = j.value("op", std::string("LEAF"));
+        if (n.op == "LEAF") {
+            n.type     = j.value("type",     std::string(""));
+            n.value    = j.value("value",    0);
+            n.str_val  = j.value("str_val",  std::string(""));
+            n.stat_key = j.value("stat_key", std::string(""));
+            n.op_str   = j.value("op_str",   std::string(""));
+            if (j.contains("filter")) {
+                FilterDef f; j.at("filter").get_to(f); n.filter = f;
+            }
+        } else {
+            n.children = j.value("children", nlohmann::json::array());
+        }
+    }
+
     // Manual to_json for EffectDef to exclude actions
     inline void to_json(nlohmann::json& j, const EffectDef& e) {
         j = nlohmann::json{
@@ -628,6 +728,20 @@ namespace dm::core {
             {"commands", e.commands}
             // Explicitly excluding "actions" from output
         };
+        // フェーズ2: TriggerDescriptor が設定されている場合のみ出力
+        if (e.trigger_descriptor.has_value()) {
+            const auto& td = e.trigger_descriptor.value();
+            nlohmann::json tdj;
+            if (!td.trigger_list.empty()) tdj["trigger_list"] = td.trigger_list;
+            if (!td.trigger_zones.empty()) tdj["trigger_zones"] = td.trigger_zones;
+            if (td.timing_mode != "POST")  tdj["timing_mode"]  = td.timing_mode;
+            if (td.multiplicity != "ONCE") tdj["multiplicity"]  = td.multiplicity;
+            if (!tdj.empty()) j["trigger_descriptor"] = tdj;
+        }
+        // フェーズ3: ConditionTree が設定されている場合のみ出力
+        if (e.condition_tree.has_value()) {
+            j["condition_tree"] = e.condition_tree.value();
+        }
     }
 
     inline void from_json(const nlohmann::json& j, EffectDef& e) {
@@ -637,6 +751,32 @@ namespace dm::core {
         if (j.contains("condition")) j.at("condition").get_to(e.condition);
         if (j.contains("commands")) j.at("commands").get_to(e.commands);
         if (j.contains("actions")) j.at("actions").get_to(e.actions);
+        // フェーズ2: TriggerDescriptor の読み込み
+        if (j.contains("trigger_descriptor") && j.at("trigger_descriptor").is_object()) {
+            TriggerDescriptor td;
+            const auto& tdj = j.at("trigger_descriptor");
+            if (tdj.contains("trigger_list")) {
+                for (const auto& item : tdj.at("trigger_list")) {
+                    TriggerType tt = TriggerType::NONE;
+                    item.get_to(tt);
+                    td.trigger_list.push_back(tt);
+                }
+            }
+            if (tdj.contains("trigger_zones")) tdj.at("trigger_zones").get_to(td.trigger_zones);
+            if (tdj.contains("timing_mode"))   tdj.at("timing_mode").get_to(td.timing_mode);
+            if (tdj.contains("multiplicity"))  tdj.at("multiplicity").get_to(td.multiplicity);
+            // trigger_listの最初の要素をtriggerフィールドとしてミラー（後方互換）
+            if (!td.trigger_list.empty() && e.trigger == TriggerType::NONE) {
+                e.trigger = td.trigger_list[0];
+            }
+            e.trigger_descriptor = td;
+        }
+        // フェーズ3: ConditionTree の読み込み
+        if (j.contains("condition_tree") && j.at("condition_tree").is_object()) {
+            ConditionNode cn;
+            j.at("condition_tree").get_to(cn);
+            e.condition_tree = cn;
+        }
     }
 
     // NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions, commands) -- REPLACED BY MANUAL IMPL ABOVE

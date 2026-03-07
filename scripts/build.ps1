@@ -1,4 +1,4 @@
-param(
+﻿param(
     [ValidateSet('msvc','mingw')]
     [string]$Toolchain = 'msvc',
     [string]$Config = "Release",
@@ -11,13 +11,41 @@ $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $projectRoot = Split-Path -Parent $scriptDir
-$buildDirName = if ($Toolchain -eq 'mingw') { 'build-mingw' } else { 'build-msvc' }
-$buildDir = Join-Path $projectRoot $buildDirName
 
 # Ensure UTF-8 for console output
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
 Set-Location $projectRoot
+
+# ----------------------------------------------------------------
+# Generator selection: Ninja を優先し，見つからなければ VS17 へフォールバック
+# 再発防止: Ninja は -A x64 を受け付けないので Generator 確定後に引数を分岐すること
+# ----------------------------------------------------------------
+if ([string]::IsNullOrWhiteSpace($Generator)) {
+    if ($Toolchain -eq 'mingw') {
+        $Generator = 'MinGW Makefiles'
+    } else {
+        # ninja.exe が PATH 上にある場合は Ninja を優先する
+        $ninjaAvailable = $null -ne (Get-Command ninja -ErrorAction SilentlyContinue)
+        if ($ninjaAvailable) {
+            $Generator = 'Ninja'
+            Write-Host "Ninja が見つかりました。高速ビルドを使用します (Generator=Ninja)"
+        } else {
+            $Generator = 'Visual Studio 17 2022'
+            Write-Host "Ninja が見つかりませんでした。Visual Studio 17 2022 を使用します"
+        }
+    }
+}
+
+# ビルドディレクトリ: Generator に合わせて分離することで cmake キャッシュの競合を防ぐ
+$buildDirName = if ($Toolchain -eq 'mingw') {
+    'build-mingw'
+} elseif ($Generator -eq 'Ninja') {
+    'build-ninja'
+} else {
+    'build-msvc'
+}
+$buildDir = Join-Path $projectRoot $buildDirName
 
 function Invoke-VsDevCmd {
     param(
@@ -66,23 +94,19 @@ if (-not (Test-Path $buildDir)) {
 
 $cmakeArgs = @("-S", $projectRoot, "-B", $buildDir, "-DCMAKE_BUILD_TYPE=$Config")
 
-if ([string]::IsNullOrWhiteSpace($Generator)) {
-    if ($Toolchain -eq 'mingw') {
-        $Generator = 'MinGW Makefiles'
-    } else {
-        $Generator = 'Visual Studio 17 2022'
-    }
-}
-
-if (-not [string]::IsNullOrWhiteSpace($Generator)) {
-    $cmakeArgs += @("-G", $Generator)
-}
+# Generator はファイル先頭で確定済み。ここで cmake 引数に追加する
+$cmakeArgs += @("-G", $Generator)
 
 if ($Toolchain -eq 'msvc') {
-    # Ensure MSVC standard library include paths etc. are available even when
-    # running from a plain PowerShell (not Developer Command Prompt).
+    # cl.exe / MSVC include パスを確保するために VsDevCmd を必ず呼ぶ
     Invoke-VsDevCmd -Arch 'x64'
-    $cmakeArgs += @('-A', 'x64')
+    if ($Generator -eq 'Ninja') {
+        # 再発防止: Ninja は -A x64 を受け付けない。コンパイラは明示指定する。
+        $cmakeArgs += @('-DCMAKE_C_COMPILER=cl', '-DCMAKE_CXX_COMPILER=cl')
+    } else {
+        # Visual Studio generators は -A でアーキテクチャを指定する
+        $cmakeArgs += @('-A', 'x64')
+    }
 }
 
 if ($UseLibTorch) {
@@ -117,7 +141,9 @@ if ($UseLibTorch) {
 Write-Host "Configuring (Generator=$Generator, Config=$Config)..."
 cmake @cmakeArgs
 
-Write-Host "Building..."
-cmake --build $buildDir --config $Config
+# 並列ビルド数: 論理コア数を使用してビルドを高速化
+$cpuCount = [Environment]::ProcessorCount
+Write-Host "Building (parallel=$cpuCount)..."
+cmake --build $buildDir --config $Config --parallel $cpuCount
 
-Write-Host "Build complete." 
+Write-Host "Build complete. (Generator=$Generator, BuildDir=$buildDirName)"

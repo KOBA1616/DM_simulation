@@ -144,7 +144,7 @@ class ConditionEditorWidget(QGroupBox):
         self.cond_type_combo.currentIndexChanged.connect(self.on_cond_type_changed)
         self.cond_type_combo.currentIndexChanged.connect(self.dataChanged.emit)
 
-        layout.addWidget(QLabel(tr("Type")), 0, 0)
+        layout.addWidget(QLabel(tr("Condition Type")), 0, 0)
         layout.addWidget(self.cond_type_combo, 0, 1)
 
         # Custom Type Edit (Row 1)

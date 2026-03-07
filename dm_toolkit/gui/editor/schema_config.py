@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from dm_toolkit.gui.editor.schema_def import CommandSchema, FieldSchema, FieldType, register_schema
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.consts import QUERY_MODES
 
 # Define constants for selection lists
 MUTATION_TYPES = [
@@ -178,12 +179,17 @@ def register_all_schemas():
     ]))
 
     # QUERY
+    # 再発防止: query_mode のオプションは consts.py の QUERY_MODES と C++ 対応モードで統一すること。
+    # "COUNT_CARDS", "GET_GAME_STAT", "HAS_TARGET" は無効な値だったため修正済み。
+    # str_param に C++ QueryCommand の query_type が格納される (schema key = "str_param")。
+    # SELECT_OPTION: プレイヤーに文字列選択肢を提示するモード (str_val に改行区切りで選択肢テキストを設定)
+    # SELECT_TARGET: プレイヤーにカード選択を求めるモード (target_filter で対象を絞り込む)
+    _QUERY_OPTION_MODES = QUERY_MODES + ["SELECT_TARGET", "SELECT_OPTION"]
     register_schema(CommandSchema("QUERY", [
         f_target,
         f_filter,
-        FieldSchema("query_mode", tr("Query Mode"), FieldType.SELECT, options=[
-            "COUNT_CARDS", "GET_GAME_STAT", "HAS_TARGET"
-        ]),
+        FieldSchema("str_param", tr("Query Mode"), FieldType.SELECT, options=_QUERY_OPTION_MODES),
+        FieldSchema("str_val", tr("Options Text (SELECT_OPTION: 改行区切り)"), FieldType.STRING),
         f_links_out
     ]))
 
@@ -349,9 +355,14 @@ def register_all_schemas():
         f_filter,
         f_links_in
     ]))
+    # 再発防止: MOVE_BUFFER_TO_ZONE に target_filter を追加してフィルター有り暗黙的選択に対応。
+    #   フィルターがある場合は AUTO_SELECT_BUFFER GAME_ACTION により自動的に
+    #   バッファの一致カードを $buffer_select に登録してから移動する。
+    #   フィルターなしの場合は SELECT_FROM_BUFFER で設定済みの $buffer_select を使う。
     register_schema(CommandSchema("MOVE_BUFFER_TO_ZONE", [
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_filter,  # 暗黙的選択フィルター（設定すると SELECT_FROM_BUFFER 不要）
         f_links_in
     ]))
 

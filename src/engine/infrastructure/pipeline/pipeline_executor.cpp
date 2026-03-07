@@ -463,6 +463,108 @@ void PipelineExecutor::execute_instruction(
     } else if (type == "CHECK_SPELL_CAST_TRIGGERS") {
       GameLogicSystem::handle_check_spell_cast_triggers(*this, state, inst,
                                                         card_db);
+    } else if (type == "AUTO_SELECT_BUFFER") {
+      // 再発防止: 暗黙的バッファ選択 — フィルターに一致するバッファカードを
+      //   $buffer_select コンテキスト変数に設定する。
+      //   MOVE_BUFFER_TO_ZONE(with filter) が事前にこの命令を生成する。
+      //   SELECT_FROM_BUFFER によるユーザー入力なしで自動選択できる。
+      PlayerID pid = state.active_player_id;
+      std::string out_key = inst.args.contains("out")
+                                ? inst.args["out"].get<std::string>()
+                                : "$buffer_select";
+
+      // フィルター復元: 文明/タイプ/種族を JSON から解析
+      std::vector<core::Civilization> filter_civs;
+      std::vector<std::string> filter_types;
+      std::vector<std::string> filter_races;
+      std::optional<int> filter_min_cost, filter_max_cost, filter_exact_cost;
+
+      if (inst.args.contains("filter") && inst.args["filter"].is_object()) {
+        const auto &fj = inst.args["filter"];
+        if (fj.contains("civilizations") && fj["civilizations"].is_array()) {
+          for (const auto &cv : fj["civilizations"]) {
+            try { filter_civs.push_back(cv.get<core::Civilization>()); } catch (...) {}
+          }
+        }
+        if (fj.contains("types") && fj["types"].is_array()) {
+          for (const auto &tv : fj["types"]) {
+            try { filter_types.push_back(tv.get<std::string>()); } catch (...) {}
+          }
+        }
+        if (fj.contains("races") && fj["races"].is_array()) {
+          for (const auto &rv : fj["races"]) {
+            try { filter_races.push_back(rv.get<std::string>()); } catch (...) {}
+          }
+        }
+        if (fj.contains("min_cost") && fj["min_cost"].is_number())
+          filter_min_cost = fj["min_cost"].get<int>();
+        if (fj.contains("max_cost") && fj["max_cost"].is_number())
+          filter_max_cost = fj["max_cost"].get<int>();
+        if (fj.contains("exact_cost") && fj["exact_cost"].is_number())
+          filter_exact_cost = fj["exact_cost"].get<int>();
+      }
+
+      std::vector<int> selected;
+      for (const auto &card : state.players[pid].effect_buffer) {
+        auto it = card_db.find(card.card_id);
+        const core::CardDefinition *def_ptr = nullptr;
+        core::CardDefinition empty_def;
+        if (it != card_db.end()) def_ptr = &it->second;
+        else def_ptr = &empty_def;
+
+        bool matches = true;
+
+        // 文明フィルター: 1つ以上一致すればOK
+        if (matches && !filter_civs.empty()) {
+          bool civ_ok = false;
+          for (auto fc : filter_civs) {
+            for (auto cc : def_ptr->civilizations) {
+              if (static_cast<uint8_t>(fc) & static_cast<uint8_t>(cc)) {
+                civ_ok = true; break;
+              }
+            }
+            if (civ_ok) break;
+          }
+          if (!civ_ok) matches = false;
+        }
+
+        // タイプフィルター
+        if (matches && !filter_types.empty()) {
+          std::string card_type_str =
+              (def_ptr->type == core::CardType::CREATURE)   ? "CREATURE"
+            : (def_ptr->type == core::CardType::SPELL)      ? "SPELL"
+            : (def_ptr->type == core::CardType::EVOLUTION_CREATURE) ? "EVOLUTION_CREATURE"
+            : "";
+          bool type_ok = false;
+          for (const auto &t : filter_types) {
+            if (card_type_str == t) { type_ok = true; break; }
+          }
+          if (!type_ok) matches = false;
+        }
+
+        // 種族フィルター
+        if (matches && !filter_races.empty()) {
+          bool race_ok = false;
+          for (const auto &fr : filter_races) {
+            for (const auto &cr : def_ptr->races) {
+              if (cr == fr) { race_ok = true; break; }
+            }
+            if (race_ok) break;
+          }
+          if (!race_ok) matches = false;
+        }
+
+        // コストフィルター
+        if (matches && filter_min_cost.has_value() && def_ptr->cost < *filter_min_cost)
+          matches = false;
+        if (matches && filter_max_cost.has_value() && def_ptr->cost > *filter_max_cost)
+          matches = false;
+        if (matches && filter_exact_cost.has_value() && def_ptr->cost != *filter_exact_cost)
+          matches = false;
+
+        if (matches) selected.push_back(card.instance_id);
+      }
+      set_context_var(out_key, selected);
     }
     break;
   }
@@ -712,8 +814,28 @@ void PipelineExecutor::handle_get_stat(
     result = (int)controller.mana_zone.size();
   } else if (stat_name == "BATTLE_ZONE_COUNT") {
     result = (int)controller.battle_zone.size();
+  } else if (stat_name == "CREATURE_COUNT") {
+    // 再発防止: CREATURE_COUNT はバトルゾーンのクリーチャー数（DM では常に battle_zone と同一）
+    result = (int)controller.battle_zone.size();
   } else if (stat_name == "GRAVEYARD_COUNT") {
     result = (int)controller.graveyard.size();
+  } else if (stat_name.rfind("OPPONENT_", 0) == 0) {
+    // 再発防止: OPPONENT_* は相手プレイヤーの統計を返す。
+    //   PlayerID は 0/1 の 2 値前提で相手を (1 - controller_id) で求める。
+    PlayerID opp_id = (controller_id == PlayerID(0)) ? PlayerID(1) : PlayerID(0);
+    const Player &opp = state.players[opp_id];
+    std::string opp_stat = stat_name.substr(9); // "OPPONENT_" を除去
+    if (opp_stat == "MANA_COUNT") {
+      result = (int)opp.mana_zone.size();
+    } else if (opp_stat == "CREATURE_COUNT" || opp_stat == "BATTLE_ZONE_COUNT") {
+      result = (int)opp.battle_zone.size();
+    } else if (opp_stat == "SHIELD_COUNT") {
+      result = (int)opp.shield_zone.size();
+    } else if (opp_stat == "HAND_COUNT") {
+      result = (int)opp.hand.size();
+    } else if (opp_stat == "GRAVEYARD_COUNT") {
+      result = (int)opp.graveyard.size();
+    }
   }
 
   set_context_var(out_key, result);
@@ -772,6 +894,12 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
         auto c_val = inst.args.contains("count") ? inst.args["count"]
                                                  : nlohmann::json(1);
         virtual_count = resolve_int(c_val);
+      } else if (s == "BUFFER_REMAIN") {
+        // 再発防止: BUFFER_REMAIN は $buffer_select に含まれないバッファ残余カードをすべて移動する。
+        //   MOVE_BUFFER_TO_ZONE が生成する残余デッキボトム戻し命令で使用。
+        is_virtual_target = true;
+        virtual_target_type = "BUFFER_REMAIN";
+        virtual_count = INT_MAX;
       }
     } else if (target_val.is_number()) {
       targets.push_back(target_val.get<int>());
@@ -860,6 +988,21 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
       int count = std::min(virtual_count, available);
       for (int i = 0; i < count; ++i) {
         targets.push_back(bz[available - 1 - i].instance_id);
+      }
+    } else if (virtual_target_type == "BUFFER_REMAIN") {
+      // 再発防止: $buffer_select に含まれないバッファ残余カードを収集する。
+      //   SELECT_FROM_BUFFER または AUTO_SELECT_BUFFER で選択済みのカードを除外する。
+      std::vector<int> selected;
+      auto sv = get_context_var("$buffer_select");
+      if (std::holds_alternative<std::vector<int>>(sv)) {
+        selected = std::get<std::vector<int>>(sv);
+      } else if (std::holds_alternative<int>(sv) && std::get<int>(sv) > 0) {
+        selected.push_back(std::get<int>(sv));
+      }
+      for (const auto &c : state.players[pid].effect_buffer) {
+        if (std::find(selected.begin(), selected.end(), c.instance_id) == selected.end()) {
+          targets.push_back(c.instance_id);
+        }
       }
     }
   }

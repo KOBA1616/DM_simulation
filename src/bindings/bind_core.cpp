@@ -226,21 +226,34 @@ void bind_core(py::module& m) {
         .export_values();
 
     py::enum_<TriggerType>(m, "TriggerType")
+        // ゾーン移動系
         .value("ON_PLAY", TriggerType::ON_PLAY)
-        .value("ON_ATTACK", TriggerType::ON_ATTACK)
-        .value("ON_DESTROY", TriggerType::ON_DESTROY)
-        .value("S_TRIGGER", TriggerType::S_TRIGGER)
-        .value("TURN_START", TriggerType::TURN_START)
-        .value("PASSIVE_CONST", TriggerType::PASSIVE_CONST)
-        .value("BEFORE_BREAK_SHIELD", TriggerType::BEFORE_BREAK_SHIELD)
-        .value("AT_BREAK_SHIELD", TriggerType::AT_BREAK_SHIELD)
-        .value("ON_BLOCK", TriggerType::ON_BLOCK)
         .value("ON_OTHER_ENTER", TriggerType::ON_OTHER_ENTER)
+        .value("ON_OPPONENT_CREATURE_ENTER", TriggerType::ON_OPPONENT_CREATURE_ENTER)
+        .value("ON_DESTROY", TriggerType::ON_DESTROY)
+        .value("ON_EXIT", TriggerType::ON_EXIT)
+        .value("ON_DISCARD", TriggerType::ON_DISCARD)
+        // ターン・フェイズ系
+        .value("TURN_START", TriggerType::TURN_START)
+        .value("ON_TURN_END", TriggerType::ON_TURN_END)
+        // アクション系
+        .value("ON_ATTACK", TriggerType::ON_ATTACK)
         .value("ON_ATTACK_FROM_HAND", TriggerType::ON_ATTACK_FROM_HAND)
-        .value("ON_SHIELD_ADD", TriggerType::ON_SHIELD_ADD)
+        .value("ON_BLOCK", TriggerType::ON_BLOCK)
+        .value("ON_BATTLE_WIN", TriggerType::ON_BATTLE_WIN)
+        .value("ON_BATTLE_LOSE", TriggerType::ON_BATTLE_LOSE)
         .value("ON_CAST_SPELL", TriggerType::ON_CAST_SPELL)
-        .value("ON_OPPONENT_DRAW", TriggerType::ON_OPPONENT_DRAW)
         .value("ON_DRAW", TriggerType::ON_DRAW)
+        .value("ON_OPPONENT_DRAW", TriggerType::ON_OPPONENT_DRAW)
+        .value("ON_TAP", TriggerType::ON_TAP)
+        .value("ON_UNTAP", TriggerType::ON_UNTAP)
+        // シールド系
+        .value("AT_BREAK_SHIELD", TriggerType::AT_BREAK_SHIELD)
+        .value("BEFORE_BREAK_SHIELD", TriggerType::BEFORE_BREAK_SHIELD)
+        .value("ON_SHIELD_ADD", TriggerType::ON_SHIELD_ADD)
+        // 特殊・常在型
+        .value("S_TRIGGER", TriggerType::S_TRIGGER)
+        .value("PASSIVE_CONST", TriggerType::PASSIVE_CONST)
         .value("NONE", TriggerType::NONE)
         .export_values();
 
@@ -298,6 +311,13 @@ void bind_core(py::module& m) {
         .value("NONE", ResolveType::NONE)
         .value("TARGET_SELECT", ResolveType::TARGET_SELECT)
         .value("EFFECT_RESOLUTION", ResolveType::EFFECT_RESOLUTION)
+        .export_values();
+
+    // フェーズ4: ResolutionPriority バインディング
+    py::enum_<ResolutionPriority>(m, "ResolutionPriority")
+        .value("REPLACEMENT", ResolutionPriority::REPLACEMENT)
+        .value("INTERRUPT",   ResolutionPriority::INTERRUPT)
+        .value("NORMAL",      ResolutionPriority::NORMAL)
         .export_values();
 
     // Re-assert TARGET_SELECT to be TargetScope::TARGET_SELECT (resolving collision with ResolveType)

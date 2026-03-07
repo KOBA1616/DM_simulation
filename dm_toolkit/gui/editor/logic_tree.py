@@ -204,7 +204,7 @@ class LogicTreeWidget(QTreeView):
         # Check role via data manager using index
         role = self.data_manager.get_item_type(parent_index)
 
-        items = [tr("Triggered Ability"), tr("Static Ability")]
+        items = [tr("Triggered Ability"), tr("Static Ability"), tr("Replacement Ability")]
 
         # Check if we can add Reaction Ability
         # Only for CARD (not SPELL_SIDE)
@@ -222,6 +222,9 @@ class LogicTreeWidget(QTreeView):
             elif item == tr("Static Ability"):
                 mod_data = self.data_manager.create_default_static_data()
                 self.add_child_item(parent_index, "MODIFIER", mod_data, f"{tr('Static')}: COST_MODIFIER")
+            elif item == tr("Replacement Ability"):
+                rep_data = self.data_manager.create_default_replacement_data()
+                self.add_child_item(parent_index, "EFFECT", rep_data, f"{tr('REPLACEMENT')}: {tr('ON_DESTROY')}")
             elif item == tr("Reaction Ability"):
                 self.add_reaction(parent_index)
 

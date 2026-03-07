@@ -100,7 +100,17 @@ namespace dm::core {
         SELECT_OPTION,     // For mode selection
         SELECT_NUMBER      // For selecting a number
     };
-    
+
+    // フェーズ4: 解決優先度キュー
+    // 再発防止: S・トリガー等の割り込み能力は INTERRUPT で管理し, 通常の誘発型と分離する。
+    //   APNAP 順は NORMAL キュー内のみで適用。置換効果は REPLACEMENT が最優先。
+    //   pending_effects の並べ替えは priority 値（小さい方が先）で行うこと。
+    enum class ResolutionPriority : uint8_t {
+        REPLACEMENT = 0,  // 置換効果（最優先）: エスケープ, シールド・セイバー等
+        INTERRUPT   = 1,  // 割り込み型: S・トリガー, G・ストライク, 忍者ストライク
+        NORMAL      = 2   // 通常の誘発型能力（APNAP 順で解決）
+    };
+
     // Result of a game
     enum class GameResult {
         NONE,

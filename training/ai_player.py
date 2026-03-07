@@ -70,7 +70,9 @@ class AIPlayer:
         # 1. Tokenize
         state_tokens = self.tokenizer.encode_state(game_state, player_id)
 
-        state_tensor = torch.tensor([state_tokens], dtype=torch.long).to(self.device)
+        # 再発防止: list[ndarray]をそのままtorch.tensorに渡すと極端に遅くなる警告が出る。
+        #           必ず numpy.array() で1つのndarrayに変換してからtensorに渡すこと。
+        state_tensor = torch.tensor(np.array([state_tokens]), dtype=torch.long).to(self.device)
         padding_mask = (state_tensor == 0)
 
         phase = int(getattr(game_state, 'current_phase', 0))

@@ -33,6 +33,11 @@ namespace dm::core {
         // Step 5.2.2: Loop Prevention
         int chain_depth = 0;
 
+        // フェーズ4: 解決優先度（REPLACEMENT < INTERRUPT < NORMAL）
+        // 再発防止: S・トリガー等の割り込み能力は INTERRUPT を指定すること。
+        //   APNAP 順の適用は NORMAL キュー内のみ。sort は値の小さい方が先。
+        ResolutionPriority resolution_priority = ResolutionPriority::NORMAL;
+
         // Optional context for REACTION_WINDOW
         struct ReactionContext {
             std::string trigger_event; // The event being reacted to (e.g., "ON_BLOCK_OR_ATTACK")

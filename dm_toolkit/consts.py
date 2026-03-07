@@ -276,20 +276,39 @@ SETTABLE_KEYWORDS = GRANTABLE_KEYWORDS.copy()
 
 # =============================================================================
 # Trigger Types (Effect Triggers)
+# 再発防止: C++ の TriggerType enum (card_json_types.hpp) と必ず1:1対応を保つこと。
+#   新しいトリガーを追加したら card_json_types.hpp / bind_core.cpp / trigger_manager.cpp
+#   の3ファイルも同時に更新すること。
 # =============================================================================
 TRIGGER_TYPES = [
-    "ON_PLAY",
-    "ON_ATTACK",
-    "ON_BLOCK",
-    "ON_DESTROY",
-    "TURN_START",
-    "PASSIVE_CONST",
-    "ON_OTHER_ENTER",
-    "ON_ATTACK_FROM_HAND",
-    "AT_BREAK_SHIELD",
-    "ON_CAST_SPELL",
-    "ON_OPPONENT_DRAW",
-    "ON_OPPONENT_CREATURE_ENTER"
+    # ゾーン移動系
+    "ON_PLAY",               # バトルゾーン参入（CIP）
+    "ON_OTHER_ENTER",        # 自分の他クリーチャーが参入した時
+    "ON_OPPONENT_CREATURE_ENTER",  # 相手クリーチャーが参入した時
+    "ON_DESTROY",            # バトルゾーン→墓地（破壊）
+    "ON_EXIT",               # バトルゾーンからの離脱（破壊・手札・マナ問わず）
+    "ON_DISCARD",            # 手札から捨てられた時（マッドネス等）
+    # ターン・フェイズ系
+    "TURN_START",            # ターン開始時
+    "ON_TURN_END",           # ターン終了時
+    # アクション系
+    "ON_ATTACK",             # 攻撃宣言時
+    "ON_ATTACK_FROM_HAND",   # 革命チェンジ等：攻撃起点
+    "ON_BLOCK",              # ブロック宣言時
+    "ON_BATTLE_WIN",         # バトル勝利時
+    "ON_BATTLE_LOSE",        # バトル敗北時
+    "ON_CAST_SPELL",         # 呪文詠唱時
+    "ON_DRAW",               # カードを引いた時
+    "ON_OPPONENT_DRAW",      # 相手がカードを引いた時
+    "ON_TAP",                # タップした時
+    "ON_UNTAP",              # アンタップした時
+    # シールド系
+    "AT_BREAK_SHIELD",       # シールドブレイク時
+    "BEFORE_BREAK_SHIELD",   # シールドブレイク直前（置換起点）
+    "ON_SHIELD_ADD",         # シールドゾーンへの追加時
+    # 特殊・常在型
+    "S_TRIGGER",             # シールドトリガー（割り込み型）
+    "PASSIVE_CONST",         # 常在型（後方互換のために保持、新規はstatic_abilitiesを推奨）
 ]
 
 # Triggers valid for Spells (subset of above)
@@ -297,9 +316,12 @@ SPELL_TRIGGER_TYPES = [
     "ON_PLAY",
     "ON_CAST_SPELL",
     "TURN_START",
+    "ON_TURN_END",
     "ON_OPPONENT_DRAW",
+    "ON_DRAW",
     "PASSIVE_CONST",
-    "ON_OTHER_ENTER"
+    "ON_OTHER_ENTER",
+    "ON_OPPONENT_CREATURE_ENTER",
 ]
 
 # =============================================================================

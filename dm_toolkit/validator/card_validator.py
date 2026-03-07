@@ -44,12 +44,23 @@ class CardValidator:
         self.valid_civs = {
             "NONE", "LIGHT", "WATER", "DARKNESS", "FIRE", "NATURE", "ZERO"
         }
+        # 再発防止: この集合はC++ TriggerType enum / consts.py TRIGGER_TYPES と同期すること
         self.valid_trigger_types = {
-            "NONE", "ON_PLAY", "ON_ATTACK", "ON_DESTROY", "S_TRIGGER",
-            "TURN_START", "PASSIVE_CONST", "ON_OTHER_ENTER",
-            "ON_ATTACK_FROM_HAND", "ON_BLOCK", "AT_BREAK_SHIELD",
-            "BEFORE_BREAK_SHIELD", "ON_SHIELD_ADD", "ON_CAST_SPELL",
-            "ON_OPPONENT_DRAW"
+            "NONE",
+            # ゾーン移動系
+            "ON_PLAY", "ON_OTHER_ENTER", "ON_OPPONENT_CREATURE_ENTER",
+            "ON_DESTROY", "ON_EXIT", "ON_DISCARD",
+            # ターン・フェイズ系
+            "TURN_START", "ON_TURN_END",
+            # アクション系
+            "ON_ATTACK", "ON_ATTACK_FROM_HAND", "ON_BLOCK",
+            "ON_BATTLE_WIN", "ON_BATTLE_LOSE",
+            "ON_CAST_SPELL", "ON_DRAW", "ON_OPPONENT_DRAW",
+            "ON_TAP", "ON_UNTAP",
+            # シールド系
+            "AT_BREAK_SHIELD", "BEFORE_BREAK_SHIELD", "ON_SHIELD_ADD",
+            # 特殊・常在型
+            "S_TRIGGER", "PASSIVE_CONST",
         }
 
         # Mapping from TriggerType to CommandTypes that could trigger it

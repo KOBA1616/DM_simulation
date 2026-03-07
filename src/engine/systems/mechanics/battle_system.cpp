@@ -2,6 +2,7 @@
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "engine/systems/rules/restriction_system.hpp"
 #include "engine/systems/effects/trigger_system.hpp"
+#include "engine/utils/target_utils.hpp"
 #include <iostream>
 #include <fstream>
 
@@ -142,12 +143,19 @@ namespace dm::engine::systems {
         // Apply passive effects
         for (const auto& pe : game_state.passive_effects) {
             if (pe.type == PassiveType::POWER_MODIFIER) {
-                // Simplified check: assume broad filter match or specific target
-                // TODO: Full implementation of is_valid_target for passive effects
+                // 再発防止: specific_targets がある場合はインスタンスID一致で判定。
+                //   ない場合は target_filter を TargetUtils::is_valid_target で評価する。
+                //   ignore_passives=true でパッシブ→パワー→パッシブの無限再帰を防止。
                 if (pe.specific_targets.has_value()) {
                     for (int tid : pe.specific_targets.value()) {
                         if (tid == creature.instance_id) power += pe.value;
                     }
+                } else if (card_db.count(creature.card_id)) {
+                    const auto& def = card_db.at(creature.card_id);
+                    bool matches = dm::engine::utils::TargetUtils::is_valid_target(
+                        creature, def, pe.target_filter, game_state,
+                        pe.controller, creature.owner, true, nullptr);
+                    if (matches) power += pe.value;
                 }
             }
         }

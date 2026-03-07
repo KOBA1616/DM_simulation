@@ -1,0 +1,44 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.0, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\ichirou\DM_simulation\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\ichirou\DM_simulation
+configfile: pytest.ini
+collecting ... Total tests: 17
+collected 17 items
+
+tests/test_per_card_effects.py::TestCard5AQvibrato::test_on_play_creates_exactly_one_pending_effect PASSED [  5%]
+[=                             ] 1/17 (  5.9%) passed=1 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard5AQvibrato::test_on_play_draw_card_increases_hand PASSED [ 11%]
+[===                           ] 2/17 ( 11.8%) passed=2 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard5AQvibrato::test_on_play_pending_clears_after_resolve PASSED [ 17%]
+[=====                         ] 3/17 ( 17.6%) passed=3 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard2KarakuriBarshi::test_on_play_creates_one_pending_effect PASSED [ 23%]
+[=======                       ] 4/17 ( 23.5%) passed=4 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard2KarakuriBarshi::test_on_play_draw_card_executes_after_resolve PASSED [ 29%]
+[========                      ] 5/17 ( 29.4%) passed=5 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard8DokiNoYosei::test_no_on_play_effect PASSED [ 35%]
+[==========                    ] 6/17 ( 35.3%) passed=6 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard13MagnumSingleshot::test_on_play_creates_pending_effect PASSED [ 41%]
+[============                  ] 7/17 ( 41.2%) passed=7 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard1OboroKagero::test_on_play_creates_pending_effect PASSED [ 47%]
+[==============                ] 8/17 ( 47.1%) passed=8 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard1OboroKagero::test_no_double_fire PASSED [ 52%]
+[===============               ] 9/17 ( 52.9%) passed=9 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard4NapoShishi::test_on_play_creates_pending_effect PASSED [ 58%]
+[=================             ] 10/17 ( 58.8%) passed=10 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard4NapoShishi::test_no_double_fire PASSED [ 64%]
+[===================           ] 11/17 ( 64.7%) passed=11 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard3KakuMeijin::test_no_on_play_effect PASSED [ 70%]
+[=====================         ] 12/17 ( 70.6%) passed=12 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard3KakuMeijin::test_no_double_fire PASSED [ 76%]
+[======================        ] 13/17 ( 76.5%) passed=13 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard6HimeCut::test_friend_burst_creates_one_pending_on_play PASSED [ 82%]
+[========================      ] 14/17 ( 82.4%) passed=14 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard6HimeCut::test_no_double_fire PASSED [ 88%]
+[==========================    ] 15/17 ( 88.2%) passed=15 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard9BonKigoMaim::test_no_on_play_effect PASSED [ 94%]
+[============================  ] 16/17 ( 94.1%) passed=16 failed=0 skipped=0
+tests/test_per_card_effects.py::TestCard12StreamingShaper::test_spell_play_cmd_not_generated_until_spell_fix SKIPPED [100%]
+[==============================] 17/17 (100.0%) passed=16 failed=0 skipped=1
+
+======================== 16 passed, 1 skipped in 4.34s ========================

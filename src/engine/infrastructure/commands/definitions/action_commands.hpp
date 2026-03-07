@@ -19,6 +19,7 @@ namespace dm::engine::game_command {
         void execute(core::GameState& state) override;
         void invert(core::GameState& state) override; // No-op (rely on sub-commands)
         CommandType get_type() const override { return CommandType::PLAY_CARD; }
+        int get_subject_id() const override { return card_instance_id; }
     };
 
     class AttackCommand : public GameCommand {
@@ -33,6 +34,7 @@ namespace dm::engine::game_command {
         void execute(core::GameState& state) override;
         void invert(core::GameState& state) override;
         CommandType get_type() const override { return CommandType::ATTACK; }
+        int get_subject_id() const override { return source_id; }
     };
 
     class BlockCommand : public GameCommand {
@@ -45,6 +47,7 @@ namespace dm::engine::game_command {
         void execute(core::GameState& state) override;
         void invert(core::GameState& state) override;
         CommandType get_type() const override { return CommandType::BLOCK; }
+        int get_subject_id() const override { return blocker_id; }
     };
 
     class UseAbilityCommand : public GameCommand {

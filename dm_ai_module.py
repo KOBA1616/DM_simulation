@@ -62,8 +62,21 @@ if not _disable_native:
 
         _candidates += [
             os.path.join(_root, 'bin', 'Release', 'dm_ai_module.cp312-win_amd64.pyd'),
+            # 再発防止: Ninja (シングルコンフィグ) は bin/ 直下に出力する。
+            #   マルチコンフィグ (VS) は bin/Release/ に出力するため両方を探索する。
+            os.path.join(_root, 'bin', 'dm_ai_module.cp312-win_amd64.pyd'),
+            # 再発防止: Ninja ビルド (build-ninja/) の出力パスを MSBuild より先に探索する。
+            #   build.ps1 が Ninja を選択した場合の CMake デフォルト出力先 (RUNTIME_OUTPUT_DIRECTORY 未指定時)。
+            os.path.join(_root, 'build-ninja', 'dm_ai_module.cp312-win_amd64.pyd'),
+            os.path.join(_root, 'build-ninja', 'Release', 'dm_ai_module.cp312-win_amd64.pyd'),
             os.path.join(_root, 'build-msvc', 'Release', 'dm_ai_module.cp312-win_amd64.pyd'),
+            # 再発防止: RUNTIME_OUTPUT_DIRECTORY が未設定の場合 MSBuild は
+            #   build-msvc/dm_ai_module.dir/Release/ にPYDを出力することがある。
+            os.path.join(_root, 'build-msvc', 'dm_ai_module.dir', 'Release', 'dm_ai_module.cp312-win_amd64.pyd'),
             os.path.join(_root, 'build-msvc', 'dm_ai_module.cp312-win_amd64.pyd'),
+            # 再発防止: 旧ビルド設定で dm_toolkit/ に出力された PYD をフォールバックとして使用する。
+            #   新ビルドでは bin/Release/ に配置されるため、このパスの優先度は低くする。
+            os.path.join(_root, 'dm_toolkit', 'dm_ai_module.cp312-win_amd64.pyd'),
             os.path.join(_root, 'bin', 'dm_ai_module.cpython-312-x86_64-linux-gnu.so'),
             os.path.join(_root, 'build', 'dm_ai_module.cpython-312-x86_64-linux-gnu.so'),
         ]

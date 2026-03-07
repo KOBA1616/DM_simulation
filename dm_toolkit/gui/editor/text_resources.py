@@ -62,22 +62,35 @@ class CardTextResources:
     
     # Trigger event Japanese mapping
     TRIGGER_JAPANESE: Dict[str, str] = {
+        # Current TriggerType set
         "ON_PLAY": "このクリーチャーが出た時",
         "ON_OTHER_ENTER": "他のクリーチャーが出た時",
-        "AT_ATTACK": "このクリーチャーが攻撃する時",
-        "ON_DESTROY": "このクリーチャーが破壊された時",
-        "AT_END_OF_TURN": "自分のターンの終わりに",
-        "AT_END_OF_OPPONENT_TURN": "相手のターンの終わりに",
-        "ON_BLOCK": "このクリーチャーがブロックした時",
+        "ON_OPPONENT_CREATURE_ENTER": "相手のクリーチャーが出た時",
+        "ON_ATTACK": "このクリーチャーが攻撃する時",
         "ON_ATTACK_FROM_HAND": "手札から攻撃する時",
+        "ON_BLOCK": "このクリーチャーがブロックした時",
+        "ON_DESTROY": "このクリーチャーが破壊された時",
         "TURN_START": "自分のターンのはじめに",
+        "ON_TURN_END": "ターンの終わりに",
+        "ON_BATTLE_WIN": "このクリーチャーがバトルに勝った時",
+        "ON_BATTLE_LOSE": "このクリーチャーがバトルに負けた時",
+        "ON_DRAW": "カードを引いた時",
+        "ON_OPPONENT_DRAW": "相手がカードを引いた時",
+        "ON_TAP": "このクリーチャーがタップした時",
+        "ON_UNTAP": "このクリーチャーがアンタップした時",
+        "ON_CAST_SPELL": "呪文を唱えた時",
+        "AT_BREAK_SHIELD": "シールドをブレイクする時",
+        "BEFORE_BREAK_SHIELD": "シールドをブレイクする前",
+        "ON_SHIELD_ADD": "カードがシールドゾーンに置かれた時",
+        "ON_EXIT": "このクリーチャーがバトルゾーンを離れた時",
+        "ON_DISCARD": "このカードが捨てられた時",
         "S_TRIGGER": "S・トリガー",
         "PASSIVE_CONST": "（常在効果）",
-        "ON_SHIELD_ADD": "カードがシールドゾーンに置かれた時",
-        "AT_BREAK_SHIELD": "シールドをブレイクする時",
-        "ON_CAST_SPELL": "呪文を唱えた時",
-        "ON_OPPONENT_DRAW": "相手がカードを引いた時",
-        "ON_OPPONENT_CREATURE_ENTER": "相手のクリーチャーが出た時",
+
+        # Legacy aliases kept for backward compatibility
+        "AT_ATTACK": "このクリーチャーが攻撃する時",
+        "AT_END_OF_TURN": "自分のターンの終わりに",
+        "AT_END_OF_OPPONENT_TURN": "相手のターンの終わりに",
         "NONE": ""
     }
     
@@ -279,7 +292,7 @@ class CardTextResources:
         "REVEAL_TO_BUFFER": "{source_zone}から{value1}枚を表向きにしてバッファに置く。",
         "SELECT_FROM_BUFFER": "バッファから{value1}枚選ぶ（{filter}）。",
         "PLAY_FROM_BUFFER": "バッファからプレイする。",
-        "MOVE_BUFFER_TO_ZONE": "バッファから{zone}に置く。",
+        "MOVE_BUFFER_TO_ZONE": "見た{filter}{zone}に置く。",  # フィルター有=暗黙的選択, フィルター無=SELECT_FROM_BUFFER 依存
         "SELECT_OPTION": "次の中から選ぶ。",
         "LOCK_SPELL": "相手は呪文を唱えられない。",
         "SPELL_RESTRICTION": "相手は呪文を唱えられない。",

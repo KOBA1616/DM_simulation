@@ -24,6 +24,10 @@ namespace dm::ai::encoders {
         static constexpr int BASE_CONTEXT_MARKER = 100;
         static constexpr int BASE_COMMAND_MARKER = 200;
         static constexpr int BASE_CARD_ID = 1000;
+        // 再発防止: コマンド履歴の主体インスタンスIDをエンコードするオフセット。
+        //   BASE_SUBJECT_ID + instance_id のトークンでAIが対象カードを識別できる。
+        //   instance_id は通常0〜999の範囲のためBASE_CARD_IDと被らない。
+        static constexpr int BASE_SUBJECT_ID = 2000;
 
         // Specific Markers (Relative to Perspective)
         static constexpr int MARKER_HAND_SELF = 10;

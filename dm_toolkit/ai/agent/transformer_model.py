@@ -105,7 +105,11 @@ class DuelTransformer(nn.Module):
             batch_first=True,
             norm_first=True
         )
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        # 再発防止: norm_first=True のとき enable_nested_tensor=True は動作せず UserWarning が出る。
+        #           必ず enable_nested_tensor=False を明示すること。
+        self.transformer_encoder = nn.TransformerEncoder(
+            encoder_layer, num_layers=num_layers, enable_nested_tensor=False
+        )
 
         # 4. Heads
         # Phase Specific Policies
@@ -313,7 +317,11 @@ class DuelTransformerWithActionEmbedding(nn.Module):
             batch_first=True,
             norm_first=True
         )
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        # 再発防止: norm_first=True のとき enable_nested_tensor=True は動作せず UserWarning が出る。
+        #           必ず enable_nested_tensor=False を明示すること。
+        self.transformer_encoder = nn.TransformerEncoder(
+            encoder_layer, num_layers=num_layers, enable_nested_tensor=False
+        )
 
         # Action Type Embedding
         self.action_type_embedding = nn.Embedding(num_action_types, d_model // 2)

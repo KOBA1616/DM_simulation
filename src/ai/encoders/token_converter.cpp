@@ -124,9 +124,14 @@ namespace dm::ai::encoders {
             int cmd_type_token = BASE_COMMAND_MARKER + (int)cmd->get_type();
             tokens.push_back(cmd_type_token);
 
-            // TODO: Extract card_instance_id or other details if available in base GameCommand
-            // Currently GameCommand base class might not expose card_id directly without casting.
-            // For now, type sequence is better than nothing or reversed sequence.
+            // 再発防止: get_subject_id() でコマンドの主体インスタンスIDを取得しトークンに追加する。
+            //   以前は種別トークンしか記録されずAIの状態表現が粗かった。
+            //   BASE_SUBJECT_ID + instance_id をトークンとして追加することで細粒度化する。
+            //   注意: このトークン追加によりトークン列の意味が変わるためモデルの再学習が必要。
+            int subject_id = cmd->get_subject_id();
+            if (subject_id >= 0) {
+                tokens.push_back(BASE_SUBJECT_ID + subject_id);
+            }
         }
     }
 

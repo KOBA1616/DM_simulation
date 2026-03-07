@@ -47,6 +47,7 @@ public:
   void execute(core::GameState &state) override;
   void invert(core::GameState &state) override;
   CommandType get_type() const override { return CommandType::TRANSITION; }
+  int get_subject_id() const override { return card_instance_id; }
 };
 
 class AddCardCommand : public GameCommand {

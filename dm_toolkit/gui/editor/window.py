@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QSplitter, QVBoxLayout, QWidget, QMessageBox, QToolBar, QFileDialog,
     QSizePolicy
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer
 from PyQt6.QtGui import QAction, QKeySequence, QStandardItem
 from dm_toolkit.gui.editor.logic_tree import LogicTreeWidget
 from dm_toolkit.gui.editor.property_inspector import PropertyInspector
@@ -31,6 +31,12 @@ class CardEditor(QMainWindow):
         self.resize(1600, 900) # Optimized for 3-pane layout with room for OS/DE chrome
 
         self.cards_data = []
+        # 再発防止: 連続編集時にプレビューが毎フレーム再描画されないようデバウンスタイマーを
+        # init_ui() より前に初期化する（シグナル接続時にタイマーが存在する必要がある）
+        self._preview_debounce_timer = QTimer(self)
+        self._preview_debounce_timer.setSingleShot(True)
+        self._preview_debounce_timer.setInterval(300)  # 300ms 無操作後に一度だけ更新
+        self._preview_debounce_timer.timeout.connect(self.update_current_preview)
         self.init_ui()
         self.load_data()
 
@@ -183,9 +189,10 @@ class CardEditor(QMainWindow):
             self.preview_widget.clear_preview()
 
     def on_data_changed(self):
-        # Refresh preview based on current selection
-        self.update_current_preview()
-        # Ensure internal canonical cache is updated for current selection
+        # 再発防止: 連続編集時（1文字ごとの入力など）に毎回プレビュー再描画が走るのを防ぐ。
+        # デバウンスタイマー使用: 300ms 無操作後に update_current_preview を一度だけ実行。
+        self._preview_debounce_timer.start()  # 既に動いていればリセット・再スタート
+        # データマネージャのキャッシュは即座に更新（ツリー整合性維持）
         try:
             idx = self.tree_widget.currentIndex()
             if idx.isValid():

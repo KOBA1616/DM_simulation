@@ -18,6 +18,7 @@ from dm_toolkit.gui.editor.widget_factory import WidgetFactory
 from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
 from dm_toolkit.gui.editor.schema_def import SchemaLoader, get_schema, FieldSchema, FieldType
 from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_OPTIONS
+from dm_toolkit.gui.editor.consistency import validate_command_list
 
 COMMAND_GROUPS = EditorConfigLoader.get_command_groups()
 
@@ -406,6 +407,17 @@ class UnifiedActionForm(BaseEditForm):
 
             # Clear styles on success
             self._clear_validation_styles()
+
+            # コマンド整合性チェック（非ブロッキング警告）
+            # 再発防止: QUERY/IF等の必須フィールド未設定を保存時にユーザーへ通知する
+            try:
+                warns = validate_command_list([new_data], _path=cmd_type)
+                if warns:
+                    self.structure_update_requested.emit(
+                        "INTEGRITY_WARNINGS", {"warnings": warns}
+                    )
+            except Exception:
+                pass  # テスト環境等でも堅牢に動作させる
 
         except ValidationError as e:
             print(f"Validation Error: {e}")

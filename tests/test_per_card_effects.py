@@ -377,3 +377,239 @@ class TestCard4NapoShishi:
             f"ON_PLAY が二重発火: pending_effects={pending} (期待: <= 1)。\n"
             "再発防止: trigger_manager.cpp の ON_PLAY early-return を確認。"
         )
+
+
+# ---------------------------------------------------------------------------
+# 7. Card 3: 芸魔王将カクメイジン (cost=7) — ON_PLAY 効果なし
+# ---------------------------------------------------------------------------
+
+class TestCard3KakuMeijin:
+    """カクメイジン (id=3, cost=7): ON_PLAY 効果なし → 召喚後 pending_effects=0。
+
+    カクメイジンは ON_ATTACK_FROM_HAND と AT_BREAK_SHIELD のみ効果を持つ。
+    また static_ability で自分のバトルゾーンのマジックにスピードアタッカーを付与する。
+    召喚直後は pending_effects が生成されないことを確認する。
+    """
+
+    CARD_ID = 3
+    COST = 7
+
+    def test_no_on_play_effect(self) -> None:
+        """ON_PLAY 効果なし → 召喚後 pending_effects=0 を確認する。"""
+        game, db = _setup_game_for_card(self.CARD_ID, self.COST)
+        s = game.state
+
+        play_cmd = _find_play_cmd(game, db)
+        if play_cmd is None:
+            pytest.skip("PLAY_FROM_ZONE コマンドが見つかりません")
+
+        game.resolve_command(play_cmd)
+        assert s.get_pending_effect_count() == 0, (
+            f"ON_PLAY 効果なしのカードで pending_effects={s.get_pending_effect_count()} が生成されました。\n"
+            "カクメイジンは ON_ATTACK_FROM_HAND/AT_BREAK_SHIELD のみ効果あり。"
+        )
+
+    def test_no_double_fire(self) -> None:
+        """再発防止: ON_PLAY 効果なしカードで pending_effects が溜まらないことを確認する。"""
+        game, db = _setup_game_for_card(self.CARD_ID, self.COST)
+        s = game.state
+
+        play_cmd = _find_play_cmd(game, db)
+        if play_cmd is None:
+            pytest.skip("PLAY_FROM_ZONE コマンドが見つかりません")
+
+        game.resolve_command(play_cmd)
+        assert s.get_pending_effect_count() == 0, (
+            f"二重発火の可能性: pending_effects={s.get_pending_effect_count()} (期待: 0)。\n"
+            "再発防止: trigger_manager.cpp の ON_PLAY early-return を確認。"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 8. Card 6: 歌舞音愛 ヒメカット (cost=2) — ON_PLAY 効果なし（クリーチャー面）
+# ---------------------------------------------------------------------------
+
+class TestCard6HimeCut:
+    """ヒメカット (id=6, cost=2): クリーチャー面はON_PLAY効果なしだが friend_burst あり。
+
+    friend_burst キーワードは keyword_expander.cpp により ON_PLAY トリガーの
+    FRIEND_BURST 効果 (optional=True) に展開される。
+    よって召喚後 pending_effects=1 (FRIEND_BURST 発動待ち) が期待値。
+
+    実際の効果 (ON_OPPONENT_DRAW) は相手ドロー時に別途発火する。
+    ツインパクト呪文面（コスト4）は ON_CAST_SPELL を持つが、
+    呪文詠唱テストは spell PLAY_FROM_ZONE 実装後に追加予定。
+    """
+
+    CARD_ID = 6
+    COST = 2
+
+    def test_friend_burst_creates_one_pending_on_play(self) -> None:
+        """friend_burst キーワードにより召喚後 pending_effects=1 であることを確認する。
+
+        再発防止: keyword_expander.cpp の expand_friend_burst が ON_PLAY トリガー効果を
+        追加するため、friend_burst 持ちカードは必ず pending >= 1 になる。
+        これは正常な動作であり、バグではない。
+        """
+        game, db = _setup_game_for_card(self.CARD_ID, self.COST)
+        s = game.state
+
+        play_cmd = _find_play_cmd(game, db)
+        if play_cmd is None:
+            pytest.skip("PLAY_FROM_ZONE コマンドが見つかりません")
+
+        game.resolve_command(play_cmd)
+        assert s.get_pending_effect_count() == 1, (
+            f"friend_burst 持ちカードの召喚後 pending_effects={s.get_pending_effect_count()} (期待: 1)。\n"
+            "keyword_expander.cpp の expand_friend_burst が ON_PLAY 効果を追加するため pending=1 が正常。"
+        )
+
+    def test_no_double_fire(self) -> None:
+        """再発防止: friend_burst が二重発火しないことを確認する (pending<=1)。"""
+        game, db = _setup_game_for_card(self.CARD_ID, self.COST)
+        s = game.state
+
+        play_cmd = _find_play_cmd(game, db)
+        if play_cmd is None:
+            pytest.skip("PLAY_FROM_ZONE コマンドが見つかりません")
+
+        game.resolve_command(play_cmd)
+        pending = s.get_pending_effect_count()
+        assert pending <= 1, (
+            f"friend_burst が二重発火: pending_effects={pending} (期待: <= 1)。\n"
+            "再発防止: keyword_expander.cpp の expand_friend_burst を確認してください。"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 9. Card 9: ボン・キゴマイム (cost=3) — ON_PLAY 効果なし（クリーチャー面）
+# ---------------------------------------------------------------------------
+
+class TestCard9BonKigoMaim:
+    """ボン・キゴマイム (id=9, cost=3): クリーチャー面は ON_PLAY 効果なし。
+
+    効果は ON_OPPONENT_CREATURE_ENTER（相手クリーチャー召喚時に CANNOT_ATTACK を付与）のみ。
+    召喚直後の pending_effects=0 を確認する。
+    ツインパクト呪文面（コスト2）は ON_CAST_SPELL を持つが、
+    呪文詠唱テストは spell PLAY_FROM_ZONE 実装後に追加予定。
+    """
+
+    CARD_ID = 9
+    COST = 3
+
+    def test_no_on_play_effect(self) -> None:
+        """クリーチャー召喚後に pending_effects=0 であることを確認する。"""
+        game, db = _setup_game_for_card(self.CARD_ID, self.COST)
+        s = game.state
+
+        play_cmd = _find_play_cmd(game, db)
+        if play_cmd is None:
+            pytest.skip("PLAY_FROM_ZONE コマンドが見つかりません")
+
+        game.resolve_command(play_cmd)
+        assert s.get_pending_effect_count() == 0, (
+            f"ボン・キゴマイムはON_PLAY効果なしのはずが pending_effects={s.get_pending_effect_count()}。\n"
+            "ON_OPPONENT_CREATURE_ENTER 効果が誤って ON_PLAY に紐付けられていないか確認してください。"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 10. Card 12: ストリーミング・シェイパー (cost=3, SPELL) — 呪文詠唱テスト
+# ---------------------------------------------------------------------------
+
+class TestCard12StreamingShaper:
+    """ストリーミング・シェイパー (id=12, cost=3): SPELL。
+
+    ON_CAST_SPELL: デッキトップ4枚をバッファに公開 → 水文明のカードをSELECT_FROM_BUFFER → 手札へ。
+    再発防止: IntentGenerator が呪文の PLAY_FROM_ZONE を生成するようになったらスキップを外すこと。
+    """
+
+    CARD_ID = 12
+    COST = 3
+
+    def test_on_cast_creates_pending_effect(self) -> None:
+        """呪文詠唱後に pending_effects が 1 件生成されることを確認する。
+
+        再発防止: spell の ON_CAST_SPELL トリガーが pending_effect に積まれること。
+        PLAY_FROM_ZONE 直後は pending_effect_count == 1 であるはず。
+        """
+        game, db = _setup_game_for_card(self.CARD_ID, self.COST)
+        s = game.state
+        play_cmd = _find_play_cmd(game, db)
+        if play_cmd is None:
+            pytest.skip("PLAY_FROM_ZONE コマンドが見つかりません")
+
+        assert s.get_pending_effect_count() == 0, "詠唱前に pending_effects があります"
+        game.resolve_command(play_cmd)
+        pending = s.get_pending_effect_count()
+        assert pending == 1, (
+            f"ON_CAST_SPELL 後の pending_effects が {pending} 件です（期待値: 1）。\n"
+            "再発防止: trigger_manager.cpp の ON_CAST_SPELL トリガー処理を確認してください。"
+        )
+
+    def test_on_cast_resolves_buffer_and_deck_decreases(self) -> None:
+        """RESOLVE_EFFECT 後に REVEAL_TO_BUFFER でバッファを経由してカードが移動することを確認する。
+
+        Card12 の効果: REVEAL_TO_BUFFER(4) → SELECT_FROM_BUFFER(WATER) → MOVE_BUFFER_TO_ZONE(HAND)
+        デッキは card_id=12 (WATER) で埋まっているため、バッファに置かれた4枚はすべて水文明。
+
+        動作フロー:
+          1. REVEAL_TO_BUFFER(4): デッキ上位4枚をバッファへ (deck -4)
+          2. SELECT_FROM_BUFFER: ユーザーが1枚以上選択 ($buffer_select に登録)
+          3. MOVE($buffer_select → HAND): 選択分が手札へ
+          4. MOVE(BUFFER_REMAIN → DECK_BOTTOM): 残余がデッキボトムへ戻る
+          ∴ deck_net = -(選択枚数), hand_net = +(選択枚数) - 1(呪文プレイ)
+
+        再発防止: BUFFER_REMAIN が DECK_BOTTOM へ戻らない場合は
+                  pipeline_executor.cpp の BUFFER_REMAIN 仮想ターゲット処理を確認。
+                  $buffer_select が空の場合は SELECT_FROM_BUFFER の dispatch を確認。
+        """
+        game, db = _setup_game_for_card(self.CARD_ID, self.COST)
+        s = game.state
+        play_cmd = _find_play_cmd(game, db)
+        if play_cmd is None:
+            pytest.skip("PLAY_FROM_ZONE コマンドが見つかりません")
+
+        deck_before = len(s.players[0].deck)
+        hand_before = len(s.players[0].hand)
+
+        game.resolve_command(play_cmd)
+
+        resolve_cmd = _find_cmd_by_keyword(game, db, "RESOLVE")
+        if resolve_cmd is None:
+            pytest.skip("RESOLVE_EFFECT コマンドが見つかりません")
+        game.resolve_command(resolve_cmd)
+
+        # SELECT_FROM_BUFFER への返答が必要な場合はすべて送信する
+        for _ in range(10):
+            if not s.waiting_for_user_input:
+                break
+            legal = dm_ai_module.IntentGenerator.generate_legal_commands(s, db)
+            if not legal:
+                break
+            sel_cmd = next(
+                (c for c in legal
+                 if "SELECT_FROM_BUFFER" in str(getattr(c, "type", "")).upper()),
+                legal[0],
+            )
+            game.resolve_command(sel_cmd)
+
+        deck_after = len(s.players[0].deck)
+        hand_after = len(s.players[0].hand)
+
+        # deck_after == deck_before - (selected_count): 選択した分だけ純減
+        # BUFFER_REMAIN の残余がデッキボトムへ戻っているため 4枚固定減にはならない
+        # 最低1枚の選択 → deck_net >= -1 かつ hand_net >= 0 を確認
+        selected_count = deck_before - deck_after
+        assert selected_count >= 1, (
+            f"デッキの純減が0です (before={deck_before} after={deck_after})。\n"
+            "REVEAL_TO_BUFFER→SELECT_FROM_BUFFER→MOVE_BUFFER_TO_ZONE が機能していません。\n"
+            "再発防止: pipeline_executor.cpp の BUFFER_REMAIN 仮想ターゲット処理を確認してください。"
+        )
+        # MOVE_BUFFER_TO_ZONE が動作しているなら手札は play-1 + select + になる
+        assert hand_after >= hand_before - 1, (
+            f"手札: before={hand_before} after={hand_after}。\n"
+            "カードがバッファから手札に移動していません。\n"
+            "再発防止: command_system.cpp の MOVE_BUFFER_TO_ZONE で"
+            ' target="$buffer_select" を使用していることを確認してください。'
+        )

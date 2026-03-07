@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <iostream>
 #include <set>
+#include <sstream>
+#include <unordered_set>
 
 
 namespace dm::engine::systems {
@@ -204,6 +206,7 @@ std::vector<Instruction> CommandSystem::generate_instructions(
   case core::CommandType::REPLACE_CARD_MOVE:  // 再発防止: REPLACE_CARD_MOVE はゾーン置換効果
   case core::CommandType::DRAW:               // 再発防止: DRAW は DRAW_CARD と同一ブロックで処理 (generate_macro_instructions 内で統合済)
   case core::CommandType::REPLACE_MOVE_CARD:  // 再発防止: REPLACE_MOVE_CARD はマグナム系置換効果をインストール
+  case core::CommandType::LOOK_TO_BUFFER:      // 再発防止: デッキ上から指定枚数を「見る」バッファ展開 (REVEAL_TO_BUFFER と同一実装)
   case core::CommandType::REVEAL_TO_BUFFER:   // 再発防止: デッキ上からバッファへ表向きに展開
   case core::CommandType::SELECT_FROM_BUFFER: // 再発防止: バッファからプレイヤーが選択
   case core::CommandType::MOVE_BUFFER_TO_ZONE: // 再発防止: バッファ残予を指定ゾーンへ移動
@@ -285,18 +288,39 @@ void CommandSystem::generate_primitive_instructions(
       std::string ctx_key = cmd.input_value_key.rfind("$", 0) == 0
                                 ? cmd.input_value_key
                                 : "$" + cmd.input_value_key;
-      Instruction move(InstructionOp::MOVE);
       if (cmd.from_zone.empty()) {
-        // 再発防止: from_zone が空の場合、input_value_key の値はインスタンスIDリスト
-        //   (SELECT命令の出力) として解釈する。target にコンテキスト変数参照を渡す。
+        // 再発防止: from_zone が空: input_value_key = インスタンスIDリスト → 直接 MOVE
+        Instruction move(InstructionOp::MOVE);
         move.args["target"] = ctx_key;
+        move.args["to"] = to_z_str;
+        out.push_back(move);
+      } else if (cmd.input_value_usage == "AMOUNT") {
+        // 再発防止: from_zone + AMOUNT モード: input_value_key = 移動枚数(ユーザーが選択した数)
+        //   ユーザーが from_zone から N 枚を選択してから MOVE する。
+        //   旧実装 (MOVE(target=from_zone, count=N)) はユーザー選択を省略するバグがあった。
+        //   SELECT 命令で対象を選ばせ、ctx_key+"_selected" に格納してから MOVE する。
+        std::string select_out_key = ctx_key + "_selected";
+        Instruction select_inst(InstructionOp::SELECT);
+        nlohmann::json filter_json = nlohmann::json::object();
+        filter_json["zones"] = nlohmann::json::array({cmd.from_zone});
+        filter_json["owner"] = "SELF";
+        select_inst.args["filter"] = filter_json;
+        select_inst.args["count"] = ctx_key;  // コンテキスト変数参照 ($ プレフィックス済み)
+        select_inst.args["out"] = select_out_key;
+        out.push_back(select_inst);
+
+        Instruction move(InstructionOp::MOVE);
+        move.args["target"] = select_out_key;
+        move.args["to"] = to_z_str;
+        out.push_back(move);
       } else {
-        // from_zone あり: 代山のところから N 枚を取るバーチャルソースモード
-        move.args["target"] = cmd.from_zone; // 例: "HAND" (実行時に他アップバック貴插などで解決)
-        move.args["count"] = ctx_key;        // 枠数（実行時解決）
+        // from_zone あり, AMOUNT でない: バーチャルソースモード (先頭N枚を移動)
+        Instruction move(InstructionOp::MOVE);
+        move.args["target"] = cmd.from_zone;
+        move.args["count"] = ctx_key;
+        move.args["to"] = to_z_str;
+        out.push_back(move);
       }
-      move.args["to"] = to_z_str;
-      out.push_back(move);
       return;
     }
 
@@ -357,7 +381,47 @@ void CommandSystem::generate_primitive_instructions(
       get.args["out"] =
           cmd.output_value_key.empty() ? "$temp" : cmd.output_value_key;
       out.push_back(get);
+    } else if (query_type == "SELECT_OPTION") {
+      // 再発防止: QUERY(SELECT_OPTION) は str_val の改行区切りラベルを
+      //   WAIT_INPUT へ渡してプレイヤーに選択させる。
+      //   options ブランチは executor 側で選択インデックスに基づき実行される。
+      Instruction wait(InstructionOp::WAIT_INPUT);
+      wait.args["query_type"] = "SELECT_OPTION";
+      // str_val から改行区切りでラベルを生成
+      nlohmann::json opt_labels = nlohmann::json::array();
+      if (!cmd.str_val.empty()) {
+        std::string sv = cmd.str_val;
+        std::istringstream ss(sv);
+        std::string line;
+        while (std::getline(ss, line)) {
+          if (!line.empty()) opt_labels.push_back(line);
+        }
+      }
+      // ラベルが未設定の場合は "Option N" で補完
+      int branch_count = (int)cmd.options.size();
+      while ((int)opt_labels.size() < branch_count) {
+        opt_labels.push_back("Option " + std::to_string(opt_labels.size() + 1));
+      }
+      wait.args["options"] = opt_labels;
+      wait.args["out"] = cmd.output_value_key.empty() ? "$select_result" : cmd.output_value_key;
+      out.push_back(wait);
     } else {
+      // 再発防止: 既知の GET_STAT モードは GET_STAT 命令を生成する。
+      //   OPPONENT_ プレフィックス付きは executor 側で相手プレイヤーとして処理。
+      static const std::unordered_set<std::string> STAT_MODES = {
+        "MANA_COUNT", "CREATURE_COUNT", "SHIELD_COUNT", "HAND_COUNT",
+        "GRAVEYARD_COUNT", "BATTLE_ZONE_COUNT", "CARDS_DRAWN_THIS_TURN",
+        "OPPONENT_MANA_COUNT", "OPPONENT_CREATURE_COUNT", "OPPONENT_SHIELD_COUNT",
+        "OPPONENT_HAND_COUNT", "OPPONENT_GRAVEYARD_COUNT", "OPPONENT_BATTLE_ZONE_COUNT"
+      };
+      if (STAT_MODES.count(query_type)) {
+        Instruction get(InstructionOp::GET_STAT);
+        get.args["stat"] = query_type;
+        get.args["out"] =
+            cmd.output_value_key.empty() ? "$temp" : cmd.output_value_key;
+        out.push_back(get);
+      } else {
+        // SELECT_TARGET など: 実行時対象選択
       // 再発防止: QUERY(SELECT_TARGET, target_filter={zones:["HAND"]}, input_value_key="var_N",
       //   output_value_key="var_out") は実行時対象列挙が必要なため
       //   InstructionOp::SELECT を生成する。
@@ -395,7 +459,8 @@ void CommandSystem::generate_primitive_instructions(
       }
       select_inst.args["out"] = cmd.output_value_key;
       out.push_back(select_inst);
-    }
+      }  // end inner else (SELECT_TARGET)
+    }  // end outer else (non-GET_STAT query types)
 
   } else if (cmd.type == core::CommandType::MUTATE) {
     std::vector<int> targets = resolve_targets(state, cmd, source_instance_id,
@@ -542,25 +607,59 @@ void CommandSystem::generate_macro_instructions(
     out.push_back(select);
 
   } else if (cmd.type == core::CommandType::SELECT_OPTION) {
-    // 再発防止: SELECT_OPTION は選択肢（options）から1つ選んで実行する CHOICE 命令。
-    //   CHOICE が未実装の場合、最初の選択肢を自動選択するフォールバックを行う。
-    //   本来は WAIT_INPUT(SELECT_OPTION) で UI に選択を委ねる。
-    nlohmann::json args;
-    args["type"] = "SELECT_OPTION";
-    args["option_count"] = (int)cmd.options.size();
-    args["amount"] = (count > 0) ? count : 1;
-    args["optional"] = cmd.optional;
+    // 再発防止: SELECT_OPTION は WAIT_INPUT(SELECT_OPTION) でプレイヤーに選択させ
+    //   選択されたインデックスを out_key に格納する。
+    //   intent_generator が CHOICE コマンドを生成し、dispatch_command が
+    //   pipeline.waiting_for_key へ選択インデックスをセットしてパイプラインを再開する。
+    //   旧実装の「常に option[0] を実行するフォールバック」は不正確なため削除。
+    std::string out_key = cmd.output_value_key.empty() ? "$select_result" : cmd.output_value_key;
 
-    Instruction inst(InstructionOp::GAME_ACTION, args);
-    out.push_back(inst);
+    // オプションラベルを str_val（改行区切り）または自動生成で構築
+    nlohmann::json opt_labels = nlohmann::json::array();
+    if (!cmd.str_val.empty()) {
+      std::istringstream ss(cmd.str_val);
+      std::string line;
+      while (std::getline(ss, line)) {
+        if (!line.empty()) opt_labels.push_back(line);
+      }
+    }
+    int branch_count = (int)cmd.options.size();
+    while ((int)opt_labels.size() < branch_count) {
+      opt_labels.push_back("Option " + std::to_string(opt_labels.size() + 1));
+    }
 
-    // フォールバック: 最初の有効な選択肢を実行（AI/シミュレーション用）
-    if (!cmd.options.empty() && !cmd.options[0].empty()) {
-      for (const auto &child_cmd : cmd.options[0]) {
+    Instruction wait(InstructionOp::WAIT_INPUT);
+    wait.args["query_type"] = "SELECT_OPTION";
+    wait.args["options"] = opt_labels;
+    wait.args["out"] = out_key;
+    out.push_back(wait);
+
+    // 各ブランチを IF(選択インデックス == i) でガードして順次追加
+    // 再発防止: check_condition は "var_eq" 型を処理しないため、
+    //   現時点では pipeline_executor 側で IF 命令の cond を extend 拡張する必要がある。
+    //   未実装の場合でも WAIT_INPUT で正しく一時停止し AI が CHOICE を送信できる。
+    for (int opt_idx = 0; opt_idx < branch_count; ++opt_idx) {
+      if (cmd.options[opt_idx].empty()) continue;
+      // sub-instructions for this branch
+      std::vector<Instruction> branch_insts;
+      for (const auto &child_cmd : cmd.options[opt_idx]) {
         auto sub = generate_instructions(state, child_cmd, source_instance_id,
                                          player_id, execution_context);
-        out.insert(out.end(), sub.begin(), sub.end());
+        branch_insts.insert(branch_insts.end(), sub.begin(), sub.end());
       }
+      // IF 命令で選択インデックスと比較してガード
+      // 再発防止: check_condition の "op" 形式（lhs/$var == rhs/int）を使用する
+      //   出力変数キーに "$" がないとき resolve_int がコンテキスト参照しないので "$" を付加する
+      Instruction if_inst(InstructionOp::IF);
+      nlohmann::json cond;
+      cond["op"] = "==";
+      // $ プレフィックスがなければ付加して context lookup が機能するようにする
+      std::string lhs_var = (out_key.rfind("$", 0) == 0) ? out_key : ("$" + out_key);
+      cond["lhs"] = lhs_var;
+      cond["rhs"] = opt_idx;
+      if_inst.args["cond"] = cond;
+      if_inst.then_block = branch_insts;
+      out.push_back(if_inst);
     }
 
   } else if (cmd.type == core::CommandType::CAST_SPELL) {
@@ -716,9 +815,12 @@ void CommandSystem::generate_macro_instructions(
     }
     Instruction inst_delay(InstructionOp::GAME_ACTION, args);
     out.push_back(inst_delay);
-  } else if (cmd.type == core::CommandType::REVEAL_TO_BUFFER) {
-    // 再発防止: REVEAL_TO_BUFFER はデッキ上から指定枚数を表向きにバッファへ展開する。
-    //   SELECT_FROM_BUFFER で選択し、残余はデッキボトムに戻す。
+  } else if (cmd.type == core::CommandType::LOOK_TO_BUFFER ||
+             cmd.type == core::CommandType::REVEAL_TO_BUFFER) {
+    // 再発防止: LOOK_TO_BUFFER / REVEAL_TO_BUFFER はどちらもデッキ上から指定枚数をバッファへ展開する。
+    //   LOOK は手番プレイヤーのみ閲覧、REVEAL は全員に公開するという意味の違いだが
+    //   エンジン実装はどちらも同じ MOVE(DECK_TOP → BUFFER) で処理する。
+    //   ※後続の MOVE_BUFFER_TO_ZONE で各 to_zone への振り分けを行う。
     int reveal_count = (count > 0) ? count : 4;
     Instruction move(InstructionOp::MOVE);
     move.args["target"] = "DECK_TOP";
@@ -744,17 +846,82 @@ void CommandSystem::generate_macro_instructions(
     wait.args["out"] = out_key;
     out.push_back(wait);
   } else if (cmd.type == core::CommandType::MOVE_BUFFER_TO_ZONE) {
-    // 再発防止: MOVE_BUFFER_TO_ZONE は選択結果を手札に移動し、未選択分はデッキボトムへ返す。
-    Instruction move(InstructionOp::MOVE);
-    move.args["target"] = "BUFFER";
-    move.args["to"] = cmd.to_zone.empty() ? "HAND" : cmd.to_zone;
-    out.push_back(move);
+    // 再発防止: MOVE_BUFFER_TO_ZONE の動作は amount と target_filter の組み合わせで3パターン存在する。
+    //
+    // [パターンA] amount > 0 かつ filter なし (デドダム等、連続 MOVE_BUFFER_TO_ZONE)
+    //   → WAIT_INPUT(SELECT_FROM_BUFFER, count=amount) で選択させてから MOVE。
+    //     BUFFER_REMAIN は生成しない — バッファを次の MOVE_BUFFER_TO_ZONE に持ち越すため。
+    //
+    // [パターンB] amount == 0 かつ filter なし (SELECT_FROM_BUFFER 済みの $buffer_select を使用)
+    //   → MOVE($buffer_select → zone) + BUFFER_REMAIN → DECK_BOTTOM。
+    //
+    // [パターンC] filter あり (暗黙的文明フィルター等)
+    //   → AUTO_SELECT_BUFFER + MOVE($buffer_select → zone) + BUFFER_REMAIN → DECK_BOTTOM。
+    //
+    // 再発防止: 旧実装は常に BUFFER_REMAIN を追加していたため、
+    //   連続 MOVE_BUFFER_TO_ZONE で2枚目以降のバッファが空になるバグがあった。
+    // 再発防止: 旧実装の "BUFFER" 文字列はパイプラインで未解決のままだったバグを修正。
 
-    // バッファ残余をデッキボトムへ
-    Instruction ret(InstructionOp::MOVE);
-    ret.args["target"] = "BUFFER_REMAIN";
-    ret.args["to"] = "DECK_BOTTOM";
-    out.push_back(ret);
+    auto& f = cmd.target_filter;
+    bool has_filter = !f.civilizations.empty() || !f.types.empty()
+                      || !f.races.empty() || !f.zones.empty()
+                      || f.min_cost.has_value() || f.max_cost.has_value()
+                      || f.exact_cost.has_value();
+
+    if (has_filter) {
+      // [パターンC] 暗黙的選択: AUTO_SELECT_BUFFER が filter に一致するバッファカードを
+      // $buffer_select コンテキスト変数に登録してからMOVEを実行する。
+      nlohmann::json auto_args;
+      auto_args["type"] = "AUTO_SELECT_BUFFER";
+      nlohmann::json filter_json;
+      filter_json["civilizations"] = f.civilizations;
+      filter_json["types"]         = f.types;
+      filter_json["races"]         = f.races;
+      if (f.min_cost.has_value())  filter_json["min_cost"]  = *f.min_cost;
+      if (f.max_cost.has_value())  filter_json["max_cost"]  = *f.max_cost;
+      if (f.exact_cost.has_value()) filter_json["exact_cost"] = *f.exact_cost;
+      auto_args["filter"] = filter_json;
+      auto_args["out"]    = "$buffer_select";
+      out.push_back(Instruction(InstructionOp::GAME_ACTION, auto_args));
+
+      Instruction move(InstructionOp::MOVE);
+      move.args["target"] = "$buffer_select";
+      move.args["to"] = cmd.to_zone.empty() ? "HAND" : cmd.to_zone;
+      out.push_back(move);
+
+      Instruction ret(InstructionOp::MOVE);
+      ret.args["target"] = "BUFFER_REMAIN";
+      ret.args["to"] = "DECK_BOTTOM";
+      out.push_back(ret);
+
+    } else if (count > 0) {
+      // [パターンA] amount 指定あり・filter なし: WAIT_INPUT でユーザーに amount 枚選ばせる。
+      // BUFFER_REMAIN は追加しない (バッファを次の MOVE_BUFFER_TO_ZONE に持ち越す)。
+      std::string sel_key = "$buffer_select";
+      Instruction wait(InstructionOp::WAIT_INPUT);
+      wait.args["query_type"] = "SELECT_FROM_BUFFER";
+      wait.args["count"] = count;
+      wait.args["out"] = sel_key;
+      out.push_back(wait);
+
+      Instruction move(InstructionOp::MOVE);
+      move.args["target"] = sel_key;
+      move.args["to"] = cmd.to_zone.empty() ? "HAND" : cmd.to_zone;
+      out.push_back(move);
+      // BUFFER_REMAIN は生成しない — バッファを後続の MOVE_BUFFER_TO_ZONE に持ち越すため
+
+    } else {
+      // [パターンB] amount 未指定・filter なし: 事前の SELECT_FROM_BUFFER が $buffer_select を設定済み。
+      Instruction move(InstructionOp::MOVE);
+      move.args["target"] = "$buffer_select";
+      move.args["to"] = cmd.to_zone.empty() ? "HAND" : cmd.to_zone;
+      out.push_back(move);
+
+      Instruction ret(InstructionOp::MOVE);
+      ret.args["target"] = "BUFFER_REMAIN";
+      ret.args["to"] = "DECK_BOTTOM";
+      out.push_back(ret);
+    }
   }
 }
 

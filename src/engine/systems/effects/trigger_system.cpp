@@ -43,7 +43,19 @@ namespace dm::engine::systems {
         }
 
         for (const auto& effect : active_effects) {
-            if (effect.trigger == trigger) {
+            // フェーズ2: TriggerDescriptor の trigger_list（OR結合）を優先して照合
+            // 再発防止: trigger_listが空でない場合、そちらを使う。空ならlegacy triggerフィールドを使う
+            bool trigger_match = false;
+            if (effect.trigger_descriptor.has_value() &&
+                !effect.trigger_descriptor->trigger_list.empty()) {
+                for (const auto& t : effect.trigger_descriptor->trigger_list) {
+                    if (t == trigger) { trigger_match = true; break; }
+                }
+            } else {
+                trigger_match = (effect.trigger == trigger);
+            }
+
+            if (trigger_match) {
                 // Ensure legacy behavior: only return if scope is NONE or SELF
                 if (effect.trigger_scope == TargetScope::NONE || effect.trigger_scope == TargetScope::SELF) {
                     matching_effects.push_back(effect);

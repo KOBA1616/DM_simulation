@@ -68,10 +68,13 @@ namespace dm::engine::systems {
 
              // Check if target is valid (Standard Rule: Must be tapped)
              const CardInstance* target_card = state.get_card_instance(target_id);
-             // Note: Some effects might allow attacking untapped creatures, but we enforce standard rules for now
              if (target_card && !target_card->is_tapped) {
-                 // TODO: Check for "can attack untapped creatures" effects
-                 // For now, in original code it returns (aborts)
+                 // TODO[優先度:中] アンタップクリーチャーへの攻撃許可エフェクト未実装。
+                 // 実装方法: PassiveEffectSystem に ALLOW_ATTACK_UNTAPPED 型を追加し、
+                 //   check_restriction() に対応するケースを追加する。
+                 // 対象カード例: 「セイバー」系キーワードを持つカード。
+                 // 再発防止: この return true を削除する前に
+                 //   test_restriction_system.py でアンタップ攻撃テストを追加すること。
                  return true;
              }
          }

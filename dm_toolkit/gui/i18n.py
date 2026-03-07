@@ -12,6 +12,17 @@ except ImportError:
 
 TRANSLATIONS: Dict[Any, str] = {}
 
+
+def _load_translation_pairs(pairs: list[tuple[str, Any]]) -> Dict[str, Any]:
+    """Load translation pairs while warning on duplicate keys."""
+    loaded: Dict[str, Any] = {}
+    for key, value in pairs:
+        # 再発防止: locale JSON の重複キーは後勝ちで静かに上書きされるため、ここで警告して検知する。
+        if key in loaded:
+            print(f"Warning: Duplicate translation key detected: {key}")
+        loaded[key] = value
+    return loaded
+
 def load_translations():
     global TRANSLATIONS
     # Load JSON
@@ -22,7 +33,7 @@ def load_translations():
 
     try:
         with open(json_path, "r", encoding="utf-8") as f:
-            TRANSLATIONS.update(json.load(f))
+            TRANSLATIONS.update(json.load(f, object_pairs_hook=_load_translation_pairs))
     except FileNotFoundError:
         print(f"Warning: Translation file not found at {json_path}")
 

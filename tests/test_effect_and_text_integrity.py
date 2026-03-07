@@ -66,6 +66,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.consistency import validate_trigger_scope_filter
+from dm_toolkit.consts import TRIGGER_TYPES
 
 # cards.json
 _CARDS_PATH = _PROJECT_ROOT / "data" / "cards.json"
@@ -350,6 +351,33 @@ class TestTriggerAndScopeIntegrity:
                 f"スコープ付きエフェクトでクラッシュ: {e}\n"
                 "再発防止: trigger_scope が NONE でない場合は _apply_trigger_scope を呼ぶこと"
             )
+
+    def test_all_current_trigger_types_have_japanese_mapping(self) -> None:
+        """現行TRIGGER_TYPESが生キーのまま表示されないことを確認する。"""
+        missing: List[str] = []
+        for trigger in TRIGGER_TYPES:
+            if trigger in ("NONE", "PASSIVE_CONST"):
+                continue
+            text = CardTextGenerator.trigger_to_japanese(trigger, is_spell=False)
+            if text == trigger or not text:
+                missing.append(trigger)
+
+        assert not missing, (
+            f"未翻訳または空のトリガーがあります: {missing}\n"
+            "再発防止: text_resources.py の TRIGGER_JAPANESE に現行TRIGGER_TYPESを追加すること"
+        )
+
+    def test_replacement_trigger_uses_pre_event_phrase(self) -> None:
+        """置換効果では「〜た時」ではなく「〜る時」の時制になることを確認する。"""
+        effect = _make_effect(
+            "ON_OPPONENT_CREATURE_ENTER",
+            [_make_command("DRAW_CARD", amount=1)],
+            mode="REPLACEMENT",
+            timing_mode="PRE",
+        )
+        text = CardTextGenerator._format_effect(effect, is_spell=False)
+        assert "相手のクリーチャーが出る時" in text, f"置換時制が未適用: {text}"
+        assert "相手のクリーチャーが出た時" not in text, f"置換時制が過去形のまま: {text}"
 
 
 # ===========================================================================
@@ -800,8 +828,9 @@ _CPP_IMPLEMENTED_COMMANDS: set = {
     "DRAW",
     # 置換効果: REPLACE_MOVE_CARD は GAME_ACTION(REPLACE_MOVE_CARD) を生成
     "REPLACE_MOVE_CARD",
-    # バッファ操作: デッキトップから選択するシェイパー実装
-    "REVEAL_TO_BUFFER", "SELECT_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE",
+    # バッファ操作: デッキトップから選択するシェイパー・デドダム実装
+    # 再発防止: LOOK_TO_BUFFER を追加したら command_system.cpp の switch 文にも必ず追加すること
+    "LOOK_TO_BUFFER", "REVEAL_TO_BUFFER", "SELECT_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE",
     "REGISTER_DELAYED_EFFECT",
 }
 

@@ -28,34 +28,68 @@ namespace dm::engine::systems {
 
     // Helper to map GameEvent to TriggerType
     // Returns TriggerType::NONE if no mapping exists
+    // 再発防止: 新しいTriggerTypeを追加したら必ずここのマッピングも更新すること
     static TriggerType map_event_to_trigger(const GameEvent& event) {
         if (event.type == EventType::ZONE_ENTER) {
-            if (event.context.count("to_zone") && event.context.at("to_zone") == (int)Zone::BATTLE) {
+            auto to   = event.context.count("to_zone")   ? event.context.at("to_zone")   : -1;
+            auto from = event.context.count("from_zone") ? event.context.at("from_zone") : -1;
+
+            // バトルゾーン参入 → ON_PLAY
+            if (to == (int)Zone::BATTLE) {
                 return TriggerType::ON_PLAY;
             }
-            if (event.context.count("to_zone") && event.context.at("to_zone") == (int)Zone::HAND &&
-                event.context.count("from_zone") && event.context.at("from_zone") == (int)Zone::DECK) {
+            // 山札→手札 = ドロー
+            if (to == (int)Zone::HAND && from == (int)Zone::DECK) {
                 return TriggerType::ON_DRAW;
             }
-            // Destruction Logic: Moved TO Graveyard FROM Battle Zone
-             if (event.context.count("to_zone") && event.context.at("to_zone") == (int)Zone::GRAVEYARD &&
-                 event.context.count("from_zone") && event.context.at("from_zone") == (int)Zone::BATTLE) {
-                 return TriggerType::ON_DESTROY;
-             }
+            // バトルゾーン→墓地 = 破壊（ON_DESTROY）
+            if (to == (int)Zone::GRAVEYARD && from == (int)Zone::BATTLE) {
+                return TriggerType::ON_DESTROY;
+            }
+            // 手札→墓地 = 捨て（ON_DISCARD）
+            if (to == (int)Zone::GRAVEYARD && from == (int)Zone::HAND) {
+                return TriggerType::ON_DISCARD;
+            }
+            // シールドゾーン追加
+            if (to == (int)Zone::SHIELD) {
+                return TriggerType::ON_SHIELD_ADD;
+            }
+        }
+        // バトルゾーンからの離脱（ON_EXIT）— 破壊以外も含む広範なトリガー
+        if (event.type == EventType::ZONE_LEAVE) {
+            auto from = event.context.count("from_zone") ? event.context.at("from_zone") : -1;
+            if (from == (int)Zone::BATTLE) {
+                return TriggerType::ON_EXIT;
+            }
         }
         if (event.type == EventType::ATTACK_INITIATE) {
             return TriggerType::ON_ATTACK;
         }
         if (event.type == EventType::BLOCK_INITIATE) {
-             return TriggerType::ON_BLOCK;
+            return TriggerType::ON_BLOCK;
+        }
+        if (event.type == EventType::BATTLE_WIN) {
+            return TriggerType::ON_BATTLE_WIN;
+        }
+        if (event.type == EventType::BATTLE_LOSE) {
+            return TriggerType::ON_BATTLE_LOSE;
         }
         if (event.type == EventType::SHIELD_BREAK) {
             return TriggerType::AT_BREAK_SHIELD;
         }
         if (event.type == EventType::PLAY_CARD) {
-             if (event.context.count("is_spell") && event.context.at("is_spell") == 1) {
-                 return TriggerType::ON_CAST_SPELL;
-             }
+            if (event.context.count("is_spell") && event.context.at("is_spell") == 1) {
+                return TriggerType::ON_CAST_SPELL;
+            }
+        }
+        if (event.type == EventType::TURN_END) {
+            return TriggerType::ON_TURN_END;
+        }
+        if (event.type == EventType::TAP_CARD) {
+            return TriggerType::ON_TAP;
+        }
+        if (event.type == EventType::UNTAP_CARD) {
+            return TriggerType::ON_UNTAP;
         }
         return TriggerType::NONE;
     }
@@ -68,9 +102,9 @@ namespace dm::engine::systems {
         // 再発防止: ON_PLAYはpipelineのCHECK_CREATURE_ENTER_TRIGGERSで処理済み。
         // TransitionCommand→ZONE_ENTER経由でTriggerManagerが発火すると、
         // TriggerSystem::resolve_triggerと合わせてON_PLAYが二重発火する。
-        // MCTSクローン状態ではevent_dispatcherがコピーされないため、
-        // クローンでは1回・ルートゲームでは2回と不整合になる。
-        // ON_CASTSPELLもCHECK_SPELL_CAST_TRIGGERSで処理されるため同様にスキップ。
+        // ON_CAST_SPELLもCHECK_SPELL_CAST_TRIGGERSで処理されるため同様にスキップ。
+        // ON_EXIT/ON_DISCARDはZONE_LEAVEから派生するが、map_event_to_triggerがON_EXIT返す場合に
+        // 二重処理が発生しないよう確認済み（ZONE_LEAVEは直接TriggerSystem経由では呼ばれない）。
         if (trigger_type == TriggerType::ON_PLAY ||
             trigger_type == TriggerType::ON_CAST_SPELL) {
             return;
@@ -99,7 +133,18 @@ namespace dm::engine::systems {
                 active_effects.insert(active_effects.end(), def->effects.begin(), def->effects.end());
 
                 for (const auto& effect : active_effects) {
-                    if (effect.trigger == trigger_type) {
+                    // フェーズ2: TriggerDescriptor の trigger_list（OR結合）を優先して照合
+                    bool trigger_match = false;
+                    if (effect.trigger_descriptor.has_value() &&
+                        !effect.trigger_descriptor->trigger_list.empty()) {
+                        for (const auto& t : effect.trigger_descriptor->trigger_list) {
+                            if (t == trigger_type) { trigger_match = true; break; }
+                        }
+                    } else {
+                        trigger_match = (effect.trigger == trigger_type);
+                    }
+
+                    if (trigger_match) {
                         bool condition_met = false;
                         TargetScope scope = effect.trigger_scope;
 

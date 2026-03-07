@@ -262,8 +262,12 @@ pybind11_add_module(dm_ai_module
 target_link_libraries(dm_ai_module PRIVATE dm_core)
 
 # Output the extension module to the bin/ directory
+# 再発防止: pybind11_add_module は MODULE ターゲットを生成する。
+#   Windows では MODULE (.pyd) は DLL として扱われ RUNTIME_OUTPUT_DIRECTORY に配置される。
+#   LIBRARY_OUTPUT_DIRECTORY だけでは bin/Release/ に配置されないため両方設定すること。
 set_target_properties(dm_ai_module PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
 )
 
 # --- Testing (CTest) ---

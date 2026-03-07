@@ -127,6 +127,14 @@ class GameResult:
 	P2_WIN: int
 	DRAW: int
 
+# フェーズ4: ResolutionPriority — 解決優先度（小さいほど先に解決）
+# 再発防止: REPLACEMENT < INTERRUPT < NORMAL の順。
+#   S・トリガー等の割り込みは INTERRUPT を指定すること。
+class ResolutionPriority(IntEnum):
+    REPLACEMENT = 0  # 置換効果（最優先）
+    INTERRUPT   = 1  # 割り込み型: S・トリガー, G・ストライク, 忍者ストライク
+    NORMAL      = 2  # 通常の誘発型能力（APNAP 順で解決）
+
 # ── CommandDef / CommandType ─────────────────────────────────────────────────
 # 再発防止: CommandType は dm/core/card_json_types.hpp の enum class。
 #           Python 側は必ず CommandDef を使い、Action / dict は使わないこと。

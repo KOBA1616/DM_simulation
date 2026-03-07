@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
     QWidget, QGroupBox, QGridLayout, QLabel, QCheckBox, QComboBox, QSpinBox,
-    QLineEdit, QVBoxLayout, QPushButton, QFrame
+    QLineEdit, QVBoxLayout, QPushButton, QFrame, QHBoxLayout
 )
 from PyQt6.QtCore import pyqtSignal
 from dm_toolkit.gui.i18n import tr
@@ -26,10 +26,26 @@ class FilterEditorWidget(QWidget):
         # Using a vertical layout to stack groups
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(6)
+
+        header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(8)
+        self.summary_label = QLabel()
+        self.summary_label.setStyleSheet("color: #666; font-size: 11px;")
+        self.clear_btn = QPushButton(tr("Clear Filter"))
+        self.clear_btn.setToolTip(tr("Reset all filter conditions"))
+        self.clear_btn.clicked.connect(self.clear_filter)
+        header_layout.addWidget(self.summary_label)
+        header_layout.addStretch()
+        header_layout.addWidget(self.clear_btn)
+        main_layout.addLayout(header_layout)
 
         # 1. Basic Properties (Zones, Types, Civs)
         self.basic_group = QGroupBox(tr("基本フィルター"))
         basic_layout = QGridLayout(self.basic_group)
+        basic_layout.setHorizontalSpacing(10)
+        basic_layout.setVerticalSpacing(6)
         main_layout.addWidget(self.basic_group)
 
         # Zones – 1つのトグルでまとめて折り畳み
@@ -61,7 +77,8 @@ class FilterEditorWidget(QWidget):
         zone_section_layout.addWidget(_zone_toggle_btn)
         zone_section_layout.addWidget(_zone_content)
         self.zone_group_buttons: list = [(_zone_toggle_btn, _zone_content)]
-        basic_layout.addWidget(QLabel(tr("ゾーン:")), 0, 0, alignment=__import__('PyQt6.QtCore', fromlist=['Qt']).Qt.AlignmentFlag.AlignTop)
+        self.zone_label = QLabel(tr("ゾーン:"))
+        basic_layout.addWidget(self.zone_label, 0, 0, alignment=__import__('PyQt6.QtCore', fromlist=['Qt']).Qt.AlignmentFlag.AlignTop)
         basic_layout.addWidget(zone_section, 0, 1)
 
         # Types – 単一トグルで折り畳み（デフォルトで閉じた状態）
@@ -90,7 +107,9 @@ class FilterEditorWidget(QWidget):
         _type_section_layout.setSpacing(2)
         _type_section_layout.addWidget(_type_toggle_btn)
         _type_section_layout.addWidget(_type_content)
-        basic_layout.addWidget(_type_section, 1, 0, 1, 2)  # 列をまたいで配置
+        self.type_label = QLabel(tr("カードタイプ:"))
+        basic_layout.addWidget(self.type_label, 1, 0, alignment=__import__('PyQt6.QtCore', fromlist=['Qt']).Qt.AlignmentFlag.AlignTop)
+        basic_layout.addWidget(_type_section, 1, 1)
 
         # Civilizations
         self.civ_label = QLabel(tr("文明:"))
@@ -111,6 +130,8 @@ class FilterEditorWidget(QWidget):
         # 再発防止: ラベルはすべて日本語で統一。英語表記を追加しないこと。
         self.stats_group = QGroupBox(tr("ステータスフィルター"))
         stats_layout = QGridLayout(self.stats_group)
+        stats_layout.setHorizontalSpacing(10)
+        stats_layout.setVerticalSpacing(6)
         main_layout.addWidget(self.stats_group)
 
         stats_layout.addWidget(QLabel(tr("コスト:")), 0, 0)
@@ -179,6 +200,8 @@ class FilterEditorWidget(QWidget):
         # 再発防止: ラベルはすべて日本語で統一。英語表記を追加しないこと。
         self.flags_group = QGroupBox(tr("フラグフィルター"))
         flags_layout = QGridLayout(self.flags_group)
+        flags_layout.setHorizontalSpacing(10)
+        flags_layout.setVerticalSpacing(6)
         main_layout.addWidget(self.flags_group)
 
         # Helper to create tri-state combos
@@ -216,6 +239,8 @@ class FilterEditorWidget(QWidget):
         # 再発防止: ラベルはすべて日本語で統一。英語表記を追加しないこと。
         self.sel_group = QGroupBox(tr("選択設定"))
         sel_layout = QGridLayout(self.sel_group)
+        sel_layout.setHorizontalSpacing(10)
+        sel_layout.setVerticalSpacing(6)
         main_layout.addWidget(self.sel_group)
 
         self.mode_label = QLabel(tr("選択モード"))
@@ -266,8 +291,76 @@ class FilterEditorWidget(QWidget):
         self.sort_mode_combo.currentIndexChanged.connect(self.filterChanged.emit)
         self.sort_key_combo.currentIndexChanged.connect(self.filterChanged.emit)
 
+        self.filterChanged.connect(self.update_summary_label)
+
         self.on_mode_changed() # Init visibility
         self.on_sort_mode_changed()
+        self.update_summary_label()
+
+    def clear_filter(self):
+        """Reset all filter inputs to their defaults."""
+        self.blockSignals(True)
+        try:
+            for cb in self.zone_checks.values():
+                cb.setChecked(False)
+            for cb in self.type_checks.values():
+                cb.setChecked(False)
+            self.civ_selector.set_selected_civs([])
+            self.races_edit.clear()
+
+            self.min_cost_spin.setValue(-1)
+            self.max_cost_spin.setValue(-1)
+            self.exact_cost_spin.setValue(-1)
+            self.cost_ref_edit.clear()
+            self.min_power_spin.setValue(-1)
+            self.max_power_spin.setValue(-1)
+
+            self.tapped_combo.setCurrentIndex(0)
+            self.blocker_combo.setCurrentIndex(0)
+            self.evolution_combo.setCurrentIndex(0)
+            self.card_designation_combo.setCurrentIndex(0)
+            self.trigger_source_check.setChecked(False)
+
+            self.mode_combo.setCurrentIndex(0)
+            self.count_spin.setValue(1)
+            self.sort_mode_combo.setCurrentIndex(0)
+            self.sort_key_combo.setCurrentIndex(0)
+        finally:
+            self.blockSignals(False)
+
+        # 再発防止: 一括リセット後も要約表示と外部フォーム保存を確実に同期する。
+        self.on_mode_changed()
+        self.on_sort_mode_changed()
+        self.update_summary_label()
+        self.filterChanged.emit()
+
+    def update_summary_label(self):
+        """Show a compact summary of active filter conditions."""
+        filt = self.get_data()
+        parts: list[str] = []
+
+        if filt.get('zones'):
+            parts.append(tr("Zones {count}").format(count=len(filt['zones'])))
+        if filt.get('types'):
+            parts.append(tr("Types {count}").format(count=len(filt['types'])))
+        if filt.get('civilizations'):
+            parts.append(tr("Civilizations {count}").format(count=len(filt['civilizations'])))
+        if filt.get('races'):
+            parts.append(tr("Races {count}").format(count=len(filt['races'])))
+
+        if any(k in filt for k in ('min_cost', 'max_cost', 'exact_cost', 'cost_ref')):
+            parts.append(tr("Cost"))
+        if any(k in filt for k in ('min_power', 'max_power')):
+            parts.append(tr("Power"))
+        if any(k in filt for k in ('is_tapped', 'is_blocker', 'is_evolution', 'is_card_designation', 'is_trigger_source')):
+            parts.append(tr("Flags"))
+        if any(k in filt for k in ('count', 'selection_mode', 'selection_sort_key')):
+            parts.append(tr("Selection"))
+
+        if parts:
+            self.summary_label.setText(tr("Active filters: {count}").format(count=len(parts)) + " / " + " ・ ".join(parts))
+        else:
+            self.summary_label.setText(tr("No filters set"))
 
     def on_mode_changed(self):
         mode = self.mode_combo.currentData()
