@@ -8,6 +8,24 @@ class CardTextGenerator:
     Generates Japanese rule text for Duel Masters cards based on JSON data.
     """
 
+    # Trigger text templates organized by trigger type and timing mode.
+    # 再発防止: タイミング(PRE/POST)・スコープ・トリガータイプを
+    # 1か所で変数的に組み立て、個別分岐の散在による文面不一致を防ぐ。
+    TRIGGER_COMPOSITION_TEMPLATES: Dict[str, Dict[str, str]] = {
+        "ON_PLAY": {
+            "POST": "{scope_text}の{subject}がバトルゾーンに出た時",
+            "PRE": "{scope_text}の{subject}がバトルゾーンに出る時",
+        },
+        "ON_OTHER_ENTER": {
+            "POST": "{scope_text}の他の{subject}がバトルゾーンに出た時",
+            "PRE": "{scope_text}の他の{subject}がバトルゾーンに出る時",
+        },
+        "ON_CAST_SPELL": {
+            "POST": "{scope_text}の{subject}を唱えた時",
+            "PRE": "{scope_text}の{subject}を唱える時",
+        },
+    }
+
     @classmethod
     def generate_text(cls, data: Dict[str, Any], include_twinpact: bool = True) -> str:
         """
@@ -725,16 +743,23 @@ class CardTextGenerator:
         
         trigger = effect.get("trigger", "NONE")
         trigger_scope = effect.get("trigger_scope", "NONE")
+        timing_mode = cls._resolve_effect_timing_mode(effect)
         condition = effect.get("condition", {})
         if condition is None:
             condition = {}
         actions = effect.get("actions", [])
 
-        trigger_text = cls.trigger_to_japanese(trigger, is_spell)
+        trigger_text = cls.trigger_to_japanese(trigger, is_spell, effect=effect)
 
         # Apply trigger scope (NEW: Add prefix based on scope)
         if trigger_scope and trigger_scope != "NONE" and trigger != "PASSIVE_CONST":
-            trigger_text = cls._apply_trigger_scope(trigger_text, trigger_scope, trigger, effect.get("trigger_filter", {}))
+            trigger_text = cls._apply_trigger_scope(
+                trigger_text,
+                trigger_scope,
+                trigger,
+                effect.get("trigger_filter", {}),
+                timing_mode=timing_mode,
+            )
 
         cond_text = cls._format_condition(condition)
         cond_type = condition.get("type", "NONE")
@@ -779,7 +804,14 @@ class CardTextGenerator:
              return f"{cond_text}{full_action_text}"
 
     @classmethod
-    def _apply_trigger_scope(cls, trigger_text: str, scope: str, trigger_type: str, trigger_filter: Dict[str, Any] = None) -> str:
+    def _apply_trigger_scope(
+        cls,
+        trigger_text: str,
+        scope: str,
+        trigger_type: str,
+        trigger_filter: Dict[str, Any] = None,
+        timing_mode: str = "POST",
+    ) -> str:
         """
         Apply scope prefix to trigger text (e.g., "ON_CAST_SPELL" + "OPPONENT" -> "相手が呪文を唱えた時").
         """
@@ -919,29 +951,17 @@ class CardTextGenerator:
                 return f"{adj_str}の{noun}"
             return noun
 
-        # Handle ON_PLAY with specific scope (e.g. Opponent's Creature Enters)
-        if trigger_type == "ON_PLAY" and (scope == "OPPONENT" or scope == "PLAYER_OPPONENT"):
-            subject = _compose_subject_from_filter("CREATURE")
-            return f"{scope_text}の{subject}がバトルゾーンに出た時"
-
-        # ON_PLAY for SELF scope
-        if trigger_type == "ON_PLAY" and (scope == "SELF" or scope == "PLAYER_SELF"):
-            subject = _compose_subject_from_filter("CREATURE")
-            return f"{scope_text}の{subject}がバトルゾーンに出た時"
-
-        # Specific mappings for natural Japanese particles
-        if trigger_type == "ON_OTHER_ENTER":
-            # Compose with subject details
-            subject = _compose_subject_from_filter("CREATURE")
-            # "他の..." prefix to subject
-            if subject:
-                subject = "他の" + subject
-            return f"{scope_text}の{subject}がバトルゾーンに出た時"
-
-        if trigger_type == "ON_CAST_SPELL":
-            # "呪文を..." -> include filter adjectives
-            subject = _compose_subject_from_filter("SPELL")
-            return f"{scope_text}の{subject}を唱えた時"
+        # Structured template composition (timing/scope/trigger as variables)
+        tmpl_set = cls.TRIGGER_COMPOSITION_TEMPLATES.get(trigger_type)
+        if tmpl_set:
+            timing_key = str(timing_mode or "").upper()
+            if timing_key not in ("PRE", "POST"):
+                timing_key = "PRE" if cls._looks_like_pre_timing(trigger_text) else "POST"
+            tmpl = tmpl_set.get(timing_key) or tmpl_set.get("POST")
+            if tmpl:
+                default_type = "SPELL" if trigger_type == "ON_CAST_SPELL" else "CREATURE"
+                subject = _compose_subject_from_filter(default_type)
+                return tmpl.format(scope_text=scope_text, subject=subject)
 
         if trigger_type == "ON_SHIELD_ADD":
              # "カードがシールドゾーンに..." -> replace "シールドゾーン" with "自分の/相手のシールドゾーン"
@@ -957,9 +977,54 @@ class CardTextGenerator:
         return f"{scope_text}の{trigger_text}"
 
     @classmethod
-    def trigger_to_japanese(cls, trigger: str, is_spell: bool = False) -> str:
-        """Get Japanese text for trigger event. Uses CardTextResources."""
-        return CardTextResources.get_trigger_text(trigger, is_spell=is_spell)
+    def _resolve_effect_timing_mode(cls, effect: Dict[str, Any]) -> str:
+        """Normalize effect timing mode for text composition."""
+        if not isinstance(effect, dict):
+            return "POST"
+        mode = str(effect.get("timing_mode", "") or "").upper()
+        if mode in ("PRE", "POST"):
+            return mode
+        return "PRE" if cls.is_replacement_effect(effect) else "POST"
+
+    @classmethod
+    def _looks_like_pre_timing(cls, trigger_text: str) -> bool:
+        """Best-effort check whether trigger text is already in PRE/replacement tone."""
+        if not trigger_text:
+            return False
+        return any(token in trigger_text for token in ("出る時", "唱える時", "引く時", "置かれる時", "される時", "する時"))
+
+    @classmethod
+    def _to_replacement_trigger_text(cls, trigger_text: str) -> str:
+        """Convert post-event trigger text (〜た時) into replacement tone (〜る時)."""
+        text = trigger_text
+        replacements = [
+            ("された時", "される時"),
+            ("置かれた時", "置かれる時"),
+            ("唱えた時", "唱える時"),
+            ("引いた時", "引く時"),
+            ("出た時", "出る時"),
+            ("した時", "する時"),
+            ("った時", "る時"),
+        ]
+        for src, dst in replacements:
+            if src in text:
+                return text.replace(src, dst)
+        return text
+
+    @classmethod
+    def is_replacement_effect(cls, effect: Dict[str, Any]) -> bool:
+        """Return True if the effect should be rendered as PRE/replacement timing."""
+        if not isinstance(effect, dict):
+            return False
+        return effect.get("mode") == "REPLACEMENT" or effect.get("timing_mode") == "PRE"
+
+    @classmethod
+    def trigger_to_japanese(cls, trigger: str, is_spell: bool = False, effect: Dict[str, Any] = None) -> str:
+        """Get Japanese trigger text, applying replacement phrasing when needed."""
+        base = CardTextResources.get_trigger_text(trigger, is_spell=is_spell)
+        if effect is not None and cls.is_replacement_effect(effect):
+            return cls._to_replacement_trigger_text(base)
+        return base
 
     @classmethod
     def _normalize_zone_name(cls, zone: str) -> str:
@@ -1391,9 +1456,34 @@ class CardTextGenerator:
              return f"選んだカード（{target_str}）を使う。"
 
         elif atype == "MOVE_BUFFER_TO_ZONE":
-             # 再発防止: amount 未指定(val1==0)や全選択(-1)の場合は "すべて" と表示する。
-             #   1枚固定表示はSELECT_FROM_BUFFER で全選択した場合と矛盾するため。
+             # 再発防止: target_filter がある場合は暗黙的選択（ユーザー入力不要）。
+             #   フィルターなし=SELECT_FROM_BUFFER で設定した $buffer_select を使う。
              to_zone = tr(action.get("to_zone", "HAND"))
+             filter_def = action.get("filter") or action.get("target_filter") or {}
+             civs = filter_def.get("civilizations", []) if filter_def else []
+             types = filter_def.get("types", []) if filter_def else []
+             races = filter_def.get("races", []) if filter_def else []
+             has_filter = bool(civs or types or races)
+             if has_filter:
+                 # 暗黙的選択テキスト
+                 civ_part = ""
+                 if civs:
+                     civ_part = "/".join(CardTextResources.get_civilization_text(c) for c in civs) + "の"
+                 if races:
+                     type_part = "/".join(races)
+                 elif "ELEMENT" in types:
+                     type_part = "エレメント"
+                 elif "SPELL" in types and "CREATURE" not in types:
+                     type_part = "呪文"
+                 elif "CREATURE" in types:
+                     type_part = "クリーチャー"
+                 elif types:
+                     type_part = "/".join(tr(t) for t in types if t)
+                 else:
+                     type_part = "カード"
+                 qty = f"{val1}枚" if val1 > 0 else "すべて"
+                 return f"見た{civ_part}{type_part}{qty}を{to_zone}に置く。"
+             # インタラクティブ選択テキスト（SELECT_FROM_BUFFER と組み合わせ）
              if val1 > 0:
                  return f"選んだカードを{val1}枚{to_zone}に置く。"
              return f"選んだカードをすべて{to_zone}に置く。"

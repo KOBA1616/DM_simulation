@@ -130,6 +130,12 @@ class CommandModel(BaseModel):
 class EffectModel(BaseModel):
     uid: str = Field(default_factory=generate_uid)
     trigger: str = "NONE" # ON_PLAY, ON_ATTACK etc.
+    # 再発防止: プレビュー再構築時に mode/timing/scope/filter が欠落すると
+    # 置換文面（〜る時）やスコープ文面が反映されなくなるため、EffectModel に明示定義する。
+    mode: Optional[str] = None                  # TRIGGERED / REPLACEMENT
+    timing_mode: Optional[str] = None           # PRE / POST
+    trigger_scope: str = "NONE"                # NONE / PLAYER_SELF / PLAYER_OPPONENT / ALL_PLAYERS
+    trigger_filter: Dict[str, Any] = Field(default_factory=dict)
     condition: Optional[ConditionModel] = None # トリガー条件
     commands: List[CommandModel] = Field(default_factory=list) # 実行されるコマンド列
 
