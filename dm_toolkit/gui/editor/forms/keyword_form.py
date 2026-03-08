@@ -75,20 +75,20 @@ class KeywordEditForm(BaseEditForm):
 
         # Revolution Change
         self.rev_change_check = QCheckBox(tr("Revolution Change"))
-        self.rev_change_check.setToolTip("革命チェンジを有効にすると、必要なロジックツリー構造が生成されます。")
+        self.rev_change_check.setToolTip(tr("革命チェンジを有効にすると、必要なロジックツリー構造が生成されます。"))
         self.rev_change_check.stateChanged.connect(self.toggle_rev_change)
         special_layout.addWidget(self.rev_change_check)
         # 再発防止: 革命チェンジ種族はノード内 target_filter で設定するためフォームに種族欄を持たない。
 
         # Mekraid
         self.mekraid_check = QCheckBox(tr("Mekraid"))
-        self.mekraid_check.setToolTip("メクレイドを有効にすると、プレイ時の効果が自動で追加されます。")
+        self.mekraid_check.setToolTip(tr("メクレイドを有効にすると、プレイ時の効果が自動で追加されます。"))
         self.mekraid_check.stateChanged.connect(self.toggle_mekraid)
         special_layout.addWidget(self.mekraid_check)
 
         # Friend Burst
         self.friend_burst_check = QCheckBox(tr("Friend Burst"))
-        self.friend_burst_check.setToolTip("フレンド・バーストを有効にすると、攻撃時の効果が自動で追加されます。")
+        self.friend_burst_check.setToolTip(tr("フレンド・バーストを有効にすると、攻撃時の効果が自動で追加されます。"))
         self.friend_burst_check.stateChanged.connect(self.toggle_friend_burst)
         special_layout.addWidget(self.friend_burst_check)
 
@@ -106,7 +106,7 @@ class KeywordEditForm(BaseEditForm):
 
         # Mega Last Burst
         self.mega_last_burst_check = QCheckBox(tr("Mega Last Burst"))
-        self.mega_last_burst_check.setToolTip("メガ・ラスト・バーストを有効にすると、破壊時の効果が自動で追加されます。")
+        self.mega_last_burst_check.setToolTip(tr("メガ・ラスト・バーストを有効にすると、破壊時の効果が自動で追加されます。"))
         self.mega_last_burst_check.stateChanged.connect(self.toggle_mega_last_burst)
         special_layout.addWidget(self.mega_last_burst_check)
 
@@ -184,7 +184,7 @@ class KeywordEditForm(BaseEditForm):
         fb_cond = data.get('friend_burst_condition', {})
         if isinstance(fb_cond, dict):
             fb_races = fb_cond.get('races', [])
-            self.fb_race_edit.setText(', '.join(fb_races) if fb_races else '')
+            self.fb_race_edit.setText(tr(", ").join(fb_races) if fb_races else '')
         self.friend_burst_check.blockSignals(False)
 
         self.mega_last_burst_check.blockSignals(True)

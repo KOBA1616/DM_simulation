@@ -152,7 +152,7 @@ class RacesEditorWidget(TextWidget):
 
     def set_value(self, value):
         if isinstance(value, list):
-            self.setText(", ".join(value))
+            self.setText(tr(", ").join(value))
         else:
             self.setText(str(value))
 
@@ -374,7 +374,8 @@ def _create_enum_widget(parent, schema, cb):
                 widget.addItem(member.name, member.value) # or member.name depending on usage
         except Exception as e:
             print(f"Failed to load enum {source}: {e}")
-            widget.addItem("ERROR", None)
+            from dm_toolkit.gui.i18n import tr as _tr
+            widget.addItem(_tr("ERROR"), None)
 
     widget.currentIndexChanged.connect(lambda: cb())
     return widget

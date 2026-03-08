@@ -3,8 +3,8 @@ try:
     from PyQt6.QtWidgets import (
         QFrame, QVBoxLayout, QLabel, QHBoxLayout, QMenu
     )
-    from PyQt6.QtCore import Qt, pyqtSignal
-    from PyQt6.QtGui import QAction, QCursor
+    from PyQt6.QtCore import Qt, pyqtSignal, QRect
+    from PyQt6.QtGui import QAction, QCursor, QPainter, QColor, QPen
 except Exception:
     # Headless / PyQt not installed: provide lightweight shims so tests can import GUI modules
     class _DummySignal:
@@ -102,6 +102,73 @@ except Exception:
 from dm_toolkit.gui.styles.civ_colors import CIV_COLORS_FOREGROUND, CIV_COLORS_BACKGROUND
 from dm_toolkit.gui.i18n import tr
 
+# 再発防止: preview_pane.py からの import は循環依存リスクがあるため使用しない。
+# ManaCostLabel と同等のパイチャートウィジェットをインラインで定義する。
+class _CivCostOrb(QLabel):
+    """コストサークルをパイチャートで文明色に塗り分けるラベル（多色対応）。"""
+    def __init__(self, text: str = "", parent=None):
+        super().__init__(text, parent)
+        self._civs: list = []
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setStyleSheet(
+            "font-weight: bold; font-size: 10px; color: white; "
+            "background-color: transparent; padding: 0px;"
+        )
+
+    def set_civs(self, civs: list) -> None:
+        self._civs = list(civs)
+        self.update()
+
+    def paintEvent(self, event):
+        try:
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            r = self.rect()
+            side = min(r.width(), r.height())
+            m = 1
+            draw_rect = QRect(
+                (r.width() - side) // 2 + m,
+                (r.height() - side) // 2 + m,
+                side - 2 * m,
+                side - 2 * m,
+            )
+            if draw_rect.width() <= 0:
+                painter.end()
+                return
+            civs = self._civs
+            if not civs:
+                painter.setBrush(QColor("#A9A9A9"))
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.drawEllipse(draw_rect)
+            elif len(civs) == 1:
+                painter.setBrush(QColor(CIV_COLORS_FOREGROUND.get(civs[0], "#A9A9A9")))
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.drawEllipse(draw_rect)
+            else:
+                n = len(civs)
+                total = 360 * 16
+                base = 90 * 16
+                for i, civ in enumerate(civs):
+                    painter.setBrush(QColor(CIV_COLORS_FOREGROUND.get(civ, "#A9A9A9")))
+                    painter.setPen(Qt.PenStyle.NoPen)
+                    a_start = base + (total * i) // n
+                    a_end = base + (total * (i + 1)) // n
+                    painter.drawPie(draw_rect, a_start, a_end - a_start)
+            pen = QPen(Qt.GlobalColor.black)
+            pen.setWidth(1)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.setPen(pen)
+            painter.drawEllipse(draw_rect)
+            font = self.font()
+            font.setBold(True)
+            font.setPixelSize(max(7, int(draw_rect.width() * 0.55)))
+            painter.setFont(font)
+            painter.setPen(Qt.GlobalColor.white)
+            painter.drawText(draw_rect, Qt.AlignmentFlag.AlignCenter, self.text())
+            painter.end()
+        except Exception:
+            super().paintEvent(event)
+
 class CardWidget(QFrame):
     clicked = pyqtSignal(int)  # Emits instance_id
     hovered = pyqtSignal(int)  # Emits card_id
@@ -130,7 +197,9 @@ class CardWidget(QFrame):
             self.civs = [civ] if civ else []
 
         self.tapped = tapped
-        self.selected = False  # Selection state
+        self.selected = False       # 選択状態（対象選択時の確定選択）
+        self.highlight_legal = False   # 方針A: 操作可能カード（緑枠）
+        self.highlight_target = False  # 方針A: 有効対象カード（黄枠）
         self.instance_id = instance_id
         self.is_face_down = is_face_down
 
@@ -156,7 +225,26 @@ class CardWidget(QFrame):
         )
 
         self.init_ui()
+        # 暗転オーバーレイ: タップ時に黒半透明フレームを重ねて明度を下げる
+        # 再発防止: QGraphicsOpacityEffect は薄くする（透過）効果のため使用しない
+        self._tap_overlay = QFrame(self)
+        self._tap_overlay.setFixedSize(100, 140)
+        self._tap_overlay.setStyleSheet(
+            "background-color: rgba(0, 0, 0, 130); border-radius: 5px;"
+        )
+        self._tap_overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self._tap_overlay.setVisible(False)
         self.update_style()
+        self._apply_tap_effect()
+
+    def _apply_tap_effect(self):
+        """タップ済みカードに暗転オーバーレイを表示して明度を下げる。アンタップ時は非表示。"""
+        try:
+            self._tap_overlay.setVisible(self.tapped)
+            if self.tapped:
+                self._tap_overlay.raise_()
+        except Exception:
+            pass
 
     def update_legal_commands(self, commands):
         self.legal_commands = commands
@@ -198,18 +286,18 @@ class CardWidget(QFrame):
             # Simple heuristic for display text (localized)
             label = action_str
             if "Play" in action_str:
-                label = "カードをプレイ"
+                label = tr("Play Card")
             elif "Attack" in action_str:
                 if "Player" in action_str:
-                    label = "プレイヤーを攻撃"
+                    label = tr("Attack Player")
                 elif "Creature" in action_str:
-                    label = "クリーチャーを攻撃"
+                    label = tr("Attack Creature")
                 else:
-                    label = "攻撃"
+                    label = tr("Attack")
             elif "Mana" in action_str:
                 label = tr("MANA_CHARGE")
             elif "Use Ability" in action_str:
-                label = "能力を使用"
+                label = tr("Use Ability")
 
             # De-duplicate identical labels if multiple similar actions exist (e.g. attack different shields)
             # For simplicity, if we have multiple Attack Player (different shields), we might want to just show one "Attack Player"
@@ -233,10 +321,11 @@ class CardWidget(QFrame):
         header_layout.setSpacing(2)
         header_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Cost Circle
-        self.cost_label = QLabel(str(self.cost))
+        # Cost Circle — _CivCostOrb でパイチャート表示（プレビューと統一）
+        # 再発防止: 多色カードで最初の文明色のみ使う問題を解消
+        self.cost_label = _CivCostOrb(str(self.cost))
         self.cost_label.setFixedSize(24, 24)
-        self.cost_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.cost_label.set_civs(self.civs)
 
         # Hide cost label if face down
         if self.is_face_down:
@@ -282,31 +371,30 @@ class CardWidget(QFrame):
         return CIV_COLORS_BACKGROUND.get(civ, "#FFFFFF")
 
     def update_style(self):
-        # 1. Update Cost Circle Style (Multicolor Split)
-        circle_style = (
-            "font-weight: bold; font-size: 10px; color: white; "
-            "border: 1px solid black; border-radius: 12px; padding: 0px;"
-        )
+        # 1. Cost Circle 更新（_CivCostOrb は set_civs で再描画）
+        if hasattr(self.cost_label, 'set_civs'):
+            self.cost_label.set_civs(self.civs)
+        else:
+            c = CIV_COLORS_FOREGROUND.get(self.civs[0], "#A9A9A9") if self.civs else "#A9A9A9"
+            self.cost_label.setStyleSheet(
+                f"font-weight: bold; font-size: 10px; color: white; "
+                f"border: 1px solid black; border-radius: 12px; background-color: {c};"
+            )
 
-        if not self.civs:
-            circle_bg = "background-color: #A9A9A9;"
-        elif len(self.civs) >= 1:
-            c = self.get_civ_color(self.civs[0])
-            circle_bg = f"background-color: {c};"
-
-        self.cost_label.setStyleSheet(circle_style + circle_bg)
 
         # 2. Update Card Background Style
         border_color = '#555'
         border_width = '2px'
 
-        if self.tapped:
-            border_color = 'red'
-            border_width = '3px'
-
         if self.selected:
-            border_color = '#00FF00'  # Bright green for selection
+            border_color = '#FF3333'  # 確定選択: 赤枠
             border_width = '4px'
+        elif self.highlight_target:
+            border_color = '#FFD700'  # 有効対象: 黄枠（方針A）
+            border_width = '3px'
+        elif self.highlight_legal:
+            border_color = '#00CC44'  # 操作可能: 明るい緑枠（方針A）
+            border_width = '3px'
 
         if not self.civs:
             bg_style = "background-color: #FFFFFF;"
@@ -333,16 +421,33 @@ class CardWidget(QFrame):
                 border-radius: 5px;
             }}
             CardWidget:hover {{
-                border: {border_width} solid {'#0078d7' if not self.selected else '#32CD32'};
+                border: {border_width} solid {'#0078d7' if not self.selected else '#FF3333'};
             }}
         """)
 
     def set_tapped(self, tapped):
         self.tapped = tapped
         self.update_style()
+        self._apply_tap_effect()
 
     def set_selected(self, selected):
         self.selected = selected
+        self.update_style()
+
+    def set_highlight_legal(self, val: bool):
+        """操作可能カードとして緑枠ハイライトする（方針A）。"""
+        self.highlight_legal = val
+        self.update_style()
+
+    def set_highlight_target(self, val: bool):
+        """有効対象カードとして黄枠ハイライトする（方針A）。"""
+        self.highlight_target = val
+        self.update_style()
+
+    def clear_highlights(self):
+        """全ハイライトをリセットする。"""
+        self.highlight_legal = False
+        self.highlight_target = False
         self.update_style()
 
     def mousePressEvent(self, a0):

@@ -28,7 +28,9 @@ class ReactionEditForm(BaseEditForm):
 
         # Type
         self.type_combo = QComboBox()
-        self.type_combo.addItems(["NONE", "NINJA_STRIKE", "STRIKE_BACK", "REVOLUTION_0_TRIGGER"])
+        # 再発防止: addItem(表示テキスト, 生値) パターン。保存時は currentData() を使用する。
+        for raw in ["NONE", "NINJA_STRIKE", "STRIKE_BACK", "REVOLUTION_0_TRIGGER"]:
+            self.type_combo.addItem(tr(raw), raw)
         self.type_combo.currentIndexChanged.connect(self.update_data)
         self.type_combo.currentIndexChanged.connect(self.update_visibility)
         layout.addRow(tr("Type"), self.type_combo)
@@ -43,8 +45,10 @@ class ReactionEditForm(BaseEditForm):
         # Zone
         self.label_zone = QLabel(tr("Zone"))
         self.zone_edit = QComboBox()
-        self.zone_edit.addItems(["HAND", "GRAVEYARD", "MANA_ZONE"])
-        self.zone_edit.currentTextChanged.connect(self.update_data)
+        # 再発防止: addItem(表示テキスト, 生値) パターン。保存時は currentData() を使用する。
+        for raw in ["HAND", "GRAVEYARD", "MANA_ZONE"]:
+            self.zone_edit.addItem(tr(raw), raw)
+        self.zone_edit.currentIndexChanged.connect(self.update_data)
         layout.addRow(self.label_zone, self.zone_edit)
 
         # Condition Widget (Extracted)
@@ -89,9 +93,10 @@ class ReactionEditForm(BaseEditForm):
         self.update_visibility()
 
     def _save_ui_to_data(self, data):
-        data['type'] = self.type_combo.currentText()
+        # 再発防止: 翻訳表示のため currentData() で生値を取得する。currentText() 不可。
+        data['type'] = self.type_combo.currentData() or self.type_combo.currentText()
         data['cost'] = self.cost_spin.value()
-        data['zone'] = self.zone_edit.currentText()
+        data['zone'] = self.zone_edit.currentData() or self.zone_edit.currentText()
         data['condition'] = self.reaction_condition.get_data()
 
     def _get_display_text(self, data):
@@ -104,7 +109,10 @@ class ReactionEditForm(BaseEditForm):
         self.reaction_condition.blockSignals(block)
 
     def set_combo_text(self, combo, text):
-        idx = combo.findText(text)
+        # 再発防止: 翻訳表示コンボでは findData() で生値を検索する。
+        idx = combo.findData(text)
+        if idx < 0:
+            idx = combo.findText(text)  # フォールバック: 旧形式(生値直接表示)対応
         if idx >= 0:
             combo.setCurrentIndex(idx)
         else:

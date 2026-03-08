@@ -826,10 +826,17 @@ class CardTextGenerator:
         scope_text = scope_text.rstrip("の")
 
         # Special handling for already-subjected text to avoid duplication
-        if "相手が" in trigger_text and (scope == "OPPONENT" or scope == "PLAYER_OPPONENT"):
-            return trigger_text
-        if "自分が" in trigger_text and (scope == "SELF" or scope == "PLAYER_SELF"):
-            return trigger_text
+        # Some trigger_text values use "相手の..." or "自分の..." (possessive) rather than
+        # "相手が" / "自分が"; ensure we detect both forms to avoid producing
+        # duplicated prefixes like "相手の相手の...".
+        scope_variants = []
+        if scope in ("OPPONENT", "PLAYER_OPPONENT"):
+            scope_variants.extend(["相手が", "相手の"])
+        if scope in ("SELF", "PLAYER_SELF"):
+            scope_variants.extend(["自分が", "自分の"])
+        for v in scope_variants:
+            if v in trigger_text:
+                return trigger_text
 
         # Helper to compose subject phrase from filter
         def _compose_subject_from_filter(default_type: str) -> str:
@@ -1178,6 +1185,8 @@ class CardTextGenerator:
             action_proxy["play_flags"] = command_copy.get("play_flags")
         if "select_count" in command_copy:
             action_proxy["select_count"] = command_copy.get("select_count")
+        if "_input_value_label" in command_copy:
+            action_proxy["_input_value_label"] = command_copy.get("_input_value_label")
         
         # Pass through IF/IF_ELSE/ELSE control flow fields
         if "if_true" in command_copy:
@@ -2142,8 +2151,21 @@ class CardTextGenerator:
             is_self_ref = scope == "SELF"
 
             if input_key:
-                up_to_text = "まで" if up_to_flag else ""
-                template = f"そのカードをその同じ数だけ{up_to_text}選び、{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+                input_usage = str(action.get("input_value_usage") or action.get("input_usage") or "").upper()
+                link_suffix = cls._format_input_link_context_suffix(action)
+                linked_target = "そのカード"
+                # 再発防止: EVENT_SOURCE を対象参照として扱う場合は明示選択文を出さない。
+                if input_key == "EVENT_SOURCE" and cls._normalize_zone_name(src_zone) == "BATTLE_ZONE":
+                    linked_target = "そのクリーチャー"
+
+                if input_usage in ("", "TARGET"):
+                    template = f"{linked_target}を{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+                else:
+                    up_to_text = "まで" if up_to_flag else ""
+                    template = f"{linked_target}をその同じ数だけ{up_to_text}選び、{orig_zone_str}に置くかわりに、{zone_str}に置く。"
+
+                if link_suffix:
+                    template += link_suffix
             else:
                 if is_self_ref:
                     # target_str = "このカード" # Handled by caller or substitution
@@ -2733,6 +2755,37 @@ class CardTextGenerator:
             return CardTextResources.INPUT_USAGE_LABELS[norm]
         # Fallback to raw string for custom labels
         return tr(str(usage)) if str(usage) else ""
+
+    @classmethod
+    def _format_input_source_label(cls, action: Dict[str, Any]) -> str:
+        """Resolve a human-readable source label for input-linked commands."""
+        input_key = str(action.get("input_value_key") or "")
+        if not input_key:
+            return ""
+
+        saved = str(action.get("_input_value_label") or "").strip()
+        if saved:
+            return saved
+        if input_key == "EVENT_SOURCE":
+            return "イベント発生源 (汎用)"
+        return input_key
+
+    @classmethod
+    def _format_input_link_context_suffix(cls, action: Dict[str, Any]) -> str:
+        """Format input-link metadata used in card preview text."""
+        source_label = cls._format_input_source_label(action)
+        usage_raw = action.get("input_value_usage") or action.get("input_usage")
+        usage_label = cls._format_input_usage_label(usage_raw) if usage_raw else ""
+
+        parts: List[str] = []
+        if source_label:
+            parts.append(f"入力元: {source_label}")
+        if usage_raw:
+            parts.append(f"入力用途: {usage_label or tr(str(usage_raw))}")
+
+        if not parts:
+            return ""
+        return f"（{' / '.join(parts)}）"
 
     @classmethod
     def _resolve_target(cls, action: Dict[str, Any], is_spell: bool = False) -> Tuple[str, str]:

@@ -109,6 +109,7 @@ class GameWindow(QMainWindow):
             # Initialize Layout using Builder
             self.layout_builder = LayoutBuilder(self)
             self.layout_builder.build()
+            self._fc_connected = False  # 方針D: floating_confirm_btn の接続フラグ
             # Training status toolbar
             try:
                 self._init_training_toolbar()
@@ -204,6 +205,10 @@ class GameWindow(QMainWindow):
         try:
             # Initialize Game (may call into native C++ and perform I/O)
             self.session.initialize_game(self.card_db)
+
+            # 再発防止: initialize_game() は player_modes を AI/AI で初期化する。
+            # control_panel の設定を反映してから auto-start タイマーを判定する。
+            self._apply_player_modes()
 
             # Auto-start timer for AI vs AI games (check after session initialized)
             try:
@@ -462,13 +467,39 @@ class GameWindow(QMainWindow):
             self.control_panel.set_pass_button_visible(False)
             self.control_panel.set_start_button_text(tr("Start Sim"))
         self.log_viewer.clear_logs()
+        # 方針A/C/D: ハイライト・バナー・フローティングボタンをリセット
+        try:
+            if hasattr(self, 'game_board'):
+                self.game_board.clear_highlights()
+                self.game_board.set_action_hint("")
+                self.game_board.set_floating_confirm(False)
+                self.control_panel.clear_action_commands()
+        except Exception:
+            pass
 
         self.session.reset_game(self.p0_deck_ids, self.p1_deck_ids)
+
+        # 再発防止: reset_game() は新規 gs を生成するため player_modes が AI/AI に戻る。
+        # control_panel の Human/AI 設定を再適用する。
+        self._apply_player_modes()
 
         if hasattr(self, 'scenario_tools'):
             self.scenario_tools.set_game_state(self.gs, self.card_db)
         self.last_command_index = 0
         self.update_ui()
+
+    def _apply_player_modes(self) -> None:
+        """control_panel の Human/AI 設定を C++ GameState.player_modes に反映する。
+        再発防止: reset_game()/initialize_game() 後は player_modes が AI/AI にリセットされるため
+        必ずこのメソッドを呼んで再設定すること。
+        """
+        if not (hasattr(self, 'control_panel') and self.session.gs is not None):
+            return
+        try:
+            self.session.set_player_mode(0, 'Human' if self.control_panel.is_p0_human() else 'AI')
+            self.session.set_player_mode(1, 'Human' if self.control_panel.is_p1_human() else 'AI')
+        except Exception:
+            pass
 
     def pass_turn(self) -> None:
         if hasattr(self, 'current_pass_action') and self.current_pass_action:
@@ -603,6 +634,66 @@ class GameWindow(QMainWindow):
             self.game_board.update_state(p0, p1, self.card_db, legal_commands, god_view)
             if EngineCompat.is_waiting_for_user_input(self.gs):
                  self.game_board.set_selection_mode(self.input_handler.selected_targets)
+
+            # 方針A: 合法コマンドのハイライト / 対象選択ハイライト
+            try:
+                if EngineCompat.is_waiting_for_user_input(self.gs):
+                    pending = EngineCompat.get_pending_query(self.gs)
+                    if getattr(pending, 'query_type', '') == 'SELECT_TARGET':
+                        self.game_board.highlight_valid_targets(
+                            list(getattr(pending, 'valid_targets', []))
+                        )
+                    else:
+                        self.game_board.clear_highlights()
+                elif active_pid == 0 and is_human and not self.gs.game_over:
+                    self.game_board.highlight_legal_commands(legal_commands)
+                else:
+                    self.game_board.clear_highlights()
+            except Exception:
+                pass
+
+            # 方針C: 状態バナー更新
+            try:
+                if self.gs.game_over:
+                    self.game_board.set_action_hint(tr("Game Over"))
+                elif EngineCompat.is_waiting_for_user_input(self.gs):
+                    pass  # handle_user_input_request が設定済み
+                elif active_pid == 0 and is_human and not self.gs.game_over:
+                    try:
+                        phase = str(EngineCompat.get_current_phase(self.gs) or "")
+                    except Exception:
+                        phase = ""
+                    phase_label = tr(phase) if phase else ""
+                    hint = tr("Your turn: {phase}").format(phase=phase_label) if phase_label else tr("Your turn")
+                    self.game_board.set_action_hint(hint)
+                elif active_pid == 1 and not self.gs.game_over:
+                    self.game_board.set_action_hint(tr("Waiting for opponent..."))
+                else:
+                    self.game_board.set_action_hint("")
+            except Exception:
+                pass
+
+            # 方針D: フローティング確定ボタン更新
+            try:
+                pending2 = EngineCompat.get_pending_query(self.gs)
+                if (EngineCompat.is_waiting_for_user_input(self.gs)
+                        and getattr(pending2, 'query_type', '') == 'SELECT_TARGET'):
+                    params = getattr(pending2, 'params', {})
+                    min_t = params.get('min', 1) if hasattr(params, 'get') else 1
+                    sel = len(self.input_handler.selected_targets)
+                    btn_text = tr("Confirm ({sel}/{min})").format(sel=sel, min=min_t)
+                    self.game_board.set_floating_confirm(True, btn_text)
+                    # フローティングボタンを confirm_selection に接続（初回のみ）
+                    if not self._fc_connected:
+                        try:
+                            self.game_board.floating_confirm_btn.clicked.connect(self.confirm_selection)
+                            self._fc_connected = True
+                        except Exception:
+                            pass
+                else:
+                    self.game_board.set_floating_confirm(False)
+            except Exception:
+                pass
 
         # 5. Update Control Panel
         if hasattr(self, 'control_panel'):

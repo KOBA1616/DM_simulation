@@ -459,7 +459,7 @@ class ScenarioToolsDock(QDockWidget):
                 self.parent_window.update_ui()
             QMessageBox.information(self, tr("Info"), tr("Turn advanced."))
         except Exception as e:
-            QMessageBox.critical(self, tr("Error"), f"Failed to advance turn: {e}")
+            QMessageBox.critical(self, tr("Error"), tr("Failed to advance turn: {e}").format(e=e))
 
     def on_draw_card(self):
         """Draw a card for the selected player."""
@@ -483,7 +483,7 @@ class ScenarioToolsDock(QDockWidget):
                 self.parent_window.update_ui()
             QMessageBox.information(self, tr("Info"), tr("Card drawn."))
         except Exception as e:
-            QMessageBox.critical(self, tr("Error"), f"Failed to draw card: {e}")
+            QMessageBox.critical(self, tr("Error"), tr("Failed to draw card: {e}").format(e=e))
 
     def _execute_add_card_action(self, result):
         """Execute card addition action from dialog result."""

@@ -20,7 +20,7 @@ class CardSelectionDialog(QDialog):
                - Card objects (if adapting from card list)
         """
         super().__init__(parent)
-        self.setWindowTitle(title)
+        self.setWindowTitle(tr(title))
         self.setMinimumWidth(400)
         self.setMinimumHeight(500)
         self.min_selection = min_selection
@@ -31,7 +31,7 @@ class CardSelectionDialog(QDialog):
         layout = QVBoxLayout(self)
 
         # Instruction Label
-        lbl = QLabel(instruction)
+        lbl = QLabel(tr(instruction))
         lbl.setWordWrap(True)
         lbl.setFont(QFont("Arial", 10, QFont.Weight.Bold))
         layout.addWidget(lbl)

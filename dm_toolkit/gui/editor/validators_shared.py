@@ -58,7 +58,7 @@ class ConditionValidator:
         if cond_type not in valid_types:
             errors.append(
                 f"'{cond_type}' is invalid for {context_name}. "
-                f"Valid types: {', '.join(valid_types)}"
+                f"Valid types: {tr(', ').join(valid_types)}"
             )
         
         # Context-specific validation
@@ -298,7 +298,7 @@ class TriggerEffectValidator:
         if trigger not in TriggerEffectValidator.VALID_TRIGGER_TYPES:
             errors.append(
                 f"Invalid trigger type: '{trigger}'. "
-                f"Valid types: {', '.join(sorted(TriggerEffectValidator.VALID_TRIGGER_TYPES))}"
+                f"Valid types: {tr(', ').join(sorted(TriggerEffectValidator.VALID_TRIGGER_TYPES))}"
             )
         
         # Commands validation (required for non-PASSIVE_CONST triggers)

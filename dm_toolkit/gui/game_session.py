@@ -82,7 +82,7 @@ class GameSession:
             seed: Random seed for game
         """
         if not dm_ai_module:
-            self.callback_log("Error: dm_ai_module not available")
+            self.callback_log(tr("Error: dm_ai_module not available"))
             return
 
         # Load native CardDatabase (always use C++ database)
@@ -90,12 +90,12 @@ class GameSession:
             if hasattr(dm_ai_module, 'JsonLoader'):
                 try:
                     self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
-                    self.callback_log("Loaded native CardDatabase via JsonLoader")
+                    self.callback_log(tr("Loaded native CardDatabase via JsonLoader"))
                 except Exception as e:
-                    self.callback_log(f"ERROR: JsonLoader failed - {e}")
+                    self.callback_log(tr("ERROR: JsonLoader failed - {e}").format(e=e))
                     return
             else:
-                self.callback_log("ERROR: JsonLoader not available")
+                self.callback_log(tr("ERROR: JsonLoader not available"))
                 return
         
         # Set card_db to native_card_db for compatibility (commands.py expects card_db)
@@ -119,9 +119,9 @@ class GameSession:
         try:
             dm_ai_module.PhaseManager.start_game(self.gs, self.native_card_db)
             dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
-            self.callback_log("ゲームリセット")
+            self.callback_log(tr("Game Reset"))
         except Exception as e:
-            self.callback_log(f"start_game/fast_forward failed: {e}")
+            self.callback_log(tr("start_game/fast_forward failed: {e}").format(e=e))
             import traceback
             traceback.print_exc()
 
@@ -137,13 +137,13 @@ class GameSession:
             if hasattr(dm_ai_module, 'JsonLoader'):
                 try:
                     self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
-                    self.callback_log("Loaded native CardDatabase via JsonLoader")
+                    self.callback_log(tr("Loaded native CardDatabase via JsonLoader"))
                 except Exception as e:
-                    self.callback_log(f"ERROR: JsonLoader failed - {e}")
-                    self.callback_log("Cannot proceed without native CardDatabase")
+                    self.callback_log(tr("ERROR: JsonLoader failed - {e}").format(e=e))
+                    self.callback_log(tr("Cannot proceed without native CardDatabase"))
                     return
             else:
-                self.callback_log("ERROR: JsonLoader not available in dm_ai_module")
+                self.callback_log(tr("ERROR: JsonLoader not available in dm_ai_module"))
                 return
         
         # Set card_db to native_card_db for compatibility
@@ -240,7 +240,7 @@ class GameSession:
                 # Game might be over or stuck
                 self._no_action_count += 1
                 if self._no_action_count > 20:
-                    self.callback_log(f"ERROR: C++ step() failed {self._no_action_count} times. Stopping.")
+                    self.callback_log(tr("ERROR: C++ step() failed {count} times. Stopping.").format(count=self._no_action_count))
                     self.is_running = False
                 else:
                     # Try fast_forward as fallback
@@ -339,7 +339,7 @@ class GameSession:
             return
         
         if self.native_card_db is None:
-            self.callback_log("ERROR: Cannot call fast_forward without native CardDatabase")
+            self.callback_log(tr("ERROR: Cannot call fast_forward without native CardDatabase"))
             return
         
         try:

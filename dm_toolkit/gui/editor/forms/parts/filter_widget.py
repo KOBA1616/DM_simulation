@@ -358,7 +358,11 @@ class FilterEditorWidget(QWidget):
             parts.append(tr("Selection"))
 
         if parts:
-            self.summary_label.setText(tr("Active filters: {count}").format(count=len(parts)) + " / " + " ・ ".join(parts))
+            self.summary_label.setText(
+                tr("Active filters: {count}").format(count=len(parts))
+                + tr(" / ")
+                + tr(" ・ ").join(parts)
+            )
         else:
             self.summary_label.setText(tr("No filters set"))
 
@@ -410,7 +414,7 @@ class FilterEditorWidget(QWidget):
 
         # Races
         races = filt_data.get('races', [])
-        self.races_edit.setText(", ".join(races))
+        self.races_edit.setText(tr(", ").join(races))
 
         # Costs
         self.min_cost_spin.setValue(filt_data.get('min_cost', -1) if filt_data.get('min_cost') is not None else -1)

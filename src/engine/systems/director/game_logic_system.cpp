@@ -58,6 +58,12 @@ namespace dm::engine::systems {
         std::cerr << "\n=== dispatch_command called ===" << std::endl;
         std::cerr << "Command type: " << static_cast<int>(cmd.type) << std::endl;
 
+        // NOTE: dispatch_command は外部からのユーザー/AI 入力をパイプラインに反映する
+        // 唯一の責務ポイントとして扱われるべきです。
+        // - waiting_for_user_input / pipeline.execution_paused の両方のケースで
+        //   入力を受け取り、context 変数へ保存し、パイプライン実行を再開します。
+        // - 他箇所でコンテキストを直接書き換えないでください。
+
         switch (cmd.type) {
             case core::CommandType::PLAY_FROM_ZONE:
             {

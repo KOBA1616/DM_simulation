@@ -358,7 +358,7 @@ class UnifiedActionForm(BaseEditForm):
                     if widget and hasattr(widget, 'setStyleSheet'):
                         widget.setStyleSheet("border: 1px solid red;")
                         if hasattr(widget, 'setToolTip'):
-                            widget.setToolTip("必須項目です")
+                            widget.setToolTip(tr("必須項目です"))
                 return
 
             # Validate manually if needed or catch validation during assignment above if we used setters
@@ -448,7 +448,7 @@ class UnifiedActionForm(BaseEditForm):
                 if hasattr(widget, 'setStyleSheet'):
                     # Red border for error
                     widget.setStyleSheet("border: 1px solid red;")
-                    widget.setToolTip(err.get('msg', 'Invalid Value'))
+                    widget.setToolTip(tr(err.get('msg', 'Invalid Value')))
 
     def _get_display_text(self, data):
         t = data.get('type', 'UNKNOWN')

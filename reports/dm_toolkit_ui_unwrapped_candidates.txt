@@ -1,0 +1,38 @@
+dm_toolkit UI 未ラップ文字列候補
+
+検出日時: 2026-03-08
+
+候補一覧（ファイル:行 — テキスト）
+
+1) dm_toolkit/gui/widgets/log_viewer.py:26 — "Copy"
+   - 推薦: `tr("Copy")` または翻訳キー `action.copy`
+
+2) dm_toolkit/gui/widgets/log_viewer.py:39 — "Select All"
+   - 推薦: `tr("Select All")` または翻訳キー `action.select_all`
+
+3) dm_toolkit/gui/editor/preview_pane.py:212 — "5000"
+   - 備考: 数値のデフォルト値。UI上のラベル表示であれば動的値へ変更の検討。
+
+4) dm_toolkit/gui/editor/preview_pane.py:276 — "5000"
+   - 備考: 同上
+
+5) dm_toolkit/gui/editor/property_inspector.py:119 — ""
+   - 備考: 空文字で初期化。翻訳不要だが、将来的に表示文字列を設定する場合は `tr(...)` を使用
+
+6) dm_toolkit/gui/editor/preview_pane.py:204 — ""
+   - 備考: 空文字初期化
+
+7) dm_toolkit/gui/editor/forms/effect_form.py:77 — ""
+   - 備考: 空文字初期化（ラベル）
+
+その他: dm_toolkit 配下に多数のリテラルが存在します（テストファイルやロギング文字列等）。自動ラッピング前に以下を推奨します:
+- UIに直接表示されるか（ウィジェットのテキスト／アクション等）を手動で確認
+- 空文字・数値・動的フォーマット文字列はラップ対象から除外
+- 一括置換は小さなバッチで行い、各バッチごとにテストを実行
+
+次のアクション候補:
+A) これら候補を順次 `tr(...)` でラップするパッチを作成（小バッチ）
+B) 全自動で `dm_toolkit` 内の UI ウィジェット関連リテラルをラップするスクリプトを作成
+C) まず `data/locale/ja.json` に `"Copy"`, `"Select All"` 等を追加してテストし、UI表示を確認
+
+要望: 続行方法を番号または文字で返信してください（例: A / B / C）。

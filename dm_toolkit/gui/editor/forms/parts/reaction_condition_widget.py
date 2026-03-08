@@ -27,7 +27,9 @@ class ReactionConditionWidget(QGroupBox):
 
         self.label_trigger = QLabel(tr("Trigger Event"))
         self.trigger_event_combo = QComboBox()
-        self.trigger_event_combo.addItems(["NONE", "ON_BLOCK_OR_ATTACK", "ON_SHIELD_ADD", "ON_ATTACK_PLAYER"])
+        # 再発防止: addItem(表示テキスト, 生値) パターン。get_data() は currentData() を使用する。
+        for raw in ["NONE", "ON_BLOCK_OR_ATTACK", "ON_SHIELD_ADD", "ON_ATTACK_PLAYER"]:
+            self.trigger_event_combo.addItem(tr(raw), raw)
         self.trigger_event_combo.currentTextChanged.connect(self.dataChanged)
         layout.addRow(self.label_trigger, self.trigger_event_combo)
 
@@ -47,7 +49,12 @@ class ReactionConditionWidget(QGroupBox):
 
     def set_data(self, cond_data):
         self.blockSignals(True)
-        self.trigger_event_combo.setCurrentText(cond_data.get('trigger_event', 'NONE'))
+        # 再発防止: 翻訳表示コンボでは findData() で生値を検索する。
+        raw = cond_data.get('trigger_event', 'NONE')
+        idx = self.trigger_event_combo.findData(raw)
+        if idx < 0:
+            idx = self.trigger_event_combo.findText(raw)  # フォールバック
+        self.trigger_event_combo.setCurrentIndex(max(0, idx))
         self.civ_match_check.setChecked(cond_data.get('civilization_match', False))
         self.shield_civ_match_check.setChecked(cond_data.get('same_civilization_shield', False))
         self.mana_min_spin.setValue(cond_data.get('mana_count_min', 0))
@@ -55,7 +62,8 @@ class ReactionConditionWidget(QGroupBox):
 
     def get_data(self):
         return {
-            'trigger_event': self.trigger_event_combo.currentText(),
+            # 再発防止: 翻訳表示コンボでは currentData() で生値を取得する。
+            'trigger_event': self.trigger_event_combo.currentData() or self.trigger_event_combo.currentText(),
             'civilization_match': self.civ_match_check.isChecked(),
             'same_civilization_shield': self.shield_civ_match_check.isChecked(),
             'mana_count_min': self.mana_min_spin.value()

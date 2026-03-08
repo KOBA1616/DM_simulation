@@ -7,7 +7,7 @@ from dm_toolkit.gui.widgets.zone_widget import ZoneWidget
 class ZonePopup(QDialog):
     def __init__(self, title, card_data_list, card_db, civ_map=None, legal_commands=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(title)
+        self.setWindowTitle(tr(title))
         self.resize(800, 400)
         self.card_data_list = card_data_list
         self.card_db = card_db

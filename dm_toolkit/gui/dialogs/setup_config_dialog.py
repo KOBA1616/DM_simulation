@@ -143,7 +143,8 @@ class SetupConfigDialog(QDialog):
                 QMessageBox.warning(
                     self,
                     tr("Validation Error"),
-                    tr(f"{name}: File not found: {path}"),
+                    # 再発防止: tr(f"...") は静的キーと一致しないためバグ。f-string で個別翻訳する。
+                    f"{name}: {tr('File not found')}: {path}",
                 )
                 return
         self.accept()

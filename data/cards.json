@@ -15,6 +15,8 @@
       {
         "uid": "a921d7d7-b53b-447e-9ad3-92ea00f76149",
         "trigger": "ON_PLAY",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "condition": {
           "type": "NONE",
           "value": 0,
@@ -105,6 +107,8 @@
       {
         "uid": "8a010d80-5278-4078-8861-3b64880565a8",
         "trigger": "ON_PLAY",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "condition": {
           "type": "NONE",
           "extra_fields": {}
@@ -157,6 +161,8 @@
       {
         "uid": "1daab06c-9934-48b6-aa66-e43826a06c98",
         "trigger": "ON_ATTACK_FROM_HAND",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "condition": {
           "type": "NONE",
           "extra_fields": {}
@@ -223,6 +229,8 @@
       {
         "uid": "95aa92c6-d712-4ac1-9418-d3efd5443bc5",
         "trigger": "ON_ATTACK_FROM_HAND",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "condition": {
           "type": "NONE",
           "extra_fields": {}
@@ -257,6 +265,8 @@
       {
         "uid": "1df1ac53-1cc4-4326-99ea-aea57e42a847",
         "trigger": "AT_BREAK_SHIELD",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "condition": {
           "type": "NONE",
           "value": 0,
@@ -393,6 +403,8 @@
       {
         "uid": "10ad918a-9e3c-4527-808a-ae641b185fad",
         "trigger": "ON_PLAY",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "commands": [
           {
             "uid": "07afa005-0d66-4934-8c7e-29ba3ef4b216",
@@ -441,6 +453,8 @@
         {
           "uid": "a6da69e2-bbaf-42b3-a32b-904ab3c2070c",
           "trigger": "ON_CAST_SPELL",
+          "trigger_scope": "NONE",
+          "trigger_filter": {},
           "condition": {
             "type": "NONE",
             "value": 0,
@@ -490,6 +504,8 @@
       {
         "uid": "606be89c-b06e-40a2-b4c7-59e9c44bc604",
         "trigger": "ON_PLAY",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "commands": [
           {
             "uid": "6ef1fee1-76de-415b-877a-441e428f0ae1",
@@ -526,6 +542,8 @@
       {
         "uid": "b1c34a3f-6b47-430a-9c90-42bbb60dda2c",
         "trigger": "ON_OPPONENT_DRAW",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "condition": {
           "type": "DURING_OPPONENT_TURN",
           "value": 0,
@@ -573,6 +591,8 @@
         {
           "uid": "f5e9f628-72f9-4e37-bbbf-749ed0f1c1c0",
           "trigger": "ON_CAST_SPELL",
+          "trigger_scope": "NONE",
+          "trigger_filter": {},
           "condition": {
             "type": "NONE",
             "value": 0,
@@ -621,6 +641,8 @@
       {
         "uid": "87dbe1a3-c05f-4ec5-bfb6-f847552f52c7",
         "trigger": "PASSIVE_CONST",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "condition": {
           "type": "NONE",
           "value": 0,
@@ -676,6 +698,8 @@
       {
         "uid": "3879e3ad-a482-4229-a1ad-5e613d8003d8",
         "trigger": "ON_CAST_SPELL",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "condition": {
           "type": "NONE",
           "value": 0,
@@ -817,6 +841,8 @@
         {
           "uid": "4cb5d357-6b87-4992-9cf8-c15ea00caff3",
           "trigger": "ON_CAST_SPELL",
+          "trigger_scope": "NONE",
+          "trigger_filter": {},
           "condition": {
             "type": "NONE",
             "value": 0,
@@ -846,6 +872,8 @@
         {
           "uid": "af0eaeec-6739-482a-a301-4a02462033c4",
           "trigger": "ON_CAST_SPELL",
+          "trigger_scope": "NONE",
+          "trigger_filter": {},
           "condition": {
             "type": "NONE",
             "value": 0,
@@ -888,6 +916,8 @@
       {
         "uid": "bdc305e4-63e1-4d9b-832e-c2aa10013e2e",
         "trigger": "ON_OPPONENT_CREATURE_ENTER",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "condition": {
           "type": "NONE",
           "value": 0,
@@ -936,6 +966,8 @@
         {
           "uid": "b7bfbb58-a1c6-40d1-95c5-8aec5b5761d4",
           "trigger": "ON_CAST_SPELL",
+          "trigger_scope": "NONE",
+          "trigger_filter": {},
           "condition": {
             "type": "NONE",
             "value": 0,
@@ -993,6 +1025,8 @@
       {
         "uid": "b69cafdf-d7f6-4b7d-867e-140eb89e806c",
         "trigger": "ON_CAST_SPELL",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "condition": {
           "type": "NONE",
           "value": 0,
@@ -1078,6 +1112,8 @@
       {
         "uid": "e741ea20-9367-4fc9-a520-176a33a48c87",
         "trigger": "ON_CAST_SPELL",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "condition": {
           "type": "NONE",
           "value": 0,
@@ -1132,6 +1168,8 @@
       {
         "uid": "995b0469-1a11-4c3b-800b-5653ca840e81",
         "trigger": "ON_CAST_SPELL",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "condition": {
           "type": "NONE",
           "value": 0,
@@ -1186,6 +1224,8 @@
       {
         "uid": "9d06719e-5df4-4b6d-9489-a672c4ddb2c8",
         "trigger": "ON_PLAY",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "condition": {
           "type": "NONE",
           "value": 0,
@@ -1223,6 +1263,8 @@
       {
         "uid": "01ec4a79-86d8-422a-a455-5bc53c5236c2",
         "trigger": "ON_CAST_SPELL",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "condition": {
           "type": "NONE",
           "value": 0,
@@ -1329,6 +1371,8 @@
       {
         "uid": "80073102-81e3-4474-86b2-feb6782b5066",
         "trigger": "ON_PLAY",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
         "commands": [
           {
             "uid": "22752c91-0ca4-432c-b1f5-988a153b45b8",
@@ -1390,6 +1434,10 @@
       {
         "uid": "36ede3bc-276e-4849-b034-6e231cf3f9f6",
         "trigger": "ON_OPPONENT_CREATURE_ENTER",
+        "mode": "REPLACEMENT",
+        "timing_mode": "PRE",
+        "trigger_scope": "PLAYER_OPPONENT",
+        "trigger_filter": {},
         "condition": {
           "type": "NONE",
           "value": 0,
@@ -1397,12 +1445,12 @@
         },
         "commands": [
           {
-            "uid": "2304a791-1837-4dfe-a598-d2a14aa32f2a",
+            "uid": "89edc987-620b-492a-82f3-e8f1316fecd9",
             "type": "REPLACE_CARD_MOVE",
             "_input_value_label": "EVENT_SOURCE (イベント発生源 (汎用))",
-            "amount": 0,
+            "amount": 1,
             "from_zone": "BATTLE",
-            "input_value_usage": "TARGET_COUNT",
+            "input_value_usage": "",
             "optional": false,
             "target_group": "PLAYER_SELF",
             "to_zone": "MANA",

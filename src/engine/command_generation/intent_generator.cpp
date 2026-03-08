@@ -71,15 +71,19 @@ namespace dm::engine {
                     cmd.target_instance = val;
                     actions.push_back(cmd);
                 }
-            } else if (query.query_type == "SELECT_FROM_BUFFER") {
+            else if (query.query_type == "SELECT_FROM_BUFFER") {
                 // 再発防止: SELECT_FROM_BUFFER が未処理の場合 generate_commands が 0 を返し
                 //   fast_forward ループでゲームがフリーズする。バッファ内の各カードに対して
                 //   SELECT_FROM_BUFFER コマンドを生成し AI/プレイヤーが選択できるようにする。
                 const auto& buf = game_state.players[game_state.active_player_id].effect_buffer;
+                // 出力キーを固定し、後段が暗黙キーを期待しないように明示する。
+                // owner_id を設定して、どのプレイヤーの選択かを明確にする。
                 for (const auto& card : buf) {
                     CommandDef cmd;
                     cmd.type = CommandType::SELECT_FROM_BUFFER;
                     cmd.instance_id = card.instance_id;
+                    cmd.owner_id = static_cast<int>(game_state.active_player_id);
+                    cmd.output_value_key = std::string("SELECT_FROM_BUFFER_RESULT");
                     actions.push_back(cmd);
                 }
                 if (actions.empty()) {

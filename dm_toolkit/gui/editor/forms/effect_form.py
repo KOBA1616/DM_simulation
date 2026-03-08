@@ -449,7 +449,7 @@ class EffectEditForm(BaseEditForm):
             
             desc = CardTextGenerator.generate_trigger_filter_description(trigger_filter)
             if desc:
-                self.trigger_filter_desc_label.setText(f"📋 条件: {desc}")
+                self.trigger_filter_desc_label.setText(tr("📋 条件: {desc}").format(desc=desc))
             else:
                 self.trigger_filter_desc_label.setText("")
         except Exception:

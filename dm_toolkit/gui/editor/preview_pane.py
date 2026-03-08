@@ -452,7 +452,7 @@ class CardPreviewWidget(QWidget):
 
         # Spell Side
         spell_data = data.get('spell_side', {})
-        self.tp_spell_name_label.setText(spell_data.get('name', 'Spell'))
+        self.tp_spell_name_label.setText(tr(spell_data.get('name', '呪文')))
         self.tp_spell_cost_label.setText(str(spell_data.get('cost', 0)))
 
         # Apply cost circle color for spell side (Spell usually matches card civs)

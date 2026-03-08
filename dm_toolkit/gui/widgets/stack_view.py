@@ -75,7 +75,7 @@ class StackViewWidget(QWidget):
             except Exception as e:
                 # Fallback for outdated binary
                 logger.warning(f"Failed to get pending effects: {e}")
-                item = QListWidgetItem("Error: Outdated C++ Module. Please rebuild.")
+                item = QListWidgetItem(tr("Error: Outdated C++ Module. Please rebuild."))
                 item.setForeground(Qt.GlobalColor.red)
                 self.list_widget.addItem(item)
                 self.current_effects = []

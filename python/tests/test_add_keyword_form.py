@@ -106,7 +106,7 @@ def test_command_ui_config():
     
     labels = add_keyword_config.get("labels", {})
     assert "str_val" in labels, "str_val label not found"
-    assert labels["str_val"] == "Keyword", f"Expected 'Keyword', got '{labels['str_val']}'"
+    assert labels["str_val"] == "キーワード能力", f"Expected 'キーワード能力', got '{labels['str_val']}'"
     
     print("✅ Command UI config test passed")
 

@@ -198,28 +198,28 @@ class ModifierEditForm(BaseEditForm):
         if mtype == "COST_MODIFIER":
             self.label_value.setVisible(True)
             self.value_spin.setVisible(True)
-            self.label_value.setText("軽減量")
-            self.filter_widget.setTitle("軽減対象カード")
+            self.label_value.setText(tr("軽減量"))
+            self.filter_widget.setTitle(tr("軽減対象カード"))
 
         elif mtype == "POWER_MODIFIER":
             self.label_value.setVisible(True)
             self.value_spin.setVisible(True)
-            self.label_value.setText("パワー修正値")
-            self.filter_widget.setTitle("強化対象クリーチャー")
+            self.label_value.setText(tr("パワー修正値"))
+            self.filter_widget.setTitle(tr("強化対象クリーチャー"))
 
         elif mtype == "GRANT_KEYWORD":
             self.label_keyword.setVisible(True)
             self.keyword_combo.setVisible(True)
-            self.filter_widget.setTitle("対象クリーチャー")
+            self.filter_widget.setTitle(tr("対象クリーチャー"))
 
         elif mtype in ("TARGET_RESTRICTION", "SPELL_RESTRICTION", "TARGET_THIS_CANNOT_SELECT", "TARGET_THIS_FORCE_SELECT", "ADD_RESTRICTION"):
             # Unified restriction types
-            self.filter_widget.setTitle("制限対象")
+            self.filter_widget.setTitle(tr("制限対象"))
 
         elif mtype == "SET_KEYWORD":
             self.label_keyword.setVisible(True)
             self.keyword_combo.setVisible(True)
-            self.filter_widget.setTitle("対象クリーチャー")
+            self.filter_widget.setTitle(tr("対象クリーチャー"))
 
     def _load_ui_from_data(self, data, item):
         """Load data into UI widgets."""

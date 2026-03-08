@@ -7,6 +7,7 @@ except Exception:
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence
 from PyQt6.QtWidgets import QApplication
+from dm_toolkit.gui.i18n import tr
 
 class LogViewer(QListWidget):
     """
@@ -23,7 +24,7 @@ class LogViewer(QListWidget):
 
     def _show_context_menu(self, pos):
         menu = QMenu(self)
-        copy_act = QAction("Copy", self)
+        copy_act = QAction(tr("Copy"), self)
         # PyQt5 had QKeySequence.Copy; PyQt6 exposes StandardKey or may omit the attribute.
         # Use string-based fallback to ensure compatibility across environments.
         try:
@@ -36,7 +37,7 @@ class LogViewer(QListWidget):
         copy_act.triggered.connect(self.copy_selected)
         menu.addAction(copy_act)
         # Add select-all for convenience
-        sa = QAction("Select All", self)
+        sa = QAction(tr("Select All"), self)
         sa.triggered.connect(self.selectAll)
         menu.addAction(sa)
         menu.exec(self.mapToGlobal(pos))

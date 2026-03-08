@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from typing import List, Dict, Any
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QSplitter
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QLabel, QFrame, QPushButton
+)
 from PyQt6.QtCore import pyqtSignal, Qt
 
 from dm_toolkit.gui.widgets.zone_widget import ZoneWidget
@@ -22,6 +24,23 @@ class GameBoard(QWidget):
     def init_ui(self):
         self.layout_main = QVBoxLayout(self)
         self.layout_main.setContentsMargins(0, 0, 0, 0)
+        self.layout_main.setSpacing(0)
+
+        # 方針C: 状態通知バナー（ボード最上部・固定高さ・常時表示でレイアウト移動防止）
+        self.action_hint_label = QLabel("")
+        self.action_hint_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.action_hint_label.setWordWrap(False)
+        self.action_hint_label.setFixedHeight(26)
+        self._banner_active_style = (
+            "background-color: #1a1a2e; color: #e0e0e0; font-size: 12px; "
+            "font-weight: bold; padding: 2px 8px; border-bottom: 1px solid #444;"
+        )
+        self._banner_inactive_style = (
+            "background-color: transparent; color: transparent; border: none;"
+        )
+        self.action_hint_label.setStyleSheet(self._banner_inactive_style)
+        # 再発防止: setVisible()でレイアウトが動くため、常時表示してスタイルで切り替える
+        self.layout_main.addWidget(self.action_hint_label)
 
         # P1 Zones (Opponent)
         self.p1_zones = QWidget()
@@ -82,13 +101,101 @@ class GameBoard(QWidget):
         self.board_splitter = QSplitter(Qt.Orientation.Vertical)
         self.board_splitter.addWidget(self.p1_zones)
         self.board_splitter.addWidget(self.p0_zones)
+
+        # 再発防止: ActionPanel 右サイドバーは control_panel.py の P0 操作セクションに移行済み
         self.layout_main.addWidget(self.board_splitter)
+
+        # 方針D: フローティング確定ボタン（ボード上に重ねる絶対位置配置）
+        self.floating_confirm = QFrame(self)
+        self.floating_confirm.setFrameShape(QFrame.Shape.StyledPanel)
+        self.floating_confirm.setStyleSheet(
+            "background-color: rgba(39,174,96,220); border-radius: 8px; "
+            "border: 2px solid #1e8449;"
+        )
+        self.floating_confirm.setFixedSize(180, 44)
+        fc_layout = QHBoxLayout(self.floating_confirm)
+        fc_layout.setContentsMargins(6, 4, 6, 4)
+        self.floating_confirm_btn = QPushButton(tr("Confirm Selection"))
+        self.floating_confirm_btn.setStyleSheet(
+            "background: transparent; color: white; font-weight: bold; "
+            "font-size: 12px; border: none;"
+        )
+        fc_layout.addWidget(self.floating_confirm_btn)
+        self.floating_confirm.setVisible(False)
+        # 再発防止: resizeEvent でフローティングボタンの位置を更新すること
 
     def _connect_zone(self, zone: ZoneWidget):
         zone.command_triggered.connect(self.command_triggered.emit)
         zone.card_clicked.connect(self.card_clicked.emit)
         zone.card_double_clicked.connect(self.card_double_clicked.emit)
         zone.card_hovered.connect(self.card_hovered.emit)
+
+    def resizeEvent(self, event):
+        """方針D: リサイズ時にフローティング確定ボタンを右下に再配置する。"""
+        super().resizeEvent(event)
+        if hasattr(self, 'floating_confirm'):
+            margin = 16
+            x = self.width() - self.floating_confirm.width() - margin
+            y = self.height() - self.floating_confirm.height() - margin
+            self.floating_confirm.move(x, y)
+
+    # ---- 方針C: 状態通知バナー ----
+    def set_action_hint(self, msg: str):
+        """ボード上部バナーにヒントメッセージを設定する（方針C）。
+        再発防止: setVisible()はレイアウト移動の原因になるため使わない。
+                  テキストが空の場合は透明スタイルに切り替えて高さを維持する。
+        """
+        if msg:
+            self.action_hint_label.setText(msg)
+            self.action_hint_label.setStyleSheet(self._banner_active_style)
+        else:
+            self.action_hint_label.setText("")
+            self.action_hint_label.setStyleSheet(self._banner_inactive_style)
+
+    # ---- 方針A: ハイライト ----
+    def _all_zones(self) -> list:
+        return [
+            self.p0_hand, self.p0_mana, self.p0_battle, self.p0_shield, self.p0_graveyard,
+            self.p1_hand, self.p1_mana, self.p1_battle, self.p1_shield, self.p1_graveyard,
+        ]
+
+    def clear_highlights(self):
+        """全ゾーンの全カードハイライトをリセットする（方針A）。"""
+        for zone in self._all_zones():
+            zone.clear_highlights()
+
+    def highlight_legal_commands(self, legal_cmds: list):
+        """人間プレイヤーが操作可能なカードを緑枠ハイライトする（方針A）。"""
+        self.clear_highlights()
+        legal_ids = set()
+        for cmd in legal_cmds:
+            try:
+                d = cmd.to_dict()
+            except Exception:
+                d = {}
+            iid = d.get('instance_id') or d.get('source_instance_id')
+            if iid is not None:
+                legal_ids.add(iid)
+        if legal_ids:
+            for zone in [self.p0_hand, self.p0_battle, self.p0_mana]:
+                zone.highlight_cards(legal_ids, mode="legal")
+
+    def highlight_valid_targets(self, valid_targets: list):
+        """SELECT_TARGET 時に有効対象カードを黄枠ハイライトする（方針A）。"""
+        self.clear_highlights()
+        target_ids = set(valid_targets)
+        if target_ids:
+            for zone in self._all_zones():
+                zone.highlight_cards(target_ids, mode="target")
+
+    # ---- 方針D: フローティング確定ボタン ----
+    def set_floating_confirm(self, visible: bool, text: str = ""):
+        """フローティング確定ボタンの表示・テキストを更新する（方針D）。"""
+        if text:
+            self.floating_confirm_btn.setText(text)
+        self.floating_confirm.setVisible(visible)
+        if visible:
+            self.floating_confirm.raise_()  # 最前面に移動
 
     def update_state(self, p0_data: Any, p1_data: Any, card_db: Any, legal_commands: List[Any], god_view: bool = False):
         """

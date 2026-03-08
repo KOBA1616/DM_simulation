@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 try:
-    from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QScrollArea
+    from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QScrollArea, QVBoxLayout
     from PyQt6.QtCore import Qt, pyqtSignal
 except Exception:
     # Provide lightweight shims for headless/testing environments
@@ -38,6 +38,7 @@ except Exception:
 
     QWidget = _DummyWidget
     QHBoxLayout = _DummyLayout
+    QVBoxLayout = _DummyLayout
     QLabel = _DummyLabel
     QScrollArea = _DummyScrollArea
     Qt = type('X', (), {'AlignmentFlag': type('A', (), {'AlignCenter': 0}), 'ScrollBarPolicy': type('S', (), {'ScrollBarAlwaysOff': 0})})
@@ -47,10 +48,15 @@ from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.card_helpers import get_card_civilization
 # 再発防止: wrap_action は wrap_command の後方互換エイリアス。wrap_command を使用すること。
 from dm_toolkit.commands import wrap_command
+from dm_toolkit.gui.styles.civ_colors import CIV_ORB_COLORS, CIV_NAMES_JA
 import logging
 
 # module logger
 logger = logging.getLogger('dm_toolkit.gui.widgets.zone_widget')
+
+# 文明オーブの表示順
+_CIV_ORDER = ["LIGHT", "WATER", "DARKNESS", "FIRE", "NATURE", "ZERO", "COLORLESS"]
+
 
 class ZoneWidget(QWidget):
     card_clicked = pyqtSignal(int, int) # card_id, instance_id
@@ -63,6 +69,7 @@ class ZoneWidget(QWidget):
         self.title = title
         self.cards = []
         self.legal_commands = []  # 再発防止: legal_actions から legal_commands に改名
+        self._is_mana_zone = "Mana" in title or "マナ" in title
         
         self.init_ui()
 
@@ -95,6 +102,15 @@ class ZoneWidget(QWidget):
             except Exception:
                 pass
         main_layout.addWidget(self.title_label)
+
+        # マナゾーン専用: 右端に文明オーブパネルを配置
+        if self._is_mana_zone:
+            self._orb_panel = QWidget()
+            self._orb_panel.setFixedWidth(52)
+            self._orb_layout = QVBoxLayout(self._orb_panel)
+            self._orb_layout.setContentsMargins(2, 2, 2, 2)
+            self._orb_layout.setSpacing(1)
+            self._orb_labels: dict = {}  # civ -> QLabel
         
         # Scroll Area for Cards
         self.scroll_area = QScrollArea()
@@ -138,6 +154,82 @@ class ZoneWidget(QWidget):
             except Exception:
                 pass
         main_layout.addWidget(self.scroll_area)
+
+        # マナゾーンはオーブパネルを右端に追加
+        if self._is_mana_zone:
+            main_layout.addWidget(self._orb_panel)
+
+    def _update_mana_orbs(self, card_data_list, card_db):
+        """マナゾーンの文明オーブを更新する。アンタップ(利用可能)とタップ済みの数を文明別に集計して表示。"""
+        if not self._is_mana_zone:
+            return
+        try:
+            # 文明別に (アンタップ数, タップ数) を集計
+            counts: dict = {}  # civ -> [untapped, tapped]
+            for c_data in card_data_list:
+                cid = c_data.get('id', -1)
+                tapped = c_data.get('tapped', False)
+                if cid in card_db:
+                    card_def = card_db[cid]
+                    raw_civ = get_card_civilization(card_def)
+                    civs = raw_civ if isinstance(raw_civ, list) else [raw_civ]
+                    for civ in civs:
+                        if civ not in counts:
+                            counts[civ] = [0, 0]
+                        if tapped:
+                            counts[civ][1] += 1
+                        else:
+                            counts[civ][0] += 1
+
+            # 既存のラベルをクリア
+            for lbl in self._orb_labels.values():
+                try:
+                    lbl.setParent(None)
+                except Exception:
+                    pass
+            self._orb_labels.clear()
+
+            # 表示する文明を固定順でソート
+            display_civs = [c for c in _CIV_ORDER if c in counts]
+            for civ in counts:
+                if civ not in display_civs:
+                    display_civs.append(civ)
+
+            for civ in display_civs:
+                untapped, tapped_n = counts[civ]
+                fill, border = CIV_ORB_COLORS.get(civ, ("#D3D3D3", "#808080"))
+                name = CIV_NAMES_JA.get(civ, civ)
+                # 利用可能数(アンタップ) / 合計数
+                total = untapped + tapped_n
+                txt = f"{name}\n{untapped}/{total}"
+                lbl = QLabel(txt)
+                lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                # 利用可能なし（全タップ）→暗くする
+                if untapped == 0:
+                    lbl.setStyleSheet(
+                        f"background-color: {fill}55; color: #888; border: 1px solid {border}66;"
+                        f" border-radius: 4px; font-size: 9px; font-weight: bold;"
+                    )
+                else:
+                    lbl.setStyleSheet(
+                        f"background-color: {fill}; color: white; border: 2px solid {border};"
+                        f" border-radius: 4px; font-size: 9px; font-weight: bold;"
+                        f" text-shadow: 1px 1px 2px black;"
+                    )
+                tooltip_parts = []
+                if untapped > 0:
+                    tooltip_parts.append(f"利用可能: {untapped}枚")
+                if tapped_n > 0:
+                    tooltip_parts.append(f"使用済み: {tapped_n}枚")
+                lbl.setToolTip(f"{name} — " + " / ".join(tooltip_parts))
+                self._orb_layout.addWidget(lbl)
+                self._orb_labels[civ] = lbl
+
+            if not display_civs:
+                # マナゼロ時は空表示
+                pass
+        except Exception as e:
+            logger.debug(f"[ManaOrbs] update failed: {e}")
 
     def set_legal_commands(self, commands: list) -> None:
         self.legal_commands = commands
@@ -218,12 +310,9 @@ class ZoneWidget(QWidget):
                     tid = top_card['id']
                     if tid in card_db:
                         card_def = card_db[tid]
-                        # For bundle, we might want just "Mana (N)" text, but let's try to mimic "top card visible" if desired.
-                        # However, bundling implies we don't see the list.
-                        # If we just show the card back or generic info, it's safer.
-                        # But let's check civ distribution?
-                        # For now, generic "Mana (N)" is fine.
                         pass
+                # 文明オーブを更新（利用可能文明の表示）
+                self._update_mana_orbs(card_data_list, card_db)
 
             elif is_grave:
                 display_name = tr("Graveyard ({count})").format(count=count)
@@ -313,11 +402,31 @@ class ZoneWidget(QWidget):
                 widget.double_clicked.connect(lambda i_id, c_id=0: self.card_double_clicked.emit(c_id, i_id))
                 self.card_layout.addWidget(widget)
 
+        # ノーマル表示（展開時）でも文明オーブを更新
+        if self._is_mana_zone:
+            self._update_mana_orbs(card_data_list, card_db)
+
     def set_card_selected(self, instance_id, selected):
         for widget in self.cards:
             if widget.instance_id == instance_id:
                 widget.set_selected(selected)
                 return
+
+    def highlight_cards(self, instance_ids: list, mode: str = "legal"):
+        """指定 instance_id のカードウィジェットをハイライトする（方針A）。
+        mode: "legal" → 緑枠（操作可能）, "target" → 黄枠（有効対象）
+        """
+        for widget in self.cards:
+            if widget.instance_id in instance_ids:
+                if mode == "target":
+                    widget.set_highlight_target(True)
+                else:
+                    widget.set_highlight_legal(True)
+
+    def clear_highlights(self):
+        """全カードウィジェットのハイライトをリセットする（方針A）。"""
+        for widget in self.cards:
+            widget.clear_highlights()
 
     def _handle_command_triggered(self, cmd):
         """
