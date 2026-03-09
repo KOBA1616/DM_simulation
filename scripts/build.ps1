@@ -4,7 +4,8 @@
     [string]$Config = "Release",
     [string]$Generator = "",
     [switch]$Clean,
-    [switch]$UseLibTorch = $false
+    [switch]$UseLibTorch = $false,
+    [switch]$SkipAutoCleanup
 )
 
 $ErrorActionPreference = "Stop"
@@ -46,6 +47,15 @@ $buildDirName = if ($Toolchain -eq 'mingw') {
     'build-msvc'
 }
 $buildDir = Join-Path $projectRoot $buildDirName
+
+if (-not $SkipAutoCleanup) {
+    $cleanupScript = Join-Path $scriptDir 'clean_workspace.ps1'
+    if (Test-Path -LiteralPath $cleanupScript) {
+        Write-Host "Pruning stale build outputs, oversized logs, and old model checkpoints before build..."
+        # 再発防止: 現在使う build directory を除外してから古い build/log/models を整理し、容量肥大と誤削除を同時に防ぐ。
+        & $cleanupScript -PruneInactiveBuilds -PruneLogs -PruneModels -ActiveBuildDirName $buildDirName -KeepLogFiles 20 -LogMaxAgeDays 14 -LogMaxTotalMB 512 -BuildMaxAgeDays 14 -Force
+    }
+}
 
 function Invoke-VsDevCmd {
     param(

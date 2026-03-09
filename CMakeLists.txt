@@ -29,6 +29,14 @@ else()
 endif()
 
 # --- Dependencies ---
+# 再発防止: FetchContent の _deps をビルドディレクトリ内に閉じ込めると build-msvc / build-ninja
+# 両方で同一アーカイブを重複ダウンロード・展開してしまいディスクを浪費する。
+# プロジェクトルート直下の .cmake_deps_cache を共有キャッシュとすることで重複を排除する。
+if(NOT DEFINED CACHE{FETCHCONTENT_BASE_DIR})
+    set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.cmake_deps_cache" CACHE PATH
+        "Shared FetchContent cache shared across all build trees" FORCE)
+endif()
+
 # Pybind11 is required for Python bindings (Phase 3)
 # Try to find an installed pybind11 first; if not present, fetch it via FetchContent
 include(FetchContent)

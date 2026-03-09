@@ -23,6 +23,7 @@
 - メンテ/クリーン
   - `clean_workspace.ps1`
   - `clean_msvc.ps1`
+  - `rewrite_git_history_remove_build_artifacts.ps1`（別クローンで build 成果物を履歴から除去）
 
 - GitHub/PR作業
   - `gh_setup_and_pr.ps1`

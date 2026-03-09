@@ -618,13 +618,23 @@ class GameWindow(QMainWindow):
              legal_commands = all_legal_commands
 
         # Determine if a PASS command exists in the full engine-provided set
+        # 再発防止: to_dict()の'type'フィールドはenum オブジェクト(dm_ai_module.CommandType.PASS)
+        #           として返るため、文字列'PASS'との==比較は常にFalseになる。
+        #           必ず cmd.type 属性を直接 enum と比較すること。
         self.current_pass_action = None
         for cmd in all_legal_commands:
-            try: d = cmd.to_dict()
-            except: d = {}
-            if d.get('type') == 'PASS' or d.get('legacy_original_type') == 'PASS':
-                self.current_pass_action = cmd
-                break
+            try:
+                cmd_type = getattr(cmd, 'type', None)
+                if dm_ai_module and cmd_type is not None and cmd_type == dm_ai_module.CommandType.PASS:
+                    self.current_pass_action = cmd
+                    break
+                # フォールバック: str変換で末尾が'PASS'かを確認（PASS_TURNと区別）
+                type_str = str(cmd_type) if cmd_type is not None else ''
+                if type_str.endswith('.PASS') or type_str == 'PASS':
+                    self.current_pass_action = cmd
+                    break
+            except Exception:
+                pass
 
         god_view = False
         if hasattr(self, 'control_panel'):

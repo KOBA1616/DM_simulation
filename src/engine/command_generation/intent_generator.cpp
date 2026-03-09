@@ -71,23 +71,34 @@ namespace dm::engine {
                     cmd.target_instance = val;
                     actions.push_back(cmd);
                 }
+
             else if (query.query_type == "SELECT_FROM_BUFFER") {
-                // 再発防止: SELECT_FROM_BUFFER が未処理の場合 generate_commands が 0 を返し
-                //   fast_forward ループでゲームがフリーズする。バッファ内の各カードに対して
-                //   SELECT_FROM_BUFFER コマンドを生成し AI/プレイヤーが選択できるようにする。
+                // 再発防止: SELECT_FROM_BUFFER のケース
+                // - 目的: バッファ内カードをユーザー/AI が選べるように単純な選択コマンドを生成する
+                // - 出力キーは一意の既定値を用いて後段が暗黙キーを期待しないようにする
+                // - owner_id を明示して「どのプレイヤーの選択か」を確定させる
+                // - バッファが空のときは PASS を返すことで安全にパイプラインを進める
                 const auto& buf = game_state.players[game_state.active_player_id].effect_buffer;
-                // 出力キーを固定し、後段が暗黙キーを期待しないように明示する。
-                // owner_id を設定して、どのプレイヤーの選択かを明確にする。
+                // Use the canonical context key used by CommandSystem/MOVE_BUFFER_TO_ZONE
+                // CommandSystem historically expects "$buffer_select" as the out key
+                const std::string default_out_key = "$buffer_select"; // 統一キー
+                const int owner = static_cast<int>(game_state.active_player_id);
+
                 for (const auto& card : buf) {
                     CommandDef cmd;
                     cmd.type = CommandType::SELECT_FROM_BUFFER;
+                    // instance_id は選択対象のカードインスタンスID
                     cmd.instance_id = card.instance_id;
-                    cmd.owner_id = static_cast<int>(game_state.active_player_id);
-                    cmd.output_value_key = std::string("SELECT_FROM_BUFFER_RESULT");
+                    // 明示的に owner をつけて、どのプレイヤーのバッファかを示す
+                    cmd.owner_id = owner;
+                    // 後段はこのキーで選択結果（vector<int> を想定）を受け取る
+                    cmd.output_value_key = default_out_key;
                     actions.push_back(cmd);
                 }
                 if (actions.empty()) {
-                    // バッファが空の場合は PASS（安全フォールバック）
+                    // バッファが空の場合は PASS（安全フォールバック）。
+                    // 注意: PASS は空バッファの正常経路であり、エラー隠蔽にならないよう
+                    //       呼び出し元のログ/テストで検出できるようにすること。
                     CommandDef pass_cmd;
                     pass_cmd.type = CommandType::PASS;
                     actions.push_back(pass_cmd);

@@ -10,8 +10,9 @@ param(
     [ValidateSet('msvc','mingw')]
     [string]$Toolchain = 'msvc',
     [string]$Config = "Release",
-    [string]$Generator = ""
+    [string]$Generator = "",
+    [switch]$SkipAutoCleanup
 )
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-& "$scriptDir\build.ps1" -Toolchain $Toolchain -Config $Config -Generator $Generator -Clean
+& "$scriptDir\build.ps1" -Toolchain $Toolchain -Config $Config -Generator $Generator -Clean -SkipAutoCleanup:$SkipAutoCleanup
