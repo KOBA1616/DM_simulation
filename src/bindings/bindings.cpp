@@ -23,6 +23,9 @@ PYBIND11_MODULE(dm_ai_module, m) {
         }
     } catch(...) {}
     m.doc() = "Duel Masters AI Module";
+    // NOTE: 再発防止 — IS_NATIVE を True に設定してネイティブモジュールであることをテストから判別できるようにする。
+    // テストが Python フォールバックとネイティブを区別するときに参照する。
+    m.attr("IS_NATIVE") = true;
     bind_common(m);
     bind_core(m);
     bind_engine(m);

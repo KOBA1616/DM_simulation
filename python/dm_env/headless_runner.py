@@ -108,25 +108,12 @@ def run_game(
         pass
 
     try:
-        pm = getattr(dm, "PhaseManager", None)
-        if pm is not None and hasattr(pm, "start_game"):
-            # 診断: PhaseManager による初期化をトレース
-            try:
-                pm.start_game(game.state, db)
-                # ログは後続の処理で返却するため、一時的に記録しておく
-                init_log = ["[init] PhaseManager.start_game invoked"]
-            except Exception as exc:
-                init_log = [f"[init] PhaseManager.start_game error: {exc}"]
-                # フォールバックで game.start_game を試す
-                try:
-                    game.start_game()
-                    init_log.append("[init] fallback GameInstance.start_game succeeded")
-                except Exception as exc2:
-                    init_log.append(f"[init] fallback GameInstance.start_game error: {exc2}")
-                    return {"winner": None, "turns": 0, "log": init_log}
-        else:
-            game.start_game()
-            init_log = ["[init] GameInstance.start_game invoked"]
+        # NOTE: 再発防止 — 初期化は必ず game.start_game() を使うこと。
+        # PhaseManager.start_game は Phase 管理専用であり、手札・シールドの初期配置を行わない。
+        # PhaseManager.start_game のみ呼ぶとデッキ/手札が未設定のままゲームが始まり
+        # actions=0 / turns=1 の不整合が発生する。
+        game.start_game()
+        init_log = ["[init] GameInstance.start_game invoked"]
     except Exception as exc:
         return {"winner": None, "turns": 0, "log": [f"start_game error: {exc}"]}
     # 再発防止: turn はアクション数(resolve_commandの呼出回数)であり "ゲームのターン数" ではない。
@@ -147,29 +134,28 @@ def run_game(
             game_rounds += 1
             _prev_active_player = _cur_player
         try:
-            # Prefer toolkit wrapper which includes fast_forward and python fallbacks
-            try:
-                from dm_toolkit.commands import generate_legal_commands
-                legal: List[Any] = generate_legal_commands(state, db, strict=False, skip_wrapper=False) or []
-            except Exception:
-                legal: List[Any] = dm.IntentGenerator.generate_legal_commands(state, db) or []
+            # 再発防止: dm_toolkit.commands はラッパーオブジェクトを返すため
+            # game.resolve_command に渡せない。必ずネイティブ IntentGenerator を使うこと。
+            legal: List[Any] = dm.IntentGenerator.generate_legal_commands(state, db) or []
         except Exception as exc:
             log.append(f"[Action {action_count}] generate_legal_commands error: {exc}")
             break
         if not legal:
-            # 合法手が見つからない場合、初期化不足の可能性があるため
-            # PhaseManager.start_game() を試みて再生成する（1度だけフォールバック）
-            pm = getattr(dm, "PhaseManager", None)
-            if pm is not None and hasattr(pm, "start_game"):
+            # 再発防止: START_OF_TURN / DRAW フェーズは IntentGenerator が意図的に
+            # 空リストを返す（自動進行フェーズ）。PhaseManager.fast_forward() でフェーズを
+            # 進めてから再度 legal commands を生成する。
+            # PhaseManager.start_game() の再呼び出しは禁止（ゲーム状態がリセットされる）。
+            pm_cls = getattr(dm, "PhaseManager", None)
+            if pm_cls is not None and hasattr(pm_cls, "fast_forward"):
                 try:
-                    pm.start_game(game.state, db)
-                    try:
-                        from dm_toolkit.commands import generate_legal_commands
-                        legal = generate_legal_commands(state, db, strict=False, skip_wrapper=False) or []
-                    except Exception:
-                        legal = dm.IntentGenerator.generate_legal_commands(state, db) or []
+                    pm_cls.fast_forward(game.state, db)
+                    legal = dm.IntentGenerator.generate_legal_commands(game.state, db) or []
+                    # fast_forward 後も空なら next_phase で再試行（最大1回）
+                    if not legal and hasattr(pm_cls, "next_phase"):
+                        pm_cls.next_phase(game.state, db)
+                        legal = dm.IntentGenerator.generate_legal_commands(game.state, db) or []
                 except Exception as exc:
-                    log.append(f"[Action {action_count}] reinit generate_legal_commands error: {exc}")
+                    log.append(f"[Action {action_count}] fast_forward error: {exc}")
             if not legal:
                 # 追加診断情報を収集
                 try:

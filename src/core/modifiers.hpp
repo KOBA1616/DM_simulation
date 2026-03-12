@@ -35,6 +35,7 @@ namespace dm::core {
         BLOCKER_GRANT,
         SPEED_ATTACKER_GRANT,
         SLAYER_GRANT,
+        ALLOW_ATTACK_UNTAPPED,
         CANNOT_ATTACK,
         CANNOT_BLOCK,
         CANNOT_USE_SPELLS,

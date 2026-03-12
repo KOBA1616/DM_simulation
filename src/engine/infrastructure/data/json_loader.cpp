@@ -282,6 +282,7 @@ namespace dm::engine::infrastructure {
 
             // 2. Passive Keywords (Blocker, Speed Attacker, etc.)
             if (eff.trigger == TriggerType::PASSIVE_CONST) {
+                // Check legacy actions
                 for (const auto& action : eff.actions) {
                     if (action.str_val == "BLOCKER") def.keywords.blocker = true;
                     if (action.str_val == "SPEED_ATTACKER") def.keywords.speed_attacker = true;
@@ -301,6 +302,27 @@ namespace dm::engine::infrastructure {
                     if (action.str_val == "SHIELD_BURN") def.keywords.shield_burn = true;
                     if (action.str_val == "UNBLOCKABLE") def.keywords.unblockable = true;
                     if (action.str_val == "MUST_BE_CHOSEN") def.keywords.must_be_chosen = true;
+                }
+                // Also check migrated commands
+                for (const auto& cmd : eff.commands) {
+                    if (cmd.str_val == "BLOCKER") def.keywords.blocker = true;
+                    if (cmd.str_val == "SPEED_ATTACKER") def.keywords.speed_attacker = true;
+                    if (cmd.str_val == "SLAYER") def.keywords.slayer = true;
+                    if (cmd.str_val == "DOUBLE_BREAKER") def.keywords.double_breaker = true;
+                    if (cmd.str_val == "TRIPLE_BREAKER") def.keywords.triple_breaker = true;
+                    if (cmd.str_val == "POWER_ATTACKER") {
+                        def.keywords.power_attacker = true;
+                        def.power_attacker_bonus = cmd.amount;
+                    }
+                    if (cmd.str_val == "EVOLUTION") def.keywords.evolution = true;
+                    if (cmd.str_val == "MACH_FIGHTER") def.keywords.mach_fighter = true;
+                    if (cmd.str_val == "G_STRIKE") def.keywords.g_strike = true;
+                    if (cmd.str_val == "JUST_DIVER") def.keywords.just_diver = true;
+                    if (cmd.str_val == "HYPER_ENERGY") def.keywords.hyper_energy = true;
+                    if (cmd.str_val == "META_COUNTER") def.keywords.meta_counter_play = true;
+                    if (cmd.str_val == "SHIELD_BURN") def.keywords.shield_burn = true;
+                    if (cmd.str_val == "UNBLOCKABLE") def.keywords.unblockable = true;
+                    if (cmd.str_val == "MUST_BE_CHOSEN") def.keywords.must_be_chosen = true;
                 }
             }
         }

@@ -13,6 +13,8 @@
 #include "engine/systems/effects/trigger_manager.hpp"
 #include "engine/systems/flow/phase_system.hpp"
 #include "engine/utils/dev_tools.hpp"
+#include "engine/systems/effects/passive_effect_system.hpp"
+#include "engine/systems/rules/restriction_system.hpp"
 #include <fstream>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
@@ -23,6 +25,7 @@ using namespace dm::core;
 using namespace dm::engine;
 
 void bind_engine(py::module &m) {
+  // Debug helpers binding - ensure this file rebuilds when edited
   // GameCommand bindings
   py::class_<dm::engine::game_command::GameCommand,
              std::shared_ptr<dm::engine::game_command::GameCommand>>(
@@ -448,6 +451,33 @@ void bind_engine(py::module &m) {
       .def_static("generate_legal_commands", intent_impl)
       // 後方互換エイリアス（deprecated: 新規コードでは generate_legal_commands を使用する）
       .def_static("generate_legal_actions", intent_impl);
+
+  // Debug helpers: expose native checks to Python for unit-test inspection
+  m.def("debug_allows_attack_untapped",
+        [](const core::GameState &gs, int attacker_instance_id,
+           const std::map<core::CardID, core::CardDefinition> &db) {
+          const core::CardInstance *ci = gs.get_card_instance(attacker_instance_id);
+          if (!ci) {
+            throw std::runtime_error("Invalid attacker instance id");
+          }
+          bool allowed = dm::engine::PassiveEffectSystem::instance().allows_attack_untapped(gs, *ci, db);
+          return allowed;
+        });
+
+  m.def("debug_is_attack_forbidden",
+        [](const core::GameState &gs, int attacker_instance_id, int target_id,
+           const std::map<core::CardID, core::CardDefinition> &db) {
+          const core::CardInstance *att = gs.get_card_instance(attacker_instance_id);
+          if (!att) {
+            throw std::runtime_error("Invalid attacker instance id");
+          }
+          if (!db.count(att->card_id)) {
+            throw std::runtime_error("Card definition not found for attacker");
+          }
+          const auto &def = db.at(att->card_id);
+          bool forbidden = dm::engine::systems::RestrictionSystem::instance().is_attack_forbidden(gs, *att, def, target_id, db);
+          return forbidden;
+        });
 
   auto effect_resolver =
       py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver");

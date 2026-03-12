@@ -2,6 +2,8 @@
 #include "engine/systems/effects/passive_effect_system.hpp"
 #include "engine/utils/target_utils.hpp"
 #include "core/game_state.hpp"
+#include <filesystem>
+#include <fstream>
 
 namespace dm::engine::systems {
 
@@ -68,15 +70,27 @@ namespace dm::engine::systems {
 
              // Check if target is valid (Standard Rule: Must be tapped)
              const CardInstance* target_card = state.get_card_instance(target_id);
-             if (target_card && !target_card->is_tapped) {
-                 // TODO[優先度:中] アンタップクリーチャーへの攻撃許可エフェクト未実装。
-                 // 実装方法: PassiveEffectSystem に ALLOW_ATTACK_UNTAPPED 型を追加し、
-                 //   check_restriction() に対応するケースを追加する。
-                 // 対象カード例: 「セイバー」系キーワードを持つカード。
-                 // 再発防止: この return true を削除する前に
-                 //   test_restriction_system.py でアンタップ攻撃テストを追加すること。
-                 return true;
-             }
+            if (target_card && !target_card->is_tapped) {
+                // Standard rule: can't attack untapped creatures unless an effect allows it.
+                // If there is a passive effect ALLOW_ATTACK_UNTAPPED applying to attacker,
+                // allow the attack; otherwise forbid.
+                bool allowed = PassiveEffectSystem::instance().allows_attack_untapped(state, attacker, card_db);
+                try {
+                    std::filesystem::create_directories("logs");
+                    std::ofstream ofs("logs/restriction_debug.txt", std::ios::app);
+                    if (ofs) {
+                        ofs << "[Restriction] attacker=" << attacker.instance_id
+                            << " target=" << target_id
+                            << " target_tapped=" << (target_card->is_tapped?1:0)
+                            << " allows_attack_untapped=" << (allowed?1:0)
+                            << "\n";
+                    }
+                } catch(...) {}
+
+                if (!allowed) {
+                    return true;
+                }
+            }
          }
 
          if (PassiveEffectSystem::instance().check_restriction(state, attacker, PassiveType::CANNOT_ATTACK, card_db)) return true;

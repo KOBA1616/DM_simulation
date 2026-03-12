@@ -9,12 +9,23 @@ namespace dm::engine::mechanics {
     using namespace dm::core;
 
     std::vector<int> dm::engine::mechanics::SelectionSystem::select_targets(GameState& game_state, const ActionDef& action, int source_instance_id, const EffectDef& continuation, std::map<std::string, int>& execution_context) {
+        // Convert legacy ActionDef to CommandDef (minimal fields used here) and delegate
+        dm::core::CommandDef cmd;
+        cmd.target_filter = action.filter;
+        cmd.input_value_key = action.input_value_key;
+        cmd.optional = action.optional;
+        cmd.up_to = action.up_to;
+        cmd.str_val = action.target_choice.empty() ? action.str_val : action.target_choice;
+        return select_targets(game_state, cmd, source_instance_id, continuation, execution_context);
+    }
+
+    std::vector<int> dm::engine::mechanics::SelectionSystem::select_targets(GameState& game_state, const CommandDef& command, int source_instance_id, const EffectDef& continuation, std::map<std::string, int>& execution_context) {
         PlayerID controller = dm::engine::effects::EffectSystem::get_controller(game_state, source_instance_id);
 
         // First, attempt auto-selection optimization: collect valid targets and
         // if the requested count >= available targets, resolve immediately.
         std::vector<int> valid_targets;
-        FilterDef filter = action.filter;
+        FilterDef filter = command.target_filter;
         std::vector<Zone> zones;
         if (filter.zones.empty()) {
             zones = {Zone::BATTLE, Zone::HAND, Zone::MANA, Zone::SHIELD};
@@ -68,9 +79,9 @@ namespace dm::engine::mechanics {
         }
 
         int num_needed = 1;
-        if (action.filter.count.has_value()) num_needed = action.filter.count.value();
-        if (!action.input_value_key.empty() && execution_context.count(action.input_value_key)) {
-            num_needed = execution_context[action.input_value_key];
+        if (filter.count.has_value()) num_needed = filter.count.value();
+        if (!command.input_value_key.empty() && execution_context.count(command.input_value_key)) {
+            num_needed = execution_context[command.input_value_key];
         }
 
         if ((int)valid_targets.size() <= 0) {
@@ -86,28 +97,28 @@ namespace dm::engine::mechanics {
 
         PendingEffect pending(EffectType::NONE, source_instance_id, controller);
         pending.resolve_type = ResolveType::TARGET_SELECT;
-        pending.filter = action.filter;
+        pending.filter = filter;
 
         if (pending.filter.zones.empty()) {
-             if (action.target_choice == "ALL_ENEMY") {
+             if (command.str_val == "ALL_ENEMY") {
                  pending.filter.owner = "OPPONENT";
                  pending.filter.zones = {"BATTLE_ZONE"};
              }
         }
 
-        if (action.filter.count.has_value()) {
-            pending.num_targets_needed = action.filter.count.value();
+        if (filter.count.has_value()) {
+            pending.num_targets_needed = filter.count.value();
         } else {
             pending.num_targets_needed = 1;
         }
 
-        if (!action.input_value_key.empty()) {
-            if (execution_context.count(action.input_value_key)) {
-                pending.num_targets_needed = execution_context[action.input_value_key];
+        if (!command.input_value_key.empty()) {
+            if (execution_context.count(command.input_value_key)) {
+                pending.num_targets_needed = execution_context[command.input_value_key];
             }
         }
 
-        pending.optional = action.optional;
+        pending.optional = command.optional;
         pending.effect_def = continuation;
         pending.execution_context = execution_context;
 

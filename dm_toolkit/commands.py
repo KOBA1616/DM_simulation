@@ -29,13 +29,6 @@ def _call_native_command_generator(state: Any, card_db: Any) -> List[Any]:
     C++ IntentGenerator.generate_legal_commands のみを使用する。
     """
     try:
-        if os.getenv('DM_DISABLE_NATIVE') in ('1', 'true', 'True'):
-            logger.debug('DM_DISABLE_NATIVE is set; skipping native command generator')
-            return []
-    except Exception:
-        pass
-
-    try:
         import dm_ai_module
     except Exception:
         return []
@@ -335,32 +328,6 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
             except Exception:
                 pass  # Silent fallback - if fast_forward fails, return empty actions
 
-        # If native is disabled or no native actions found, synthesize simple
-        # play candidates from Python state as a best-effort fallback so tests
-        # and tools can exercise play logic without the C++ engine.
-        try:
-            # 再発防止: DM_DISABLE_NATIVE フォールバックで Action/ActionType オブジェクトは使用禁止。
-            # CommandDef 互換の辞書のみを生成する。
-            if not actions and os.getenv('DM_DISABLE_NATIVE') in ('1', 'true', 'True'):
-                pid = getattr(state, 'active_player_id', 0)
-                hand = []
-                try:
-                    hand = list(getattr(state.players[pid], 'hand', []) or [])
-                except Exception:
-                    hand = []
-                synth = []
-                for c in hand:
-                    try:
-                        iid = getattr(c, 'instance_id', None) or getattr(c, 'id', None)
-                        synth.append({'type': 'PLAY_FROM_ZONE', 'instance_id': iid, 'player_id': pid})
-                    except Exception:
-                        continue
-                actions = synth
-                if actions:
-                    logger.debug(f"Synthesized {len(actions)} PLAY_FROM_ZONE commands as Python fallback (DM_DISABLE_NATIVE)")
-        except Exception:
-            pass
-        
         # Trust C++ engine completely - wrap actions for GUI execution
         if skip_wrapper:
             return actions

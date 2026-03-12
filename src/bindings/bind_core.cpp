@@ -264,6 +264,7 @@ void bind_core(py::module& m) {
         .value("BLOCKER_GRANT", PassiveType::BLOCKER_GRANT)
         .value("SPEED_ATTACKER_GRANT", PassiveType::SPEED_ATTACKER_GRANT)
         .value("SLAYER_GRANT", PassiveType::SLAYER_GRANT)
+        .value("ALLOW_ATTACK_UNTAPPED", PassiveType::ALLOW_ATTACK_UNTAPPED)
         .value("CANNOT_ATTACK", PassiveType::CANNOT_ATTACK)
         .value("CANNOT_BLOCK", PassiveType::CANNOT_BLOCK)
         .value("CANNOT_USE_SPELLS", PassiveType::CANNOT_USE_SPELLS)
@@ -538,26 +539,8 @@ void bind_core(py::module& m) {
         .def_readwrite("condition", &ModifierDef::condition)
         .def_readwrite("filter", &ModifierDef::filter);
 
-    py::class_<ActionDef>(m, "ActionDef")
-        .def(py::init<>())
-        .def_readwrite("type", &ActionDef::type)
-        .def_readwrite("value1", &ActionDef::value1)
-        .def_readwrite("value2", &ActionDef::value2)
-        .def_readwrite("str_val", &ActionDef::str_val)
-        .def_readwrite("optional", &ActionDef::optional)
-        .def_readwrite("up_to", &ActionDef::up_to)
-        .def_readwrite("filter", &ActionDef::filter)
-        .def_readwrite("target_player", &ActionDef::target_player)
-        .def_readwrite("source_zone", &ActionDef::source_zone)
-        .def_readwrite("destination_zone", &ActionDef::destination_zone)
-        .def_readwrite("target_choice", &ActionDef::target_choice)
-        .def_readwrite("input_value_key", &ActionDef::input_value_key)
-        .def_readwrite("input_value_usage", &ActionDef::input_value_usage)
-        .def_readwrite("output_value_key", &ActionDef::output_value_key)
-        .def_readwrite("condition", &ActionDef::condition)
-        .def_readwrite("options", &ActionDef::options)
-        .def_readwrite("scope", &ActionDef::scope)
-        .def_readwrite("cast_spell_side", &ActionDef::cast_spell_side);
+    // Legacy ActionDef is no longer exposed directly; use CommandDef instead.
+    // A Python-level alias `ActionDef = CommandDef` is provided later for compatibility.
 
     // Bind CommandDef
     py::class_<CommandDef>(m, "CommandDef")
@@ -585,6 +568,11 @@ void bind_core(py::module& m) {
         .def_readwrite("up_to", &CommandDef::up_to)
         .def_readwrite("options", &CommandDef::options)
         .def("to_dict", &command_to_dict);
+
+    // Backwards-compatibility: expose ActionDef name as alias to CommandDef in Python
+    // This allows existing Python code that constructs ActionDef instances to keep working
+    // while the internal migration continues in C++.
+    m.attr("ActionDef") = m.attr("CommandDef");
 
     py::class_<EffectDef>(m, "EffectDef")
         .def(py::init<>())
@@ -1091,4 +1079,15 @@ void bind_core(py::module& m) {
             throw std::runtime_error("Unknown error in get_card_stats");
         }
     });
+
+    // NOTE: 再発防止 — CardStub は Python フォールバック互換のエイリアス。
+    // テストコードが `from dm_ai_module import CardStub` で簡易カードを生成できるように
+    // CardInstance のファクトリ関数として登録する。
+    // CardStub(card_id) → CardInstance.card_id=card_id, instance_id=card_id
+    m.def("CardStub", [](int card_id, int instance_id) {
+        CardInstance c;
+        c.card_id = static_cast<CardID>(card_id);
+        c.instance_id = (instance_id >= 0 ? instance_id : card_id);
+        return c;
+    }, py::arg("card_id"), py::arg("instance_id") = -1);
 }

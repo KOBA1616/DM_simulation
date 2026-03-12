@@ -71,8 +71,9 @@ namespace dm::engine {
                     cmd.target_instance = val;
                     actions.push_back(cmd);
                 }
-
-            else if (query.query_type == "SELECT_FROM_BUFFER") {
+            // NOTE: 再発防止 — SELECT_NUMBER の for ループ後に閉じ括弧が必要。
+            // ここでブロックを閉じないと else if が dangling else になりコンパイルエラー。
+            } else if (query.query_type == "SELECT_FROM_BUFFER") {
                 // 再発防止: SELECT_FROM_BUFFER のケース
                 // - 目的: バッファ内カードをユーザー/AI が選べるように単純な選択コマンドを生成する
                 // - 出力キーは一意の既定値を用いて後段が暗黙キーを期待しないようにする

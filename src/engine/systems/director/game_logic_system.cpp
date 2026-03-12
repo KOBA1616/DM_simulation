@@ -31,9 +31,9 @@ namespace dm::engine::systems {
 
     // Private helper implementation
     std::pair<core::Zone, core::PlayerID> GameLogicSystem::get_card_location(const core::GameState& state, int instance_id) {
-        if (instance_id < 0 || (size_t)instance_id >= state.card_owner_map.size()) return {Zone::GRAVEYARD, 0};
+        if (instance_id < 0 || (size_t)instance_id >= state.card_owner_map.size()) return {Zone::GRAVEYARD, PlayerID{0}};
         PlayerID owner = state.get_card_owner(instance_id);
-        if (owner >= state.players.size()) return {Zone::GRAVEYARD, 0};
+        if (owner >= state.players.size()) return {Zone::GRAVEYARD, PlayerID{0}};
         const Player& p = state.players[owner];
 
         auto has = [&](const std::vector<CardInstance>& v) {
@@ -239,11 +239,8 @@ namespace dm::engine::systems {
                 auto block = std::make_shared<std::vector<Instruction>>();
                 block->push_back(inst);
 
-                bool duplicate = false;
-                // (Duplicate check omitted for brevity/safety in new path unless critical,
-                // dispatch_action had it but handle_resolve_play handles recursion via pipeline logic anyway?
-                // Actually dispatch_action's duplicate check was to prevent infinite enqueue loops in the SAME frame logic.
-                // Here we just push. If needed, we can port it.)
+                // NOTE: 再発防止 — duplicate チェックは現経路では不要（pipeline での再帰防止は pipeline 自体が担う）
+                // bool duplicate = false; は削除済み。ここで local 変数を残すと C4189 でビルドが停止する。
 
                 pipeline.call_stack.push_back({std::static_pointer_cast<const std::vector<Instruction>>(block), 0, LoopContext{}});
                 break;
@@ -325,11 +322,12 @@ namespace dm::engine::systems {
         pipeline.execute(nullptr, state, card_db);
     }
 
-    void GameLogicSystem::resolve_play_from_stack(core::GameState& game_state, int stack_instance_id, int cost_reduction, core::SpawnSource spawn_source, core::PlayerID controller, const std::map<core::CardID, core::CardDefinition>& card_db, int evo_source_id, core::ZoneDestination dest_override) {
+    void GameLogicSystem::resolve_play_from_stack(core::GameState& game_state, int stack_instance_id, int cost_reduction, core::SpawnSource spawn_source, core::PlayerID /*controller*/, const std::map<core::CardID, core::CardDefinition>& card_db, int evo_source_id, core::ZoneDestination dest_override) {
         // Resolve a play that is currently on the stack: invoke resolution logic
         // by constructing a PipelineExecutor, delegating to handle_resolve_play and
         // running the pipeline so compiled effects (and final MOVE to GRAVE) execute.
         (void)cost_reduction; (void)spawn_source; (void)evo_source_id; (void)dest_override;
+        // NOTE: 再発防止 — controller 引数は将来の使用に備えて残す。C4100 を抑制するため /*controller*/ とする。
 
         // Create pipeline and push resolve-play block
         dm::engine::systems::PipelineExecutor pipeline;
@@ -353,6 +351,9 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_apply_buffer_move(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                                   const std::map<core::CardID, core::CardDefinition>& card_db) {
+        // NOTE: 再発防止 — card_db は将来のトリガー効果参照用に保持するが現時点では未使用。
+        // C4100 を抑制するために (void) キャストを追加。
+        (void)card_db;
         // Expect inst.args["shields"] = [id...]
         std::vector<int> shield_ids;
         if (inst.args.find("shields") != inst.args.end()) {
