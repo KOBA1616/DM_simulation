@@ -46,6 +46,10 @@ try:
 except ImportError:
     dm_ai_module = None
 
+from dm_toolkit.gui.game_controller import GameController
+import threading
+import time
+
 
 class GameSession:
     """Simplified game session that leverages C++ engine for game progression."""
@@ -73,6 +77,12 @@ class GameSession:
         self.game_instance = None  # C++ GameInstance
         self.gs: Optional[GameState] = None  # Alias to game_instance.state for compatibility
         self._no_action_count = 0  # Track consecutive steps with no actions
+        # Controller: encapsulate native engine interactions (responsibility split)
+        # Classification: Engine/Bridge
+        self.controller = GameController()
+        # Async AI worker
+        self._ai_thread: Optional[threading.Thread] = None
+        self._ai_stop_event = threading.Event()
 
     def initialize_game(self, card_db: Optional[CardDB] = None, seed: int = 42) -> None:
         """Initialize game with C++ engine.
@@ -105,7 +115,8 @@ class GameSession:
         self._no_action_count = 0
         
         # Create GameInstance (replaces GameState)
-        self.game_instance = dm_ai_module.GameInstance(seed, self.native_card_db)
+        # Use GameController to create and hold GameInstance
+        self.game_instance = self.controller.create_instance(seed, self.native_card_db)
         self.gs = self.game_instance.state  # Alias for compatibility
         self.gs.setup_test_duel()
 
@@ -115,10 +126,9 @@ class GameSession:
         self.gs.set_deck(0, deck0)
         self.gs.set_deck(1, deck1)
 
-        # Start game via C++ PhaseManager
+        # Start game via C++ PhaseManager (delegated to controller)
         try:
-            dm_ai_module.PhaseManager.start_game(self.gs, self.native_card_db)
-            dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
+            self.controller.start_and_fast_forward(self.gs, self.native_card_db)
             self.callback_log(tr("Game Reset"))
         except Exception as e:
             self.callback_log(tr("start_game/fast_forward failed: {e}").format(e=e))
@@ -155,7 +165,7 @@ class GameSession:
         seed = random.randint(0, 100000)
         
         # Create GameInstance (not just GameState)
-        self.game_instance = dm_ai_module.GameInstance(seed, self.native_card_db)
+        self.game_instance = self.controller.create_instance(seed, self.native_card_db)
         self.gs = self.game_instance.state  # Alias for compatibility
         self.gs.setup_test_duel()
 
@@ -173,8 +183,7 @@ class GameSession:
 
         # Start game via C++ PhaseManager
         try:
-            dm_ai_module.PhaseManager.start_game(self.gs, self.native_card_db)
-            dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
+            self.controller.start_and_fast_forward(self.gs, self.native_card_db)
         except Exception as e:
             self.callback_log(f"start_game failed: {e}")
 
@@ -335,15 +344,12 @@ class GameSession:
 
     def _fast_forward(self):
         """Call C++ fast_forward to progress game until next decision point."""
-        if not dm_ai_module or not hasattr(dm_ai_module.PhaseManager, 'fast_forward'):
-            return
-        
+        # Delegate to controller which guards PhaseManager calls
         if self.native_card_db is None:
             self.callback_log(tr("ERROR: Cannot call fast_forward without native CardDatabase"))
             return
-        
         try:
-            dm_ai_module.PhaseManager.fast_forward(self.gs, self.native_card_db)
+            self.controller.fast_forward(self.gs, self.native_card_db)
             # Re-sync gs after C++ modifies state
             if self.game_instance:
                 self.gs = self.game_instance.state
@@ -434,16 +440,80 @@ class GameSession:
         if not self.is_running or self.is_game_over():
             self.is_running = False
             return
-        
+        # If active player is AI, run worker thread to avoid blocking UI loop
+        try:
+            active_pid = EngineCompat.get_active_player_id(self.gs)
+            is_human = self.gs.is_human_player(active_pid)
+        except Exception:
+            is_human = False
+
+        if not is_human:
+            # Start background AI worker if not already running
+            if self._ai_thread is None or not self._ai_thread.is_alive():
+                self._start_ai_worker()
+            return
+
+        # Human player: perform single step and schedule next GUI callback
         self.step_game()
-        
         if self.is_running:
-            # Schedule next step
             try:
                 from PyQt6.QtCore import QTimer
                 QTimer.singleShot(100, self._auto_step_loop)
             except Exception:
                 self.is_running = False
+
+    def _start_ai_worker(self) -> None:
+        """Start a daemon thread that repeatedly calls engine step() for AI turns."""
+        if not self.game_instance:
+            return
+        # Clear previous stop event
+        self._ai_stop_event.clear()
+
+        def worker():
+            while not self._ai_stop_event.is_set() and not self.is_game_over():
+                try:
+                    # call the native step() which performs AI selection/execution
+                    success = False
+                    try:
+                        success = self.game_instance.step()
+                    except Exception:
+                        success = False
+
+                    # Always resync state and notify UI
+                    if self.game_instance:
+                        self.gs = self.game_instance.state
+                    try:
+                        self.callback_update_ui()
+                    except Exception:
+                        pass
+
+                    if not success:
+                        # fallback fast-forward and small backoff
+                        try:
+                            self._fast_forward()
+                        except Exception:
+                            pass
+                        time.sleep(0.05)
+                    else:
+                        time.sleep(0.01)
+                except Exception:
+                    # On unexpected errors, stop worker to avoid runaway thread
+                    break
+
+        t = threading.Thread(target=worker, daemon=True)
+        self._ai_thread = t
+        t.start()
+
+    def _stop_ai_worker(self) -> None:
+        """Signal AI worker to stop and join thread if possible."""
+        try:
+            self._ai_stop_event.set()
+        except Exception:
+            pass
+        if self._ai_thread and self._ai_thread.is_alive():
+            # give it a short time to exit
+            self._ai_thread.join(timeout=0.2)
+        self._ai_thread = None
 
     def _check_and_handle_input_wait(self) -> bool:
         """Check if waiting for user input and handle input request."""

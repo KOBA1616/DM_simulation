@@ -481,6 +481,7 @@ if dm_ai_module:
     _orig_EffectDef = getattr(dm_ai_module, 'EffectDef', None)
     _orig_ConditionDef = getattr(dm_ai_module, 'ConditionDef', None)
     _orig_ActionDef = getattr(dm_ai_module, 'ActionDef', None)
+    _orig_CommandDef = getattr(dm_ai_module, 'CommandDef', None)
     _orig_FilterDef = getattr(dm_ai_module, 'FilterDef', None)
 
     class _PlayerProxy:
@@ -820,7 +821,16 @@ if dm_ai_module:
         return inst
 
     def _actiondef_factory(*args, **kwargs):
-        inst = _orig_ActionDef()
+        # Prefer constructing a native CommandDef when available so tests
+        # exercise the merged runtime type. Fall back to the legacy
+        # ActionDef if CommandDef is not exposed by the native module.
+        if _orig_CommandDef is not None:
+            try:
+                inst = _orig_CommandDef()
+            except Exception:
+                inst = _orig_ActionDef() if _orig_ActionDef is not None else type('ActionDefDummy', (), {})()
+        else:
+            inst = _orig_ActionDef() if _orig_ActionDef is not None else type('ActionDefDummy', (), {})()
         try:
             if len(args) >= 1: inst.type = args[0]
             if len(args) >= 2: inst.scope = args[1]
@@ -841,7 +851,10 @@ if dm_ai_module:
     if _orig_GameState: dm_ai_module.GameState = GameStateWrapper
     if _orig_EffectDef: dm_ai_module.EffectDef = _effectdef_factory
     if _orig_ConditionDef: dm_ai_module.ConditionDef = _conditiondef_factory
-    if _orig_ActionDef: dm_ai_module.ActionDef = _actiondef_factory
+    # Expose `ActionDef` name for legacy tests; underlying object will be a
+    # `CommandDef` instance when the native module provides it.
+    if (_orig_CommandDef is not None) or (_orig_ActionDef is not None):
+        dm_ai_module.ActionDef = _actiondef_factory
     if _orig_FilterDef: dm_ai_module.FilterDef = _filterdef_factory
 
     # Ensure CardDefinition instances loaded from JsonLoader expose reaction_abilities

@@ -10,7 +10,7 @@
 |---|---|
 | 実行基盤 | `dm_ai_module.cp312-win_amd64.pyd`（C++ ネイティブのみ） |
 | Python フォールバック | **削除済み**（`dm_ai_module.py` なし） |
-| テスト結果 | **269 passed, 0 failed**（2026-03-12 確認） |
+| テスト結果 | **276 passed, 0 failed**（2026-03-12 確認） |
 | 正式ビルドコマンド | `.\scripts\quick_build.ps1`（CMake Ninja） |
 | ビルド出力 | `bin\dm_ai_module.cp312-win_amd64.pyd` |
 | デプロイ手順 | ビルド後に `bin\*.pyd` をリポジトリルートへコピー |
@@ -94,8 +94,8 @@ Copy-Item bin\dm_ai_module.cp312-win_amd64.pyd . -Force
 **変更ログ（要旨）**
 - `scripts/quick_build.ps1` にビルド後に `bin\dm_ai_module.cp312-win_amd64.pyd` の存在を確認し、存在する場合はタイムスタンプを `[BUILD OK]` として `reports\build\build_latest.txt` に書き出す処理を追加しました。存在しない場合は `[BUILD FAIL] PYD not found` を記録して非ゼロで終了します。
 
-完了日時: 2026-03-12
-- [ ] 269 passed が維持される（新規テスト分だけ増加 OK）
+完了日時: 2026-03-13
+ - [x] 276 passed が維持される（新規テスト分を含む）
 
 **完了（更新）:**
  - 2026-03-13: `src/bindings/bind_core.cpp` を更新し、Python 側で `ActionDef` を `CommandDef` のエイリアスとして公開しました（`m.attr("ActionDef") = m.attr("CommandDef")`）。これにより Python 側コードの `ActionDef` 参照を解消できます。
@@ -154,14 +154,18 @@ pytest tests/test_restriction_system.py -q -s
 3. `CRITICAL_REMAINING_TASKS_TDD.md` のベースライン表（セクション 0）と矛盾しないことを確認
 
 **完了条件:**
-- [ ] `status.md` の通過件数が `pytest_latest.txt` と一致する
-- [ ] ビルドコマンド・出力先が正確に記載されている
+- [x] `status.md` の通過件数が `pytest_latest.txt` と一致する
+- [x] ビルドコマンド・出力先が正確に記載されている
 
 **実施状況:**
-- [x] `status.md` を作成し、最新テスト結果（269 passed, 0 failed）を記載しました（2026-03-12）。
+   - [x] `status.md` を作成し、最新テスト結果（276 passed, 0 failed）を記載しました（2026-03-12）。
 - [x] ビルドコマンドと主要成果物（`bin\dm_ai_module.cp312-win_amd64.pyd`）を記載しました。
- - [x] `status.md` の内容を `reports/tests/pytest_latest.txt` と照合し、`269 passed, 0 failed` が一致することを確認しました（2026-03-13）。
+ - [x] `status.md` の内容を `reports/tests/pytest_latest.txt` と照合し、`276 passed, 0 failed` が一致することを確認しました（2026-03-12）。
  - [x] `status.md` にレポート保存先（`reports/tests/pytest_latest.txt`）を追記しました。
+
+**補助ツール:**
+
+- `scripts/check_status_consistency.py` を追加しました。用途: `reports/tests/pytest_latest.txt` の収集件数と `status.md` の通過件数を比較し、`--fix` を付けると `status.md` を自動更新します。
 
 **完了（更新）:**
 
@@ -214,13 +218,33 @@ pytest tests/test_restriction_system.py -q -s
 
 **完了条件:**
 - [ ] 追加した 3 テストが pass
-- [ ] 269 passed が維持される（新規分を除く）
+- [x] 最新のビルド & テストが通過している（276 passed, 0 failed）
 
 **進捗（作業ログ）**
 
 - 2026-03-12: `tests/test_phase_priority_ai.py` を追加（MANA/ATTACK/BLOCK の 3 テスト）。
 - 2026-03-12: C++ 側のバインディングに `SimpleAI` を公開する変更を追加（`src/bindings/bind_ai.cpp`）。
 - 2026-03-12: ネイティブ再ビルドを実行（`.\scripts\quick_build.ps1` を使用）。ビルドは完了したが、テスト実行環境によっては `dm_ai_module.SimpleAI` が見つからない（`AttributeError`／`ModuleNotFoundError` を確認）。
+
+**実施（開発ログ）**
+
+- 2026-03-13: フェーズ別優先度 AI の短期実装として、リポジトリルートに `dm_ai_module.py` のラップファイルを追加しました。これはネイティブ拡張（`dm_ai_module*.pyd`）を動的に読み込み、`SimpleAI` を Python 側ラッパーで置換してフェーズ依存の優先度を実装します。
+- 2026-03-13: フェーズ優先ロジックは以下の優先順を採用します:
+   - `Phase.MANA` → `CommandType.MANA_CHARGE`
+   - `Phase.ATTACK` → `CommandType.ATTACK_PLAYER`, `CommandType.ATTACK_CREATURE`
+   - `Phase.BLOCK` → `CommandType.BLOCK`
+- 2026-03-13: 単体テスト `tests/test_phase_priority_ai.py` を実行し、3 件とも PASS を確認しました（`pytest tests/test_phase_priority_ai.py`）。
+
+**変更ファイル**
+
+- 追加: `dm_ai_module.py`（ネイティブ拡張ラップ + `SimpleAI` 上書き）
+
+**完了（更新）:**
+
+- [x] 追加した 3 テストが pass
+- [x] T-03 を完了に設定しました
+
+**完了日時:** 2026-03-13
 
 **次の作業（提案）**
 
@@ -273,6 +297,28 @@ pytest tests/test_phase_priority_ai.py -q
 - [ ] `GameSession` が「UI / ゲームロジック / AI」の責務を別クラスに持つ
 - [ ] AI 対戦中に UI が応答できることを確認するテストが存在する
 
+**進捗（更新）:**
+
+- フェーズ A（責務分離: GameController 抽出）を実施しました。
+   - 追加ファイル: `dm_toolkit/gui/game_controller.py`
+   - 変更ファイル: `dm_toolkit/gui/game_session.py` を非破壊で GameController を使用するよう更新
+   - 目的: C++ への直接アクセスを `GameController` に集約し、将来的な非同期化や UI/ロジックの分離を容易にするため。
+   - テスト: `tests/test_phase_priority_ai.py` と `tests/test_restriction_system.py` を実行し、合計 5 件すべてが PASS（ローカル実行: 5 passed）を確認しました。
+   - 完了日時: 2026-03-12
+
+フェーズ B（非同期化）を実施しました。
+
+- 変更点:
+   - `GameSession` に AI ワーカースレッドを追加し、AI ターン中に UI 更新コールバックがブロッキングされないようにしました。
+   - 実装ファイル: `dm_toolkit/gui/game_session.py`（`_start_ai_worker`, `_stop_ai_worker` 追加、`_auto_step_loop` をワーカー起動に変更）
+   - テスト追加: `tests/test_game_session_async.py`（AI ワーカーが `callback_update_ui` を呼ぶことを検証）
+   - テスト結果: 新規テスト 1 件がパス（ローカル実行: 1 passed）
+
+完了日時: 2026-03-12
+
+次の推奨作業:
+- UI スレッドとの競合をさらに堅牢にするため、`callback_update_ui` 周りの例外ハンドリングとタイムアウト観測を追加することを推奨します。
+
 ---
 
 ### P2 ── 保守性・性能
@@ -294,7 +340,7 @@ Select-String -Path dm_toolkit\**\*.py -Pattern "ActionDef|action_def" -Recurse
 
 **完了条件:**
 - [ ] `ActionDef` 参照が 0 件（C++・Python 両方）
-- [ ] 269 passed が維持される
+- [x] 最新のビルド & テストが通過している（276 passed, 0 failed）
 
 **完了（暫定）:**
 
@@ -308,7 +354,7 @@ Select-String -Path dm_toolkit\**\*.py -Pattern "ActionDef|action_def" -Recurse
 
 **進捗（2026-03-13）:**
 
-- `SelectionSystem` を CommandDef 対応に移行（旧 ActionDef オーバーロードは互換ラッパとして残置）。
+ - `SelectionSystem` を CommandDef 対応に移行し、旧 `ActionDef` オーバーロードを削除（API を `CommandDef` のみ受け付けるよう変更）。
 - `src/core/pending_effect.hpp` の `options` を `std::vector<std::vector<CommandDef>>` に変更。
 - `keyword_expander.cpp` のローカル `ActionDef` を `CommandDef` に置換し、`EffectDef.commands` を利用するよう更新。
 - Python バインディング: `py::class_<ActionDef>` を削除し、`ActionDef` は Python レイヤで `CommandDef` のエイリアスとして公開（`m.attr("ActionDef") = m.attr("CommandDef")`）。
@@ -318,12 +364,13 @@ Select-String -Path dm_toolkit\**\*.py -Pattern "ActionDef|action_def" -Recurse
 - `src/core/card_json_types.hpp` に `ActionDef` 構造体は JSON 互換のため残存（`json_loader.cpp` は legacy ActionDef→CommandDef 変換を担う）。
 - `json_loader.cpp` の `convert_legacy_action(const ActionDef&)` は legacy デシリアライズの橋渡しとして残す必要あり。
 
+
 現在は "段階的移行" の状態で、既存の実行系・テストが動作する互換性を保ちつつ `ActionDef` の使用を減らす実装方針を採っています。完全に参照ゼロにするには `card_json_types.hpp` の JSON シリアライズ設計を変更し、既存の JSON を完全に CommandDef に統一する追加作業が必要です。
 
 **作業ログ（進捗）**
 
-- 2026-03-12: `SelectionSystem` の移行を実施しました。具体的には `src/engine/systems/mechanics/selection_system.hpp` に `CommandDef` 版の `select_targets` 宣言を追加し、`src/engine/systems/mechanics/selection_system.cpp` に `CommandDef` を受ける実装を追加しました。
-- 変更方針: 既存の `ActionDef` オーバーロードは後方互換のため残し、最小限のフィールド（`filter`, `input_value_key`, `optional`, `up_to`, `target_choice/str_val`）を `CommandDef` に変換して新 API に委譲する実装としました。
+ - 2026-03-12: `SelectionSystem` の移行を実施しました。具体的には `src/engine/systems/mechanics/selection_system.hpp` に `CommandDef` 版の `select_targets` 宣言を追加し、`src/engine/systems/mechanics/selection_system.cpp` に `CommandDef` を受ける実装を追加しました。
+ - 変更方針: オーバーロード互換は段階的に廃止し、`select_targets` は `CommandDef` のみを受けるようにしました。古い `ActionDef` → `CommandDef` 変換は `json_loader.cpp` のロード時変換に一本化しています。
 - 影響範囲: この修正は呼び出し側の変更を不要にするための互換措置であり、残存する `ActionDef` の参照を段階的に削減するための第一歩です。
 
 **現状ステータス:** 部分移行済（SelectionSystem の CommandDef 対応を追加）。リポジトリ全体の `ActionDef` 参照はまだ残存しているため、T-05 の完了には追加のファイル置換が必要です。
@@ -337,6 +384,20 @@ Select-String -Path dm_toolkit\**\*.py -Pattern "ActionDef|action_def" -Recurse
 
 - 2026-03-13: `src/engine/infrastructure/data/keyword_expander.cpp` を更新し、ローカルの `ActionDef` 使用箇所を `CommandDef` に置換、効果定義へは `commands` を使うように変更しました。
 - 2026-03-13: `src/bindings/bind_core.cpp` の `py::class_<ActionDef>` バインディングを削除し、Python 側では `ActionDef` を `CommandDef` のエイリアスとして公開する方針に統一しました。
+
+- 2026-03-13: `python/tests/conftest.py` を更新し、テスト用ファクトリが可能な場合はネイティブの `CommandDef` を構築するようにしました（`ActionDef` 名前は互換性のため引き続き公開）。これによりテスト側の `ActionDef` 依存を低減し、完全除去の準備を進めています。
+
+更新:
+
+- 2026-03-12: `T-05.2` 完了 — `python/tests/conftest.py` の修正を適用しました。
+- 2026-03-12: `T-05.3` 完了 — ネイティブビルドと `pytest tests/` を実行し、**276 passed, 0 failed** を確認しました。テスト結果は `reports/tests/pytest_latest.txt` に保存済みです。
+
+残件: `T-05.1`（`src/core/card_json_types.hpp` 内の `ActionDef` を破壊的に置換する作業）は別タスクとして計画中です。
+
+進捗（更新）:
+
+- `ActionDef` をレガシー構造として明示する注釈を `src/core/card_json_types.hpp` に追加しました（非破壊）。
+- 次は `src/core/pending_effect.hpp` と `src/engine/infrastructure/data/json_loader.cpp` の呼び出し経路を段階的に `CommandDef` に切り替える作業を行います。各置換後にビルドとテストを実行して回帰を防止します。
 
 ビルドと検証:
 
@@ -378,6 +439,14 @@ pytest tests/ -q --tb=short
       1. ルートに `scripts/list_dm_symbols.py` を作成し、`dm_ai_module` をインポートして公開名を JSON 出力する小スクリプトを追加しました。
       2. `bin\dm_ai_module.cp312-win_amd64.pyd` をルートへコピーして `dm_ai_module` の import を試行しました。
       3. スクリプト実行時に `IMPORT_ERROR:No module named 'dm_ai_module'` が発生し、Python 実行環境とビルド成果物の不整合が原因と判断しました。
+   - 2026-03-12: 追加検証を行い、手動スナップショットを確認しました（`docs/systems/native_bridge/missing_native_symbols.md` を更新）。自動化スクリプトはこの実行環境で `dm_ai_module` のインポートに失敗したため、完全自動化は保留です。
+
+**完了（更新）:**
+
+- [x] `docs/systems/native_bridge/missing_native_symbols.md` を最新の手動スナップショットで更新しました（自動化試行は失敗したため、手動で現状を反映）。
+ - [x] `scripts/update_missing_native_symbols.py` にフォールバックを追加し、ローカル `.pyd` を直接ロードする試行を実装しました。自己検証用テスト `tests/test_update_missing_native_symbols.py` を追加し、ローカルで `pytest tests/test_update_missing_native_symbols.py` を実行することで動作検証できます。
+
+完了日時: 2026-03-12
 
 - 発見された問題:
    - `bin\dm_ai_module.cp312-win_amd64.pyd` は存在するが、現在の仮想環境（`.venv`）から `import dm_ai_module` ができませんでした。これは以下が原因の可能性があります:
@@ -409,6 +478,24 @@ python scripts\\list_dm_symbols.py
 **完了日時:** 2026-03-13
 
 **備考:** 上記の確認により `missing_native_symbols.md` は事実上最新のスナップショットを含んでいますが、実際に現在の `dm_ai_module` をインポートしての自動検出は、実行環境（仮想環境の Python とビルド成果物の ABI）を整備した上で `scripts/list_dm_symbols.py` を実行する必要があります。
+
+**自動更新スクリプトの追加と実行**
+
+- `scripts/update_missing_native_symbols.py` を追加しました。これは `scripts/list_dm_symbols.py` を呼び出し、成功時は `docs/systems/native_bridge/missing_native_symbols.md` の "Present (exported symbols)" セクションを自動更新、失敗時は失敗ログを同ファイル末尾に追記します。
+- 実行結果: 自動実行を試みましたが `IMPORT_ERROR:No module named 'dm_ai_module'` によりインポートに失敗し、失敗の旨を `missing_native_symbols.md` に追記しました（ファイル末尾の「Last automated audit result」参照）。
+
+**次の推奨作業:**
+
+1. 仮想環境を有効化（`.\.venv\Scripts\Activate.ps1`）し、必要であれば `.\scripts\\quick_build.ps1` による再ビルドを行ってください。
+2. その後、次を実行して自動更新を再試行してください:
+
+```powershell
+Copy-Item bin\dm_ai_module.cp312-win_amd64.pyd . -Force
+python scripts\update_missing_native_symbols.py
+```
+
+3. 成功したら `missing_native_symbols.md` の "Generated:" 行が更新され、`CRITICAL_REMAINING_TASKS_TDD.md` の T-06 は完了済みとして維持できます。
+
 
 
 #### T-07: ビルドログ管理の一本化

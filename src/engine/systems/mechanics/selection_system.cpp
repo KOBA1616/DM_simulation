@@ -8,17 +8,6 @@ namespace dm::engine::mechanics {
 
     using namespace dm::core;
 
-    std::vector<int> dm::engine::mechanics::SelectionSystem::select_targets(GameState& game_state, const ActionDef& action, int source_instance_id, const EffectDef& continuation, std::map<std::string, int>& execution_context) {
-        // Convert legacy ActionDef to CommandDef (minimal fields used here) and delegate
-        dm::core::CommandDef cmd;
-        cmd.target_filter = action.filter;
-        cmd.input_value_key = action.input_value_key;
-        cmd.optional = action.optional;
-        cmd.up_to = action.up_to;
-        cmd.str_val = action.target_choice.empty() ? action.str_val : action.target_choice;
-        return select_targets(game_state, cmd, source_instance_id, continuation, execution_context);
-    }
-
     std::vector<int> dm::engine::mechanics::SelectionSystem::select_targets(GameState& game_state, const CommandDef& command, int source_instance_id, const EffectDef& continuation, std::map<std::string, int>& execution_context) {
         PlayerID controller = dm::engine::effects::EffectSystem::get_controller(game_state, source_instance_id);
 

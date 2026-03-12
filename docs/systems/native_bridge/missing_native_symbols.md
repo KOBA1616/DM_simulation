@@ -371,3 +371,14 @@ Suggested next actions:
 - (Low risk) Add lightweight Python wrappers in `src/bindings/bind_core.cpp` to export `CardRegistry` and any other missing top-level aliases.
 - (Medium risk) Audit consumer code for references to `ActionType`, `GameLogicSystem`, `PlayerStub` and adapt callers to use available symbols or add wrappers.
 
+
+
+### Audit notes
+
+- Manual snapshot generated and reviewed: 2026-03-12.
+- Automated audit attempts were performed but failed to import `dm_ai_module` from the active Python interpreter due to an import/ABI mismatch in this environment. The present symbol list above was retained from the most recent successful manual inspection.
+
+Recommended next steps:
+
+- Ensure the test/runtime Python environment can import the native extension directly (copy matching `dm_ai_module*.pyd` to the interpreter's import path or align the venv ABI/build).
+- Re-run `scripts/update_missing_native_symbols.py` (works when `python -c "import dm_ai_module"` succeeds). If automation still fails, consider adding a small bootstrap that loads the repo shim before running the audit.

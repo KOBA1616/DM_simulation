@@ -336,6 +336,12 @@ namespace dm::core {
         FilterDef filter;
     };
 
+    // Deprecated legacy structure: ActionDef
+    // NOTE: `ActionDef` remains defined for JSON deserialization compatibility.
+    // New code should prefer `CommandDef`. The conversion is performed in
+    // `json_loader.cpp::convert_legacy_action` and callers should migrate to
+    // `CommandDef` when possible. This struct is retained to avoid breaking
+    // existing card JSON files and to support incremental migration (T-05).
     struct ActionDef {
         EffectPrimitive type = EffectPrimitive::NONE;
         TargetScope scope = TargetScope::NONE;
