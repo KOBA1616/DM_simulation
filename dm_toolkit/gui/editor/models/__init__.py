@@ -27,10 +27,69 @@ class FilterModel(BaseModel):
     min_power: Optional[int] = None
     max_power: Optional[int] = None
     owner: Optional[str] = None
+    # Legacy: `flags` was a loose list of flag names. We keep it for ingest only
+    # and map to explicit fields below. Serialization will not emit `flags`.
     flags: List[str] = Field(default_factory=list) # e.g. is_tapped
+
+    # Explicit boolean fields (preferred). Use Optional so absence is distinguishable.
+    is_tapped: Optional[bool] = None
+    is_blocker: Optional[bool] = None
+    is_evolution: Optional[bool] = None
+    is_card_designation: Optional[bool] = None
+    is_trigger_source: Optional[bool] = None
 
     class Config:
         extra = "allow"
+
+    @model_validator(mode='before')
+    @classmethod
+    def ingest_legacy_flags(cls, v):
+        # Map legacy `flags` list into explicit boolean fields
+        if isinstance(v, dict):
+            flags = v.get('flags') or []
+            if flags and isinstance(flags, list):
+                # Normalized set of names
+                flags_set = set(flags)
+                if 'is_tapped' in flags_set or 'tapped' in flags_set:
+                    v.setdefault('is_tapped', True)
+                if 'is_blocker' in flags_set or 'blocker' in flags_set:
+                    v.setdefault('is_blocker', True)
+                if 'is_evolution' in flags_set or 'evolution' in flags_set:
+                    v.setdefault('is_evolution', True)
+                if 'is_card_designation' in flags_set or 'card_designation' in flags_set:
+                    v.setdefault('is_card_designation', True)
+                if 'is_trigger_source' in flags_set or 'trigger_source' in flags_set:
+                    v.setdefault('is_trigger_source', True)
+
+            # Remove legacy flags from the dict to avoid serialization
+            if 'flags' in v:
+                try:
+                    del v['flags']
+                except Exception:
+                    pass
+        return v
+
+    @model_serializer
+    def serialize_filter(self) -> Dict[str, Any]:
+        # Serialize filter without legacy `flags` list. Include explicit fields only when set.
+        out: Dict[str, Any] = {}
+        if self.zones: out['zones'] = self.zones
+        if self.civilizations: out['civilizations'] = self.civilizations
+        if self.races: out['races'] = self.races
+        if self.min_cost is not None: out['min_cost'] = self.min_cost
+        if self.max_cost is not None: out['max_cost'] = self.max_cost
+        if self.min_power is not None: out['min_power'] = self.min_power
+        if self.max_power is not None: out['max_power'] = self.max_power
+        if self.owner is not None: out['owner'] = self.owner
+
+        # Explicit flags
+        if self.is_tapped is not None: out['is_tapped'] = self.is_tapped
+        if self.is_blocker is not None: out['is_blocker'] = self.is_blocker
+        if self.is_evolution is not None: out['is_evolution'] = self.is_evolution
+        if self.is_card_designation is not None: out['is_card_designation'] = self.is_card_designation
+        if self.is_trigger_source is not None: out['is_trigger_source'] = self.is_trigger_source
+
+        return out
 
 # --- Command Models ---
 
