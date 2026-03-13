@@ -3,6 +3,9 @@
 ## 実施日
 2026年2月6日
 
+関連資料:
+- `docs/guides/migration/ACTIONDEF_EOL_POLICY.md` (ActionDef 廃止期限と JSON 移行手順)
+
 ## 変更概要
 古いActionDefベースのシステムから、新しいCommandDefベースのコマンドシステムへ移行しました。
 

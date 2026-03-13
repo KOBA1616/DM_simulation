@@ -350,10 +350,14 @@ class LogicTreeWidget(QTreeView):
         if not card_index.isValid(): return
         self.data_manager.remove_logic_by_label(card_index, "Revolution Change")
 
-    def add_mekraid(self, card_index):
+    def add_mekraid(self, card_index, payload=None):
         """メクレイド効果を追加"""
         if not card_index.isValid(): return
-        eff_item = self.data_manager.apply_template_by_key(card_index, "MEKRAID", "Mekraid")
+        extra_context = {}
+        # 再発防止: payload の races をテンプレート置換に渡し、MEKRAID 条件へ反映する。
+        if payload and payload.get('races'):
+            extra_context['mekraid_races'] = payload['races']
+        eff_item = self.data_manager.apply_template_by_key(card_index, "MEKRAID", "Mekraid", extra_context=extra_context)
         if eff_item and isinstance(eff_item, QtEditorItem):
             self.setCurrentIndex(eff_item.get_raw_item().index())
             self.expand(card_index)

@@ -1,6 +1,7 @@
 # Native symbols report (auto-generated snapshot)
 
 Generated: 2026-03-12
+Automated audit: 2026-03-13 — 347 symbols collected (see scripts/_list_dm_symbols_temp.py)
 
 This file records the symbols currently exported by the native `dm_ai_module` Python extension and highlights the small set of previously-expected symbols that remain unexported.
 
@@ -376,9 +377,9 @@ Suggested next actions:
 ### Audit notes
 
 - Manual snapshot generated and reviewed: 2026-03-12.
-- Automated audit attempts were performed but failed to import `dm_ai_module` from the active Python interpreter due to an import/ABI mismatch in this environment. The present symbol list above was retained from the most recent successful manual inspection.
+- Automated audit: 2026-03-13 — script `scripts/_list_dm_symbols_temp.py` executed inside the project's `.venv`; 347 exported symbols were collected and recorded above. During import a non-fatal ONNX warning was emitted (`The requested API version [20] is not available...`), but the native module loaded and symbol enumeration succeeded.
 
 Recommended next steps:
 
-- Ensure the test/runtime Python environment can import the native extension directly (copy matching `dm_ai_module*.pyd` to the interpreter's import path or align the venv ABI/build).
-- Re-run `scripts/update_missing_native_symbols.py` (works when `python -c "import dm_ai_module"` succeeds). If automation still fails, consider adding a small bootstrap that loads the repo shim before running the audit.
+- (Optional) If you require additional top-level aliases for backward compatibility, add lightweight Python shims in `src/bindings/bind_core.cpp`.
+- Re-run `scripts/update_missing_native_symbols.py` from the same activated `.venv` to reproduce this automated snapshot in CI.

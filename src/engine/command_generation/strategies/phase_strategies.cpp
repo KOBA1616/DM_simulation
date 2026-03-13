@@ -243,12 +243,6 @@ AttackPhaseStrategy::generate(const CommandGenContext &ctx) {
   const Player &active_player = game_state.players[game_state.active_player_id];
   const Player &opponent = game_state.players[1 - game_state.active_player_id];
 
-  try {
-    char buf2[128];
-    int nn = snprintf(buf2, sizeof(buf2), "[DBG PassiveCount] passive_cnt=%zu\n", game_state.passive_effects.size());
-    if (nn > 0) fwrite(buf2, 1, (size_t)std::min(nn, (int)sizeof(buf2)), stderr);
-  } catch(...) {}
-
   for (size_t i = 0; i < active_player.battle_zone.size(); ++i) {
     const auto &card = active_player.battle_zone[i];
 
@@ -277,18 +271,6 @@ AttackPhaseStrategy::generate(const CommandGenContext &ctx) {
         actions.push_back(attack_player);
       }
 
-      try {
-        std::filesystem::create_directories("logs");
-        std::ofstream ofs("logs/attack_phase_debug.txt", std::ios::app);
-        if (ofs) {
-          ofs << "[AttackPhase] attacker=" << card.instance_id
-              << " can_attack_player=" << (can_attack_player?1:0)
-              << " can_attack_creature=" << (can_attack_creature?1:0)
-              << " passive_restricted=" << (passive_restricted?1:0)
-              << "\n";
-        }
-      } catch(...) {}
-
       if (can_attack_creature && !passive_restricted) {
         for (size_t j = 0; j < opponent.battle_zone.size(); ++j) {
           const auto &opp_card = opponent.battle_zone[j];
@@ -296,21 +278,6 @@ AttackPhaseStrategy::generate(const CommandGenContext &ctx) {
           // Allow attacks against tapped creatures as normal, or allow against
           // untapped creatures if a passive effect grants that permission
           bool target_allowed_by_passive = PassiveEffectSystem::instance().allows_attack_untapped(game_state, card, card_db);
-
-          // Debug log for decision
-          try {
-            std::filesystem::create_directories("logs");
-            std::ofstream ofs("logs/attack_phase_debug.txt", std::ios::app);
-            if (ofs) {
-              ofs << "[AttackPhase] attacker=" << card.instance_id
-                  << " opp=" << opp_card.instance_id
-                  << " opp_tapped=" << (opp_card.is_tapped?1:0)
-                  << " target_allowed_by_passive=" << (target_allowed_by_passive?1:0)
-                  << " can_attack_creature=" << (can_attack_creature?1:0)
-                  << " passive_restricted=" << (passive_restricted?1:0)
-                  << "\n";
-            }
-          } catch(...) {}
 
           // Delegate legality to RestrictionSystem for accurate checks
           if (card_db.count(opp_card.card_id)) {
@@ -333,12 +300,6 @@ AttackPhaseStrategy::generate(const CommandGenContext &ctx) {
               if (allowed_via_passive) break;
             }
 
-            try {
-              char buf3[128];
-              int nn2 = snprintf(buf3, sizeof(buf3), "[DBG PassiveScan] attacker=%d allowed_via_passive=%d\n", card.instance_id, (int)allowed_via_passive);
-              if (nn2 > 0) fwrite(buf3, 1, (size_t)std::min(nn2, (int)sizeof(buf3)), stderr);
-            } catch(...) {}
-
             bool protected_by_jd =
                 dm::engine::utils::TargetUtils::is_protected_by_just_diver(
                     opp_card, opp_def, game_state, active_player.id);
@@ -353,17 +314,6 @@ AttackPhaseStrategy::generate(const CommandGenContext &ctx) {
             // centralizes passive logic; fallback to allowed_via_passive scan
             // only if needed.
             if (opp_card.is_tapped || target_allowed_by_passive || allowed_via_passive) {
-              // Emit a short runtime debug line to stderr so pytest capture shows
-              // which attacker/target pairs are being considered and added.
-              try {
-                char buf[256];
-                int n = snprintf(buf, sizeof(buf), "[DBG AttackPhase] push ATTACK_CREATURE atk=%d tgt=%d allowed=%d\n",
-                                 card.instance_id, opp_card.instance_id, (int)allowed_via_passive);
-                if (n > 0) {
-                  fwrite(buf, 1, (size_t)std::min(n, (int)sizeof(buf)), stderr);
-                }
-              } catch(...) {}
-
               CommandDef attack_creature;
               attack_creature.type = CommandType::ATTACK_CREATURE;
               attack_creature.instance_id = card.instance_id;

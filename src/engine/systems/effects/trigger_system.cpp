@@ -2,8 +2,37 @@
 #include "engine/infrastructure/data/card_registry.hpp"
 #include "core/game_event.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
+#include "engine/systems/effects/passive_effect_system.hpp"
 #include "engine/utils/target_utils.hpp"
 #include <iostream>
+
+namespace {
+using namespace dm::core;
+
+static bool matches_descriptor_runtime(const TriggerDescriptor& td, const GameState& state) {
+    // TriggerSystem API does not receive a GameEvent, so only runtime-stable checks are applied.
+    // PRE timing and trigger_zones require GameEvent context and are intentionally not matched here.
+    (void)state;
+    const std::string timing = td.timing_mode.empty() ? "POST" : td.timing_mode;
+    if (timing == "PRE") return false;
+    if (!td.trigger_zones.empty()) return false;
+    return true;
+}
+
+static bool already_pending_once(const GameState& state, const PendingEffect& pending) {
+    for (const auto& p : state.pending_effects) {
+        if (p.type != EffectType::TRIGGER_ABILITY) continue;
+        if (p.source_instance_id != pending.source_instance_id) continue;
+        if (p.controller != pending.controller) continue;
+        nlohmann::json ja;
+        nlohmann::json jb;
+        dm::core::to_json(ja, p.effect_def);
+        dm::core::to_json(jb, pending.effect_def);
+        if (ja == jb) return true;
+    }
+    return false;
+}
+} // namespace
 
 namespace dm::engine::systems {
 
@@ -13,6 +42,12 @@ namespace dm::engine::systems {
         std::vector<EffectDef> matching_effects;
         CardInstance* instance = game_state.get_card_instance(source_instance_id);
         if (!instance) {
+            return matching_effects;
+        }
+
+        // 再発防止: 「能力を無視する」効果が適用中のカードは誘発能力を持たないものとして扱う。
+        if (PassiveEffectSystem::instance().check_restriction(
+                game_state, *instance, PassiveType::IGNORE_ABILITIES, card_db)) {
             return matching_effects;
         }
 
@@ -43,16 +78,24 @@ namespace dm::engine::systems {
         }
 
         for (const auto& effect : active_effects) {
+            const TriggerDescriptor* td_ptr =
+                (effect.trigger_descriptor.has_value())
+                    ? &effect.trigger_descriptor.value()
+                    : nullptr;
+
             // フェーズ2: TriggerDescriptor の trigger_list（OR結合）を優先して照合
             // 再発防止: trigger_listが空でない場合、そちらを使う。空ならlegacy triggerフィールドを使う
             bool trigger_match = false;
-            if (effect.trigger_descriptor.has_value() &&
-                !effect.trigger_descriptor->trigger_list.empty()) {
-                for (const auto& t : effect.trigger_descriptor->trigger_list) {
+            if (td_ptr && !td_ptr->trigger_list.empty()) {
+                for (const auto& t : td_ptr->trigger_list) {
                     if (t == trigger) { trigger_match = true; break; }
                 }
             } else {
                 trigger_match = (effect.trigger == trigger);
+            }
+
+            if (trigger_match && td_ptr) {
+                trigger_match = matches_descriptor_runtime(*td_ptr, game_state);
             }
 
             if (trigger_match) {
@@ -77,7 +120,15 @@ namespace dm::engine::systems {
             pending.optional = true;
             pending.chain_depth = game_state.turn_stats.current_chain_depth + 1;
 
-            add_pending_effect(game_state, pending);
+            const TriggerDescriptor* td_ptr =
+                (effect.trigger_descriptor.has_value())
+                    ? &effect.trigger_descriptor.value()
+                    : nullptr;
+            const bool once_only = td_ptr &&
+                (td_ptr->multiplicity.empty() || td_ptr->multiplicity == "ONCE");
+            if (!once_only || !already_pending_once(game_state, pending)) {
+                add_pending_effect(game_state, pending);
+            }
         }
 
         // 2. Resolve Global Triggers (Scope: OBSERVER based)
@@ -118,6 +169,11 @@ namespace dm::engine::systems {
         for (int obs_id : potential_observers) {
             const CardInstance* obs_card = game_state.get_card_instance(obs_id);
             if (!obs_card) continue;
+
+            if (PassiveEffectSystem::instance().check_restriction(
+                    game_state, *obs_card, PassiveType::IGNORE_ABILITIES, card_db)) {
+                continue;
+            }
 
             // Get Observer Definition
             const CardDefinition* obs_def = nullptr;

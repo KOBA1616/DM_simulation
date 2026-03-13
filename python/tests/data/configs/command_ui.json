@@ -1,6 +1,6 @@
 {
   "COMMAND_GROUPS": {
-    "LOGIC": ["QUERY", "IF", "IF_ELSE", "ELSE"],
+    "LOGIC": ["QUERY", "IF", "IF_ELSE", "ELSE", "IGNORE_ABILITY"],
     "DRAW": ["DRAW_CARD", "LOOK_AND_ADD", "MEKRAID"],
     "RESTRICTION": []
   },
@@ -71,9 +71,14 @@
     "labels": { "explicit_self": "This Card", "str_val": "Keyword", "duration": "Duration", "amount": "Amount (Hidden)" }
   },
   "QUERY": {
-    "visible": ["target_group", "target_filter", "query_mode", "output_link"],
+    "visible": ["target_group", "target_filter", "query_mode", "amount", "input_link", "output_link"],
+    "labels": { "amount": "Selections Count" },
     "produces_output": true,
     "outputs": { "output_value_key": "Query Result" }
+  },
+  "IGNORE_ABILITY": {
+    "visible": ["target_group", "target_filter", "duration", "input_link"],
+    "labels": { "duration": "Duration", "target_filter": "Target Filter (type/cost)" }
   },
   "FLOW": {
     "visible": ["str_param"],
@@ -205,5 +210,9 @@
   "PLAY_FROM_BUFFER": {
     "visible": ["from_zone", "amount", "input_link"],
     "labels": { "amount": "Count" }
+  },
+  "MOVE_BUFFER_REMAIN_TO_ZONE": {
+    "visible": ["to_zone", "input_link"],
+    "labels": { "to_zone": "Destination" }
   }
 }

@@ -6,7 +6,10 @@
             "commands": [
                 {
                     "type": "REVOLUTION_CHANGE",
-                    "mutation_kind": "REVOLUTION_CHANGE"
+                    "mutation_kind": "REVOLUTION_CHANGE",
+                    "target_filter": {
+                        "races": ["__RC_RACES__"]
+                    }
                 }
             ]
         },
@@ -22,7 +25,11 @@
                 {
                     "type": "MEKRAID",
                     "amount": 3,
-                    "str_param": "__CARD_RACES__"
+                    "str_param": "__MEKRAID_RACES__",
+                    "target_filter": {
+                        "races": ["__MEKRAID_RACES__"],
+                        "types": ["CREATURE"]
+                    }
                 }
             ]
         }

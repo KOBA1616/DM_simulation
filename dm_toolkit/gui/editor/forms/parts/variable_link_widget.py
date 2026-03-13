@@ -135,10 +135,13 @@ class VariableLinkWidget(QWidget):
         if not found and input_key:
              # Try to recover label from metadata
              saved_label = data.get('_input_value_label', '')
+             # 再発防止: 補助ラベル未翻訳時に "()" が表示されるのを防ぐ。
+             missing_label = tr('Missing').strip()
+             unknown_label = tr('Unknown').strip()
              if saved_label:
-                 label = f"{saved_label} ({tr('Missing')})"
+                 label = f"{saved_label} ({missing_label})" if missing_label else saved_label
              else:
-                 label = f"{input_key} ({tr('Unknown')})"
+                 label = f"{input_key} ({unknown_label})" if unknown_label else input_key
 
              # Add it temporarily so we don't lose data
              self.input_key_combo.addItem(label, input_key)

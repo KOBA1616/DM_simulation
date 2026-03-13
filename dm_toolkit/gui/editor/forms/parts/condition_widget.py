@@ -40,6 +40,12 @@ CONDITION_UI_CONFIG = {
         "label_val": "Value",
         "label_str": "String"
     },
+    "PLAYED_WITHOUT_MANA_TARGET": {
+        "show_val": False,
+        "show_str": False,
+        "label_val": "Value",
+        "label_str": "String"
+    },
     "OPPONENT_DRAW_COUNT": {
         "show_val": True,
         "show_str": False,
@@ -135,6 +141,7 @@ class ConditionEditorWidget(QGroupBox):
         cond_types = [
             "NONE", "MANA_ARMED", "SHIELD_COUNT", "CIVILIZATION_MATCH",
             "OPPONENT_PLAYED_WITHOUT_MANA", "OPPONENT_DRAW_COUNT",
+            "PLAYED_WITHOUT_MANA_TARGET",
             "DURING_YOUR_TURN", "DURING_OPPONENT_TURN",
             "FIRST_ATTACK", "EVENT_FILTER_MATCH",
             "COMPARE_STAT", "COMPARE_INPUT", "CARDS_MATCHING_FILTER", "DECK_EMPTY",

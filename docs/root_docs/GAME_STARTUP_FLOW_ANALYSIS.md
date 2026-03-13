@@ -742,8 +742,8 @@ game_instance.subscribe(EventType::ACTION_EXECUTED, lambda e: log_action(e))
 
 #### フェーズ3: イベント通知システム構築（2-3日）
 
-- [ ] EventDispatcher実装
-- [ ] 主要イベント定義（STATE_CHANGED, ACTION_EXECUTED等）
+- [x] EventDispatcher実装 (`dm_toolkit/event_dispatcher.py`)
+- [x] 主要イベント定義（STATE_CHANGED, ACTION_EXECUTED等） (`dm_toolkit/event_types.py`)
 - [ ] PyBind11でバインディング
 - [ ] Python側をコールバックからイベント購読に移行
 

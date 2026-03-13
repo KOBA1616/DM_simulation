@@ -39,6 +39,9 @@ jobs:
       - name: Install core deps (no PyQt6)
         run: pip install -e .
 
+      - name: Verify ONNX Runtime version alignment
+        run: python -m pytest tests/test_onnxruntime_version_alignment.py -q
+
       - name: Build C++ extension
         shell: pwsh
         run: .\scripts\build.ps1

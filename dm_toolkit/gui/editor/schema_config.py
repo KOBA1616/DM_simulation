@@ -8,7 +8,8 @@ MUTATION_TYPES = [
     "SPEED_ATTACKER", "BLOCKER", "SLAYER", "DOUBLE_BREAKER", "TRIPLE_BREAKER",
     "POWER_ATTACKER", "S_TRIGGER", "MACH_FIGHTER", "UNBLOCKABLE",
     "CANNOT_BE_BLOCKED", "ALWAYS_WIN_BATTLE", "INFINITE_POWER_ATTACKER",
-    "JUST_DIVER", "G_STRIKE", "HYPER_ENERGY", "SHIELD_BURN", "EX_LIFE"
+    "JUST_DIVER", "G_STRIKE", "HYPER_ENERGY", "SHIELD_BURN", "EX_LIFE",
+    "SUPER_SOUL_X",
 ]
 
 DELAYED_EFFECT_IDS = [
@@ -25,6 +26,7 @@ EFFECT_IDS = [
     "CANNOT_BLOCK",
     "CANNOT_ATTACK_OR_BLOCK",
     "CANNOT_ATTACK_AND_BLOCK",
+    "CANNOT_LEAVE_BATTLE",
 ]
 
 APPLY_MODIFIER_OPTIONS = EFFECT_IDS + ["COST"]
@@ -182,14 +184,19 @@ def register_all_schemas():
     # 再発防止: query_mode のオプションは consts.py の QUERY_MODES と C++ 対応モードで統一すること。
     # "COUNT_CARDS", "GET_GAME_STAT", "HAS_TARGET" は無効な値だったため修正済み。
     # str_param に C++ QueryCommand の query_type が格納される (schema key = "str_param")。
-    # SELECT_OPTION: プレイヤーに文字列選択肢を提示するモード (str_val に改行区切りで選択肢テキストを設定)
+    # SELECT_OPTION: プレイヤーにカード選択を求めるモード。
+    #   target_filter で候補を絞り込み、amount/input link で選択枚数を指定し、
+    #   output_value_key に選択結果（カードID列）を保存する。
+    #   str_val はレガシー互換のため保持（旧: 文字列選択肢）。
     # SELECT_TARGET: プレイヤーにカード選択を求めるモード (target_filter で対象を絞り込む)
     _QUERY_OPTION_MODES = QUERY_MODES + ["SELECT_TARGET", "SELECT_OPTION"]
     register_schema(CommandSchema("QUERY", [
         f_target,
         f_filter,
         FieldSchema("str_param", tr("Query Mode"), FieldType.SELECT, options=_QUERY_OPTION_MODES),
-        FieldSchema("str_val", tr("Options Text (SELECT_OPTION: 改行区切り)"), FieldType.STRING),
+        FieldSchema("amount", tr("Selection Count"), FieldType.INT, default=1, min_value=1),
+        FieldSchema("str_val", tr("Options Text (Legacy SELECT_OPTION Labels)"), FieldType.STRING),
+        f_links_in,
         f_links_out
     ]))
 
@@ -365,6 +372,12 @@ def register_all_schemas():
         f_filter,  # 暗黙的選択フィルター（設定すると SELECT_FROM_BUFFER 不要）
         f_links_in
     ]))
+    # 再発防止: MOVE_BUFFER_REMAIN_TO_ZONE はバッファ残余（選択されなかったカード）を
+    #   すべて to_zone に移動する。BUFFER_REMAIN 仮想ターゲットを使用する。
+    register_schema(CommandSchema("MOVE_BUFFER_REMAIN_TO_ZONE", [
+        FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="DECK_BOTTOM"),
+        f_links_in
+    ]))
 
     # Others
     # 再発防止: 制限コマンドの持続期間は APPLY_MODIFIER と同様 SELECT 式 (DURATION_OPTIONS) で統一する。
@@ -380,7 +393,8 @@ def register_all_schemas():
     register_schema(CommandSchema("SPELL_RESTRICTION", [
         f_target,
         f_filter,  # Stats Filter 内の exact_cost / min_cost / max_cost で射程コストを指定可能
-        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
+        f_links_in
     ]))
     register_schema(CommandSchema("CANNOT_PUT_CREATURE", [
         f_target,
@@ -396,6 +410,16 @@ def register_all_schemas():
         f_target,
         f_filter,
         FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
+    ]))
+
+    # Ability Ignore
+    # 再発防止: 入力リンクで受け取ったコスト値 (input_value_key) を cost_ref として扱い、
+    #   target_filter.types と組み合わせて「指定コスト・指定タイプの能力を無視」を表現する。
+    register_schema(CommandSchema("IGNORE_ABILITY", [
+        f_target,
+        f_filter,
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
+        f_links_in
     ]))
 
     register_schema(CommandSchema("RESET_INSTANCE", [

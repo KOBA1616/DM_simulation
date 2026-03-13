@@ -1,7 +1,9 @@
 #include "pipeline_executor.hpp"
 #include "engine/diag_win32.h"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
+#include "engine/systems/effects/passive_effect_system.hpp"
 #include "engine/systems/rules/condition_system.hpp"
 #include "engine/utils/target_utils.hpp"
 #include <algorithm>
@@ -1095,6 +1097,16 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
     if (!found)
       continue;
 
+    // 再発防止: CANNOT_LEAVE_BATTLE パッシブが有効な場合、バトルゾーンからの離脱を防ぐ
+    if (from_zone == Zone::BATTLE) {
+      const auto &db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
+      const CardInstance *check_card = state.get_card_instance(id);
+      if (check_card && PassiveEffectSystem::instance().check_restriction(
+                            state, *check_card, PassiveType::CANNOT_LEAVE_BATTLE, db)) {
+        continue;
+      }
+    }
+
     int dest_idx = to_bottom ? 0 : -1;
     auto cmd = std::make_unique<TransitionCommand>(id, from_zone, to_zone,
                                                    owner, dest_idx);
@@ -1193,7 +1205,7 @@ void PipelineExecutor::handle_modify(const Instruction &inst,
   bool is_passive_keyword =
       (type == MutateCommand::MutationType::ADD_KEYWORD &&
        (str_val == "CANNOT_ATTACK" || str_val == "CANNOT_BLOCK" ||
-        str_val == "CANNOT_ATTACK_OR_BLOCK"));
+        str_val == "CANNOT_ATTACK_OR_BLOCK" || str_val == "CANNOT_LEAVE_BATTLE"));
 
   if (is_passive_keyword) {
     // Treat as ADD_PASSIVE flow below but with specific target iteration
@@ -1215,6 +1227,10 @@ void PipelineExecutor::handle_modify(const Instruction &inst,
     else if (str_val == "CANNOT_ATTACK_OR_BLOCK") {
       p_types.push_back(PassiveType::CANNOT_ATTACK);
       p_types.push_back(PassiveType::CANNOT_BLOCK);
+    } else if (str_val == "IGNORE_ABILITY") {
+      p_types.push_back(PassiveType::IGNORE_ABILITIES);
+    } else if (str_val == "CANNOT_LEAVE_BATTLE") {
+      p_types.push_back(PassiveType::CANNOT_LEAVE_BATTLE);
     } else {
       // Fallback or unknown
     }
@@ -1292,24 +1308,6 @@ void PipelineExecutor::handle_modify(const Instruction &inst,
     // have an issue. But existing code only handled LOCK_SPELL and POWER. Let's
     // keep the old block logic just in case but integrated. The above block
     // covers LOCK_SPELL and POWER. So we effectively replaced the logic.
-    return;
-  }
-
-  if (type == MutateCommand::MutationType::ADD_COST_MODIFIER) {
-    CostModifier mod;
-    mod.reduction_amount = val;
-    mod.condition_filter = inst.args.value("filter", FilterDef{});
-    mod.turns_remaining = inst.args.value("duration", 1);
-    int source_id = -1;
-    auto v = get_context_var("$source");
-    if (std::holds_alternative<int>(v))
-      source_id = std::get<int>(v);
-    mod.source_instance_id = source_id;
-    mod.controller = state.active_player_id;
-
-    auto cmd = std::make_unique<MutateCommand>(-1, type);
-    cmd->cost_modifier = mod;
-    execute_command(std::move(cmd), state);
     return;
   }
 

@@ -183,8 +183,10 @@ else:
         "SELECT_FROM_BUFFER",
         "PLAY_FROM_BUFFER",
         "MOVE_BUFFER_TO_ZONE",
+        "MOVE_BUFFER_REMAIN_TO_ZONE",
         "FRIEND_BURST",
         "REGISTER_DELAYED_EFFECT",
+        "IGNORE_ABILITY",
         "NONE",
     ]
 
@@ -203,7 +205,7 @@ else:
         "RESET_INSTANCE", "SEARCH_DECK", "SHUFFLE_DECK", "ADD_SHIELD",
         "SEND_SHIELD_TO_GRAVE", "SEND_TO_DECK_BOTTOM", "MOVE_TO_UNDER_CARD",
         "SELECT_NUMBER", "FRIEND_BURST", "GRANT_KEYWORD", "MOVE_CARD",
-        "CAST_SPELL", "PUT_CREATURE", "SELECT_OPTION", "RESOLVE_BATTLE", "NONE"
+        "CAST_SPELL", "PUT_CREATURE", "SELECT_OPTION", "IGNORE_ABILITY", "RESOLVE_BATTLE", "NONE"
     ]
 
 # =============================================================================

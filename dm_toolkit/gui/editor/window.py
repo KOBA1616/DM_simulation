@@ -235,6 +235,7 @@ class CardEditor(QMainWindow):
 
     def on_structure_update(self, command, payload):
         idx = self.tree_widget.currentIndex()
+        tree_changed = False
 
         # Determine context for updates that modify hierarchy
         if command == STRUCT_CMD_REPLACE_WITH_COMMAND:
@@ -250,6 +251,11 @@ class CardEditor(QMainWindow):
 
             if target_idx.isValid():
                 self.tree_widget.replace_item_with_command(target_idx, target_data)
+                tree_changed = True
+                cur = self.tree_widget.currentIndex()
+                if cur.isValid():
+                    self.inspector.set_selection(cur)
+                    self.update_current_preview()
             return
 
         if not idx.isValid(): return
@@ -281,30 +287,40 @@ class CardEditor(QMainWindow):
         if command == STRUCT_CMD_ADD_SPELL_SIDE:
             self.tree_widget.add_spell_side(card_item.index())
             self.tree_widget.expand(card_item.index())
+            tree_changed = True
         elif command == STRUCT_CMD_REMOVE_SPELL_SIDE:
             self.tree_widget.remove_spell_side(card_item.index())
+            tree_changed = True
         elif command == STRUCT_CMD_ADD_REV_CHANGE:
             # 再発防止: payload に races がある場合は革命チェンジテンプレートに種族を反映する。
             self.tree_widget.add_rev_change(card_item.index(), payload=payload)
             self.tree_widget.expand(card_item.index())
+            tree_changed = True
         elif command == STRUCT_CMD_REMOVE_REV_CHANGE:
             self.tree_widget.remove_rev_change(card_item.index())
+            tree_changed = True
         elif command == STRUCT_CMD_ADD_MEKRAID:
-            self.tree_widget.add_mekraid(card_item.index())
+            self.tree_widget.add_mekraid(card_item.index(), payload=payload)
             self.tree_widget.expand(card_item.index())
+            tree_changed = True
         elif command == STRUCT_CMD_REMOVE_MEKRAID:
             self.tree_widget.remove_mekraid(card_item.index())
+            tree_changed = True
         elif command == STRUCT_CMD_ADD_FRIEND_BURST:
             # 再発防止: payload に races がある場合はフレンドバーストテンプレートに種族を反映する。
             self.tree_widget.add_friend_burst(card_item.index(), payload=payload)
             self.tree_widget.expand(card_item.index())
+            tree_changed = True
         elif command == STRUCT_CMD_REMOVE_FRIEND_BURST:
             self.tree_widget.remove_friend_burst(card_item.index())
+            tree_changed = True
         elif command == STRUCT_CMD_ADD_MEGA_LAST_BURST:
             self.tree_widget.add_mega_last_burst(card_item.index())
             self.tree_widget.expand(card_item.index())
+            tree_changed = True
         elif command == STRUCT_CMD_REMOVE_MEGA_LAST_BURST:
             self.tree_widget.remove_mega_last_burst(card_item.index())
+            tree_changed = True
         elif command == STRUCT_CMD_GENERATE_OPTIONS:
             count = payload.get('count', 1)
             # Find the actual Action Item from the current selection
@@ -315,30 +331,46 @@ class CardEditor(QMainWindow):
             if action_item:
                  self.tree_widget.data_manager.add_option_slots(action_item, count)
                  self.tree_widget.expand(action_item.index())
+                 tree_changed = True
         elif command == STRUCT_CMD_GENERATE_BRANCHES:
             self.tree_widget.generate_branches_for_current()
+            tree_changed = True
         elif command == STRUCT_CMD_MOVE_EFFECT:
              item_obj = payload.get('item')
              target_type = payload.get('target_type')
              if item_obj and target_type:
                  self.tree_widget.move_effect_item(item_obj, target_type)
+                 tree_changed = True
         elif command == STRUCT_CMD_ADD_CHILD_EFFECT:
             eff_type = payload.get('type')
             if eff_type == "KEYWORDS":
                 self.tree_widget.add_keywords(item.index())
+                tree_changed = True
             elif eff_type == "TRIGGERED":
                 self.tree_widget.add_trigger(item.index())
+                tree_changed = True
             elif eff_type == "STATIC":
                 self.tree_widget.add_static(item.index())
+                tree_changed = True
             elif eff_type == "REACTION":
                 self.tree_widget.add_reaction(item.index())
+                tree_changed = True
         elif command == STRUCT_CMD_ADD_CHILD_ACTION:
             if item_type == "EFFECT":
                 self.tree_widget.add_action_to_effect(item.index())
+                tree_changed = True
             elif item_type == "OPTION":
                 self.tree_widget.add_action_to_option(item.index())
+                tree_changed = True
             elif item_type in ["ACTION", "COMMAND"]:  # 再発防止: ACTION は旧形式の後方互换レガシー値
                 self.tree_widget.add_action_sibling(item.index())
+                tree_changed = True
+
+        if tree_changed:
+            cur = self.tree_widget.currentIndex()
+            if cur.isValid():
+                self.inspector.set_selection(cur)
+            self.update_current_preview()
 
     def new_card(self):
         self.tree_widget.add_new_card()

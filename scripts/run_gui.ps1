@@ -115,9 +115,7 @@ if ($existing.Count -gt 0) {
 # ネイティブモジュールを有効化する。Python fallback が必要な場合は -AllowFallback スイッチを使用。
 # $env:DM_DISABLE_NATIVE = '1'  # 無効化: ネイティブモジュールを使用する
 
-# Prefer native build artefact: search build dir for dm_ai_mCRITICAL_REMAINING_TASKS_TDD.md
-に従って，他のtodoに触れず，3.最優先課題をステップバイステップでCRITICAL_REMAINING_TASKS_TDD.md を更新しながら開発を進めてください．
-ステップ完了後に必ず，達成項目にチェックをつけてくださいodule*.pyd and set override
+# Prefer native build artefact: search build dir for dm_ai_module*.pyd and set override
 try {
     # Search preferred locations for native artefact. Include build dir and common bin/Release.
     $searchDirs = @($buildDir, (Join-Path $projectRoot 'bin\Release')) | Where-Object { $_ -and (Test-Path $_) }

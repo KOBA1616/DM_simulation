@@ -785,16 +785,20 @@ _CPP_COMMAND_TYPE_STRINGS: set = {
     "PLAY_FROM_ZONE", "CAST_SPELL", "SUMMON_TOKEN", "SHIELD_BURN",
     "SELECT_NUMBER", "CHOICE", "SELECT_OPTION",
     "LOOK_TO_BUFFER", "REVEAL_TO_BUFFER", "SELECT_FROM_BUFFER",
-    "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE",
+    "PLAY_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE", "MOVE_BUFFER_REMAIN_TO_ZONE",
     "FRIEND_BURST", "REGISTER_DELAYED_EFFECT",
     "IF", "IF_ELSE", "ELSE", "PASS", "USE_ABILITY",
     "MANA_CHARGE", "SELECT_TARGET",
     # 以下はエンジン内部専用（cards.json では通常使用しない）
     "APPLY_MODIFIER", "GRANT_KEYWORD", "PUT_CREATURE",
     "REPLACE_CARD_MOVE", "ADD_RESTRICTION",
+    "COST_MODIFIER",
     # 再発防止: 新しい CommandType を追加したらここにも追加すること
     "DRAW",            # DRAW_CARD の別名 (FLOW内サブコマンド)
     "REPLACE_MOVE_CARD",  # 置換効果: カードの移動先を墓地に変更
+    "LOCK_SPELL", "SPELL_RESTRICTION",
+    "CANNOT_PUT_CREATURE", "CANNOT_SUMMON_CREATURE", "PLAYER_CANNOT_ATTACK",
+    "IGNORE_ABILITY",
 }
 
 # C++ generate_instructions で実際に命令生成する（no-op でない）コマンドタイプ
@@ -817,6 +821,7 @@ _CPP_IMPLEMENTED_COMMANDS: set = {
     "CAST_SPELL",
     # 修飾子付与: APPLY_MODIFIER/GRANT_KEYWORD は ADD_KEYWORD 経由で実装
     "APPLY_MODIFIER", "GRANT_KEYWORD",
+    "COST_MODIFIER",
     # クリーチャー配置: PUT_CREATURE は GAME_ACTION(SUMMON_CREATURE) で実装
     "PUT_CREATURE",
     # 制約追加: ADD_RESTRICTION は MODIFY(ADD_RESTRICTION) で実装
@@ -828,9 +833,13 @@ _CPP_IMPLEMENTED_COMMANDS: set = {
     "DRAW",
     # 置換効果: REPLACE_MOVE_CARD は GAME_ACTION(REPLACE_MOVE_CARD) を生成
     "REPLACE_MOVE_CARD",
+    # 制限/無視: 追加したら command_system.cpp の switch + macro 追加とセットで更新すること
+    "SPELL_RESTRICTION", "CANNOT_PUT_CREATURE", "CANNOT_SUMMON_CREATURE", "PLAYER_CANNOT_ATTACK",
+    "IGNORE_ABILITY",
     # バッファ操作: デッキトップから選択するシェイパー・デドダム実装
     # 再発防止: LOOK_TO_BUFFER を追加したら command_system.cpp の switch 文にも必ず追加すること
     "LOOK_TO_BUFFER", "REVEAL_TO_BUFFER", "SELECT_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE",
+    "MOVE_BUFFER_REMAIN_TO_ZONE",
     "REGISTER_DELAYED_EFFECT",
 }
 

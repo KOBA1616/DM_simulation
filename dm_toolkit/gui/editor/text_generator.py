@@ -1351,6 +1351,8 @@ class CardTextGenerator:
                 cond_text = f"{input_desc}が{op_text}なら"
             elif cond_type == "CIVILIZATION_MATCH":
                 cond_text = "マナゾーンに同じ文明があれば"
+            elif cond_type == "PLAYED_WITHOUT_MANA_TARGET":
+                cond_text = "指定した対象をコストを支払わずに出していれば"
             elif cond_type == "MANA_CIVILIZATION_COUNT":
                 val = cond_detail.get("value", 0)
                 op = cond_detail.get("op", ">=")
@@ -1496,6 +1498,10 @@ class CardTextGenerator:
              if val1 > 0:
                  return f"選んだカードを{val1}枚{to_zone}に置く。"
              return f"選んだカードをすべて{to_zone}に置く。"
+
+        elif atype == "MOVE_BUFFER_REMAIN_TO_ZONE":
+             to_zone = tr(action.get("to_zone", "DECK_BOTTOM"))
+             return f"残りを{to_zone}に置く。"
 
         return ""
 
@@ -1860,6 +1866,22 @@ class CardTextGenerator:
                          base += f"（{usage_label}）"
                  return base
              
+             if str(mode) == "SELECT_OPTION":
+                 sel_count = action.get("value1", action.get("amount", 1))
+                 filter_txt = cls._format_filter(action.get("filter", {}))
+                 if input_key:
+                     usage_label = cls._format_input_usage_label(input_usage)
+                     cnt_txt = "指定数"
+                     if usage_label:
+                         cnt_txt = f"入力値（{usage_label}）"
+                     if filter_txt:
+                         return f"{filter_txt}から{cnt_txt}選ぶ。"
+                     return f"条件に合うカードから{cnt_txt}選ぶ。"
+
+                 if filter_txt:
+                     return f"{filter_txt}から{sel_count}枚選ぶ。"
+                 return f"条件に合うカードから{sel_count}枚選ぶ。"
+
              base = f"質問: {tr(mode)}"
              if input_key:
                  usage_label = cls._format_input_usage_label(input_usage)
@@ -1931,7 +1953,16 @@ class CardTextGenerator:
              duration_text = CardTextResources.get_duration_text(duration_key) if duration_key else (f"{val1}ターン" if val1 > 0 else "このターン")
 
              if atype == "SPELL_RESTRICTION":
-                 action_text = "呪文を唱えられない"
+                 filt = action.get("filter", {}) or {}
+                 exact_cost = None
+                 if isinstance(filt, dict):
+                     exact_cost = filt.get("exact_cost")
+                 if input_key:
+                     action_text = "入力値と同じコストの呪文を唱えられない"
+                 elif exact_cost is not None:
+                     action_text = f"コスト{exact_cost}の呪文を唱えられない"
+                 else:
+                     action_text = "呪文を唱えられない"
              elif atype == "CANNOT_PUT_CREATURE":
                  action_text = "クリーチャーを出せない"
              elif atype == "CANNOT_SUMMON_CREATURE":
@@ -1940,6 +1971,34 @@ class CardTextGenerator:
                  action_text = "攻撃できない"
 
              return f"{target_str_lock}は{duration_text}の間、{action_text}。"
+
+        elif atype == "IGNORE_ABILITY":
+             scope = action.get("target_group") or action.get("scope", "NONE")
+             if scope in ["PLAYER_OPPONENT", "OPPONENT"]:
+                 target_str_lock = "相手"
+             elif scope in ["PLAYER_SELF", "SELF"]:
+                 target_str_lock = "自分"
+             elif scope == "ALL_PLAYERS":
+                 target_str_lock = "すべてのプレイヤー"
+             else:
+                 target_str_lock, _ = cls._resolve_target(action, is_spell)
+
+             duration_key = action.get("duration", "") or ""
+             duration_text = CardTextResources.get_duration_text(duration_key) if duration_key else (f"{val1}ターン" if val1 > 0 else "このターン")
+
+             filt = action.get("filter", {}) or {}
+             types = []
+             if isinstance(filt, dict):
+                 types = filt.get("types", []) or []
+             type_txt = "カード"
+             if types:
+                 type_txt = "・".join([tr(t) for t in types])
+
+             if input_key:
+                 return f"{target_str_lock}のコスト入力値と同じ{type_txt}の能力は{duration_text}の間、無視される。"
+             if isinstance(filt, dict) and filt.get("exact_cost") is not None:
+                 return f"{target_str_lock}のコスト{filt.get('exact_cost')}の{type_txt}の能力は{duration_text}の間、無視される。"
+             return f"{target_str_lock}の{type_txt}の能力は{duration_text}の間、無視される。"
 
         elif atype == "RESET_INSTANCE":
              return f"{target_str}の状態を初期化する（効果を無視する）。"
@@ -2290,6 +2349,9 @@ class CardTextGenerator:
 
         elif cond_type == "OPPONENT_PLAYED_WITHOUT_MANA":
             return "相手がマナゾーンのカードをタップせずに、クリーチャーを出すか呪文を唱えた時: "
+
+        elif cond_type == "PLAYED_WITHOUT_MANA_TARGET":
+            return "指定した対象をコストを支払わずに出していれば: "
 
         elif cond_type == "OPPONENT_DRAW_COUNT":
             val = condition.get("value", 0)

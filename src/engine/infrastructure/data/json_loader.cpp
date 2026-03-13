@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <unordered_set>
 #include <nlohmann/json.hpp>
 
 namespace dm::engine::infrastructure {
@@ -165,6 +166,52 @@ namespace dm::engine::infrastructure {
         return cmd;
     }
 
+    static int read_schema_version_or_default(const nlohmann::json& item) {
+        if (item.contains("schema_version") && item.at("schema_version").is_number_integer()) {
+            return item.at("schema_version").get<int>();
+        }
+        return 1;
+    }
+
+    static bool has_legacy_actions(const CardData& data) {
+        for (const auto& eff : data.effects) {
+            if (!eff.actions.empty()) {
+                return true;
+            }
+        }
+        for (const auto& eff : data.metamorph_abilities) {
+            if (!eff.actions.empty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static bool has_legacy_actions_in_json(const nlohmann::json& item) {
+        auto has_actions_in = [](const nlohmann::json& arr) {
+            if (!arr.is_array()) {
+                return false;
+            }
+            for (const auto& eff : arr) {
+                if (!eff.is_object()) {
+                    continue;
+                }
+                if (eff.contains("actions") && eff.at("actions").is_array() && !eff.at("actions").empty()) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        if (item.contains("effects") && has_actions_in(item.at("effects"))) {
+            return true;
+        }
+        if (item.contains("metamorph_abilities") && has_actions_in(item.at("metamorph_abilities"))) {
+            return true;
+        }
+        return false;
+    }
+
     // Helper to convert CardData (JSON) to CardDefinition (Engine)
     // Forward declare to allow recursive calls
     static CardDefinition convert_to_def(const CardData& data);
@@ -267,6 +314,7 @@ namespace dm::engine::infrastructure {
             }
 
             if (kws.count("hyper_energy") && kws.at("hyper_energy")) def.keywords.hyper_energy = true;
+            if (kws.count("super_soul_x") && kws.at("super_soul_x")) def.keywords.super_soul_x = true;
 
             // Expand complex keywords (Friend Burst, Mega Last Burst, etc.)
             dm::engine::infrastructure::KeywordExpander::expand_keywords(data, def);
@@ -282,28 +330,10 @@ namespace dm::engine::infrastructure {
 
             // 2. Passive Keywords (Blocker, Speed Attacker, etc.)
             if (eff.trigger == TriggerType::PASSIVE_CONST) {
-                // Check legacy actions
-                for (const auto& action : eff.actions) {
-                    if (action.str_val == "BLOCKER") def.keywords.blocker = true;
-                    if (action.str_val == "SPEED_ATTACKER") def.keywords.speed_attacker = true;
-                    if (action.str_val == "SLAYER") def.keywords.slayer = true;
-                    if (action.str_val == "DOUBLE_BREAKER") def.keywords.double_breaker = true;
-                    if (action.str_val == "TRIPLE_BREAKER") def.keywords.triple_breaker = true;
-                    if (action.str_val == "POWER_ATTACKER") {
-                        def.keywords.power_attacker = true;
-                        def.power_attacker_bonus = action.value1;
-                    }
-                    if (action.str_val == "EVOLUTION") def.keywords.evolution = true;
-                    if (action.str_val == "MACH_FIGHTER") def.keywords.mach_fighter = true;
-                    if (action.str_val == "G_STRIKE") def.keywords.g_strike = true;
-                    if (action.str_val == "JUST_DIVER") def.keywords.just_diver = true;
-                    if (action.str_val == "HYPER_ENERGY") def.keywords.hyper_energy = true;
-                    if (action.str_val == "META_COUNTER") def.keywords.meta_counter_play = true;
-                    if (action.str_val == "SHIELD_BURN") def.keywords.shield_burn = true;
-                    if (action.str_val == "UNBLOCKABLE") def.keywords.unblockable = true;
-                    if (action.str_val == "MUST_BE_CHOSEN") def.keywords.must_be_chosen = true;
-                }
-                // Also check migrated commands
+                // Passive keywords are derived from migrated `commands`.
+                // Legacy `actions` are converted into `commands` at load time
+                // (`convert_legacy_action`) so runtime logic should rely on
+                // `commands` only.
                 for (const auto& cmd : eff.commands) {
                     if (cmd.str_val == "BLOCKER") def.keywords.blocker = true;
                     if (cmd.str_val == "SPEED_ATTACKER") def.keywords.speed_attacker = true;
@@ -323,6 +353,7 @@ namespace dm::engine::infrastructure {
                     if (cmd.str_val == "SHIELD_BURN") def.keywords.shield_burn = true;
                     if (cmd.str_val == "UNBLOCKABLE") def.keywords.unblockable = true;
                     if (cmd.str_val == "MUST_BE_CHOSEN") def.keywords.must_be_chosen = true;
+                                    if (cmd.str_val == "SUPER_SOUL_X") def.keywords.super_soul_x = true;
                 }
             }
         }
@@ -346,38 +377,37 @@ namespace dm::engine::infrastructure {
         buffer << file.rdbuf();
         std::string json_str = buffer.str();
 
-        // 1. Load into Registry (Single Source of Truth)
-        dm::engine::infrastructure::CardRegistry::load_from_json(json_str);
-
-        // 2. Retrieve definitions that were just loaded
-        // Since Registry parses the same string, we can re-parse lightly to get IDs or trust the registry update.
-        // To maintain function contract (return definitions from this file), we parse the JSON to get IDs.
+        // Prefer parsing directly here to produce the definitions.
+        // Attempt to populate the registry as a best-effort but do not rely
+        // on it for returning results to avoid registry-side sanitization
+        // causing early failures during migration.
         try {
-            auto j = nlohmann::json::parse(json_str);
-            const auto& registry_defs = dm::engine::infrastructure::CardRegistry::get_all_definitions();
-
-            auto process_item = [&](const nlohmann::json& item) {
-                if (item.contains("id")) {
-                    int id = item["id"].get<int>();
-                    CardID card_id = static_cast<CardID>(id);
-                    if (registry_defs.count(card_id)) {
-                        result[card_id] = registry_defs.at(card_id);
-                    }
-                }
-            };
-
-            if (j.is_array()) {
-                for (const auto& item : j) {
-                    process_item(item);
-                }
-            } else {
-                process_item(j);
-            }
+            result = dm::engine::infrastructure::JsonLoader::load_cards_from_string(json_str);
         } catch (const std::exception& e) {
-            std::cerr << "dm::engine::infrastructure::JsonLoader Error during verification parse: " << e.what() << std::endl;
-        } catch (...) {
-            std::cerr << "dm::engine::infrastructure::JsonLoader Unknown error during verification parse" << std::endl;
+            std::cerr << "JsonLoader::load_cards failed to produce defs: " << e.what() << std::endl;
+            // Fallback: attempt to parse for IDs using registry if available
+            try {
+                dm::engine::infrastructure::CardRegistry::load_from_json(json_str);
+                auto j = nlohmann::json::parse(json_str);
+                const auto& registry_defs = dm::engine::infrastructure::CardRegistry::get_all_definitions();
+                auto process_item = [&](const nlohmann::json& item) {
+                    if (item.contains("id")) {
+                        int id = item["id"].get<int>();
+                        CardID card_id = static_cast<CardID>(id);
+                        if (registry_defs.count(card_id)) result[card_id] = registry_defs.at(card_id);
+                    }
+                };
+                if (j.is_array()) for (const auto& item : j) process_item(item);
+                else process_item(j);
+            } catch (...) {
+                // Give up; return empty result
+            }
         }
+
+        // Best-effort: try to update the CardRegistry but ignore failures
+        try {
+            dm::engine::infrastructure::CardRegistry::load_from_json(json_str);
+        } catch (...) {}
 
         return result;
     }
@@ -388,15 +418,136 @@ namespace dm::engine::infrastructure {
             auto j = nlohmann::json::parse(json_content);
 
             auto process_item = [&](const nlohmann::json& item) {
-                if (item.contains("id")) {
-                    dm::core::CardData data;
-                    // Manual or automated deserialization from JSON to CardData
-                    dm::core::from_json(item, data);
+                if (!item.contains("id")) return;
 
-                    // Convert to Definition
-                    CardDefinition def = convert_to_def(data);
-                    result[def.id] = def;
+                const int schema_version = read_schema_version_or_default(item);
+                // 再発防止: 生JSONで先に境界判定することで、型変換時に actions が欠落しても
+                // schema_version>=2 で legacy 記法を取り込んでしまう事故を防ぐ。
+                if (schema_version >= 2 && has_legacy_actions_in_json(item)) {
+                    std::cerr << "JsonLoader::load_cards_from_string rejected raw card because schema_version="
+                              << schema_version
+                              << " forbids legacy actions" << std::endl;
+                    return;
                 }
+
+                // Make a mutable copy and sanitize nullable object fields
+                nlohmann::json copy = item;
+
+                // Aggressive sanitization: replace explicit JSON nulls with a
+                // reasonable default according to the JSON key name when
+                // possible. This avoids throwing from `value()` / `get_to()` by
+                // providing a type-compatible placeholder for known fields.
+                std::function<void(nlohmann::json&)> sanitize_all_nulls = [&](nlohmann::json& node) {
+                    static const std::unordered_set<std::string> int_keys = {"id", "cost", "power", "value", "value1", "value2", "amount", "duration", "slot_index", "target_slot_index", "ai_importance_score"};
+                    static const std::unordered_set<std::string> string_keys = {"name", "str_val", "type", "scope", "source_zone", "destination_zone", "target_choice", "input_value_key", "output_value_key", "input_value_usage", "timing_mode", "multiplicity"};
+                    static const std::unordered_set<std::string> bool_keys = {"optional", "is_key_card", "is_tapped"};
+                    static const std::unordered_set<std::string> array_keys = {"civilizations", "races", "triggers", "effects", "commands", "actions", "options", "trigger_list", "trigger_zones", "children", "static_abilities", "metamorph_abilities", "reaction_abilities", "cost_reductions"};
+
+                    if (node.is_object()) {
+                        for (auto it = node.begin(); it != node.end(); ++it) {
+                            auto &val = it.value();
+                            const std::string key = it.key();
+                            if (val.is_null()) {
+                                if (int_keys.count(key)) val = 0;
+                                else if (string_keys.count(key)) val = std::string("");
+                                else if (bool_keys.count(key)) val = false;
+                                else if (array_keys.count(key)) val = nlohmann::json::array();
+                                else if (key == "spell_side" || key == "trigger_descriptor" || key == "condition" || key == "filter" || key == "keywords") {
+                                    // Known object-like fields
+                                    val = nlohmann::json::object();
+                                } else {
+                                    // Conservative default: object to preserve nested keys
+                                    val = nlohmann::json::object();
+                                }
+                            } else if (val.is_object() || val.is_array()) {
+                                sanitize_all_nulls(val);
+                            }
+                        }
+                    } else if (node.is_array()) {
+                        for (auto &el : node) {
+                            if (el.is_null()) el = nlohmann::json::object();
+                            else if (el.is_object() || el.is_array()) sanitize_all_nulls(el);
+                        }
+                    }
+                };
+
+                sanitize_all_nulls(copy);
+
+                dm::core::CardData data;
+                // Manual or automated deserialization from JSON to CardData
+                try {
+                    dm::core::from_json(copy, data);
+                } catch (const std::exception& e) {
+                    // Emit the offending JSON for diagnosis before aggressive sanitize
+                    try {
+                        std::cerr << "JsonLoader::load_cards_from_string -- deserialization failed for item: " << copy.dump(2) << std::endl;
+                        // Also write a diagnostic file for offline inspection
+                        try {
+                            std::ofstream diag("logs/json_loader_offending_item.json", std::ios::app);
+                            if (diag.is_open()) {
+                                diag << copy.dump(2) << std::endl;
+                                diag.close();
+                            }
+                        } catch (...) {}
+                    } catch (...) {}
+
+                    // Fallback: some legacy JSON may contain explicit nulls in
+                    // places where older editors emitted `null`. Attempt a
+                    // more aggressive sanitization (replace any null with an
+                    // empty object) and retry once before giving up.
+                    // Fallback aggressive sanitize (same logic as above)
+                    std::function<void(nlohmann::json&)> sanitize_all_nulls = [&](nlohmann::json& node) {
+                        static const std::unordered_set<std::string> int_keys = {"id", "cost", "power", "value", "value1", "value2", "amount", "duration", "slot_index", "target_slot_index", "ai_importance_score"};
+                        static const std::unordered_set<std::string> string_keys = {"name", "str_val", "type", "scope", "source_zone", "destination_zone", "target_choice", "input_value_key", "output_value_key", "input_value_usage", "timing_mode", "multiplicity"};
+                        static const std::unordered_set<std::string> bool_keys = {"optional", "is_key_card", "is_tapped"};
+                        static const std::unordered_set<std::string> array_keys = {"civilizations", "races", "triggers", "effects", "commands", "actions", "options", "trigger_list", "trigger_zones", "children", "static_abilities", "metamorph_abilities", "reaction_abilities", "cost_reductions"};
+
+                        if (node.is_object()) {
+                            for (auto it = node.begin(); it != node.end(); ++it) {
+                                auto &val = it.value();
+                                const std::string key = it.key();
+                                if (val.is_null()) {
+                                    if (int_keys.count(key)) val = 0;
+                                    else if (string_keys.count(key)) val = std::string("");
+                                    else if (bool_keys.count(key)) val = false;
+                                    else if (array_keys.count(key)) val = nlohmann::json::array();
+                                    else if (key == "keywords") val = nlohmann::json::object();
+                                    else val = nlohmann::json::object();
+                                } else if (val.is_object() || val.is_array()) {
+                                    sanitize_all_nulls(val);
+                                }
+                            }
+                        } else if (node.is_array()) {
+                            for (auto &el : node) {
+                                if (el.is_null()) el = nlohmann::json::object();
+                                else if (el.is_object() || el.is_array()) sanitize_all_nulls(el);
+                            }
+                        }
+                    };
+
+                    sanitize_all_nulls(copy);
+                    try {
+                        dm::core::from_json(copy, data);
+                    } catch (const std::exception& e2) {
+                        std::cerr << "JsonLoader::load_cards_from_string Error after aggressive sanitize: " << e2.what() << std::endl;
+                        return;
+                    }
+                }
+
+                // 再発防止: schema_version>=2 は CommandDef 専用。legacy actions を許可すると
+                // 新旧JSON境界が曖昧になり、ActionDef 撤去時に回帰しやすくなる。
+                if (schema_version >= 2 && has_legacy_actions(data)) {
+                    std::cerr << "JsonLoader::load_cards_from_string rejected card id="
+                              << data.id
+                              << " because schema_version="
+                              << schema_version
+                              << " forbids legacy actions" << std::endl;
+                    return;
+                }
+
+                // Convert to Definition
+                CardDefinition def = convert_to_def(data);
+                result[def.id] = def;
             };
 
             if (j.is_array()) {

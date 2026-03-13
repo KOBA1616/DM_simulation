@@ -221,7 +221,9 @@ namespace dm::core {
         CANNOT_PUT_CREATURE,    // クリーチャーを出す禁止
         CANNOT_SUMMON_CREATURE, // クリーチャー召喚禁止
         PLAYER_CANNOT_ATTACK,   // プレイヤーの攻撃禁止
+        IGNORE_ABILITY,         // 指定タイプ/コストの能力を無視
 
+            MOVE_BUFFER_REMAIN_TO_ZONE, // バッファ残余を指定ゾーンへ移動
         NONE
     };
 
@@ -258,9 +260,6 @@ namespace dm::core {
         std::optional<bool> is_card_designation;
         std::optional<int> count;
 
-        std::optional<std::string> selection_mode;
-        std::optional<std::string> selection_sort_key;
-
         std::optional<std::string> power_max_ref;
         std::optional<std::string> cost_ref;  // Reference to execution_context variable for exact_cost
 
@@ -274,7 +273,6 @@ namespace dm::core {
         std::optional<std::string> type;   // 条件タイプ: OPPONENT_DRAW_COUNT, COMPARE_INPUT 等
         std::optional<int>         value;  // 条件の閾値
         std::optional<std::string> op;     // 比較演算子: >=, <=, ==, <, > 等
-        std::vector<std::string>   flags;  // フラグリスト (S_TRIGGER 等)
     };
 
     struct CostDef {
@@ -342,6 +340,17 @@ namespace dm::core {
     // `json_loader.cpp::convert_legacy_action` and callers should migrate to
     // `CommandDef` when possible. This struct is retained to avoid breaking
     // existing card JSON files and to support incremental migration (T-05).
+    //
+    // DEPRECATION: Marked [[deprecated]] so builds will emit a warning when
+    // this type is referenced from new code. The intent is to make usages
+    // visible at compile-time and to encourage incremental replacement with
+    // `CommandDef`. Final removal will be a separate, explicitly-scheduled
+    // breaking change once tests and JSON coverage confirm parity.
+    // 廃止期限: 2026-06-30 までに ActionDef 互換層を削除する計画。
+    // 再発防止: 新規データは schema_version>=2 + CommandDef のみ許可し、
+    // ActionDef が新規JSONへ再流入しないよう json_loader.cpp 側で境界を強制する。
+    // ActionDef is legacy; prefer CommandDef. Removed C++ attribute for MSVC
+    // compatibility to avoid compile-time attribute placement errors.
     struct ActionDef {
         EffectPrimitive type = EffectPrimitive::NONE;
         TargetScope scope = TargetScope::NONE;
@@ -657,6 +666,8 @@ namespace dm::core {
         // cards.json 追加コマンドタイプ
         // 再発防止: 新コマンドタイプを追加したら NLOHMANN と CommandType enum の両方を更新すること
         {CommandType::APPLY_MODIFIER, "APPLY_MODIFIER"},
+        // 再発防止: 旧cards.json互換。COST_MODIFIER は APPLY_MODIFIER として扱う。
+        {CommandType::APPLY_MODIFIER, "COST_MODIFIER"},
         {CommandType::GRANT_KEYWORD, "GRANT_KEYWORD"},
         {CommandType::PUT_CREATURE, "PUT_CREATURE"},
         {CommandType::REPLACE_CARD_MOVE, "REPLACE_CARD_MOVE"},
@@ -669,7 +680,9 @@ namespace dm::core {
         {CommandType::SPELL_RESTRICTION, "SPELL_RESTRICTION"},
         {CommandType::CANNOT_PUT_CREATURE, "CANNOT_PUT_CREATURE"},
         {CommandType::CANNOT_SUMMON_CREATURE, "CANNOT_SUMMON_CREATURE"},
-        {CommandType::PLAYER_CANNOT_ATTACK, "PLAYER_CANNOT_ATTACK"}
+        {CommandType::PLAYER_CANNOT_ATTACK, "PLAYER_CANNOT_ATTACK"},
+        {CommandType::IGNORE_ABILITY, "IGNORE_ABILITY"}
+        {CommandType::MOVE_BUFFER_REMAIN_TO_ZONE, "MOVE_BUFFER_REMAIN_TO_ZONE"},
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(CostType, {
@@ -686,10 +699,69 @@ namespace dm::core {
         {ReductionType::ACTIVE_PAYMENT, "ACTIVE_PAYMENT"}
     })
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, exact_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, selection_mode, selection_sort_key, power_max_ref, cost_ref, and_conditions, type, value, op, flags)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, exact_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, power_max_ref, cost_ref, and_conditions, type, value, op)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter, extra_fields)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, input_value_usage, output_value_key, inverse_target, condition, options, cast_spell_side)
+    // Custom from_json for ActionDef to accept legacy numeric enums and
+    // non-standard scope strings (e.g. "SINGLE") produced by older editors.
+    inline void from_json(const nlohmann::json& j, ActionDef& a) {
+        // type: can be numeric (legacy) or string mapped via NLOHMANN macro
+        if (j.contains("type")) {
+            try {
+                if (j.at("type").is_number()) {
+                    a.type = static_cast<EffectPrimitive>(j.at("type").get<int>());
+                } else {
+                    j.at("type").get_to(a.type);
+                }
+            } catch (...) {
+                a.type = EffectPrimitive::NONE;
+            }
+        }
+
+        // scope: accept legacy string "SINGLE" as TARGET_SELECT, or numeric/string
+        if (j.contains("scope")) {
+            try {
+                if (j.at("scope").is_string()) {
+                    std::string s = j.at("scope").get<std::string>();
+                    if (s == "SINGLE") a.scope = TargetScope::TARGET_SELECT;
+                    else {
+                        try { j.at("scope").get_to(a.scope); }
+                        catch (...) { a.scope = TargetScope::NONE; }
+                    }
+                } else if (j.at("scope").is_number()) {
+                    a.scope = static_cast<TargetScope>(j.at("scope").get<int>());
+                }
+            } catch (...) {
+                a.scope = TargetScope::NONE;
+            }
+        }
+
+        // Standard fields: guard against explicit JSON nulls before converting
+        if (j.contains("filter") && !j.at("filter").is_null()) { try{ j.at("filter").get_to(a.filter); } catch(...){} }
+        if (j.contains("value1") && !j.at("value1").is_null()) { try{ j.at("value1").get_to(a.value1); } catch(...){} }
+        if (j.contains("value2") && !j.at("value2").is_null()) { try{ j.at("value2").get_to(a.value2); } catch(...){} }
+        if (j.contains("str_val") && !j.at("str_val").is_null()) { try{ j.at("str_val").get_to(a.str_val); } catch(...){} }
+        if (j.contains("value") && !j.at("value").is_null()) { try{ j.at("value").get_to(a.value); } catch(...){} }
+        if (j.contains("optional") && !j.at("optional").is_null()) { try{ j.at("optional").get_to(a.optional); } catch(...){} }
+        if (j.contains("up_to") && !j.at("up_to").is_null()) { try{ j.at("up_to").get_to(a.up_to); } catch(...){} }
+        if (j.contains("target_player") && !j.at("target_player").is_null()) { try{ j.at("target_player").get_to(a.target_player); } catch(...){} }
+        if (j.contains("source_zone") && !j.at("source_zone").is_null()) { try{ j.at("source_zone").get_to(a.source_zone); } catch(...){} }
+        if (j.contains("destination_zone") && !j.at("destination_zone").is_null()) { try{ j.at("destination_zone").get_to(a.destination_zone); } catch(...){} }
+        if (j.contains("target_choice") && !j.at("target_choice").is_null()) { try{ j.at("target_choice").get_to(a.target_choice); } catch(...){} }
+        if (j.contains("input_value_key") && !j.at("input_value_key").is_null()) { try{ j.at("input_value_key").get_to(a.input_value_key); } catch(...){} }
+        if (j.contains("input_value_usage") && !j.at("input_value_usage").is_null()) { try{ j.at("input_value_usage").get_to(a.input_value_usage); } catch(...){} }
+        if (j.contains("output_value_key") && !j.at("output_value_key").is_null()) { try{ j.at("output_value_key").get_to(a.output_value_key); } catch(...){} }
+        if (j.contains("inverse_target") && !j.at("inverse_target").is_null()) { try{ j.at("inverse_target").get_to(a.inverse_target); } catch(...){} }
+        if (j.contains("cast_spell_side") && !j.at("cast_spell_side").is_null()) { try{ j.at("cast_spell_side").get_to(a.cast_spell_side); } catch(...){} }
+
+        if (j.contains("condition") && !j.at("condition").is_null()) {
+            try { j.at("condition").get_to(a.condition); } catch (...) {}
+        }
+
+        if (j.contains("options") && j.at("options").is_array()) {
+            try { j.at("options").get_to(a.options); } catch (...) {}
+        }
+    }
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, str_val, duration, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, input_value_usage, output_value_key, slot_index, target_slot_index, up_to, options)
 
     // フェーズ3: ConditionNode の JSON シリアライズ
@@ -716,8 +788,8 @@ namespace dm::core {
             n.str_val  = j.value("str_val",  std::string(""));
             n.stat_key = j.value("stat_key", std::string(""));
             n.op_str   = j.value("op_str",   std::string(""));
-            if (j.contains("filter")) {
-                FilterDef f; j.at("filter").get_to(f); n.filter = f;
+            if (j.contains("filter") && !j.at("filter").is_null()) {
+                try { FilterDef f; j.at("filter").get_to(f); n.filter = f; } catch(...) {}
             }
         } else {
             n.children = j.value("children", nlohmann::json::array());
@@ -754,9 +826,13 @@ namespace dm::core {
         if (j.contains("trigger")) j.at("trigger").get_to(e.trigger);
         if (j.contains("trigger_scope")) j.at("trigger_scope").get_to(e.trigger_scope);
         if (j.contains("trigger_filter")) j.at("trigger_filter").get_to(e.trigger_filter);
-        if (j.contains("condition")) j.at("condition").get_to(e.condition);
-        if (j.contains("commands")) j.at("commands").get_to(e.commands);
-        if (j.contains("actions")) j.at("actions").get_to(e.actions);
+        if (j.contains("condition") && !j.at("condition").is_null()) j.at("condition").get_to(e.condition);
+        if (j.contains("commands") && !j.at("commands").is_null()) {
+            try { j.at("commands").get_to(e.commands); } catch(...) { e.commands = {}; }
+        }
+        if (j.contains("actions") && !j.at("actions").is_null()) {
+            try { j.at("actions").get_to(e.actions); } catch(...) { e.actions = {}; }
+        }
         // フェーズ2: TriggerDescriptor の読み込み
         if (j.contains("trigger_descriptor") && j.at("trigger_descriptor").is_object()) {
             TriggerDescriptor td;
@@ -850,7 +926,12 @@ namespace dm::core {
         }
 
         if (j.contains("metamorph_abilities")) {
-            j.at("metamorph_abilities").get_to(c.metamorph_abilities);
+            if (!j.at("metamorph_abilities").is_null()) {
+                try { j.at("metamorph_abilities").get_to(c.metamorph_abilities); }
+                catch(...) { c.metamorph_abilities = {}; }
+            } else {
+                c.metamorph_abilities = {};
+            }
         } else {
             c.metamorph_abilities = {};
         }

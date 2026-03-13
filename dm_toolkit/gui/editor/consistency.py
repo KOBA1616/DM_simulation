@@ -116,8 +116,8 @@ def validate_command_list(
     - IF / IF_ELSE に条件(target_filter)が未設定
     - SELECT_OPTION / CHOICE にブランチが 0 個
     - QUERY に str_param (query mode) が未設定
-    - QUERY(SELECT_OPTION) に str_val (選択肢テキスト) が未設定
-    - QUERY(SELECT_OPTION) の str_val 行数とブランチ数の不一致
+    - QUERY(SELECT_OPTION) で選択対象フィルタ/枚数が未設定（新仕様）
+    - QUERY(SELECT_OPTION) の旧形式 str_val とブランチ数の不一致（レガシー互換）
     """
     warnings: List[str] = []
 
@@ -151,17 +151,35 @@ def validate_command_list(
                     f"未設定: {loc} に Query Mode (str_param) が設定されていません"
                 )
             elif mode == "SELECT_OPTION":
-                sv = (params.get("str_val") or "").strip()
-                if not sv:
+                tf = params.get("target_filter")
+                amount = params.get("amount")
+                input_key = params.get("input_value_key") or params.get("input_var")
+
+                # 新仕様: フィルタ対象カードを count 指定で選択する。
+                # amount 直指定または input_value_key 参照のどちらかが必要。
+                if not tf:
                     warnings.append(
-                        f"未設定: {loc} SELECT_OPTION に選択肢テキスト (str_val) が設定されていません"
+                        f"未設定: {loc} SELECT_OPTION に対象フィルタ (target_filter) が設定されていません"
                     )
-                else:
+                amt_val = 0
+                try:
+                    amt_val = int(amount) if amount is not None else 0
+                except (TypeError, ValueError):
+                    amt_val = 0
+
+                if not input_key and amt_val <= 0:
+                    warnings.append(
+                        f"未設定: {loc} SELECT_OPTION の選択数 (amount または input_value_key) が設定されていません"
+                    )
+
+                # 旧仕様互換: str_val がある場合のみブランチ整合をチェック。
+                sv = (params.get("str_val") or "").strip()
+                if sv:
                     label_lines = [l for l in sv.split("\n") if l.strip()]
                     branch_count = len(options)
                     if label_lines and branch_count and len(label_lines) != branch_count:
                         warnings.append(
-                            f"不一致: {loc} 選択肢テキスト数 ({len(label_lines)}) と"
+                            f"不一致: {loc} 旧形式選択肢テキスト数 ({len(label_lines)}) と"
                             f" ブランチ数 ({branch_count}) が一致しません"
                         )
 

@@ -916,7 +916,7 @@
       {
         "uid": "bdc305e4-63e1-4d9b-832e-c2aa10013e2e",
         "trigger": "ON_OPPONENT_CREATURE_ENTER",
-        "trigger_scope": "NONE",
+        "trigger_scope": "PLAYER_OPPONENT",
         "trigger_filter": {},
         "condition": {
           "type": "NONE",
@@ -942,6 +942,16 @@
             },
             "target_group": "PLAYER_OPPONENT",
             "input_value_key": "EVENT_SOURCE"
+          },
+          {
+            "uid": "c394ce14-13cc-4909-8dd4-3f3e11cd4b44",
+            "type": "IF",
+            "input_value_usage": "",
+            "target_filter": {
+              "type": "NONE",
+              "value": 0
+            },
+            "output_value_key": "var_c394ce14"
           }
         ]
       }
@@ -1042,9 +1052,10 @@
             "options": [
               [
                 {
-                  "uid": "0b404a72-b082-4e5d-b8df-25765869830e",
+                  "uid": "3bc82182-4e1d-40e0-8996-8e141526fd34",
                   "type": "PUT_CREATURE",
                   "amount": 0,
+                  "from_zone": "HAND",
                   "input_value_usage": "",
                   "target_filter": {
                     "max_cost": 3,
@@ -1052,15 +1063,19 @@
                       "CREATURE"
                     ]
                   },
-                  "target_group": "PLAYER_SELF"
+                  "target_group": "PLAYER_SELF",
+                  "output_value_key": "var_3bc82182"
                 }
               ],
               [
                 {
-                  "uid": "e31d3211-33b5-4be1-827c-9c794b1af94b",
+                  "uid": "0431f395-bc26-4b1e-8f8a-40eeba25db68",
                   "type": "ADD_KEYWORD",
-                  "str_val": "SPEED_ATTACKER",
                   "amount": 1,
+                  "duration": "THIS_TURN",
+                  "explicit_self": false,
+                  "input_value_usage": "",
+                  "str_val": "SPEED_ATTACKER",
                   "target_filter": {
                     "types": [
                       "CREATURE"
@@ -1069,7 +1084,8 @@
                       "BATTLE_ZONE"
                     ]
                   },
-                  "target_group": "PLAYER_SELF"
+                  "target_group": "PLAYER_SELF",
+                  "output_value_key": "var_0431f395"
                 }
               ],
               [
@@ -1141,8 +1157,11 @@
             "str_param": ""
           },
           {
-            "uid": "b8474237-fe12-42f0-a826-ebaac6169b7f",
-            "type": "DRAW"
+            "uid": "03eaa0a9-40bb-4cea-a31a-dc6a80261e4c",
+            "type": "SPELL_RESTRICTION",
+            "duration": "UNTIL_START_OF_YOUR_TURN",
+            "target_group": "PLAYER_OPPONENT",
+            "output_value_key": "var_03eaa0a9"
           }
         ]
       }
@@ -1198,6 +1217,14 @@
             "uid": "4eaa2f66-cae3-4d9d-8f35-c3d66527e66c",
             "type": "MOVE_BUFFER_TO_ZONE",
             "to_zone": "HAND"
+          },
+          {
+            "uid": "94eeb09c-839c-4d01-802a-32d33108d613",
+            "type": "MOVE_BUFFER_TO_ZONE",
+            "amount": 0,
+            "input_value_usage": "",
+            "to_zone": "GRAVEYARD",
+            "output_value_key": "var_94eeb09c"
           }
         ]
       }
@@ -1223,18 +1250,30 @@
     "effects": [
       {
         "uid": "9d06719e-5df4-4b6d-9489-a672c4ddb2c8",
-        "trigger": "ON_PLAY",
-        "trigger_scope": "NONE",
+        "trigger": "ON_OPPONENT_CREATURE_ENTER",
+        "mode": "REPLACEMENT",
+        "timing_mode": "PRE",
+        "trigger_scope": "PLAYER_OPPONENT",
         "trigger_filter": {},
         "condition": {
-          "type": "NONE",
+          "type": "DURING_YOUR_TURN",
           "value": 0,
           "extra_fields": {}
         },
         "commands": [
           {
-            "uid": "d673a6e4-4536-4d35-95c2-3bf9e2bf9a24",
-            "type": "REPLACE_MOVE_CARD"
+            "uid": "5482680c-f0f9-4f3a-bd3a-bd63328a2507",
+            "type": "REPLACE_CARD_MOVE",
+            "_input_value_label": "EVENT_SOURCE (イベント発生源 (汎用))",
+            "amount": 0,
+            "from_zone": "BATTLE",
+            "input_value_usage": "",
+            "optional": false,
+            "target_group": "PLAYER_SELF",
+            "to_zone": "GRAVEYARD",
+            "up_to": false,
+            "input_value_key": "EVENT_SOURCE",
+            "output_value_key": "var_5482680c"
           }
         ]
       }
@@ -1315,10 +1354,11 @@
               ],
               [
                 {
-                  "uid": "2a4a597b-6054-4c91-af86-96d4354750a7",
+                  "uid": "fc47d92a-b36d-48b2-9f33-510964ea8b58",
                   "type": "UNTAP",
                   "input_value_usage": "",
                   "target_filter": {
+                    "count": 1,
                     "types": [
                       "CREATURE"
                     ],
@@ -1326,7 +1366,8 @@
                       "BATTLE_ZONE"
                     ]
                   },
-                  "target_group": "PLAYER_SELF"
+                  "target_group": "PLAYER_SELF",
+                  "output_value_key": "var_fc47d92a"
                 },
                 {
                   "uid": "63f9e80c-2820-4a2d-88af-15114cb4f10c",
@@ -1462,6 +1503,69 @@
       }
     ],
     "static_abilities": [],
+    "reaction_abilities": [],
+    "ai_importance_score": 0,
+    "evolution_condition": "",
+    "is_key_card": false
+  },
+  {
+    "uid": "763e87e2-02e7-434a-990b-d44c5acb5a83",
+    "id": 17,
+    "name": "絶海の虎将ティガウォック",
+    "type": "CREATURE",
+    "civilizations": [
+      "WATER"
+    ],
+    "races": [],
+    "cost": 7,
+    "power": 6000,
+    "keywords": {
+      "blocker": true,
+      "double_breaker": true
+    },
+    "effects": [
+      {
+        "uid": "f9fa0d8d-1f81-4590-aeb3-61174b717d5a",
+        "trigger": "ON_PLAY",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
+        "commands": [
+          {
+            "uid": "58d79a54-f15e-4f31-b93c-3149df0cf155",
+            "type": "DRAW_CARD",
+            "amount": 3,
+            "input_value_usage": "",
+            "optional": true,
+            "target_group": "PLAYER_SELF",
+            "up_to": true,
+            "output_value_key": "var_58d79a54"
+          }
+        ]
+      },
+      {
+        "uid": "1c59b84f-e23a-4e2e-a29a-0147075c0ae4",
+        "trigger": "ON_PLAY",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
+        "commands": [
+          {
+            "uid": "2657f155-5137-4ab7-ab3b-02e00b368eff",
+            "type": "QUERY",
+            "input_value_usage": "",
+            "target_group": "PLAYER_SELF",
+            "output_value_key": "var_2657f155"
+          }
+        ]
+      }
+    ],
+    "static_abilities": [
+      {
+        "uid": "65b21a2b-dde8-4612-9525-44b1e2955960",
+        "type": "COST_MODIFIER",
+        "value": 0,
+        "scope": "ALL"
+      }
+    ],
     "reaction_abilities": [],
     "ai_importance_score": 0,
     "evolution_condition": "",

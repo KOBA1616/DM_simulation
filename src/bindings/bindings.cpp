@@ -26,10 +26,18 @@ PYBIND11_MODULE(dm_ai_module, m) {
     // NOTE: 再発防止 — IS_NATIVE を True に設定してネイティブモジュールであることをテストから判別できるようにする。
     // テストが Python フォールバックとネイティブを区別するときに参照する。
     m.attr("IS_NATIVE") = true;
-    bind_common(m);
+    // Ensure core types (CardDefinition, EffectDef, etc.) are bound
+    // before binding container/map helpers so value conversions use
+    // the proper pybind11 type registrations.
     bind_core(m);
+    bind_common(m);
     bind_engine(m);
     bind_ai(m);
+    // Native -> Python event bridge
+    // NOTE: Temporarily disabled to avoid linker-time dependency while
+    // we iterate on loader fixes. Re-enable once symbol resolution is
+    // verified or the bridge is moved to a separate compilation unit.
+    // try { dm::bindings::bind_event_bridge(m); } catch(...) {}
     // Inference bindings (ONNX / LibTorch wrappers)
     try { bind_inference(m); } catch(...) {}
     try {

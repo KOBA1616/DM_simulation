@@ -55,3 +55,5 @@ def normalize_command_zone_keys(data):
     if 'destination_zone' in data: del data['destination_zone']
 
     return data
+
+# LEGACY_ACTIONDEF_REFERENCE: This file references 'ActionDef' (legacy). Consider migrating to 'CommandDef'.

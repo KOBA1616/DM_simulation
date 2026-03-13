@@ -45,7 +45,8 @@ class FieldSchema:
         max_value: Optional[int] = None,
         produces_output: bool = False, # For LINK fields
         widget_hint: Optional[str] = None, # Hint for factory (e.g. 'ref_mode_combo')
-        enum_source: Optional[str] = None # For ENUM type: 'dm_ai_module.ClassName'
+        enum_source: Optional[str] = None, # For ENUM type: 'dm_ai_module.ClassName'
+        step: Optional[int] = None # For INT fields: setSingleStep(step)
     ):
         self.key = key
         self.label = label
@@ -59,6 +60,7 @@ class FieldSchema:
         self.produces_output = produces_output
         self.widget_hint = widget_hint
         self.enum_source = enum_source
+        self.step = step
 
 class CommandSchema:
     """

@@ -273,6 +273,9 @@ def _create_int_widget(parent, schema, cb):
         widget = AmountWithAllWidget(parent, max_val=schema.max_value or 9999)
     else:
         widget = NumberWidget(parent, min_val=schema.min_value or 0, max_val=schema.max_value or 99999)
+    # step が指定されている場合はスピンボックスの増減幅を設定する
+    if getattr(schema, 'step', None):
+        widget.setSingleStep(schema.step)
     widget.valueChanged.connect(lambda: cb())
     return widget
 

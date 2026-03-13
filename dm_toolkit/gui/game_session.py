@@ -83,6 +83,8 @@ class GameSession:
         # Async AI worker
         self._ai_thread: Optional[threading.Thread] = None
         self._ai_stop_event = threading.Event()
+        # UI callback safety helper: protects against blocking or exceptions
+        self._ui_callback_timeout = 0.5  # seconds to wait for UI callback before logging timeout
 
     def initialize_game(self, card_db: Optional[CardDB] = None, seed: int = 42) -> None:
         """Initialize game with C++ engine.
@@ -135,7 +137,7 @@ class GameSession:
             import traceback
             traceback.print_exc()
 
-        self.callback_update_ui()
+        self._safe_callback_update_ui()
 
     def reset_game(self, p0_deck: Optional[List[int]] = None, p1_deck: Optional[List[int]] = None) -> None:
         """Reset game state."""
@@ -188,7 +190,7 @@ class GameSession:
             self.callback_log(f"start_game failed: {e}")
 
         self.callback_log(tr("Game Reset"))
-        self.callback_update_ui()
+        self._safe_callback_update_ui()
 
     def step_phase(self):
         """Alias for step_game() for backward compatibility."""
@@ -214,7 +216,7 @@ class GameSession:
             # Check game over  
             if self.is_game_over():
                 self.callback_log("Game Over")
-                self.callback_update_ui()
+                self._safe_callback_update_ui()
                 return
 
             # Human players: need to check if it's their turn and wait for input
@@ -235,11 +237,11 @@ class GameSession:
                 if not cmds:
                     # No actions - progress automatically
                     self._fast_forward()
-                    self.callback_update_ui()
+                    self._safe_callback_update_ui()
                     return
                 
                 # Human player - wait for input
-                self.callback_update_ui()
+                self._safe_callback_update_ui()
                 return
 
             # AI player - use C++ step() for complete automation
@@ -258,7 +260,7 @@ class GameSession:
                 # Reset counter on success
                 self._no_action_count = 0
             
-            self.callback_update_ui()
+            self._safe_callback_update_ui()
 
         finally:
             self.is_processing = False
@@ -320,7 +322,7 @@ class GameSession:
 
         except Exception as e:
             self.callback_log(f"Execution error: {e}")
-            self.callback_update_ui()
+            self._safe_callback_update_ui()
             return
 
         if not executed:
@@ -338,7 +340,7 @@ class GameSession:
         if self.game_instance:
             self.gs = self.game_instance.state
 
-        self.callback_update_ui()
+        self._safe_callback_update_ui()
 
     # 再発防止: execute_action は削除済み。execute_command を使用すること。
 
@@ -357,6 +359,52 @@ class GameSession:
             self.callback_log(f"ERROR executing fast_forward: {e}")
             import traceback
             self.callback_log(traceback.format_exc())
+
+    def _safe_callback_update_ui(self, wait: bool = True, timeout: Optional[float] = None) -> None:
+        """Call `callback_update_ui` with exception handling and optional timeout.
+
+        Args:
+            wait: If True, wait up to `timeout` seconds for the callback to complete.
+            timeout: Seconds to wait; if None uses `self._ui_callback_timeout`.
+        """
+        if not callable(self.callback_update_ui):
+            return
+        if timeout is None:
+            timeout = self._ui_callback_timeout
+
+        if not wait:
+            def _fire_and_forget():
+                try:
+                    self.callback_update_ui()
+                except Exception as e:
+                    try:
+                        self.callback_log(f"UI callback error: {e}")
+                    except Exception:
+                        pass
+
+            threading.Thread(target=_fire_and_forget, daemon=True).start()
+            return
+
+        done = threading.Event()
+
+        def _runner():
+            try:
+                self.callback_update_ui()
+            except Exception as e:
+                try:
+                    self.callback_log(f"UI callback error: {e}")
+                except Exception:
+                    pass
+            finally:
+                done.set()
+
+        t = threading.Thread(target=_runner, daemon=True)
+        t.start()
+        if not done.wait(timeout):
+            try:
+                self.callback_log("UI callback timeout")
+            except Exception:
+                pass
 
     def _build_default_deck(self) -> List[int]:
         """Build a default deck from card_db (40 cards)."""
@@ -482,8 +530,9 @@ class GameSession:
                     # Always resync state and notify UI
                     if self.game_instance:
                         self.gs = self.game_instance.state
+                    # Use non-blocking safe callback to avoid worker stall
                     try:
-                        self.callback_update_ui()
+                        self._safe_callback_update_ui(wait=False)
                     except Exception:
                         pass
 
@@ -539,7 +588,7 @@ class GameSession:
             except Exception:
                 pass
 
-        self.callback_update_ui()
+        self._safe_callback_update_ui()
         return True
 
     def resume_from_input(self, result: Any):
@@ -554,4 +603,4 @@ class GameSession:
         except Exception as e:
             self.callback_log(f"Resume error: {e}")
         
-        self.callback_update_ui()
+        self._safe_callback_update_ui()

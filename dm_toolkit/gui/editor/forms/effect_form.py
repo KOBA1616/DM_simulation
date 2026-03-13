@@ -425,7 +425,9 @@ class EffectEditForm(BaseEditForm):
              elif scope == "ALL_PLAYERS":
                  scope_str = " (両プレイヤー)"
              else:
-                 scope_str = f" ({tr(scope)})"
+                 # 再発防止: 未翻訳/空文字スコープで "()" が表示されるのを防ぐ。
+                 scope_label = tr(scope).strip()
+                 scope_str = f" ({scope_label})" if scope_label else ""
 
              if data.get('mode') == 'REPLACEMENT':
                  replacement_trigger = self._to_replacement_trigger_label(tr(data.get('trigger', '')))

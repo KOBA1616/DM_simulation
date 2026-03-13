@@ -64,6 +64,9 @@ namespace dm::core {
 
     struct TurnStats {
         int played_without_mana = 0;
+        // 再発防止: 「コストを支払わずに出たカード」を IF 条件で個別判定するため、
+        // そのターンに踏み倒しで出た instance_id を保持する。
+        std::vector<int> played_without_mana_instance_ids;
         int cards_drawn_this_turn = 0;
         int cards_discarded_this_turn = 0;
         int creatures_played_this_turn = 0;

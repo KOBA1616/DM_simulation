@@ -63,7 +63,7 @@ def _build_filter_def(tf_data: Dict[str, Any]) -> Any:
     f = _FilterDef()
     for k in ['zones', 'types', 'civilizations', 'races', 'min_cost', 'max_cost',
               'exact_cost', 'min_power', 'max_power', 'is_tapped', 'is_blocker',
-              'is_evolution', 'owner', 'count', 'cost_ref', 'selection_mode']:
+              'is_evolution', 'owner', 'count', 'cost_ref']:
         if k in tf_data:
             val = tf_data[k]
             # Special handling for civilizations enum conversion
@@ -84,7 +84,9 @@ def _build_filter_def(tf_data: Dict[str, Any]) -> Any:
                 else:
                     setattr(f, k, converted_civs)
             else:
-                setattr(f, k, val)
+                # 再発防止: ネイティブFilterDefから削除済みの属性は無視する。
+                if hasattr(f, k):
+                    setattr(f, k, val)
 
     if 'and_conditions' in tf_data:
         for sub in tf_data['and_conditions']:
@@ -845,6 +847,24 @@ def build_move_buffer_to_zone(
     cmd = {
         "type": "MOVE_BUFFER_TO_ZONE",
         "value1": amount,
+        "to_zone": to_zone,
+        **kwargs
+    }
+    return _ensure_uid(cmd)
+
+
+def build_move_buffer_remain_to_zone(
+    to_zone: str = "DECK_BOTTOM",
+    native: bool = True,
+    **kwargs: Any
+) -> Union[Dict[str, Any], Any]:
+    """Build a MOVE_BUFFER_REMAIN_TO_ZONE command."""
+    if native:
+        return _build_native_command("MOVE_BUFFER_REMAIN_TO_ZONE", from_zone="BUFFER", to_zone=to_zone,
+                                     **kwargs)
+
+    cmd = {
+        "type": "MOVE_BUFFER_REMAIN_TO_ZONE",
         "to_zone": to_zone,
         **kwargs
     }

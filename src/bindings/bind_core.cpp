@@ -270,6 +270,7 @@ void bind_core(py::module& m) {
         .value("CANNOT_USE_SPELLS", PassiveType::CANNOT_USE_SPELLS)
         .value("LOCK_SPELL_BY_COST", PassiveType::LOCK_SPELL_BY_COST)
         .value("CANNOT_SUMMON", PassiveType::CANNOT_SUMMON)
+        .value("IGNORE_ABILITIES", PassiveType::IGNORE_ABILITIES)
         .value("FORCE_SELECTION", PassiveType::FORCE_SELECTION)
         .value("CANNOT_BE_SELECTED", PassiveType::CANNOT_BE_SELECTED)
         .export_values();
@@ -443,6 +444,12 @@ void bind_core(py::module& m) {
         .value("USE_ABILITY", CommandType::USE_ABILITY)
         .value("MANA_CHARGE", CommandType::MANA_CHARGE)
         .value("SELECT_TARGET", CommandType::SELECT_TARGET)
+        .value("LOCK_SPELL", CommandType::LOCK_SPELL)
+        .value("SPELL_RESTRICTION", CommandType::SPELL_RESTRICTION)
+        .value("CANNOT_PUT_CREATURE", CommandType::CANNOT_PUT_CREATURE)
+        .value("CANNOT_SUMMON_CREATURE", CommandType::CANNOT_SUMMON_CREATURE)
+        .value("PLAYER_CANNOT_ATTACK", CommandType::PLAYER_CANNOT_ATTACK)
+        .value("IGNORE_ABILITY", CommandType::IGNORE_ABILITY)
         .value("NONE", CommandType::NONE)
         .export_values();
 
@@ -581,24 +588,24 @@ void bind_core(py::module& m) {
         .def_readwrite("actions", &EffectDef::actions)
         .def_readwrite("commands", &EffectDef::commands); // Added commands field
 
-    py::class_<CardDefinition, std::shared_ptr<CardDefinition>>(m, "CardDefinition")
+    py::class_<CardDefinition>(m, "CardDefinition")
         .def(py::init([](int id, std::string name, std::string civ_str, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
             try {
-                auto c = std::make_shared<CardDefinition>();
-                c->id = id;
-                c->name = name;
-                c->cost = cost;
-                if (civ_str == "FIRE") c->civilizations.push_back(Civilization::FIRE);
-                else if (civ_str == "WATER") c->civilizations.push_back(Civilization::WATER);
-                else if (civ_str == "NATURE") c->civilizations.push_back(Civilization::NATURE);
-                else if (civ_str == "LIGHT") c->civilizations.push_back(Civilization::LIGHT);
-                else if (civ_str == "DARKNESS") c->civilizations.push_back(Civilization::DARKNESS);
-                c->power = power;
-                c->races = races;
-                c->keywords = keywords;
-                c->effects = effects;
+                CardDefinition c;
+                c.id = id;
+                c.name = name;
+                c.cost = cost;
+                if (civ_str == "FIRE") c.civilizations.push_back(Civilization::FIRE);
+                else if (civ_str == "WATER") c.civilizations.push_back(Civilization::WATER);
+                else if (civ_str == "NATURE") c.civilizations.push_back(Civilization::NATURE);
+                else if (civ_str == "LIGHT") c.civilizations.push_back(Civilization::LIGHT);
+                else if (civ_str == "DARKNESS") c.civilizations.push_back(Civilization::DARKNESS);
+                c.power = power;
+                c.races = races;
+                c.keywords = keywords;
+                c.effects = effects;
                 // Default type
-                c->type = CardType::CREATURE;
+                c.type = CardType::CREATURE;
                 return c;
             } catch (const py::error_already_set& e) {
                 throw;
@@ -619,6 +626,9 @@ void bind_core(py::module& m) {
         .def_readwrite("races", &CardDefinition::races)
         .def_readwrite("keywords", &CardDefinition::keywords)
         .def_readwrite("effects", &CardDefinition::effects)
+        // Ensure `metamorph_abilities` is directly exposed as a field so that
+        // container conversion always provides access from Python-side objects.
+        .def_readwrite("metamorph_abilities", &CardDefinition::metamorph_abilities)
         .def_readwrite("static_abilities", &CardDefinition::static_abilities)
         .def_readwrite("evolution_condition", &CardDefinition::evolution_condition)
         .def_readwrite("revolution_change_condition", &CardDefinition::revolution_change_condition)

@@ -9,7 +9,8 @@ description = "Duel Masters AI Toolkit"
 requires-python = ">=3.8"
 dependencies = [
     "numpy",
-    "onnxruntime",
+    # 再発防止: CMake の ONNX Runtime (1.20.1) と同一バージョンを固定して DLL/API 不整合を防ぐ。
+    "onnxruntime==1.20.1",
     # 再発防止: PyQt6 はヘッドレス環境・CI/Docker では不要なため [gui] extras に移動。
     # GUI 環境でのインストール: pip install -e ".[gui]"
 ]

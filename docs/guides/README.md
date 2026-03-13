@@ -6,6 +6,7 @@
 - [GUI_HEADLESS_TESTING_SETUP.md](GUI_HEADLESS_TESTING_SETUP.md)
 - [GUI_VARIABLE_LINK_FIX.md](GUI_VARIABLE_LINK_FIX.md)
 - [IF_CONDITION_LABELS.md](IF_CONDITION_LABELS.md)
+- [ONNXRUNTIME_VERSION_POLICY.md](ONNXRUNTIME_VERSION_POLICY.md)
 - [REPLACE_CARD_MOVE_USAGE.md](REPLACE_CARD_MOVE_USAGE.md)
 
 各ファイルの短い要約と主な見出し:
@@ -16,6 +17,8 @@
 - GUI_VARIABLE_LINK_FIX.md — GUIのVariable Links 修正メモ：`links`キー処理、`current_item`設定、出力変数の構造。
 	- 主な見出し: 修正内容 / GUIでの使用方法 / 動作確認 / トラブルシューティング
 - IF_CONDITION_LABELS.md — アーカイブ済み。詳細は `archive/docs/IF_CONDITION_LABELS.md` を参照。
+- ONNXRUNTIME_VERSION_POLICY.md — ONNX Runtime バージョン固定方針と整合テスト手順。
+- 主な見出し: 目的 / 固定バージョン / 運用ルール / 検証コマンド / トラブルシューティング
 - REPLACE_CARD_MOVE_USAGE.md — `REPLACE_CARD_MOVE` の機能説明、JSON例、実装・テスト手順。
 	- 主な見出し: 概要 / GUIでの設定方法 / 使用例 / 実装の詳細 / テスト
 

@@ -210,6 +210,7 @@ std::vector<Instruction> CommandSystem::generate_instructions(
   case core::CommandType::REVEAL_TO_BUFFER:   // 再発防止: デッキ上からバッファへ表向きに展開
   case core::CommandType::SELECT_FROM_BUFFER: // 再発防止: バッファからプレイヤーが選択
   case core::CommandType::MOVE_BUFFER_TO_ZONE: // 再発防止: バッファ残予を指定ゾーンへ移動
+  case core::CommandType::MOVE_BUFFER_REMAIN_TO_ZONE: // 再発防止: バッファ残余（選択外）をすべて指定ゾーンへ移動
   case core::CommandType::REGISTER_DELAYED_EFFECT: // 遅延効果登録
   // 再発防止: 制限コマンド — ADD_PASSIVE 命令にマップしてパッシブ効果を登録する
   case core::CommandType::LOCK_SPELL:
@@ -217,6 +218,7 @@ std::vector<Instruction> CommandSystem::generate_instructions(
   case core::CommandType::CANNOT_PUT_CREATURE:
   case core::CommandType::CANNOT_SUMMON_CREATURE:
   case core::CommandType::PLAYER_CANNOT_ATTACK:
+  case core::CommandType::IGNORE_ABILITY:
     generate_macro_instructions(out, state, cmd, source_instance_id, player_id,
                                 execution_context);
     break;
@@ -255,8 +257,10 @@ void CommandSystem::generate_primitive_instructions(
       derived_cond.type  = *cmd.target_filter.type;
       derived_cond.value = cmd.target_filter.value.value_or(0);
       derived_cond.op    = cmd.target_filter.op.value_or(">=");
-      // COMPARE_INPUT: stat_key = cmd.input_value_key
-      if (derived_cond.type == "COMPARE_INPUT" && !cmd.input_value_key.empty()) {
+      // COMPARE_INPUT / PLAYED_WITHOUT_MANA_TARGET: stat_key = cmd.input_value_key
+      // 再発防止: 入力リンクを参照する条件タイプを追加したら、この分岐にも必ず追記すること。
+      if ((derived_cond.type == "COMPARE_INPUT" || derived_cond.type == "PLAYED_WITHOUT_MANA_TARGET")
+          && !cmd.input_value_key.empty()) {
         derived_cond.stat_key = cmd.input_value_key;
       }
       const auto &card_db =
@@ -382,29 +386,61 @@ void CommandSystem::generate_primitive_instructions(
           cmd.output_value_key.empty() ? "$temp" : cmd.output_value_key;
       out.push_back(get);
     } else if (query_type == "SELECT_OPTION") {
-      // 再発防止: QUERY(SELECT_OPTION) は str_val の改行区切りラベルを
-      //   WAIT_INPUT へ渡してプレイヤーに選択させる。
-      //   options ブランチは executor 側で選択インデックスに基づき実行される。
-      Instruction wait(InstructionOp::WAIT_INPUT);
-      wait.args["query_type"] = "SELECT_OPTION";
-      // str_val から改行区切りでラベルを生成
-      nlohmann::json opt_labels = nlohmann::json::array();
-      if (!cmd.str_val.empty()) {
-        std::string sv = cmd.str_val;
-        std::istringstream ss(sv);
+      // 再発防止: QUERY(SELECT_OPTION) は新仕様で「カード選択」を行う。
+      //   target_filter + amount/input_value_key を使い、選択結果を output_value_key へ保存する。
+      //   旧仕様（str_val の文字列選択肢）は filter 未指定時のみ後方互換で維持する。
+      const FilterDef& select_filter = cmd.target_filter;
+      const bool has_filter =
+          !select_filter.zones.empty() || !select_filter.types.empty() ||
+          !select_filter.civilizations.empty() || !select_filter.races.empty() ||
+          select_filter.owner.has_value() || select_filter.min_cost.has_value() ||
+          select_filter.max_cost.has_value() || select_filter.exact_cost.has_value() ||
+          select_filter.min_power.has_value() || select_filter.max_power.has_value() ||
+          select_filter.is_tapped.has_value() || select_filter.is_blocker.has_value() ||
+          select_filter.is_evolution.has_value() || !select_filter.and_conditions.empty();
+
+      if (!has_filter && !cmd.str_val.empty()) {
+        Instruction wait(InstructionOp::WAIT_INPUT);
+        wait.args["query_type"] = "SELECT_OPTION";
+        nlohmann::json opt_labels = nlohmann::json::array();
+        std::istringstream ss(cmd.str_val);
         std::string line;
         while (std::getline(ss, line)) {
           if (!line.empty()) opt_labels.push_back(line);
         }
+        int branch_count = (int)cmd.options.size();
+        while ((int)opt_labels.size() < branch_count) {
+          opt_labels.push_back("Option " + std::to_string(opt_labels.size() + 1));
+        }
+        wait.args["options"] = opt_labels;
+        wait.args["out"] = cmd.output_value_key.empty() ? "$select_result" : cmd.output_value_key;
+        out.push_back(wait);
+      } else {
+        Instruction select_inst(InstructionOp::SELECT);
+        nlohmann::json filter_json = select_filter;
+        if (cmd.target_group == TargetScope::PLAYER_SELF) {
+          filter_json["owner"] = std::string("SELF");
+        } else if (cmd.target_group == TargetScope::PLAYER_OPPONENT) {
+          filter_json["owner"] = std::string("OPPONENT");
+        } else if (cmd.target_group == TargetScope::ALL_PLAYERS) {
+          filter_json["owner"] = std::string("BOTH");
+        }
+        select_inst.args["filter"] = filter_json;
+
+        if (!cmd.input_value_key.empty()) {
+          std::string in_key = cmd.input_value_key.rfind("$", 0) == 0
+                                 ? cmd.input_value_key
+                                 : ("$" + cmd.input_value_key);
+          select_inst.args["count"] = in_key;
+        } else {
+          int amount = resolve_amount(cmd, execution_context);
+          select_inst.args["count"] = amount > 0 ? amount : 1;
+        }
+
+        select_inst.args["out"] =
+            cmd.output_value_key.empty() ? "$selected_cards" : cmd.output_value_key;
+        out.push_back(select_inst);
       }
-      // ラベルが未設定の場合は "Option N" で補完
-      int branch_count = (int)cmd.options.size();
-      while ((int)opt_labels.size() < branch_count) {
-        opt_labels.push_back("Option " + std::to_string(opt_labels.size() + 1));
-      }
-      wait.args["options"] = opt_labels;
-      wait.args["out"] = cmd.output_value_key.empty() ? "$select_result" : cmd.output_value_key;
-      out.push_back(wait);
     } else {
       // 再発防止: 既知の GET_STAT モードは GET_STAT 命令を生成する。
       //   OPPONENT_ プレフィックス付きは executor 側で相手プレイヤーとして処理。
@@ -706,7 +742,8 @@ void CommandSystem::generate_macro_instructions(
              cmd.type == core::CommandType::SPELL_RESTRICTION ||
              cmd.type == core::CommandType::CANNOT_PUT_CREATURE ||
              cmd.type == core::CommandType::CANNOT_SUMMON_CREATURE ||
-             cmd.type == core::CommandType::PLAYER_CANNOT_ATTACK) {
+             cmd.type == core::CommandType::PLAYER_CANNOT_ATTACK ||
+             cmd.type == core::CommandType::IGNORE_ABILITY) {
     // 再発防止: 制限コマンドは ADD_PASSIVE 命令でパッシブ効果を登録する。
     //   duration 文字列（"THIS_TURN" 等）を整数ターン数に変換する。
     //   target_group から対象プレイヤーを自動設定。
@@ -745,6 +782,12 @@ void CommandSystem::generate_macro_instructions(
         mod.args["filter"]["min_cost"] = *cmd.target_filter.min_cost;
       if (cmd.target_filter.max_cost.has_value())
         mod.args["filter"]["max_cost"] = *cmd.target_filter.max_cost;
+      if (!cmd.input_value_key.empty()) {
+        std::string in_key = cmd.input_value_key.rfind("$", 0) == 0
+                               ? cmd.input_value_key
+                               : ("$" + cmd.input_value_key);
+        mod.args["filter"]["cost_ref"] = in_key;
+      }
     } else if (cmd.type == core::CommandType::CANNOT_PUT_CREATURE ||
                cmd.type == core::CommandType::CANNOT_SUMMON_CREATURE) {
       mod.args["str_value"] = "CANNOT_SUMMON";
@@ -754,6 +797,16 @@ void CommandSystem::generate_macro_instructions(
       mod.args["str_value"] = "CANNOT_ATTACK";
       mod.args["filter"]["owner"] = owner_str;
       mod.args["filter"]["types"] = nlohmann::json::array({"CREATURE"});
+    } else if (cmd.type == core::CommandType::IGNORE_ABILITY) {
+      mod.args["str_value"] = "IGNORE_ABILITY";
+      mod.args["filter"] = cmd.target_filter;
+      mod.args["filter"]["owner"] = owner_str;
+      if (!cmd.input_value_key.empty()) {
+        std::string in_key = cmd.input_value_key.rfind("$", 0) == 0
+                               ? cmd.input_value_key
+                               : ("$" + cmd.input_value_key);
+        mod.args["filter"]["cost_ref"] = in_key;
+      }
     }
 
     out.push_back(mod);
@@ -837,7 +890,6 @@ void CommandSystem::generate_macro_instructions(
     }
   } else if (cmd.type == core::CommandType::SELECT_FROM_BUFFER) {
     // 再発防止: SELECT_FROM_BUFFER はバッファからプレイヤーに選択させる。
-    //   選択したカードは手札に加わり、残余はデッキボトムへ戻る。
     std::string out_key =
         cmd.output_value_key.empty() ? "$buffer_select" : cmd.output_value_key;
     Instruction wait(InstructionOp::WAIT_INPUT);
@@ -845,43 +897,30 @@ void CommandSystem::generate_macro_instructions(
     wait.args["count"] = (count > 0) ? count : 1;
     wait.args["out"] = out_key;
     out.push_back(wait);
-  } else if (cmd.type == core::CommandType::MOVE_BUFFER_TO_ZONE) {
-    // 再発防止: MOVE_BUFFER_TO_ZONE の動作は amount と target_filter の組み合わせで3パターン存在する。
-    //
-    // [パターンA] amount > 0 かつ filter なし (デドダム等、連続 MOVE_BUFFER_TO_ZONE)
-    //   → WAIT_INPUT(SELECT_FROM_BUFFER, count=amount) で選択させてから MOVE。
-    //     BUFFER_REMAIN は生成しない — バッファを次の MOVE_BUFFER_TO_ZONE に持ち越すため。
-    //
-    // [パターンB] amount == 0 かつ filter なし (SELECT_FROM_BUFFER 済みの $buffer_select を使用)
-    //   → MOVE($buffer_select → zone) + BUFFER_REMAIN → DECK_BOTTOM。
-    //
-    // [パターンC] filter あり (暗黙的文明フィルター等)
-    //   → AUTO_SELECT_BUFFER + MOVE($buffer_select → zone) + BUFFER_REMAIN → DECK_BOTTOM。
-    //
-    // 再発防止: 旧実装は常に BUFFER_REMAIN を追加していたため、
-    //   連続 MOVE_BUFFER_TO_ZONE で2枚目以降のバッファが空になるバグがあった。
-    // 再発防止: 旧実装の "BUFFER" 文字列はパイプラインで未解決のままだったバグを修正。
 
-    auto& f = cmd.target_filter;
-    bool has_filter = !f.civilizations.empty() || !f.types.empty()
-                      || !f.races.empty() || !f.zones.empty()
-                      || f.min_cost.has_value() || f.max_cost.has_value()
-                      || f.exact_cost.has_value();
+  } else if (cmd.type == core::CommandType::MOVE_BUFFER_TO_ZONE) {
+    // 再発防止: MOVE_BUFFER_TO_ZONE は amount と target_filter の組み合わせで3パターン動作。
+    auto &f = cmd.target_filter;
+    bool has_filter = !f.civilizations.empty() || !f.types.empty() ||
+                      !f.races.empty() || !f.zones.empty() ||
+                      f.min_cost.has_value() || f.max_cost.has_value() ||
+                      f.exact_cost.has_value();
 
     if (has_filter) {
-      // [パターンC] 暗黙的選択: AUTO_SELECT_BUFFER が filter に一致するバッファカードを
-      // $buffer_select コンテキスト変数に登録してからMOVEを実行する。
       nlohmann::json auto_args;
       auto_args["type"] = "AUTO_SELECT_BUFFER";
       nlohmann::json filter_json;
       filter_json["civilizations"] = f.civilizations;
-      filter_json["types"]         = f.types;
-      filter_json["races"]         = f.races;
-      if (f.min_cost.has_value())  filter_json["min_cost"]  = *f.min_cost;
-      if (f.max_cost.has_value())  filter_json["max_cost"]  = *f.max_cost;
-      if (f.exact_cost.has_value()) filter_json["exact_cost"] = *f.exact_cost;
+      filter_json["types"] = f.types;
+      filter_json["races"] = f.races;
+      if (f.min_cost.has_value())
+        filter_json["min_cost"] = *f.min_cost;
+      if (f.max_cost.has_value())
+        filter_json["max_cost"] = *f.max_cost;
+      if (f.exact_cost.has_value())
+        filter_json["exact_cost"] = *f.exact_cost;
       auto_args["filter"] = filter_json;
-      auto_args["out"]    = "$buffer_select";
+      auto_args["out"] = "$buffer_select";
       out.push_back(Instruction(InstructionOp::GAME_ACTION, auto_args));
 
       Instruction move(InstructionOp::MOVE);
@@ -895,8 +934,6 @@ void CommandSystem::generate_macro_instructions(
       out.push_back(ret);
 
     } else if (count > 0) {
-      // [パターンA] amount 指定あり・filter なし: WAIT_INPUT でユーザーに amount 枚選ばせる。
-      // BUFFER_REMAIN は追加しない (バッファを次の MOVE_BUFFER_TO_ZONE に持ち越す)。
       std::string sel_key = "$buffer_select";
       Instruction wait(InstructionOp::WAIT_INPUT);
       wait.args["query_type"] = "SELECT_FROM_BUFFER";
@@ -908,10 +945,8 @@ void CommandSystem::generate_macro_instructions(
       move.args["target"] = sel_key;
       move.args["to"] = cmd.to_zone.empty() ? "HAND" : cmd.to_zone;
       out.push_back(move);
-      // BUFFER_REMAIN は生成しない — バッファを後続の MOVE_BUFFER_TO_ZONE に持ち越すため
 
     } else {
-      // [パターンB] amount 未指定・filter なし: 事前の SELECT_FROM_BUFFER が $buffer_select を設定済み。
       Instruction move(InstructionOp::MOVE);
       move.args["target"] = "$buffer_select";
       move.args["to"] = cmd.to_zone.empty() ? "HAND" : cmd.to_zone;
@@ -922,6 +957,13 @@ void CommandSystem::generate_macro_instructions(
       ret.args["to"] = "DECK_BOTTOM";
       out.push_back(ret);
     }
+
+  } else if (cmd.type == core::CommandType::MOVE_BUFFER_REMAIN_TO_ZONE) {
+    // 再発防止: バッファ残余カード（$buffer_select に含まれない）をすべて指定ゾーンへ移動。
+    Instruction remain(InstructionOp::MOVE);
+    remain.args["target"] = "BUFFER_REMAIN";
+    remain.args["to"] = cmd.to_zone.empty() ? "DECK_BOTTOM" : cmd.to_zone;
+    out.push_back(remain);
   }
 }
 
@@ -931,6 +973,17 @@ CommandSystem::resolve_targets(GameState &state, const CommandDef &cmd,
                                std::map<std::string, int> &execution_context) {
   // ... (Same implementation as before)
   std::vector<int> targets;
+
+    // 再発防止: input_value_key が設定されている場合は execution_context から
+    //   カードインスタンスIDを直接取得して対象として使用する。
+    //   TAP/UNTAP などで SELECT 結果を入力として受け取る際に使用。
+    if (!cmd.input_value_key.empty()) {
+      auto it = execution_context.find(cmd.input_value_key);
+      if (it != execution_context.end() && it->second > 0) {
+        targets.push_back(it->second);
+        return targets;
+      }
+    }
   std::vector<PlayerID> players_to_check;
 
   if (cmd.target_group == TargetScope::PLAYER_SELF) {

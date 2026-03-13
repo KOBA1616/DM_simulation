@@ -1,4 +1,5 @@
 #include "continuous_effect_system.hpp"
+#include "passive_effect_system.hpp"
 #include "engine/systems/rules/condition_system.hpp"
 #include "engine/utils/target_utils.hpp"
 #include "core/modifiers.hpp"
@@ -25,6 +26,12 @@ namespace dm::engine::systems {
             for (const auto& card : player.battle_zone) {
                 if (!card_db.count(card.card_id)) continue;
                 const auto& def = card_db.at(card.card_id);
+
+                // 再発防止: 「能力を無視する」効果が適用中のカードは静的能力を供給しない。
+                if (PassiveEffectSystem::instance().check_restriction(
+                        state, card, PassiveType::IGNORE_ABILITIES, card_db)) {
+                    continue;
+                }
 
                 for (const auto& mod_def : def.static_abilities) {
                     // Check Condition (Source condition, e.g. "If I am tapped")
@@ -118,6 +125,96 @@ namespace dm::engine::systems {
                         }
 
                         state.passive_effects.push_back(pe);
+                    }
+                }
+            }
+        }
+
+        // SUPER_SOUL_X: 下に置かれたカードの静的能力をトップクリーチャーに伝播する
+        // 再発防止: super_soul_x フラグを持つ underlying_cards のみ対象。
+        //   eff の source_instance_id はトップクリーチャーの ID を使う（エフェクト追跡のため）。
+        for (const auto& player : state.players) {
+            for (const auto& top_card : player.battle_zone) {
+                for (const auto& under : top_card.underlying_cards) {
+                    if (!card_db.count(under.card_id)) continue;
+                    const auto& under_def = card_db.at(under.card_id);
+                    if (!under_def.keywords.super_soul_x) continue;
+
+                    for (const auto& mod_def : under_def.static_abilities) {
+                        if (mod_def.condition.type != "NONE" && !mod_def.condition.type.empty()) {
+                            if (!dm::engine::rules::ConditionSystem::instance().evaluate_def(
+                                    state, mod_def.condition, top_card.instance_id, card_db, {})) {
+                                continue;
+                            }
+                        }
+
+                        if (mod_def.type == ModifierType::COST_MODIFIER) {
+                            CostModifier cm;
+                            cm.reduction_amount = mod_def.value;
+                            cm.condition_filter = mod_def.filter;
+                            cm.turns_remaining = -1;
+                            cm.source_instance_id = top_card.instance_id;
+                            cm.controller = player.id;
+                            cm.is_source_static = true;
+                            state.active_modifiers.push_back(cm);
+                        } else {
+                            PassiveEffect pe;
+                            pe.is_source_static = true;
+                            pe.source_instance_id = top_card.instance_id;
+                            pe.controller = player.id;
+                            pe.turns_remaining = -1;
+
+                            switch (mod_def.type) {
+                                case ModifierType::POWER_MODIFIER:
+                                    pe.type = PassiveType::POWER_MODIFIER;
+                                    break;
+                                case ModifierType::GRANT_KEYWORD:
+                                case ModifierType::SET_KEYWORD:
+                                    pe.type = PassiveType::KEYWORD_GRANT;
+                                    break;
+                                case ModifierType::FORCE_ATTACK:
+                                    pe.type = PassiveType::FORCE_ATTACK;
+                                    break;
+                                case ModifierType::ADD_RESTRICTION: {
+                                    const std::string& kind = mod_def.str_val;
+                                    if (kind == "TARGET_RESTRICTION" || kind == "SPELL_RESTRICTION" || kind == "TARGET_THIS_CANNOT_SELECT") {
+                                        pe.type = PassiveType::CANNOT_BE_SELECTED;
+                                    } else if (kind == "TARGET_THIS_FORCE_SELECT") {
+                                        pe.type = PassiveType::FORCE_SELECTION;
+                                    } else {
+                                        continue;
+                                    }
+                                    break;
+                                }
+                                default:
+                                    continue;
+                            }
+
+                            pe.value = mod_def.value;
+                            pe.str_value = mod_def.str_val;
+                            pe.target_filter = mod_def.filter;
+                            pe.condition = mod_def.condition;
+
+                            // 空フィルタ → トップクリーチャー自身を対象とする
+                            bool is_empty = pe.target_filter.zones.empty() &&
+                                            pe.target_filter.races.empty() &&
+                                            pe.target_filter.civilizations.empty() &&
+                                            pe.target_filter.types.empty() &&
+                                            !pe.target_filter.owner.has_value() &&
+                                            !pe.target_filter.min_cost.has_value() &&
+                                            !pe.target_filter.max_cost.has_value() &&
+                                            !pe.target_filter.min_power.has_value() &&
+                                            !pe.target_filter.max_power.has_value() &&
+                                            !pe.target_filter.is_tapped.has_value() &&
+                                            !pe.target_filter.is_blocker.has_value() &&
+                                            !pe.target_filter.is_evolution.has_value() &&
+                                            pe.target_filter.and_conditions.empty();
+                            if (is_empty) {
+                                pe.specific_targets = std::vector<int>{top_card.instance_id};
+                            }
+
+                            state.passive_effects.push_back(pe);
+                        }
                     }
                 }
             }

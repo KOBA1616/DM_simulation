@@ -6,6 +6,64 @@
 #include "core/card_def.hpp"
 #include <iostream>
 
+namespace {
+using namespace dm::core;
+
+static bool zone_name_matches(const std::string& name, int zone_value) {
+    if (name == "BATTLE" || name == "BATTLE_ZONE") return zone_value == (int)Zone::BATTLE;
+    if (name == "HAND") return zone_value == (int)Zone::HAND;
+    if (name == "MANA" || name == "MANA_ZONE") return zone_value == (int)Zone::MANA;
+    if (name == "SHIELD" || name == "SHIELD_ZONE") return zone_value == (int)Zone::SHIELD;
+    if (name == "GRAVEYARD") return zone_value == (int)Zone::GRAVEYARD;
+    if (name == "DECK") return zone_value == (int)Zone::DECK;
+    return false;
+}
+
+static bool matches_trigger_descriptor(const TriggerDescriptor& td, const GameEvent& event) {
+    // timing_mode: PRE は event.context 側で is_pre=1 か timing_mode=0 を要求
+    const std::string timing = td.timing_mode.empty() ? "POST" : td.timing_mode;
+    if (timing == "PRE") {
+        const bool is_pre = (event.context.count("is_pre") && event.context.at("is_pre") == 1) ||
+                            (event.context.count("timing_mode") && event.context.at("timing_mode") == 0);
+        if (!is_pre) return false;
+    } else {
+        // POST は既定。明示PREマーカーがあるイベントではマッチしない。
+        if (event.context.count("is_pre") && event.context.at("is_pre") == 1) return false;
+    }
+
+    if (!td.trigger_zones.empty()) {
+        int to_zone = event.context.count("to_zone") ? event.context.at("to_zone") : -1;
+        int from_zone = event.context.count("from_zone") ? event.context.at("from_zone") : -1;
+        bool zone_ok = false;
+        for (const auto& z : td.trigger_zones) {
+            if (zone_name_matches(z, to_zone) || zone_name_matches(z, from_zone)) {
+                zone_ok = true;
+                break;
+            }
+        }
+        if (!zone_ok) return false;
+    }
+
+    return true;
+}
+
+static bool already_pending_once(const GameState& state, const PendingEffect& pending) {
+    // 再発防止: multiplicity=ONCE は同一pendingが重複積みされないよう保護する。
+    for (const auto& p : state.pending_effects) {
+        if (p.type != EffectType::TRIGGER_ABILITY) continue;
+        if (p.source_instance_id != pending.source_instance_id) continue;
+        if (p.controller != pending.controller) continue;
+        if (p.resolve_type != pending.resolve_type) continue;
+        nlohmann::json ja;
+        nlohmann::json jb;
+        dm::core::to_json(ja, p.effect_def);
+        dm::core::to_json(jb, pending.effect_def);
+        if (ja == jb) return true;
+    }
+    return false;
+}
+} // namespace
+
 namespace dm::engine::systems {
 
     using namespace core;
@@ -133,15 +191,23 @@ namespace dm::engine::systems {
                 active_effects.insert(active_effects.end(), def->effects.begin(), def->effects.end());
 
                 for (const auto& effect : active_effects) {
+                    const TriggerDescriptor* td_ptr =
+                        (effect.trigger_descriptor.has_value())
+                            ? &effect.trigger_descriptor.value()
+                            : nullptr;
+
                     // フェーズ2: TriggerDescriptor の trigger_list（OR結合）を優先して照合
                     bool trigger_match = false;
-                    if (effect.trigger_descriptor.has_value() &&
-                        !effect.trigger_descriptor->trigger_list.empty()) {
-                        for (const auto& t : effect.trigger_descriptor->trigger_list) {
+                    if (td_ptr && !td_ptr->trigger_list.empty()) {
+                        for (const auto& t : td_ptr->trigger_list) {
                             if (t == trigger_type) { trigger_match = true; break; }
                         }
                     } else {
                         trigger_match = (effect.trigger == trigger_type);
+                    }
+
+                    if (trigger_match && td_ptr) {
+                        trigger_match = matches_trigger_descriptor(*td_ptr, event);
                     }
 
                     if (trigger_match) {
@@ -213,7 +279,11 @@ namespace dm::engine::systems {
                             pending.optional = true;
                             pending.chain_depth = state.turn_stats.current_chain_depth + 1;
 
-                            state.pending_effects.push_back(pending);
+                            const bool once_only = td_ptr &&
+                                (td_ptr->multiplicity.empty() || td_ptr->multiplicity == "ONCE");
+                            if (!once_only || !already_pending_once(state, pending)) {
+                                state.pending_effects.push_back(pending);
+                            }
                         }
                     }
                 }

@@ -41,9 +41,11 @@ namespace dm::core {
         CANNOT_USE_SPELLS,
         LOCK_SPELL_BY_COST,
         CANNOT_SUMMON,
+        IGNORE_ABILITIES,
         FORCE_ATTACK,
         FORCE_SELECTION,
-        CANNOT_BE_SELECTED
+        CANNOT_BE_SELECTED,
+        CANNOT_LEAVE_BATTLE  // バトルゾーンを離れない
     };
 
     struct PassiveEffect {

@@ -29,6 +29,7 @@ class CardTextResources:
         "SHIELD_COUNT": "シールド枚数",
         "CIVILIZATION_MATCH": "文明一致",
         "OPPONENT_PLAYED_WITHOUT_MANA": "相手がマナなしでプレイ",
+        "PLAYED_WITHOUT_MANA_TARGET": "指定対象が踏み倒しで出ていれば",
         "OPPONENT_DRAW_COUNT": "相手のドロー枚数",
         "DURING_YOUR_TURN": "自分のターン中",
         "DURING_OPPONENT_TURN": "相手のターン中",
@@ -173,8 +174,11 @@ class CardTextResources:
         "CANNOT_ATTACK_OR_BLOCK": "攻撃またはブロックできない",
         # New phrasing: cannot attack and cannot block (both)
         "CANNOT_ATTACK_AND_BLOCK": "攻撃もブロックもできない",
+        "CANNOT_LEAVE_BATTLE": "バトルゾーンを離れない",
+            "SUPER_SOUL_X": "超魂X",
         "TARGET_RESTRICTION": "対象制限",
         "SPELL_RESTRICTION": "呪文制限",
+        "IGNORE_ABILITY": "能力無視",
         "TARGET_THIS_CANNOT_SELECT": "このクリーチャーを対象として選択できない",
         "TARGET_THIS_FORCE_SELECT": "可能ならこのクリーチャーを選択する"
     }
@@ -293,12 +297,14 @@ class CardTextResources:
         "SELECT_FROM_BUFFER": "バッファから{value1}枚選ぶ（{filter}）。",
         "PLAY_FROM_BUFFER": "バッファからプレイする。",
         "MOVE_BUFFER_TO_ZONE": "見た{filter}{zone}に置く。",  # フィルター有=暗黙的選択, フィルター無=SELECT_FROM_BUFFER 依存
-        "SELECT_OPTION": "次の中から選ぶ。",
+        "MOVE_BUFFER_REMAIN_TO_ZONE": "残りを{zone}に置く。",
+        "SELECT_OPTION": "{filter}から{value1}枚選ぶ。",
         "LOCK_SPELL": "相手は呪文を唱えられない。",
         "SPELL_RESTRICTION": "相手は呪文を唱えられない。",
         "CANNOT_PUT_CREATURE": "相手はクリーチャーを出せない。",
         "CANNOT_SUMMON_CREATURE": "相手はクリーチャーを召喚できない。",
         "PLAYER_CANNOT_ATTACK": "相手は攻撃できない。",
+        "IGNORE_ABILITY": "{filter}の能力を無視する。",
         "REPLACE_CARD_MOVE": "{target}を{from_zone}に置くかわりに{to_zone}に置く。",
         "REPLACE_MOVE_CARD": "（置換移動）",
         "APPLY_MODIFIER": "効果を付与する。",

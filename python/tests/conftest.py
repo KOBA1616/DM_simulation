@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import sys
 import importlib
@@ -1023,3 +1024,5 @@ try:
             pass
 except Exception:
     pass
+
+# LEGACY_ACTIONDEF_REFERENCE: This file references 'ActionDef' (legacy). Consider migrating to 'CommandDef'.

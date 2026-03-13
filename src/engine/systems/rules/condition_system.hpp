@@ -37,6 +37,13 @@ namespace dm::engine::rules {
             return false;
         }
 
+        // Recursively evaluate ConditionNode trees (LEAF/AND/OR/NOT).
+        // Prevents silent no-op when card JSON uses condition_tree.
+        bool evaluate_node(dm::core::GameState& state, const dm::core::ConditionNode& node,
+                           int source_instance_id,
+                           const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
+                           const std::map<std::string, int>& execution_context);
+
         nlohmann::json compile_condition(const dm::core::ConditionDef& condition);
 
         void initialize_defaults();

@@ -96,12 +96,15 @@ class LogicTemplateManager:
                         obj[k] = context.get('races', ["Dragon"])
                         continue
                     # 再発防止: フレンドバースト/革命チェンジ用種族プレースホルダーのリスト形式置換。
-                    # テンプレートで ["__FB_RACES__"] や ["__RC_RACES__"] と書くと種族リストに展開。
+                    # テンプレートで ["__FB_RACES__"] などと書くと種族リストに展開。
                     elif val == "__FB_RACES__":
                         obj[k] = context.get('fb_races', context.get('races', []))
                         continue
                     elif val == "__RC_RACES__":
                         obj[k] = context.get('rc_races', context.get('races', []))
+                        continue
+                    elif val == "__MEKRAID_RACES__":
+                        obj[k] = context.get('mekraid_races', context.get('races', []))
                         continue
                     # LOOK_SELECT_TO_ZONE テンプレート用フィルタリストプレースホルダー
                     # 再発防止: ["__TEMPLATE_CIVS__"] など1要素リストとして書くとリストに展開される。
@@ -133,6 +136,10 @@ class LogicTemplateManager:
                     elif v == "__RC_RACES__":
                         rc = context.get('rc_races', context.get('races', []))
                         obj[k] = rc[0] if rc else ""
+                        continue
+                    elif v == "__MEKRAID_RACES__":
+                        mk = context.get('mekraid_races', context.get('races', []))
+                        obj[k] = mk[0] if mk else ""
                         continue
                     # 再発防止: LOOK_SELECT_TO_ZONE 用 int/str プレースホルダー。
                     # 文字列として書かれた値を int/str に型変換して返す。
