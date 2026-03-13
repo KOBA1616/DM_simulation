@@ -3,8 +3,11 @@ from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QCheckBox, QGroupBox, QGridLayout, QVBoxLayout, QLabel, QLineEdit
 )
 from PyQt6.QtCore import Qt, pyqtSignal
+from dataclasses import dataclass
+from typing import Any
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dict
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 from dm_toolkit.gui.editor.consts import (
     STRUCT_CMD_ADD_REV_CHANGE,
     STRUCT_CMD_REMOVE_REV_CHANGE,
@@ -13,6 +16,66 @@ from dm_toolkit.gui.editor.consts import (
     STRUCT_CMD_ADD_FRIEND_BURST,
     STRUCT_CMD_REMOVE_FRIEND_BURST,
 )
+
+
+@dataclass
+class KeywordFormState:
+    keyword_flags: dict[str, bool]
+    revolution_change: bool
+    revolution_change_races: list[str]
+    mekraid: bool
+    mekraid_races: list[str]
+    friend_burst: bool
+    friend_burst_races: list[str]
+    mega_last_burst: bool
+
+    def apply_to_data(self, data: dict[str, Any]) -> None:
+        # 再発防止: 画面部品から直接 dict を散発更新すると条件キーの消し忘れが起きやすいため、
+        # 状態オブジェクト経由で一括反映する。
+        for key in list(data.keys()):
+            if key in self.keyword_flags and not self.keyword_flags[key]:
+                data.pop(key, None)
+
+        for key, enabled in self.keyword_flags.items():
+            if enabled:
+                data[key] = True
+            else:
+                data.pop(key, None)
+
+        if self.revolution_change:
+            data["revolution_change"] = True
+            if self.revolution_change_races:
+                data["revolution_change_condition"] = {"races": self.revolution_change_races}
+            else:
+                data.pop("revolution_change_condition", None)
+        else:
+            data.pop("revolution_change", None)
+            data.pop("revolution_change_condition", None)
+
+        if self.mekraid:
+            data["mekraid"] = True
+            if self.mekraid_races:
+                data["mekraid_condition"] = {"races": self.mekraid_races}
+            else:
+                data.pop("mekraid_condition", None)
+        else:
+            data.pop("mekraid", None)
+            data.pop("mekraid_condition", None)
+
+        if self.friend_burst:
+            data["friend_burst"] = True
+            if self.friend_burst_races:
+                data["friend_burst_condition"] = {"races": self.friend_burst_races}
+            else:
+                data.pop("friend_burst_condition", None)
+        else:
+            data.pop("friend_burst", None)
+            data.pop("friend_burst_condition", None)
+
+        if self.mega_last_burst:
+            data["mega_last_burst"] = True
+        else:
+            data.pop("mega_last_burst", None)
 
 class KeywordEditForm(BaseEditForm):
     # Signal to request structural changes in the Logic Tree (e.g. for Revolution Change)
@@ -67,7 +130,7 @@ class KeywordEditForm(BaseEditForm):
             cb = QCheckBox(tr(kw_map.get(k, k)))
             kw_layout.addWidget(cb, row, col)
             self.keyword_checks[k] = cb
-            cb.stateChanged.connect(self.update_data)
+            safe_connect(cb, "stateChanged", self.update_data)
 
             col += 1
             if col > 2: # 3 columns
@@ -83,7 +146,7 @@ class KeywordEditForm(BaseEditForm):
         # Revolution Change
         self.rev_change_check = QCheckBox(tr("Revolution Change"))
         self.rev_change_check.setToolTip(tr("革命チェンジを有効にすると、必要なロジックツリー構造が生成されます。"))
-        self.rev_change_check.stateChanged.connect(self.toggle_rev_change)
+        safe_connect(self.rev_change_check, "stateChanged", self.toggle_rev_change)
         special_layout.addWidget(self.rev_change_check)
         # 再発防止: 革命チェンジ条件の種族はキーワードフォームでも編集できるようにし、
         # チェックON時/編集時にロジックテンプレートへ反映する。
@@ -92,30 +155,30 @@ class KeywordEditForm(BaseEditForm):
         self.rc_race_edit.setPlaceholderText(tr("Comma separated races (e.g. Dragon, Cyber Lord)"))
         self.rc_race_label.setVisible(False)
         self.rc_race_edit.setVisible(False)
-        self.rc_race_edit.textChanged.connect(self.update_data)
-        self.rc_race_edit.editingFinished.connect(self._on_rev_change_race_edited)
+        safe_connect(self.rc_race_edit, "textChanged", self.update_data)
+        safe_connect(self.rc_race_edit, "editingFinished", self._on_rev_change_race_edited)
         special_layout.addWidget(self.rc_race_label)
         special_layout.addWidget(self.rc_race_edit)
 
         # Mekraid
         self.mekraid_check = QCheckBox(tr("Mekraid"))
         self.mekraid_check.setToolTip(tr("メクレイドを有効にすると、プレイ時の効果が自動で追加されます。"))
-        self.mekraid_check.stateChanged.connect(self.toggle_mekraid)
+        safe_connect(self.mekraid_check, "stateChanged", self.toggle_mekraid)
         special_layout.addWidget(self.mekraid_check)
         self.mk_race_label = QLabel(tr("Mekraid Race"))
         self.mk_race_edit = QLineEdit()
         self.mk_race_edit.setPlaceholderText(tr("Comma separated races (e.g. Fire Bird, Armored Dragon)"))
         self.mk_race_label.setVisible(False)
         self.mk_race_edit.setVisible(False)
-        self.mk_race_edit.textChanged.connect(self.update_data)
-        self.mk_race_edit.editingFinished.connect(self._on_mekraid_race_edited)
+        safe_connect(self.mk_race_edit, "textChanged", self.update_data)
+        safe_connect(self.mk_race_edit, "editingFinished", self._on_mekraid_race_edited)
         special_layout.addWidget(self.mk_race_label)
         special_layout.addWidget(self.mk_race_edit)
 
         # Friend Burst
         self.friend_burst_check = QCheckBox(tr("Friend Burst"))
         self.friend_burst_check.setToolTip(tr("フレンド・バーストを有効にすると、攻撃時の効果が自動で追加されます。"))
-        self.friend_burst_check.stateChanged.connect(self.toggle_friend_burst)
+        safe_connect(self.friend_burst_check, "stateChanged", self.toggle_friend_burst)
         special_layout.addWidget(self.friend_burst_check)
 
         # Friend Burst Race input (shown when friend_burst_check is checked)
@@ -126,22 +189,44 @@ class KeywordEditForm(BaseEditForm):
         self.fb_race_edit.setPlaceholderText(tr("Comma separated races (e.g. Dragon, Cyber Lord)"))
         self.fb_race_edit.setVisible(False)
         self.fb_race_label.setVisible(False)
-        self.fb_race_edit.textChanged.connect(self.update_data)
-        self.fb_race_edit.editingFinished.connect(self._on_friend_burst_race_edited)
+        safe_connect(self.fb_race_edit, "textChanged", self.update_data)
+        safe_connect(self.fb_race_edit, "editingFinished", self._on_friend_burst_race_edited)
         special_layout.addWidget(self.fb_race_label)
         special_layout.addWidget(self.fb_race_edit)
 
         # Mega Last Burst
         self.mega_last_burst_check = QCheckBox(tr("Mega Last Burst"))
         self.mega_last_burst_check.setToolTip(tr("メガ・ラスト・バーストを有効にすると、破壊時の効果が自動で追加されます。"))
-        self.mega_last_burst_check.stateChanged.connect(self.toggle_mega_last_burst)
+        safe_connect(self.mega_last_burst_check, "stateChanged", self.toggle_mega_last_burst)
         special_layout.addWidget(self.mega_last_burst_check)
 
         main_layout.addWidget(special_group)
         main_layout.addStretch()
 
+    @staticmethod
+    def _is_checked_state(state: object) -> bool:
+        # 再発防止: ヘッドレステスト用スタブでは Qt.CheckState が無い場合があるため、
+        # bool/int/Enum いずれでも判定できる共通関数に寄せる。
+        if isinstance(state, bool):
+            return state
+        try:
+            check_state = getattr(Qt, "CheckState", None)
+            checked = getattr(check_state, "Checked", None)
+            checked_value = getattr(checked, "value", checked)
+            if checked_value is not None and state == checked_value:
+                return True
+        except Exception:
+            pass
+        try:
+            checked_const = getattr(Qt, "Checked", None)
+            if checked_const is not None and state == checked_const:
+                return True
+        except Exception:
+            pass
+        return state == 2
+
     def toggle_rev_change(self, state):
-        is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        is_checked = self._is_checked_state(state)
         self.rc_race_label.setVisible(is_checked)
         self.rc_race_edit.setVisible(is_checked)
         self.update_data()
@@ -152,7 +237,7 @@ class KeywordEditForm(BaseEditForm):
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_REV_CHANGE, {})
 
     def toggle_mekraid(self, state):
-        is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        is_checked = self._is_checked_state(state)
         self.mk_race_label.setVisible(is_checked)
         self.mk_race_edit.setVisible(is_checked)
         self.update_data() # Update the checkbox state in data first
@@ -163,7 +248,7 @@ class KeywordEditForm(BaseEditForm):
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_MEKRAID, {})
 
     def toggle_friend_burst(self, state):
-        is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        is_checked = self._is_checked_state(state)
         # 再発防止: フレンド・バースト種族入力フィールドはチェック時のみ表示する。
         self.fb_race_label.setVisible(is_checked)
         self.fb_race_edit.setVisible(is_checked)
@@ -203,7 +288,7 @@ class KeywordEditForm(BaseEditForm):
 
     def toggle_mega_last_burst(self, state):
         from dm_toolkit.gui.editor.consts import STRUCT_CMD_ADD_MEGA_LAST_BURST, STRUCT_CMD_REMOVE_MEGA_LAST_BURST
-        is_checked = (state == Qt.CheckState.Checked.value or state == True)
+        is_checked = self._is_checked_state(state)
         self.update_data() # Update the checkbox state in data first
         if is_checked:
             self.structure_update_requested.emit(STRUCT_CMD_ADD_MEGA_LAST_BURST, {})
@@ -261,61 +346,23 @@ class KeywordEditForm(BaseEditForm):
         self.mega_last_burst_check.blockSignals(False)
 
     def _save_ui_to_data(self, data):
-        # 'data' is the keywords dictionary
+        state = self._collect_state_from_ui()
+        state.apply_to_data(data)
 
-        # Reset managed keywords
-        for k in self.keyword_checks.keys():
-            if k in data:
-                del data[k]
-
-        # Add checked ones
-        for k, cb in self.keyword_checks.items():
-            if cb.isChecked():
-                data[k] = True
-
-        # Revolution Change
-        if self.rev_change_check.isChecked():
-            data['revolution_change'] = True
-            rc_races = self._parse_races(self.rc_race_edit.text())
-            if rc_races:
-                data['revolution_change_condition'] = {'races': rc_races}
-            else:
-                data.pop('revolution_change_condition', None)
-        elif 'revolution_change' in data:
-            del data['revolution_change']
-            data.pop('revolution_change_condition', None)
-
-        # Mekraid
-        if self.mekraid_check.isChecked():
-            data['mekraid'] = True
-            mk_races = self._parse_races(self.mk_race_edit.text())
-            if mk_races:
-                data['mekraid_condition'] = {'races': mk_races}
-            else:
-                data.pop('mekraid_condition', None)
-        elif 'mekraid' in data:
-            del data['mekraid']
-            data.pop('mekraid_condition', None)
-
-        # Friend Burst
-        if self.friend_burst_check.isChecked():
-            data['friend_burst'] = True
-            # 再発防止: フレンド・バースト種族は friend_burst_condition.races に保存する。
-            # text_generator からも keywords dict 内の friend_burst_condition を参照できるよう変更済み。
-            fb_races = self._parse_races(self.fb_race_edit.text())
-            if fb_races:
-                data['friend_burst_condition'] = {'races': fb_races}
-            elif 'friend_burst_condition' in data:
-                del data['friend_burst_condition']
-        elif 'friend_burst' in data:
-            del data['friend_burst']
-            data.pop('friend_burst_condition', None)
-
-        # Mega Last Burst
-        if self.mega_last_burst_check.isChecked():
-            data['mega_last_burst'] = True
-        elif 'mega_last_burst' in data:
-            del data['mega_last_burst']
+    def _collect_state_from_ui(self) -> KeywordFormState:
+        keyword_flags = {
+            k: bool(cb.isChecked()) for k, cb in self.keyword_checks.items()
+        }
+        return KeywordFormState(
+            keyword_flags=keyword_flags,
+            revolution_change=bool(self.rev_change_check.isChecked()),
+            revolution_change_races=self._parse_races(self.rc_race_edit.text()),
+            mekraid=bool(self.mekraid_check.isChecked()),
+            mekraid_races=self._parse_races(self.mk_race_edit.text()),
+            friend_burst=bool(self.friend_burst_check.isChecked()),
+            friend_burst_races=self._parse_races(self.fb_race_edit.text()),
+            mega_last_burst=bool(self.mega_last_burst_check.isChecked()),
+        )
 
     @staticmethod
     def _parse_races(text: str) -> list:
