@@ -11,6 +11,7 @@ from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWi
 from dm_toolkit.gui.editor.forms.unified_widgets import make_player_scope_selector
 from dm_toolkit.gui.editor.forms.parts.keyword_selector import KeywordSelectorWidget
 from dm_toolkit.gui.editor.unified_filter_handler import UnifiedFilterHandler
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class ModifierEditForm(BaseEditForm):
     """
@@ -44,8 +45,8 @@ class ModifierEditForm(BaseEditForm):
 
         # Type
         self.type_combo = QComboBox()
-        self.type_combo.currentTextChanged.connect(self.update_data)
-        self.type_combo.currentTextChanged.connect(self.update_visibility)
+        safe_connect(self.type_combo, "currentTextChanged", self.update_data)
+        safe_connect(self.type_combo, "currentTextChanged", self.update_visibility)
         self.register_widget(self.type_combo, 'type')
         form_layout.addRow(tr("Type"), self.type_combo)
 
@@ -55,7 +56,7 @@ class ModifierEditForm(BaseEditForm):
         restriction_types = ["TARGET_RESTRICTION", "SPELL_RESTRICTION"]
         for t in restriction_types:
             self.restriction_combo.addItem(tr(t), t)
-        self.restriction_combo.currentTextChanged.connect(self.update_data)
+        safe_connect(self.restriction_combo, "currentTextChanged", self.update_data)
         # We don't register it directly with register_widget because it maps to mutation_kind conditionally
         # self.register_widget(self.restriction_combo)
         self.label_restriction = QLabel(tr("Restriction Type"))
@@ -64,14 +65,14 @@ class ModifierEditForm(BaseEditForm):
         # Value (for Power/Cost)
         self.value_spin = QSpinBox()
         self.value_spin.setRange(-99999, 99999)
-        self.value_spin.valueChanged.connect(self.update_data)
+        safe_connect(self.value_spin, "valueChanged", self.update_data)
         self.register_widget(self.value_spin, 'value')
         self.label_value = QLabel(tr("Value"))
         form_layout.addRow(self.label_value, self.value_spin)
 
         # Keyword Selection - Unified Widget
         self.keyword_combo = KeywordSelectorWidget(allow_settable=True)
-        self.keyword_combo.keywordSelected.connect(self.update_data)
+        safe_connect(self.keyword_combo, "keywordSelected", self.update_data)
         self.register_widget(self.keyword_combo)
         self.label_keyword = QLabel(tr("Keyword"))
         form_layout.addRow(self.label_keyword, self.keyword_combo)
@@ -82,8 +83,8 @@ class ModifierEditForm(BaseEditForm):
         scope_group = QGroupBox(tr("Scope (Owner)"))
         scope_layout = QFormLayout(scope_group)
         self.scope_widget, self.scope_self_check, self.scope_opp_check = make_player_scope_selector()
-        self.scope_self_check.toggled.connect(self.update_data)
-        self.scope_opp_check.toggled.connect(self.update_data)
+        safe_connect(self.scope_self_check, "toggled", self.update_data)
+        safe_connect(self.scope_opp_check, "toggled", self.update_data)
         self.register_widget(self.scope_self_check)
         self.register_widget(self.scope_opp_check)
         scope_layout.addRow(tr("Owner"), self.scope_widget)
@@ -91,13 +92,13 @@ class ModifierEditForm(BaseEditForm):
 
         # Condition Section
         self.condition_widget = ConditionEditorWidget()
-        self.condition_widget.dataChanged.connect(self.update_data)
+        safe_connect(self.condition_widget, "dataChanged", self.update_data)
         layout.addWidget(self.condition_widget)
 
         # Filter Section - Unified Handler (wrap in scroll area)
         self.filter_widget = UnifiedFilterHandler.create_filter_widget("STATIC", self)
-        self.filter_widget.filterChanged.connect(self.update_data)
-        self.filter_widget.filterChanged.connect(self._refresh_type_combo_items)
+        safe_connect(self.filter_widget, "filterChanged", self.update_data)
+        safe_connect(self.filter_widget, "filterChanged", self._refresh_type_combo_items)
         self.filter_area = QScrollArea()
         self.filter_area.setWidgetResizable(True)
         self.filter_area.setWidget(self.filter_widget)

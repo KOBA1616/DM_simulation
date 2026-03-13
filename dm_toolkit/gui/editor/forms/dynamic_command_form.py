@@ -6,6 +6,7 @@ from dm_toolkit.gui.editor.schema_def import CommandSchema, FieldSchema, FieldTy
 from dm_toolkit.gui.editor.widget_factory import FormBuilder
 from dm_toolkit.gui.editor.schema_config import register_all_schemas
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class DynamicCommandForm(BaseEditForm):
     """
@@ -27,7 +28,7 @@ class DynamicCommandForm(BaseEditForm):
         self.register_widget(self.type_combo, 'type')
         self.layout.addRow(tr("Command Type"), self.type_combo)
 
-        self.type_combo.currentIndexChanged.connect(self.on_type_changed)
+        safe_connect(self.type_combo, "currentIndexChanged", self.on_type_changed)
 
     def ensure_schemas(self):
         """Registers all schemas and populates the type combo."""

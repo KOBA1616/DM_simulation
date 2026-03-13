@@ -8,6 +8,16 @@ to effect dictionaries used by text generation.
 from typing import Any, Dict, List, Union
 
 
+def format_integrity_warnings(warnings: List[str]) -> str:
+    """整合性警告メッセージを UI/ログ共通フォーマットへ整形する。"""
+    if not warnings:
+        return ""
+    # 再発防止: 警告文言の組み立てを 1 箇所に集約し、表示揺れを防ぐ。
+    lines = ["整合性警告:"]
+    lines.extend(f"- {msg}" for msg in warnings)
+    return "\n".join(lines)
+
+
 def validate_trigger_scope_filter(effect: Dict[str, object]) -> List[str]:
     """Validate an effect dict's trigger scope/filter settings.
 

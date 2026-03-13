@@ -3,8 +3,9 @@ from PyQt6.QtWidgets import (
     QWidget, QGroupBox, QGridLayout, QLabel, QCheckBox, QComboBox, QSpinBox,
     QLineEdit, QVBoxLayout, QPushButton, QFrame, QHBoxLayout
 )
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, Qt
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 from typing import Any
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
 from dm_toolkit.consts import ZONES, CARD_TYPES
@@ -35,7 +36,7 @@ class FilterEditorWidget(QWidget):
         self.summary_label.setStyleSheet("color: #666; font-size: 11px;")
         self.clear_btn = QPushButton(tr("Clear Filter"))
         self.clear_btn.setToolTip(tr("Reset all filter conditions"))
-        self.clear_btn.clicked.connect(self.clear_filter)
+        safe_connect(self.clear_btn, "clicked", self.clear_filter)
         header_layout.addWidget(self.summary_label)
         header_layout.addStretch()
         header_layout.addWidget(self.clear_btn)
@@ -71,14 +72,17 @@ class FilterEditorWidget(QWidget):
             cb.setToolTip(tr("ゾーン{zone}を対象選択に含める").format(zone=tr(z)))
             self.zone_checks[z] = cb
             _zone_grid.addWidget(cb, i // 2, i % 2)
-            cb.stateChanged.connect(self.filterChanged.emit)
+            safe_connect(cb, "stateChanged", self.filterChanged.emit)
         # toggle button が押されたとき content を折り畳み / 展開
-        _zone_toggle_btn.toggled.connect(_zone_content.setVisible)
+        safe_connect(_zone_toggle_btn, "toggled", _zone_content.setVisible)
         zone_section_layout.addWidget(_zone_toggle_btn)
         zone_section_layout.addWidget(_zone_content)
         self.zone_group_buttons: list = [(_zone_toggle_btn, _zone_content)]
         self.zone_label = QLabel(tr("ゾーン:"))
-        basic_layout.addWidget(self.zone_label, 0, 0, alignment=__import__('PyQt6.QtCore', fromlist=['Qt']).Qt.AlignmentFlag.AlignTop)
+        # Use real Qt AlignmentFlag.AlignTop when available, otherwise fallback to 0
+        align_top = getattr(Qt, 'AlignmentFlag', None)
+        alignment_val = align_top.AlignTop if (align_top is not None and hasattr(align_top, 'AlignTop')) else 0
+        basic_layout.addWidget(self.zone_label, 0, 0, alignment=alignment_val)
         basic_layout.addWidget(zone_section, 0, 1)
 
         # Types – 単一トグルで折り畳み（デフォルトで閉じた状態）
@@ -99,8 +103,8 @@ class FilterEditorWidget(QWidget):
             cb = QCheckBox(tr(t))
             self.type_checks[t] = cb
             _type_grid.addWidget(cb, i // 3, i % 3)
-            cb.stateChanged.connect(self.filterChanged.emit)
-        _type_toggle_btn.toggled.connect(_type_content.setVisible)
+            safe_connect(cb, "stateChanged", self.filterChanged.emit)
+        safe_connect(_type_toggle_btn, "toggled", _type_content.setVisible)
         _type_section = QWidget()
         _type_section_layout = QVBoxLayout(_type_section)
         _type_section_layout.setContentsMargins(0, 0, 0, 0)
@@ -108,14 +112,14 @@ class FilterEditorWidget(QWidget):
         _type_section_layout.addWidget(_type_toggle_btn)
         _type_section_layout.addWidget(_type_content)
         self.type_label = QLabel(tr("カードタイプ:"))
-        basic_layout.addWidget(self.type_label, 1, 0, alignment=__import__('PyQt6.QtCore', fromlist=['Qt']).Qt.AlignmentFlag.AlignTop)
+        basic_layout.addWidget(self.type_label, 1, 0, alignment=alignment_val)
         basic_layout.addWidget(_type_section, 1, 1)
 
         # Civilizations
         self.civ_label = QLabel(tr("文明:"))
         basic_layout.addWidget(self.civ_label, 2, 0)
         self.civ_selector = CivilizationSelector()
-        self.civ_selector.changed.connect(self.filterChanged.emit)
+        safe_connect(self.civ_selector, "changed", self.filterChanged.emit)
         basic_layout.addWidget(self.civ_selector, 2, 1)
 
         # Races
@@ -123,7 +127,7 @@ class FilterEditorWidget(QWidget):
         basic_layout.addWidget(self.race_label, 3, 0)
         self.races_edit = QLineEdit()
         self.races_edit.setPlaceholderText(tr("カンマ区切り (例: ドラゴン, サイバーロード)"))
-        self.races_edit.textChanged.connect(self.filterChanged.emit)
+        safe_connect(self.races_edit, "textChanged", self.filterChanged.emit)
         basic_layout.addWidget(self.races_edit, 3, 1)
 
         # 2. Stats (Cost, Power)
@@ -167,11 +171,11 @@ class FilterEditorWidget(QWidget):
         self.cost_ref_edit.setToolTip(tr("実行コンテキストのコスト参照変数名"))
         stats_layout.addWidget(self.cost_ref_edit, 2, 1)
 
-        self.exact_cost_spin.valueChanged.connect(self.filterChanged.emit)
-        self.cost_ref_edit.textChanged.connect(self.filterChanged.emit)
+        safe_connect(self.exact_cost_spin, "valueChanged", self.filterChanged.emit)
+        safe_connect(self.cost_ref_edit, "textChanged", self.filterChanged.emit)
 
-        self.min_cost_spin.valueChanged.connect(self.filterChanged.emit)
-        self.max_cost_spin.valueChanged.connect(self.filterChanged.emit)
+        safe_connect(self.min_cost_spin, "valueChanged", self.filterChanged.emit)
+        safe_connect(self.max_cost_spin, "valueChanged", self.filterChanged.emit)
 
         stats_layout.addWidget(QLabel(tr("パワー:")), 3, 0)
         self.min_power_spin = QSpinBox()
@@ -193,8 +197,8 @@ class FilterEditorWidget(QWidget):
         power_layout.addWidget(self.max_power_spin, 0, 3)
         stats_layout.addLayout(power_layout, 3, 1)
 
-        self.min_power_spin.valueChanged.connect(self.filterChanged.emit)
-        self.max_power_spin.valueChanged.connect(self.filterChanged.emit)
+        safe_connect(self.min_power_spin, "valueChanged", self.filterChanged.emit)
+        safe_connect(self.max_power_spin, "valueChanged", self.filterChanged.emit)
 
         # 3. Flags (Tapped, Blocker, Evolution)
         # 再発防止: ラベルはすべて日本語で統一。英語表記を追加しないこと。
@@ -211,7 +215,7 @@ class FilterEditorWidget(QWidget):
             c.addItem(tr("問わない"), -1)
             c.addItem(tr("はい"), 1)
             c.addItem(tr("いいえ"), 0)
-            c.currentIndexChanged.connect(self.filterChanged.emit)
+            safe_connect(c, "currentIndexChanged", self.filterChanged.emit)
             return l, c
 
         lbl_tapped, self.tapped_combo = create_tristate("タップ状態?")
@@ -232,7 +236,7 @@ class FilterEditorWidget(QWidget):
 
         self.trigger_source_check = QCheckBox(tr("トリガー発生源と一致"))
         self.trigger_source_check.setToolTip(tr("イベントを発生させた特定のカード/オブジェクトを対象にします。"))
-        self.trigger_source_check.stateChanged.connect(self.filterChanged.emit)
+        safe_connect(self.trigger_source_check, "stateChanged", self.filterChanged.emit)
         flags_layout.addWidget(self.trigger_source_check, 4, 0, 1, 2)
 
         # 4. Count / Selection Mode (Keep at bottom)
@@ -258,8 +262,8 @@ class FilterEditorWidget(QWidget):
         sel_layout.addWidget(self.mode_combo, 0, 1)
         sel_layout.addWidget(self.count_spin, 1, 1)
 
-        self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
-        self.count_spin.valueChanged.connect(self.filterChanged.emit)
+        safe_connect(self.mode_combo, "currentIndexChanged", self.on_mode_changed)
+        safe_connect(self.count_spin, "valueChanged", self.filterChanged.emit)
 
         # External control label (initially hidden)
         self.external_count_label = QLabel(tr("入力変数で決定"))
@@ -287,9 +291,9 @@ class FilterEditorWidget(QWidget):
         sel_layout.addWidget(self.sort_key_label, 3, 0)
         sel_layout.addWidget(self.sort_key_combo, 3, 1)
 
-        self.sort_mode_combo.currentIndexChanged.connect(self.on_sort_mode_changed)
-        self.sort_mode_combo.currentIndexChanged.connect(self.filterChanged.emit)
-        self.sort_key_combo.currentIndexChanged.connect(self.filterChanged.emit)
+        safe_connect(self.sort_mode_combo, "currentIndexChanged", self.on_sort_mode_changed)
+        safe_connect(self.sort_mode_combo, "currentIndexChanged", self.filterChanged.emit)
+        safe_connect(self.sort_key_combo, "currentIndexChanged", self.filterChanged.emit)
 
         self.filterChanged.connect(self.update_summary_label)
 

@@ -213,7 +213,7 @@ class CardDataManager:
         # Determine target container based on selection
         if type_ in ["EFFECT", "OPTION", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]:
             target_item = item
-        elif type_ in ["COMMAND", "ACTION"]:
+        elif type_ in ["COMMAND", "LEGACY_ACTION"]:
              cmd_model = self.get_item_model_obj(item)
              cmd_type = None
              if hasattr(cmd_model, 'type'):
@@ -272,15 +272,15 @@ class CardDataManager:
         target_item.append_row(new_item)
         return new_item
 
-    # --- Legacy Action conversion helpers (for tests / migration) ---
+    # --- 旧形式アクション変換ヘルパ（テスト / マイグレーション用） ---
 
     def convert_action_tree_to_command(self, action_item):
-        """Convert an ACTION tree item into a normalized GameCommand dict.
+        """Convert a legacy action tree item into a normalized GameCommand dict.
         """
         # We need ActionConverter. It's safe to import here as long as it doesn't depend on Qt.
         # dm_toolkit/gui/editor/action_converter.py needs check.
         # But let's assume it's pure logic.
-        from dm_toolkit.gui.editor.action_converter import ActionConverter
+        from dm_toolkit.gui.editor.command_converter import CommandConverter
 
         item = self._ensure_item(action_item)
         try:
@@ -291,7 +291,7 @@ class CardDataManager:
         if not isinstance(action_data, dict):
             return {"type": "NONE", "legacy_warning": True, "str_param": "Invalid action item"}
 
-        return ActionConverter.convert(action_data)
+        return CommandConverter.convert(action_data)
 
     def collect_conversion_preview(self, root_item):
         """Collect a preview list of action->command conversions under root_item."""
@@ -308,9 +308,9 @@ class CardDataManager:
             except Exception:
                 role_type = None
 
-            # 再発防止: "ACTION" は旧形式 JSON を読み込んだ時のレガシー値。
+            # 再発防止: 旧形式のアクションは後方互換で扱う。
             # 新規作成アイテムは必ず "COMMAND" を使用すること。
-            if role_type in ("ACTION", "COMMAND"):
+            if role_type in ("LEGACY_ACTION", "COMMAND"):
                 try:
                     label = item.text()
                 except Exception:

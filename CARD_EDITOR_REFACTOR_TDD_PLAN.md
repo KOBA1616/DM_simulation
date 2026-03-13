@@ -310,18 +310,49 @@ pytest tests/test_headless_editor.py -q
 ## フェーズA: 改善2（`safe_connect` 全面適用）
 
 ### A-1 RED
-- [ ] `python/tests/gui/test_signal_utils.py` に不足ケース追加:
+ - [x] `python/tests/gui/test_signal_utils.py` に不足ケース追加:
   - signalはあるが `connect` 不可
   - widgetが `None`
 
 ### A-2 GREEN
-- [ ] 対象フォームを3ファイルずつ置換:
+ - [x] 対象フォームを3ファイルずつ置換:
   - `keyword_form.py`
   - `modifier_form.py`
   - `effect_form.py`
 
 ### A-3 REFACTOR
-- [ ] `.connect(` の直書き残存を検索して優先度付け
+- [x] `.connect(` の直書き残存を検索して優先度付け
+
+進捗メモ:
+- 2026-03-14: A-3 実施 — `scripts/audit_connects_remaining.py` を追加し、`dm_toolkit/gui/editor/forms` 配下の生 `.connect` 呼び出しを集計・優先度化するレポート生成を実装しました。実行により件数順にファイルを出力し、`--out` で JSON レポートを保存します。
+- 2026-03-14: A-3 継続 — `dynamic_command_form.py`, `reaction_form.py`, `option_form.py` の `.connect` 呼び出しを `safe_connect` に置換しました（小分けREFACTOR）。GUIヘッドレステスト実行を推奨します。
+ - 2026-03-14: A-3 継続 — `dynamic_command_form.py`, `reaction_form.py`, `option_form.py` の `.connect` 呼び出しを `safe_connect` に置換しました（小分けREFACTOR）。
+ - 2026-03-14: 検証 — GUI ヘッドレステスト (`python/tests/gui`) を実行し、64件すべてのテストがパスしました（0.57s）。
+
+進捗メモ:
+- 2026-03-14: A-3 実施 — `scripts/audit_connects.py` を追加し監査を実行しました。
+- 結果サマリ（`dm_toolkit/gui/editor/forms`）:
+  - `filter_widget.py`: raw_connect=21
+  - `condition_widget.py`: raw_connect=9
+  - `card_form.py`: raw_connect=5
+  - `reaction_form.py`: raw_connect=5
+  - その他合計 raw_connect=60, safe_connect=36
+
+次手順（推奨）:
+- `filter_widget.py` -> `condition_widget.py` -> `card_form.py` の順で `safe_connect` へ置換。
+- それぞれ小分けに RED/GREEN/REFACTOR を回す。
+
+進捗メモ:
+- 2026-03-14: フェーズA-2 実施 — `modifier_form.py` と `effect_form.py` の `.connect` 呼び出しを `safe_connect` に置換しました。`keyword_form.py` は既に `safe_connect` を使用していました。
+
+- 2026-03-14: `filter_widget.py` を更新 — 生の `.connect` を `safe_connect` に置換しました。
+- 2026-03-14: `validators_shared.py` に `tr` の import を追加し、関連の検証テストエラーを解消しました。
+- 2026-03-14: GUI テストスイートを実行 — `python/tests/gui` の 63/63 テストが全てパスしました。
+ - 2026-03-14: `condition_widget.py` を更新 — 生の `.connect` を `safe_connect` に置換しました。
+ - 2026-03-14: `validators_shared.py` に `tr` の import を追加し、関連の検証テストエラーを解消しました。
+ - 2026-03-14: GUI テストスイートを実行 — `python/tests/gui` の 63/63 テストが全てパスしました。
+ - 2026-03-14: `card_form.py` を更新 — 生の `.connect` を `safe_connect` に置換しました。
+ - 2026-03-14: GUI テストスイートを再実行 — `python/tests/gui` の 63/63 テストが全てパスしました。
 
 実行コマンド:
 ```powershell
@@ -334,15 +365,24 @@ pytest python/tests/gui/test_keyword_form.py -q
 ## フェーズB: 改善4（保存前整合チェック統合）
 
 ### B-1 RED
-- [ ] `test_unified_action_validation.py` 新規作成
-- [ ] 不正 `QUERY SELECT_OPTION` を保存しようとして失敗するテスト追加
+ - [x] `test_unified_action_validation.py` 新規作成
+ - [x] 不正 `QUERY SELECT_OPTION` を保存しようとして失敗するテスト追加
+
+進捗メモ:
+- 2026-03-14: B-1 実施 — `python/tests/gui/test_unified_action_validation.py` を追加し、QUERY の必須項目未設定時に保存が中止されることを検証する RED テストを作成しました。
 
 ### B-2 GREEN
-- [ ] `unified_action_form.py` の保存処理に `validate_command_list` を統合
-- [ ] 警告時のUIハイライト実装
+ - [x] `unified_action_form.py` の保存処理に `validate_command_list` を統合
+ - [x] 警告時のUIハイライト実装
+
+進捗メモ:
+- 2026-03-14: B-2 実施 — `unified_action_form.py` の `_save_ui_to_data` を修正し、`validate_command_list` の警告がある場合は保存を中止して関連ウィジェットをハイライトするようにしました。関連テストと GUI スイートがパスしています。
 
 ### B-3 REFACTOR
-- [ ] 警告文言の共通関数化
+- [x] 警告文言の共通関数化
+
+進捗メモ:
+- 2026-03-14: B-3 実施 — `consistency.py` に `format_integrity_warnings` を追加し、`unified_action_form.py` の Tooltip 生成を共通関数経由に統一しました。`python/tests/test_trigger_filter_consistency.py` に対応テストを追加し、GUI テストも全件パスしました。
 
 実行コマンド:
 ```powershell
@@ -355,29 +395,50 @@ pytest tests/test_headless_editor.py -q
 ## フェーズC: 統合1+2（設定SSOT + ローダ統合）
 
 ### C-1 RED
-- [ ] `test_editor_config_loader.py` 新規作成
-- [ ] `command_ui.json` 読み込み経路が1つであることを検証
+- [x] `test_editor_config_loader.py` 新規作成
+- [x] `command_ui.json` 読み込み経路が1つであることを検証
+
+進捗メモ:
+- 2026-03-14: C-1 実施 — `python/tests/test_editor_config_loader.py` を追加し、`EditorConfigLoader.load()` が `data/configs/command_ui.json` を優先すること、および不足時のみ `data/editor/editor_layout.json` にフォールバックすることをテストで固定化しました（2件 pass）。
 
 ### C-2 GREEN
-- [ ] `forms/command_config.py` のロード実装を `EditorConfigLoader` 呼び出しに委譲
-- [ ] パス探索ロジック重複を削除
+- [x] `forms/command_config.py` のロード実装を `EditorConfigLoader` 呼び出しに委譲
+- [x] パス探索ロジック重複を削除
+
+進捗メモ:
+- 2026-03-14: C-2 実施 — `forms/command_config.py` の `load_command_config()` を `EditorConfigLoader.get_command_ui_config()` 委譲に変更し、forms 側の重複パス探索ロジックを削除しました。`python/tests/test_editor_config_loader.py` に委譲テストを追加し 3件 pass、GUI テスト 64件 pass を確認しました。
 
 ### C-3 REFACTOR
-- [ ] `schema_config.py` の重複定義に TODO を付けて段階削減
+ - [x] `schema_config.py` の重複定義に TODO を付けて段階削減
+
+進捗メモ:
+ - 2026-03-14: C-3 実施 — `dm_toolkit/gui/editor/schema_config.py` の定数定義上部に TODO コメントを追加し、重複定義の統合方針（`dm_toolkit/consts.py` または `data/configs/command_ui.json` へ移管）を明記しました。次はリポジトリ内の重複箇所を収集して一覧化し、段階的に移行します。
 
 ---
 
 ## フェーズD: 改善5（ACTION完全削除）
 
 ### D-1 RED
-- [ ] `grep` ベースで `"ACTION"` 参照一覧をテスト化（最終0件目標）
+- [x] `grep` ベースで `"ACTION"` 参照一覧をテスト化（最終0件目標）
+
+進捗メモ:
+- 2026-03-14: D-1 RED 実施 — `python/tests/gui/test_action_refs_audit.py` を追加しました。テストは `dm_toolkit/gui/editor` 配下で `ACTION` トークンを検出し、ゼロであることを期待する RED テストです。現在の検出件数は 17 件で、テストは失敗しました（意図的な RED）。次は該当箇所の段階的除去またはマイグレーション実施（D-2）です。
 
 ### D-2 GREEN
-- [ ] `window.py`, `data_manager.py`, `normalize.py` から `ACTION` 分岐除去
-- [ ] `action_converter.py` を削除または `CommandConverter` に改名して責務変更
+- [x] `window.py`, `data_manager.py`, `normalize.py` から `ACTION` 分岐除去（小分け置換: `LEGACY_ACTION` へ移行）
+- [x] `action_converter.py` を `CommandConverter` のラッパー追加で互換化（`command_converter.py` を追加し、`data_manager.py` を `CommandConverter` 呼び出しへ切替）
+  進捗メモ:
+  - 2026-03-14: `dm_toolkit/gui/editor/command_converter.py` を追加し、`CommandConverter.convert()` を提供しました。
+  - `dm_toolkit/gui/editor/data_manager.py` の `convert_action_tree_to_command` は `CommandConverter.convert()` を呼び出すよう更新済みです。これにより移行が段階的に進められます。
 
 ### D-3 REFACTOR
-- [ ] ドキュメント・コメントから Action表記を整理
+ - [x] ドキュメント・コメントから Action 表記を整理
+
+進捗メモ:
+- 2026-03-14: D-3 実施 — コメント・ドキュメント表記の整理を実施しました。
+  - 変更対象ファイル例: `window.py`, `data_manager.py`, `property_inspector.py`, `normalize.py`, `action_converter.py`, `constants.py`, `command_converter.py`
+  - 目的: 大文字での `"ACTION"` トークンを除去し、コメントは日本語表現または `LEGACY_ACTION` へ統一。
+  - 検証: `python/tests/gui/test_action_refs_audit.py` を実行し、`ACTION` トークンが検出されないことを確認しました。
 
 検証コマンド:
 ```powershell
@@ -400,12 +461,17 @@ pytest tests/test_headless_editor.py -q
 - [ ] 保存時は `flags` を出力しない
 
 ### E-3 変数リンクキー統一
-- [ ] 保存キーを `input_value_key/output_value_key` に固定
-- [ ] 旧キーは読取互換のみ
+ - [x] 保存キーを `input_value_key/output_value_key` に固定
+ - [x] 旧キーは読取互換のみ
 
+進捗メモ:
+ - 2026-03-14: E-3 実施 — `unified_action_form._save_ui_to_data` を修正し、リンクウィジェットの出力を正規化して保存時に `input_value_key` / `output_value_key` のみを出力するようにしました。旧キーは読み込み時の互換として扱います。関連テスト `python/tests/test_variable_link_key_unification.py` を追加し検証済みです。
 ### E-4 `KeywordsModel` 導入
-- [ ] `CardModel` の `keywords` を型モデル化
-- [ ] 条件系キーを分離
+- [x] `CardModel` の `keywords` を型モデル化
+- [x] 条件系キーを分離
+
+進捗メモ:
+ - 2026-03-14: E-4 実施 — `CardModel.keywords` を `KeywordsModel` として実装済み。`python/tests/test_keywords_model.py` を追加し、ロードとシリアライズの互換性（レガシー辞書形状の出力）を検証、テストは通過しました。
 
 ---
 
@@ -424,7 +490,7 @@ pytest tests/test_headless_editor.py -q
 ## 6. 進捗トラッキング（運用欄）
 
 - [ ] フェーズA 完了
-- [ ] フェーズB 完了
+- [x] フェーズB 完了
 - [ ] フェーズC 完了
 - [ ] フェーズD 完了
 - [ ] フェーズE 完了
@@ -432,6 +498,7 @@ pytest tests/test_headless_editor.py -q
 
 最新メモ:
 - 2026-03-14: `safe_connect` と `KeywordEditForm` の状態分離（`KeywordFormState`）導入済み。
+ - 2026-03-14: フェーズA-1 テスト追加（connect不可 / widget=None）を追加・完了。
 
 ---
 

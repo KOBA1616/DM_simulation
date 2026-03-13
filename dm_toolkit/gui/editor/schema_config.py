@@ -4,6 +4,10 @@ from dm_toolkit.gui.i18n import tr
 from dm_toolkit.consts import QUERY_MODES
 
 # Define constants for selection lists
+# TODO (C-3): These constant lists are duplicated in other modules (consts, schema_def,
+# and possibly data/configs). Plan: consolidate into a single source (e.g.,
+# dm_toolkit/consts.py or data/configs/command_ui.json) and import from there.
+# Add TODO markers where similar definitions exist to phase out duplicates.
 MUTATION_TYPES = [
     "SPEED_ATTACKER", "BLOCKER", "SLAYER", "DOUBLE_BREAKER", "TRIPLE_BREAKER",
     "POWER_ATTACKER", "S_TRIGGER", "MACH_FIGHTER", "UNBLOCKABLE",

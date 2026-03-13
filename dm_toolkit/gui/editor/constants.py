@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Reserved Variable Keys for Action Linking
-# These are constant variable names available in the Card Editor for specific contexts.
+# 変数キー（アクション連携用）
+# Card Editor 内で特定コンテキストで利用される予約変数名の一覧です。
 
 RESERVED_VARIABLES = {
     "$evo_target": "進化元",

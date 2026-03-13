@@ -35,3 +35,25 @@ def test_safe_connect_returns_false_when_signal_missing() -> None:
     result = safe_connect(widget, "editingFinished", lambda: None)
 
     assert result is False
+
+
+def test_safe_connect_returns_false_when_connect_not_callable() -> None:
+    class _BadSignal:
+        def __init__(self) -> None:
+            self.connect = None
+
+    class _BadWidget:
+        def __init__(self) -> None:
+            self.badSignal = _BadSignal()
+
+    widget = _BadWidget()
+
+    result = safe_connect(widget, "badSignal", lambda: None)
+
+    assert result is False
+
+
+def test_safe_connect_returns_false_when_widget_is_none() -> None:
+    result = safe_connect(None, "textChanged", lambda: None)
+
+    assert result is False

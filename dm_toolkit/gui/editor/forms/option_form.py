@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QLabel, QVBoxLayout, QFormLayout, QLineEdit
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class OptionForm(BaseEditForm):
     """
@@ -45,7 +46,7 @@ class OptionForm(BaseEditForm):
             "SELECT_OPTION コマンドでプレイヤーに表示される選択肢テキスト。"
             "未設定の場合は「Option N」がデフォルトとして使われます。"
         ))
-        self.label_edit.textChanged.connect(self.update_data)
+        safe_connect(self.label_edit, "textChanged", self.update_data)
         form_layout.addRow(tr("選択肢テキスト:"), self.label_edit)
 
         info_label = QLabel(tr(

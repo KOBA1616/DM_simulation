@@ -8,6 +8,7 @@ from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWi
 from dm_toolkit.consts import TRIGGER_TYPES, SPELL_TRIGGER_TYPES, LAYER_TYPES
 from dm_toolkit.gui.editor.forms.parts.keyword_selector import KeywordSelectorWidget
 from dm_toolkit.gui.editor.unified_filter_handler import UnifiedFilterHandler
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 from dm_toolkit.gui.editor.consistency import validate_trigger_scope_filter
 
 class EffectEditForm(BaseEditForm):
@@ -65,8 +66,8 @@ class EffectEditForm(BaseEditForm):
         tf_layout = QGridLayout(self.trigger_filter_group)
         # Create filter widget and wrap in scroll area to avoid layout overlap
         self.trigger_filter = UnifiedFilterHandler.create_filter_widget("TRIGGER", self)
-        self.trigger_filter.filterChanged.connect(self.update_data)
-        self.trigger_filter.filterChanged.connect(self.on_trigger_filter_changed)
+        safe_connect(self.trigger_filter, "filterChanged", self.update_data)
+        safe_connect(self.trigger_filter, "filterChanged", self.on_trigger_filter_changed)
         self.register_widget(self.trigger_filter, 'trigger_filter')
         self.trigger_filter_area = QScrollArea()
         self.trigger_filter_area.setWidgetResizable(True)
@@ -98,7 +99,7 @@ class EffectEditForm(BaseEditForm):
         
         # Keyword Helper - Unified Widget
         self.layer_keyword_combo = KeywordSelectorWidget(allow_settable=True)
-        self.layer_keyword_combo.keywordSelected.connect(self.on_layer_keyword_changed)
+        safe_connect(self.layer_keyword_combo, "keywordSelected", self.on_layer_keyword_changed)
 
         l_layout.addWidget(QLabel(tr("Layer Type")), 0, 0)
         l_layout.addWidget(self.layer_type_combo, 0, 1)
@@ -111,7 +112,7 @@ class EffectEditForm(BaseEditForm):
 
         # Target Filter - Unified Handler
         self.target_filter = UnifiedFilterHandler.create_filter_widget("STATIC", self)
-        self.target_filter.filterChanged.connect(self.update_data)
+        safe_connect(self.target_filter, "filterChanged", self.update_data)
         self.register_widget(self.target_filter, 'filter')
         self.target_filter_area = QScrollArea()
         self.target_filter_area.setWidgetResizable(True)
@@ -123,25 +124,25 @@ class EffectEditForm(BaseEditForm):
 
         # Condition (Shared)
         self.condition_widget = ConditionEditorWidget()
-        self.condition_widget.dataChanged.connect(self.update_data)
+        safe_connect(self.condition_widget, "dataChanged", self.update_data)
         self.add_field(None, self.condition_widget, 'condition')
 
         # Actions Section
         self.add_action_btn = QPushButton(tr("Add Command"))
-        self.add_action_btn.clicked.connect(self.on_add_action_clicked)
+        safe_connect(self.add_action_btn, "clicked", self.on_add_action_clicked)
         self.add_field(None, self.add_action_btn)
 
         # Connect signals
-        self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
-        self.mode_combo.currentIndexChanged.connect(self.update_data)
+        safe_connect(self.mode_combo, "currentIndexChanged", self.on_mode_changed)
+        safe_connect(self.mode_combo, "currentIndexChanged", self.update_data)
 
-        self.trigger_combo.currentIndexChanged.connect(self.update_data)
-        self.trigger_scope_combo.currentIndexChanged.connect(self.update_data)
+        safe_connect(self.trigger_combo, "currentIndexChanged", self.update_data)
+        safe_connect(self.trigger_scope_combo, "currentIndexChanged", self.update_data)
 
-        self.layer_type_combo.currentIndexChanged.connect(self.update_data)
-        self.layer_type_combo.currentIndexChanged.connect(self.update_layer_keyword_visibility)
-        self.layer_val_spin.valueChanged.connect(self.update_data)
-        self.layer_str_edit.textChanged.connect(self.update_data)
+        safe_connect(self.layer_type_combo, "currentIndexChanged", self.update_data)
+        safe_connect(self.layer_type_combo, "currentIndexChanged", self.update_layer_keyword_visibility)
+        safe_connect(self.layer_val_spin, "valueChanged", self.update_data)
+        safe_connect(self.layer_str_edit, "textChanged", self.update_data)
 
         # Initial UI State
         self.on_mode_changed()

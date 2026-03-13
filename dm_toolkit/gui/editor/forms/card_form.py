@@ -9,6 +9,7 @@ from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, to_dict, get_att
 from dm_toolkit.gui.editor.consts import (
     STRUCT_CMD_ADD_CHILD_EFFECT, STRUCT_CMD_ADD_SPELL_SIDE, STRUCT_CMD_REMOVE_SPELL_SIDE
 )
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 from dm_toolkit.gui.editor.configs.card_config import CARD_SCHEMA
 from dm_toolkit.gui.editor.widget_factory import WidgetFactory
 from dm_toolkit.gui.editor.schema_def import FieldSchema
@@ -51,7 +52,7 @@ class CardEditForm(BaseEditForm):
         actions_layout = QVBoxLayout(actions_group)
 
         self.add_effect_btn = QPushButton(tr("Add Effect"))
-        self.add_effect_btn.clicked.connect(self.on_add_effect_clicked)
+        safe_connect(self.add_effect_btn, "clicked", self.on_add_effect_clicked)
         actions_layout.addWidget(self.add_effect_btn)
 
         self.form_layout.addRow(actions_group)
@@ -147,19 +148,19 @@ class CardEditForm(BaseEditForm):
 
         kw_act = menu.addAction(tr("Keyword Ability"))
         if kw_act is not None:
-            kw_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "KEYWORDS"}))
+            safe_connect(kw_act, "triggered", lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "KEYWORDS"}))
 
         trig_act = menu.addAction(tr("Triggered Ability"))
         if trig_act is not None:
-            trig_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "TRIGGERED"}))
+            safe_connect(trig_act, "triggered", lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "TRIGGERED"}))
 
         static_act = menu.addAction(tr("Static Ability"))
         if static_act is not None:
-            static_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "STATIC"}))
+            safe_connect(static_act, "triggered", lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "STATIC"}))
 
         react_act = menu.addAction(tr("Reaction Ability"))
         if react_act is not None:
-            react_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "REACTION"}))
+            safe_connect(react_act, "triggered", lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "REACTION"}))
 
         menu.exec(QCursor.pos())
 

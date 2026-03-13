@@ -7,6 +7,7 @@ Separated from individual form validators to enable cross-form consistency check
 """
 
 from typing import List, Dict, Any
+from dm_toolkit.gui.i18n import tr
 
 
 class ConditionValidator:

@@ -7,6 +7,7 @@ from dm_toolkit.gui.i18n import tr
 from typing import Any, cast
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
 from dm_toolkit.gui.editor.text_resources import CardTextResources
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 # Configuration for Condition UI logic
 CONDITION_UI_CONFIG = {
@@ -148,8 +149,8 @@ class ConditionEditorWidget(QGroupBox):
             "CUSTOM"
         ]
         self.populate_combo(self.cond_type_combo, cond_types)
-        self.cond_type_combo.currentIndexChanged.connect(self.on_cond_type_changed)
-        self.cond_type_combo.currentIndexChanged.connect(self.dataChanged.emit)
+        safe_connect(self.cond_type_combo, "currentIndexChanged", self.on_cond_type_changed)
+        safe_connect(self.cond_type_combo, "currentIndexChanged", self.dataChanged.emit)
 
         layout.addWidget(QLabel(tr("Condition Type")), 0, 0)
         layout.addWidget(self.cond_type_combo, 0, 1)
@@ -157,7 +158,7 @@ class ConditionEditorWidget(QGroupBox):
         # Custom Type Edit (Row 1)
         self.lbl_type_edit = QLabel(tr("Custom Type"))
         self.type_edit = QLineEdit()
-        self.type_edit.textChanged.connect(self.dataChanged.emit)
+        safe_connect(self.type_edit, "textChanged", self.dataChanged.emit)
         layout.addWidget(self.lbl_type_edit, 1, 0)
         layout.addWidget(self.type_edit, 1, 1)
 
@@ -172,8 +173,8 @@ class ConditionEditorWidget(QGroupBox):
             "MY_BATTLE_ZONE_COUNT", "OPPONENT_BATTLE_ZONE_COUNT"
         ]
         self.populate_combo(self.stat_key_combo, common_stats)
-        self.stat_key_combo.editTextChanged.connect(self.dataChanged.emit)
-        self.stat_key_combo.currentIndexChanged.connect(self.dataChanged.emit)
+        safe_connect(self.stat_key_combo, "editTextChanged", self.dataChanged.emit)
+        safe_connect(self.stat_key_combo, "currentIndexChanged", self.dataChanged.emit)
         layout.addWidget(self.lbl_stat_key, 2, 0)
         layout.addWidget(self.stat_key_combo, 2, 1)
 
@@ -182,7 +183,7 @@ class ConditionEditorWidget(QGroupBox):
         self.op_combo = QComboBox()
         ops = [">", "<", "=", ">=", "<=", "!="]
         self.populate_combo(self.op_combo, ops)
-        self.op_combo.currentTextChanged.connect(self.dataChanged.emit)
+        safe_connect(self.op_combo, "currentTextChanged", self.dataChanged.emit)
         layout.addWidget(self.lbl_op, 3, 0)
         layout.addWidget(self.op_combo, 3, 1)
 
@@ -190,7 +191,7 @@ class ConditionEditorWidget(QGroupBox):
         self.lbl_val = QLabel(tr("Value"))
         self.cond_val_spin = QSpinBox()
         self.cond_val_spin.setRange(-9999, 9999)
-        self.cond_val_spin.valueChanged.connect(self.dataChanged.emit)
+        safe_connect(self.cond_val_spin, "valueChanged", self.dataChanged.emit)
 
         layout.addWidget(self.lbl_val, 4, 0)
         layout.addWidget(self.cond_val_spin, 4, 1)
@@ -198,14 +199,14 @@ class ConditionEditorWidget(QGroupBox):
         # String Row (Row 5)
         self.lbl_str = QLabel(tr("String Value"))
         self.cond_str_edit = QLineEdit()
-        self.cond_str_edit.textChanged.connect(self.dataChanged.emit)
+        safe_connect(self.cond_str_edit, "textChanged", self.dataChanged.emit)
 
         layout.addWidget(self.lbl_str, 5, 0)
         layout.addWidget(self.cond_str_edit, 5, 1)
 
         # Filter Widget (Row 6) - wrap in QScrollArea to avoid layout overlap when expanded
         self.cond_filter_widget = FilterEditorWidget()
-        self.cond_filter_widget.filterChanged.connect(self.dataChanged.emit)
+        safe_connect(self.cond_filter_widget, "filterChanged", self.dataChanged.emit)
         self.cond_filter_widget.set_visible_sections({'basic': True, 'stats': True, 'flags': True, 'selection': False})
 
         self.cond_filter_area = QScrollArea()

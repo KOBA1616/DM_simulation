@@ -7,6 +7,7 @@ from dm_toolkit.gui.i18n import tr
 from typing import Any, Dict
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dict
 from dm_toolkit.gui.editor.forms.parts.reaction_condition_widget import ReactionConditionWidget
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class ReactionEditForm(BaseEditForm):
     """
@@ -31,15 +32,15 @@ class ReactionEditForm(BaseEditForm):
         # 再発防止: addItem(表示テキスト, 生値) パターン。保存時は currentData() を使用する。
         for raw in ["NONE", "NINJA_STRIKE", "STRIKE_BACK", "REVOLUTION_0_TRIGGER"]:
             self.type_combo.addItem(tr(raw), raw)
-        self.type_combo.currentIndexChanged.connect(self.update_data)
-        self.type_combo.currentIndexChanged.connect(self.update_visibility)
+        safe_connect(self.type_combo, "currentIndexChanged", self.update_data)
+        safe_connect(self.type_combo, "currentIndexChanged", self.update_visibility)
         layout.addRow(tr("Type"), self.type_combo)
 
         # Cost
         self.label_cost = QLabel(tr("Cost / Requirement"))
         self.cost_spin = QSpinBox()
         self.cost_spin.setRange(0, 99)
-        self.cost_spin.valueChanged.connect(self.update_data)
+        safe_connect(self.cost_spin, "valueChanged", self.update_data)
         layout.addRow(self.label_cost, self.cost_spin)
 
         # Zone
@@ -48,12 +49,12 @@ class ReactionEditForm(BaseEditForm):
         # 再発防止: addItem(表示テキスト, 生値) パターン。保存時は currentData() を使用する。
         for raw in ["HAND", "GRAVEYARD", "MANA_ZONE"]:
             self.zone_edit.addItem(tr(raw), raw)
-        self.zone_edit.currentIndexChanged.connect(self.update_data)
+        safe_connect(self.zone_edit, "currentIndexChanged", self.update_data)
         layout.addRow(self.label_zone, self.zone_edit)
 
         # Condition Widget (Extracted)
         self.reaction_condition = ReactionConditionWidget()
-        self.reaction_condition.dataChanged.connect(self.update_data)
+        safe_connect(self.reaction_condition, "dataChanged", self.update_data)
         layout.addRow(self.reaction_condition)
 
         # Initial visibility

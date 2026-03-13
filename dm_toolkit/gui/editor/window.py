@@ -273,8 +273,8 @@ class CardEditor(QMainWindow):
             parent = item.parent()
             if parent is not None:
                 card_item = parent
-        # 再発防止: "ACTION" は旧形式 JSON 読み込み時のレガシー値。新規アイテムは "COMMAND" のみ使用すること。
-        elif item_type in ["ACTION", "COMMAND"]:
+        # 再発防止: 旧形式のアクションは後方互換で扱われるが、新規アイテムは "COMMAND" のみ使用すること。
+        elif item_type in ["LEGACY_ACTION", "COMMAND"]:
             parent = item.parent()
             if parent is not None:
                 grand = parent.parent()
@@ -324,9 +324,9 @@ class CardEditor(QMainWindow):
         elif command == STRUCT_CMD_GENERATE_OPTIONS:
             count = payload.get('count', 1)
             # Find the actual Action Item from the current selection
-            action_item = None
-            if item_type in ["ACTION", "COMMAND"]:  # 再発防止: ACTION は旧形式の後方互换レガシー値
-                 action_item = item
+              action_item = None
+              if item_type in ["LEGACY_ACTION", "COMMAND"]:  # 再発防止: 旧形式のアクションは後方互換として扱う
+                  action_item = item
 
             if action_item:
                  self.tree_widget.data_manager.add_option_slots(action_item, count)
@@ -362,7 +362,7 @@ class CardEditor(QMainWindow):
             elif item_type == "OPTION":
                 self.tree_widget.add_action_to_option(item.index())
                 tree_changed = True
-            elif item_type in ["ACTION", "COMMAND"]:  # 再発防止: ACTION は旧形式の後方互换レガシー値
+            elif item_type in ["LEGACY_ACTION", "COMMAND"]:  # 再発防止: 旧形式のアクションは後方互換として扱う
                 self.tree_widget.add_action_sibling(item.index())
                 tree_changed = True
 
@@ -414,8 +414,8 @@ class CardEditor(QMainWindow):
         type_ = item.data(Qt.ItemDataRole.UserRole + 1)
 
         # Centralized logic in LogicTreeWidget
-        # 再発防止: ACTION は旧形式 JSON を読み込んだ時のレガシー値（新規生成は COMMAND のみ）。
-        valid_types = ["EFFECT", "OPTION", "COMMAND", "ACTION", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]
+        # 再発防止: 旧形式のアクションは後方互換で扱うが、新規生成は "COMMAND" のみ。
+        valid_types = ["EFFECT", "OPTION", "COMMAND", "LEGACY_ACTION", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]
         if type_ in valid_types:
             self.tree_widget.add_command_contextual()
         else:

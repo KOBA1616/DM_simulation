@@ -169,7 +169,61 @@ class CardModel(BaseModel):
     cost: int = 1
     power: int = 1000
 
-    keywords: Dict[str, Any] = Field(default_factory=dict)
+    # Keywords: migrate from Dict to structured KeywordsModel for clarity.
+    class KeywordsModel(BaseModel):
+        # Special condition entries
+        friend_burst_condition: Dict[str, Any] = Field(default_factory=dict)
+        revolution_change_condition: Dict[str, Any] = Field(default_factory=dict)
+        mekraid_condition: Dict[str, Any] = Field(default_factory=dict)
+        # Generic keyword flags (e.g., 's_trigger': True)
+        flags: Dict[str, Any] = Field(default_factory=dict)
+        # Any other legacy keyword entries
+        extras: Dict[str, Any] = Field(default_factory=dict)
+
+        class Config:
+            extra = "allow"
+
+        @model_validator(mode='before')
+        @classmethod
+        def ingest_legacy(cls, v):
+            # Accept either dict of keywords or existing KeywordsModel
+            if isinstance(v, cls):
+                return v
+            if isinstance(v, dict):
+                # Known condition keys map directly
+                kw = {
+                    'friend_burst_condition': v.get('friend_burst_condition', {}),
+                    'revolution_change_condition': v.get('revolution_change_condition', {}),
+                    'mekraid_condition': v.get('mekraid_condition', {}),
+                    'flags': {},
+                    'extras': {},
+                }
+                for k, val in v.items():
+                    if k in kw:
+                        continue
+                    # If value is dict and appears condition-like, leave in extras
+                    if isinstance(val, dict):
+                        kw['extras'][k] = val
+                    else:
+                        kw['flags'][k] = val
+                return kw
+            return {'flags': {}, 'extras': {}}
+
+        @model_serializer
+        def to_dict(self) -> Dict[str, Any]:
+            # Serialize back to plain dict expected by legacy consumers
+            out: Dict[str, Any] = {}
+            out.update(self.flags or {})
+            out.update(self.extras or {})
+            if self.friend_burst_condition:
+                out['friend_burst_condition'] = self.friend_burst_condition
+            if self.revolution_change_condition:
+                out['revolution_change_condition'] = self.revolution_change_condition
+            if self.mekraid_condition:
+                out['mekraid_condition'] = self.mekraid_condition
+            return out
+
+    keywords: KeywordsModel = Field(default_factory=KeywordsModel)
 
     effects: List[EffectModel] = Field(default_factory=list)
     static_abilities: List[ModifierModel] = Field(default_factory=list)

@@ -18,7 +18,7 @@ from dm_toolkit.gui.editor.widget_factory import WidgetFactory
 from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
 from dm_toolkit.gui.editor.schema_def import SchemaLoader, get_schema, FieldSchema, FieldType
 from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_OPTIONS
-from dm_toolkit.gui.editor.consistency import validate_command_list
+from dm_toolkit.gui.editor.consistency import format_integrity_warnings, validate_command_list
 
 COMMAND_GROUPS = EditorConfigLoader.get_command_groups()
 
@@ -319,11 +319,19 @@ class UnifiedActionForm(BaseEditForm):
                     val = widget.get_value()
 
                     if key in ['links', 'input_link', 'output_link', 'input_var', 'output_var']:
-                        new_data.update(val)
-                        if 'input_var' in val: model.input_var = val['input_var']
-                        if 'output_var' in val: model.output_var = val['output_var']
-                        if 'input_value_key' in val: model.input_var = val['input_value_key']
-                        if 'output_value_key' in val: model.output_var = val['output_value_key']
+                        # Normalize legacy link keys to canonical names for saving.
+                        in_key = None
+                        out_key = None
+                        if isinstance(val, dict):
+                            in_key = val.get('input_value_key') or val.get('input_var') or val.get('input_key')
+                            out_key = val.get('output_value_key') or val.get('output_var') or val.get('output_key')
+
+                        if in_key:
+                            new_data['input_value_key'] = in_key
+                            model.input_var = in_key
+                        if out_key:
+                            new_data['output_value_key'] = out_key
+                            model.output_var = out_key
 
                     elif key == 'target_filter':
                         if val: model.params['target_filter'] = val
@@ -388,6 +396,11 @@ class UnifiedActionForm(BaseEditForm):
             dump = model.model_dump(exclude_none=True)
             new_data.update(dump)
 
+            # Ensure legacy keys are not persisted; prefer canonical key names
+            for legacy in ('input_var', 'output_var'):
+                if legacy in new_data:
+                    del new_data[legacy]
+
             # Check outputs config
             # 再発防止: output_value_key は全コマンドに uid ベースで自動生成する。
             # row ベースはユニーク性が保証できないため废止。
@@ -402,22 +415,30 @@ class UnifiedActionForm(BaseEditForm):
                     row = getattr(self.current_item, 'row', lambda: 0)()
                     new_data['output_value_key'] = f"var_{cmd_type}_{row}"
 
-            data.clear()
-            data.update(new_data)
-
-            # Clear styles on success
-            self._clear_validation_styles()
-
-            # コマンド整合性チェック（非ブロッキング警告）
-            # 再発防止: QUERY/IF等の必須フィールド未設定を保存時にユーザーへ通知する
+            # コマンド整合性チェック（警告が致命的な場合は保存を中止）
             try:
                 warns = validate_command_list([new_data], _path=cmd_type)
                 if warns:
-                    self.structure_update_requested.emit(
-                        "INTEGRITY_WARNINGS", {"warnings": warns}
-                    )
+                    # Emit warnings for UI/console listeners
+                    self.structure_update_requested.emit("INTEGRITY_WARNINGS", {"warnings": warns})
+                    formatted_warns = format_integrity_warnings(warns)
+                    # Apply simple validation styles to indicate problem fields
+                    for widget in self.widgets_map.values():
+                        if hasattr(widget, 'setStyleSheet'):
+                            widget.setStyleSheet("border: 1px solid red;")
+                            if hasattr(widget, 'setToolTip'):
+                                # 再発防止: Tooltip も共通フォーマッタを使い、UI 表示の揺れを防ぐ。
+                                widget.setToolTip(formatted_warns)
+                    # Abort save to avoid persisting invalid command
+                    return
             except Exception:
-                pass  # テスト環境等でも堅牢に動作させる
+                # Don't let validation exceptions block saving in odd test/runtime setups
+                pass
+
+            # No blocking warnings: commit data and clear styles
+            data.clear()
+            data.update(new_data)
+            self._clear_validation_styles()
 
         except ValidationError as e:
             print(f"Validation Error: {e}")
