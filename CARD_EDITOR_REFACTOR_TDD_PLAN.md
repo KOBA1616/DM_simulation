@@ -84,6 +84,7 @@
     - 次: 他の高頻度コマンド（`MEKRAID` など）について同様の型導入を進める予定です。
     - 進捗2: `LOOK_AND_ADD` 用の `LookAndAddParams` を追加し、`ingest_legacy_structure` で `LOOK_AND_ADD` を `LookAndAddParams` にマッピングしました（モデル実装・マッピング済）。
     - 進捗3: `ADD_KEYWORD` 用の `AddKeywordParams` を追加し、`ingest_legacy_structure` で `ADD_KEYWORD` を `AddKeywordParams` にマッピングしました。ユニットテスト `python/tests/unit/test_commandmodel_add_keyword.py` を追加し、`ADD_KEYWORD` の ingest/serialize を検証（1 passed）。
+    - 進捗4: `MEKRAID` 用の `MekraidParams` を追加し、`ingest_legacy_structure` で `MEKRAID` を `MekraidParams` にマッピングしました。ユニットテスト `python/tests/unit/test_commandmodel_mekraid.py` を追加し、`MEKRAID` の ingest/serialize を検証（1 passed）。
 
 ---
 

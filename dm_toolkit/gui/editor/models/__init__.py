@@ -126,6 +126,11 @@ class AddKeywordParams(BaseModel):
     # legacy compatibility: allow extra fields
     extra: Dict[str, Any] = Field(default_factory=dict)
 
+class MekraidParams(BaseModel):
+    reveal_count: int = 3
+    evolution_cost: Optional[int] = None
+    filter: Optional[Dict[str, Any]] = None
+
 
 # --- Command Models ---
 
@@ -134,7 +139,7 @@ class CommandModel(BaseModel):
     type: str  # DRAW_CARD, BREAK_SHIELD etc.
     # Params can be either a generic dict (legacy) or a typed params model.
     # We support typed params for high-frequency commands to improve safety.
-    params: Union[Dict[str, Any], 'QueryParams', 'TransitionParams', 'ModifierParams', 'SearchParams', 'LookAndAddParams', 'AddKeywordParams'] = Field(default_factory=dict) # 汎用パラメータ格納
+    params: Union[Dict[str, Any], 'QueryParams', 'TransitionParams', 'ModifierParams', 'SearchParams', 'LookAndAddParams', 'AddKeywordParams', 'MekraidParams'] = Field(default_factory=dict) # 汎用パラメータ格納
 
     # 制御構造 (Composite Pattern)
     if_true: List['CommandModel'] = Field(default_factory=list)
@@ -202,6 +207,8 @@ class CommandModel(BaseModel):
                         new_data['params'] = LookAndAddParams.model_validate(new_data['params'])
                     elif cmd_type == 'ADD_KEYWORD':
                         new_data['params'] = AddKeywordParams.model_validate(new_data['params'])
+                    elif cmd_type == 'MEKRAID':
+                        new_data['params'] = MekraidParams.model_validate(new_data['params'])
                     elif cmd_type == 'TRANSITION':
                         new_data['params'] = TransitionParams.model_validate(new_data['params'])
                     elif cmd_type == 'MODIFY':
