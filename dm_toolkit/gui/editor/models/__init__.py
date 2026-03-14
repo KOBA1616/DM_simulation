@@ -196,7 +196,19 @@ class CommandModel(BaseModel):
 
         # 2. Flatten params
         if self.params:
-            result.update(self.params)
+            # If params is a Pydantic model (typed), dump it to dict first
+            try:
+                # model_dump exists on Pydantic BaseModel instances
+                if hasattr(self.params, 'model_dump'):
+                    result.update(self.params.model_dump())
+                elif isinstance(self.params, dict):
+                    result.update(self.params)
+                else:
+                    # Fallback: try to coerce to dict
+                    result.update(dict(self.params))
+            except Exception:
+                # On any unexpected failure, skip flattening to avoid breaking serialization
+                pass
 
         # 3. Handle recursive fields
         if self.if_true:

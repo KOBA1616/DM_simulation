@@ -12,6 +12,7 @@ from PyQt6.QtCore import Qt
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
 from dm_toolkit.consts import CARD_TYPES, COMMAND_ZONES
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 
 class LookSelectTemplateDialog(QDialog):
@@ -80,8 +81,8 @@ class LookSelectTemplateDialog(QDialog):
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
+        safe_connect(buttons, 'accepted', self.accept)
+        safe_connect(buttons, 'rejected', self.reject)
         layout.addWidget(buttons)
 
     def get_extra_context(self) -> dict:

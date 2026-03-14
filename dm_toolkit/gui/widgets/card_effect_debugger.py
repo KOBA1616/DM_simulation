@@ -8,6 +8,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.gui.utils.card_helpers import get_card_name
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class CardEffectDebugger(QWidget):
     """
@@ -33,8 +34,8 @@ class CardEffectDebugger(QWidget):
         self.resume_btn = QPushButton(tr("Resume"))
         self.pause_btn = QPushButton(tr("Pause")) # Optional manual pause
 
-        self.step_btn.clicked.connect(self.on_step_clicked)
-        self.resume_btn.clicked.connect(self.on_resume_clicked)
+        safe_connect(self.step_btn, 'clicked', self.on_step_clicked)
+        safe_connect(self.resume_btn, 'clicked', self.on_resume_clicked)
 
         self.toolbar_layout.addWidget(self.step_btn)
         self.toolbar_layout.addWidget(self.resume_btn)

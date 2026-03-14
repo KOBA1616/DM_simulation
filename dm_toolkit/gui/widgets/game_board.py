@@ -7,6 +7,7 @@ from PyQt6.QtCore import pyqtSignal, Qt
 
 from dm_toolkit.gui.widgets.zone_widget import ZoneWidget
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class GameBoard(QWidget):
     """
@@ -95,7 +96,7 @@ class GameBoard(QWidget):
 
         # Opponent zones usually just hover
         for z in [self.p1_hand, self.p1_mana, self.p1_battle, self.p1_shield, self.p1_graveyard]:
-            z.card_hovered.connect(self.card_hovered.emit)
+            safe_connect(z, 'card_hovered', self.card_hovered.emit)
 
         # Splitter
         self.board_splitter = QSplitter(Qt.Orientation.Vertical)
@@ -125,10 +126,10 @@ class GameBoard(QWidget):
         # 再発防止: resizeEvent でフローティングボタンの位置を更新すること
 
     def _connect_zone(self, zone: ZoneWidget):
-        zone.command_triggered.connect(self.command_triggered.emit)
-        zone.card_clicked.connect(self.card_clicked.emit)
-        zone.card_double_clicked.connect(self.card_double_clicked.emit)
-        zone.card_hovered.connect(self.card_hovered.emit)
+        safe_connect(zone, 'command_triggered', self.command_triggered.emit)
+        safe_connect(zone, 'card_clicked', self.card_clicked.emit)
+        safe_connect(zone, 'card_double_clicked', self.card_double_clicked.emit)
+        safe_connect(zone, 'card_hovered', self.card_hovered.emit)
 
     def resizeEvent(self, event):
         """方針D: リサイズ時にフローティング確定ボタンを右下に再配置する。"""

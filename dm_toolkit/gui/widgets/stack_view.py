@@ -9,6 +9,7 @@ import dm_ai_module
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.card_helpers import get_card_name
 import logging
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 logger = logging.getLogger(__name__)
 
@@ -44,16 +45,16 @@ class StackViewWidget(QWidget):
         self.list_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         model = self.list_widget.model()
         if model is not None:
-            model.rowsMoved.connect(self.on_rows_moved)
+            safe_connect(model, 'rowsMoved', self.on_rows_moved)
         self._layout.addWidget(self.list_widget)
 
         btn_layout = QHBoxLayout()
         self.resolve_btn = QPushButton(tr("Resolve Selected"))
-        self.resolve_btn.clicked.connect(self.on_resolve)
+        safe_connect(self.resolve_btn, 'clicked', self.on_resolve)
         btn_layout.addWidget(self.resolve_btn)
 
         self.refresh_btn = QPushButton(tr("Refresh"))
-        self.refresh_btn.clicked.connect(self.request_refresh) # Should be connected to parent update
+        safe_connect(self.refresh_btn, 'clicked', self.request_refresh) # Should be connected to parent update
         btn_layout.addWidget(self.refresh_btn)
 
         self._layout.addLayout(btn_layout)

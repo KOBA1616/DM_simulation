@@ -15,6 +15,7 @@ from dm_toolkit.gui.editor.forms.keyword_form import KeywordEditForm
 from dm_toolkit.gui.editor.forms.modifier_form import ModifierEditForm
 from dm_toolkit.gui.editor.forms.option_form import OptionForm
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 
 class CmdBranchPage(QWidget):
@@ -35,7 +36,7 @@ class CmdBranchPage(QWidget):
 
         btn = QPushButton(tr("Add Command"))
         btn.setFixedHeight(28)
-        btn.clicked.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_ACTION", {}))
+        safe_connect(btn, 'clicked', lambda: self.structure_update_requested.emit("ADD_CHILD_ACTION", {}))
         layout.addWidget(btn)
         layout.addStretch()
 
@@ -47,7 +48,7 @@ class OptionEditPage(QWidget):
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel(tr("Option selected. Add Commands to define behavior.")))
         btn = QPushButton(tr("Add Command"))
-        btn.clicked.connect(lambda: self.structure_update_requested.emit("ADD_CHILD_ACTION", {}))
+        safe_connect(btn, 'clicked', lambda: self.structure_update_requested.emit("ADD_CHILD_ACTION", {}))
         layout.addWidget(btn)
         layout.addStretch()
 
@@ -150,21 +151,21 @@ class PropertyInspector(QWidget):
         # 再発防止: ブランチページは QLabel ではなく CmdBranchPage を使用すること。
         # QLabel に置き換えると「コマンド追加」ボタンが失われる。
         self.cmd_branch_page = CmdBranchPage("Branch selected. Add Commands to this branch.")
-        self.cmd_branch_page.structure_update_requested.connect(self._on_structure_update)
+        safe_connect(self.cmd_branch_page, 'structure_update_requested', self._on_structure_update)
         self.stack.addWidget(self.cmd_branch_page)
 
         self.card_form = CardEditForm()
         self.stack.addWidget(self.card_form)
-        self.card_form.structure_update_requested.connect(self._on_structure_update)
+        safe_connect(self.card_form, 'structure_update_requested', self._on_structure_update)
 
         self.effect_form = EffectEditForm()
         self.stack.addWidget(self.effect_form)
-        self.effect_form.structure_update_requested.connect(self._on_structure_update)
+        safe_connect(self.effect_form, 'structure_update_requested', self._on_structure_update)
 
         # Unified Action UI replaces separate Action/Command editors
         self.unified_form = UnifiedActionForm()
         self.stack.addWidget(self.unified_form)
-        self.unified_form.structure_update_requested.connect(self._on_structure_update)
+        safe_connect(self.unified_form, 'structure_update_requested', self._on_structure_update)
 
         self.spell_side_form = SpellSideForm()
         self.stack.addWidget(self.spell_side_form)
@@ -174,11 +175,11 @@ class PropertyInspector(QWidget):
 
         self.keyword_form = KeywordEditForm()
         self.stack.addWidget(self.keyword_form)
-        self.keyword_form.structure_update_requested.connect(self._on_structure_update)
+        safe_connect(self.keyword_form, 'structure_update_requested', self._on_structure_update)
 
         self.modifier_form = ModifierEditForm()
         self.stack.addWidget(self.modifier_form)
-        self.modifier_form.dataChanged.connect(lambda: self._on_data_changed())
+        safe_connect(self.modifier_form, 'dataChanged', lambda: self._on_data_changed())
 
         layout.addWidget(self.stack)
 

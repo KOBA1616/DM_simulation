@@ -8,6 +8,7 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QKeySequence
 from PyQt6.QtWidgets import QApplication
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class LogViewer(QListWidget):
     """
@@ -20,7 +21,7 @@ class LogViewer(QListWidget):
         self.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
         # Enable custom context menu for copy
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.customContextMenuRequested.connect(self._show_context_menu)
+        safe_connect(self, 'customContextMenuRequested', self._show_context_menu)
 
     def _show_context_menu(self, pos):
         menu = QMenu(self)
@@ -34,11 +35,11 @@ class LogViewer(QListWidget):
                 copy_act.setShortcut(QKeySequence("Ctrl+C"))
             except Exception:
                 pass
-        copy_act.triggered.connect(self.copy_selected)
+        safe_connect(copy_act, 'triggered', self.copy_selected)
         menu.addAction(copy_act)
         # Add select-all for convenience
         sa = QAction(tr("Select All"), self)
-        sa.triggered.connect(self.selectAll)
+        safe_connect(sa, 'triggered', self.selectAll)
         menu.addAction(sa)
         menu.exec(self.mapToGlobal(pos))
 

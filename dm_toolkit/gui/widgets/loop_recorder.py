@@ -5,6 +5,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QTimer
 import dm_ai_module
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class LoopRecorderWidget(QWidget):
     def __init__(self, game_state_ref, parent=None):
@@ -17,11 +18,11 @@ class LoopRecorderWidget(QWidget):
 
         btn_layout = QHBoxLayout()
         self.start_btn = QPushButton(tr("Start Recording"))
-        self.start_btn.clicked.connect(self.start_recording)
+        safe_connect(self.start_btn, 'clicked', self.start_recording)
         btn_layout.addWidget(self.start_btn)
 
         self.stop_btn = QPushButton(tr("Stop & Verify"))
-        self.stop_btn.clicked.connect(self.stop_and_verify)
+        safe_connect(self.stop_btn, 'clicked', self.stop_and_verify)
         self.stop_btn.setEnabled(False)
         btn_layout.addWidget(self.stop_btn)
 

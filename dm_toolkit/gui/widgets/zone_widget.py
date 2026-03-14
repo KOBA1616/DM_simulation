@@ -50,6 +50,7 @@ from dm_toolkit.gui.utils.card_helpers import get_card_civilization
 from dm_toolkit.commands import wrap_command
 from dm_toolkit.gui.styles.civ_colors import CIV_ORB_COLORS, CIV_NAMES_JA
 import logging
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 # module logger
 logger = logging.getLogger('dm_toolkit.gui.widgets.zone_widget')
@@ -334,13 +335,13 @@ class ZoneWidget(QWidget):
 
             # Clicking behavior
             if is_mana or is_grave:
-                 # Open Popup
-                 widget.clicked.connect(self._open_popup)
+                # Open Popup
+                safe_connect(widget, 'clicked', self._open_popup)
             else:
-                 # Standard emit
-                 widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
+                # Standard emit
+                safe_connect(widget, 'clicked', lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
 
-            widget.hovered.connect(self.card_hovered.emit)
+            safe_connect(widget, 'hovered', self.card_hovered.emit)
             self.card_layout.addWidget(widget)
             self.cards.append(widget)
             return
@@ -386,20 +387,20 @@ class ZoneWidget(QWidget):
                     civ, tapped, instance_id,
                     legal_commands=relevant_actions
                 )
-                widget.clicked.connect(lambda i_id, c_id=cid: self.card_clicked.emit(c_id, i_id))
-                widget.hovered.connect(self.card_hovered.emit)
-                widget.command_triggered.connect(self._handle_command_triggered)
-                widget.double_clicked.connect(lambda i_id, c_id=cid: self.card_double_clicked.emit(c_id, i_id))
+                safe_connect(widget, 'clicked', lambda i_id, c_id=cid: self.card_clicked.emit(c_id, i_id))
+                safe_connect(widget, 'hovered', self.card_hovered.emit)
+                safe_connect(widget, 'command_triggered', self._handle_command_triggered)
+                safe_connect(widget, 'double_clicked', lambda i_id, c_id=cid: self.card_double_clicked.emit(c_id, i_id))
                 self.card_layout.addWidget(widget)
                 self.cards.append(widget)
             else:
                 # Unknown/Masked
                 # Pass is_face_down=True
                 widget = CardWidget(0, "???", 0, 0, "COLORLESS", False, instance_id, None, True, legal_commands=relevant_actions)
-                widget.clicked.connect(lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
-                widget.hovered.connect(self.card_hovered.emit)
-                widget.command_triggered.connect(self._handle_command_triggered)
-                widget.double_clicked.connect(lambda i_id, c_id=0: self.card_double_clicked.emit(c_id, i_id))
+                safe_connect(widget, 'clicked', lambda i_id, c_id=0: self.card_clicked.emit(c_id, i_id))
+                safe_connect(widget, 'hovered', self.card_hovered.emit)
+                safe_connect(widget, 'command_triggered', self._handle_command_triggered)
+                safe_connect(widget, 'double_clicked', lambda i_id, c_id=0: self.card_double_clicked.emit(c_id, i_id))
                 self.card_layout.addWidget(widget)
 
         # ノーマル表示（展開時）でも文明オーブを更新
@@ -447,10 +448,11 @@ class ZoneWidget(QWidget):
 
         # Connect signals from popup's inner widget to our signals
         # So if user clicks a card in popup, it behaves as if they clicked it in the zone
-        popup.zone_widget.card_clicked.connect(self.card_clicked.emit)
-        popup.zone_widget.card_double_clicked.connect(self.card_double_clicked.emit)
-        popup.zone_widget.command_triggered.connect(self.command_triggered.emit)
-        popup.zone_widget.card_hovered.connect(self.card_hovered.emit)
+        from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
+        safe_connect(popup.zone_widget, 'card_clicked', self.card_clicked.emit)
+        safe_connect(popup.zone_widget, 'card_double_clicked', self.card_double_clicked.emit)
+        safe_connect(popup.zone_widget, 'command_triggered', self.command_triggered.emit)
+        safe_connect(popup.zone_widget, 'card_hovered', self.card_hovered.emit)
 
         popup.exec()
 

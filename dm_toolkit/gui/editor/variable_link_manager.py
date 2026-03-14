@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.i18n import tr
-from dm_toolkit.gui.editor.constants import RESERVED_VARIABLES
+from dm_toolkit.gui.editor.consts import RESERVED_VARIABLES
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 from dm_toolkit.gui.editor.forms.base_form import get_attr
 

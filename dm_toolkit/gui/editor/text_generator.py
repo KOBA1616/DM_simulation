@@ -395,13 +395,26 @@ class CardTextGenerator:
         if not reaction:
             return ""
         rtype = reaction.get("type", "NONE")
-        if rtype == "NINJA_STRIKE":
-             cost = reaction.get("cost", 0)
-             return f"ニンジャ・ストライク {cost}"
-        elif rtype == "STRIKE_BACK":
-             return "ストライク・バック"
-        elif rtype == "REVOLUTION_0_TRIGGER":
-             return "革命0トリガー"
+        # Reduce branching by using a mapping for known reaction types.
+        REACTION_TEXT_MAP = {
+            "NINJA_STRIKE": lambda r: f"ニンジャ・ストライク {r.get('cost', 0)}",
+            "STRIKE_BACK": lambda r: "ストライク・バック",
+            "COUNTER_ATTACK": lambda r: f"カウンター・アタック {r.get('cost', 0)}",
+            "REVOLUTION_0_TRIGGER": lambda r: "革命0トリガー",
+            # Additional mappings to reduce branching (added 2026-03-14)
+            "SHIELD_TRIGGER": lambda r: "シールド・トリガー",
+            "RETURN_ATTACK": lambda r: f"リターン・アタック {r.get('cost', 0)}",
+            "ON_DEFEND": lambda r: "守りのトリガー",
+        }
+
+        formatter = REACTION_TEXT_MAP.get(rtype)
+        if formatter is not None:
+            try:
+                return formatter(reaction)
+            except Exception:
+                # Fallback to generic translation if formatting fails
+                return tr(rtype)
+
         return tr(rtype)
 
     @classmethod
@@ -455,26 +468,23 @@ class CardTextGenerator:
         # Final structure: 「条件」「自分の」「カード」「に〜を与える」
         full_target = scope_prefix + target_str if scope_prefix else target_str
         
-        # Format based on modifier type
-        if mtype == "COST_MODIFIER":
-            return cls._format_cost_modifier(cond_text, full_target, value)
-        
-        elif mtype == "POWER_MODIFIER":
-            return cls._format_power_modifier(cond_text, full_target, value)
-        
-        elif mtype == "GRANT_KEYWORD":
-            return cls._format_grant_keyword(cond_text, full_target, modifier)
-        
-        elif mtype == "SET_KEYWORD":
-            return cls._format_set_keyword(cond_text, full_target, keyword)
-        
-        elif mtype == "ADD_RESTRICTION":
-            # keyword holds the restriction type (e.g. TARGET_RESTRICTION)
-            restriction_text = CardTextResources.get_keyword_text(keyword)
-            return f"{cond_text}{scope_prefix}{restriction_text}を与える。"
+        # Map modifier types to formatter callables to reduce branching
+        MODIFIER_FORMATTER_MAP = {
+            "COST_MODIFIER": lambda: cls._format_cost_modifier(cond_text, full_target, value),
+            "POWER_MODIFIER": lambda: cls._format_power_modifier(cond_text, full_target, value),
+            "GRANT_KEYWORD": lambda: cls._format_grant_keyword(cond_text, full_target, modifier),
+            "SET_KEYWORD": lambda: cls._format_set_keyword(cond_text, full_target, keyword),
+            "ADD_RESTRICTION": lambda: f"{cond_text}{scope_prefix}{CardTextResources.get_keyword_text(keyword)}を与える。",
+        }
 
-        else:
-            return f"{cond_text}{scope_prefix}常在効果: {tr(mtype)}"
+        formatter = MODIFIER_FORMATTER_MAP.get(mtype)
+        if formatter is not None:
+            try:
+                return formatter()
+            except Exception:
+                return f"{cond_text}{scope_prefix}常在効果: {tr(mtype)}"
+
+        return f"{cond_text}{scope_prefix}常在効果: {tr(mtype)}"
     
     @classmethod
     def _get_scope_prefix(cls, scope: str) -> str:
@@ -1204,87 +1214,100 @@ class CardTextGenerator:
         action_proxy["source_zone"] = command_copy.get("from_zone") or command_copy.get("source_zone", "")
 
         # Specific Adjustments
-        if original_cmd_type == "MANA_CHARGE":
-            if action_proxy["scope"] == "NONE":
-                 action_proxy["type"] = "ADD_MANA" # Top of deck charge
-            else:
-                 action_proxy["type"] = "SEND_TO_MANA"
+        # Specific Adjustments: handle legacy original_cmd_type values via a mapping
+        def _handle_original_cmd(cmd_type: str) -> Any:
+            # Handlers may return a string to short-circuit, or None to continue
+            if cmd_type == "MANA_CHARGE":
+                if action_proxy["scope"] == "NONE":
+                    action_proxy["type"] = "ADD_MANA"
+                else:
+                    action_proxy["type"] = "SEND_TO_MANA"
+                return None
 
-        if original_cmd_type == "MEASURE_COUNT":
-             action_proxy["type"] = "COUNT_CARDS"
+            if cmd_type == "MEASURE_COUNT":
+                action_proxy["type"] = "COUNT_CARDS"
+                return None
 
-        if original_cmd_type == "SHIELD_TRIGGER":
-             return "S・トリガー"
+            if cmd_type == "SHIELD_TRIGGER":
+                return "S・トリガー"
 
-        if original_cmd_type == "QUERY":
-            # Set query_mode for _format_action to handle
-            query_mode = command_copy.get("str_param") or command_copy.get("query_mode") or ""
-            action_proxy["query_mode"] = query_mode
-            # Ensure str_param and str_val are set for stat queries
-            if query_mode and query_mode != "CARDS_MATCHING_FILTER":
-                action_proxy["str_param"] = query_mode
-                action_proxy["str_val"] = query_mode
+            if cmd_type == "QUERY":
+                query_mode = command_copy.get("str_param") or command_copy.get("query_mode") or ""
+                action_proxy["query_mode"] = query_mode
+                if query_mode and query_mode != "CARDS_MATCHING_FILTER":
+                    action_proxy["str_param"] = query_mode
+                    action_proxy["str_val"] = query_mode
+                return None
 
-        # Normalize complex command representations into the Action-like proxy expected by _format_action
-        if original_cmd_type == "LOOK_AND_ADD":
-            if "look_count" in command_copy and command_copy.get("look_count") is not None:
-                action_proxy["value1"] = command_copy.get("look_count")
-            if "add_count" in command_copy and command_copy.get("add_count") is not None:
-                action_proxy["value2"] = command_copy.get("add_count")
-            rz = command_copy.get("rest_zone") or command_copy.get("destination_zone") or command_copy.get("to_zone")
-            if rz:
-                action_proxy["rest_zone"] = rz
-                action_proxy["destination_zone"] = rz
-        elif original_cmd_type == "MEKRAID":
-            # Prefer max_cost from command or target_filter; support input-linked dict
-            max_cost_src = command_copy.get("max_cost")
-            if max_cost_src is None and "target_filter" in command_copy:
-                max_cost_src = command_copy.get("target_filter", {}).get("max_cost")
-            # Only assign numeric value1; input-linked dict will be handled in _format_action
-            if max_cost_src is not None and not isinstance(max_cost_src, dict):
-                action_proxy["value1"] = max_cost_src
-            if "look_count" in command_copy and command_copy.get("look_count") is not None:
-                action_proxy["look_count"] = command_copy.get("look_count")
-            if "rest_zone" in command_copy and command_copy.get("rest_zone") is not None:
-                action_proxy["rest_zone"] = command_copy.get("rest_zone")
-        elif original_cmd_type == "SUMMON_TOKEN":
-            # ACTION_MAP expects str_val for token name.
-            # UI uses str_param, which is already mapped to str_val above.
-            # But if token_id is present (legacy), use it.
-            if "token_id" in command_copy and command_copy.get("token_id") is not None:
-                action_proxy["str_val"] = command_copy.get("token_id")
-        elif original_cmd_type == "PLAY_FROM_ZONE":
-            if not action_proxy["source_zone"]:
-                 action_proxy["source_zone"] = command_copy.get("from_zone", "")
-            # Check for max_cost at command level or within target_filter
-            max_cost = command_copy.get("max_cost")
-            if max_cost is None and "target_filter" in command_copy:
-                max_cost = command_copy.get("target_filter", {}).get("max_cost")
-            if max_cost is not None and not isinstance(max_cost, dict):
-                action_proxy["value1"] = max_cost
-        elif original_cmd_type == "SELECT_NUMBER" or original_cmd_type == "DECLARE_NUMBER":
-            # Map Schema (min_value, amount) -> Action (value1, value2)
-            # Schema: amount is MAX, min_value is MIN
-            action_proxy["value1"] = command_copy.get("min_value", 1)  # Min
-            action_proxy["value2"] = command_copy.get("amount", 6)     # Max
-        elif original_cmd_type == "CHOICE":
-            # Map CHOICE into SELECT_OPTION natural language generation
-            # 再発防止: CHOICE には target_filter(*条件フィルタ*)が付く場合があるため action_proxy に引き継ぐ。
-            flags = command_copy.get("flags", []) or []
-            if isinstance(flags, list) and "ALLOW_DUPLICATES" in flags:
-                action_proxy["optional"] = True
-            action_proxy["value1"] = command_copy.get("amount", 1)
-            if command_copy.get("target_filter"):
-                action_proxy["target_filter"] = command_copy["target_filter"]
-        elif original_cmd_type == "SHUFFLE_DECK":
-            # No params needed usually
-            pass
-        elif original_cmd_type == "REGISTER_DELAYED_EFFECT":
-            # Requires str_param for ID, amount for Duration
-            action_proxy["str_val"] = command_copy.get("str_param") or command_copy.get("str_val", "")
-        elif original_cmd_type == "COST_REFERENCE":
-             # Used to just output value, handled in _format_action
-             action_proxy["ref_mode"] = command_copy.get("ref_mode")
+            if cmd_type == "LOOK_AND_ADD":
+                if "look_count" in command_copy and command_copy.get("look_count") is not None:
+                    action_proxy["value1"] = command_copy.get("look_count")
+                if "add_count" in command_copy and command_copy.get("add_count") is not None:
+                    action_proxy["value2"] = command_copy.get("add_count")
+                rz = command_copy.get("rest_zone") or command_copy.get("destination_zone") or command_copy.get("to_zone")
+                if rz:
+                    action_proxy["rest_zone"] = rz
+                    action_proxy["destination_zone"] = rz
+                return None
+
+            if cmd_type == "MEKRAID":
+                max_cost_src = command_copy.get("max_cost")
+                if max_cost_src is None and "target_filter" in command_copy:
+                    max_cost_src = command_copy.get("target_filter", {}).get("max_cost")
+                if max_cost_src is not None and not isinstance(max_cost_src, dict):
+                    action_proxy["value1"] = max_cost_src
+                if "look_count" in command_copy and command_copy.get("look_count") is not None:
+                    action_proxy["look_count"] = command_copy.get("look_count")
+                if "rest_zone" in command_copy and command_copy.get("rest_zone") is not None:
+                    action_proxy["rest_zone"] = command_copy.get("rest_zone")
+                return None
+
+            if cmd_type == "SUMMON_TOKEN":
+                if "token_id" in command_copy and command_copy.get("token_id") is not None:
+                    action_proxy["str_val"] = command_copy.get("token_id")
+                return None
+
+            if cmd_type == "PLAY_FROM_ZONE":
+                if not action_proxy["source_zone"]:
+                    action_proxy["source_zone"] = command_copy.get("from_zone", "")
+                max_cost = command_copy.get("max_cost")
+                if max_cost is None and "target_filter" in command_copy:
+                    max_cost = command_copy.get("target_filter", {}).get("max_cost")
+                if max_cost is not None and not isinstance(max_cost, dict):
+                    action_proxy["value1"] = max_cost
+                return None
+
+            if cmd_type == "SELECT_NUMBER" or cmd_type == "DECLARE_NUMBER":
+                action_proxy["value1"] = command_copy.get("min_value", 1)
+                action_proxy["value2"] = command_copy.get("amount", 6)
+                return None
+
+            if cmd_type == "CHOICE":
+                flags = command_copy.get("flags", []) or []
+                if isinstance(flags, list) and "ALLOW_DUPLICATES" in flags:
+                    action_proxy["optional"] = True
+                action_proxy["value1"] = command_copy.get("amount", 1)
+                if command_copy.get("target_filter"):
+                    action_proxy["target_filter"] = command_copy["target_filter"]
+                return None
+
+            if cmd_type == "SHUFFLE_DECK":
+                return None
+
+            if cmd_type == "REGISTER_DELAYED_EFFECT":
+                action_proxy["str_val"] = command_copy.get("str_param") or command_copy.get("str_val", "")
+                return None
+
+            if cmd_type == "COST_REFERENCE":
+                action_proxy["ref_mode"] = command_copy.get("ref_mode")
+                return None
+
+            return None
+
+        # Invoke handler for legacy original command types
+        short_circuit = _handle_original_cmd(original_cmd_type)
+        if isinstance(short_circuit, str):
+            return short_circuit
 
         return cls._format_action(action_proxy, is_spell, sample=sample, card_mega_last_burst=card_mega_last_burst)
 
@@ -1293,71 +1316,97 @@ class CardTextGenerator:
         """Handle conditional logic commands (IF, IF_ELSE, ELSE)."""
         cond_detail = action.get("condition", {}) or action.get("target_filter", {})
         cond_text = ""
-        
+
+        # Use a mapping of cond_type -> handler to reduce branching and centralize formatting.
+        def _handle_opponent_draw_count(d):
+            val = d.get("value", 0)
+            return f"相手がカードを{val}枚目以上引いたなら"
+
+        def _handle_compare_stat(d):
+            key = d.get("stat_key", "")
+            op = d.get("op", "=")
+            val = d.get("value", 0)
+            stat_name, unit = CardTextResources.STAT_KEY_MAP.get(key, (key, ""))
+            if op == ">=":
+                op_text = f"{val}{unit}以上"
+            elif op == "<=":
+                op_text = f"{val}{unit}以下"
+            elif op == "=" or op == "==":
+                op_text = f"{val}{unit}"
+            elif op == ">":
+                op_text = f"{val}{unit}より多い"
+            elif op == "<":
+                op_text = f"{val}{unit}より少ない"
+            else:
+                op_text = f"{val}{unit}"
+            return f"自分の{stat_name}が{op_text}なら"
+
+        def _handle_shield_count(d):
+            val = d.get("value", 0)
+            op = d.get("op", ">=")
+            op_text = "以上" if op == ">=" else "以下" if op == "<=" else ""
+            if op == "=":
+                op_text = ""
+            return f"自分のシールドが{val}つ{op_text}なら"
+
+        def _handle_compare_input(d, action_local):
+            val = d.get("value", 0)
+            op = d.get("op", ">=")
+            input_key = action_local.get("input_value_key", "")
+            input_desc_map = {
+                "spell_count": "墓地の呪文の数",
+                "card_count": "カードの数",
+                "creature_count": "クリーチャーの数",
+                "element_count": "エレメントの数"
+            }
+            input_desc = input_desc_map.get(input_key, input_key if input_key else "入力値")
+            if op == ">=":
+                try:
+                    op_text = f"{int(val) + 1}以上"
+                except Exception:
+                    op_text = f"{val}以上"
+            elif op == "<=":
+                op_text = f"{val}以下"
+            elif op == "=" or op == "==":
+                op_text = f"{val}"
+            elif op == ">":
+                op_text = f"{val}より多い"
+            elif op == "<":
+                op_text = f"{val}より少ない"
+            else:
+                op_text = f"{val}"
+            return f"{input_desc}が{op_text}なら"
+
+        def _handle_civ_match(d):
+            return "マナゾーンに同じ文明があれば"
+
+        def _handle_played_without_mana(d):
+            return "指定した対象をコストを支払わずに出していれば"
+
+        def _handle_mana_civ_count(d):
+            val = d.get("value", 0)
+            op = d.get("op", ">=")
+            op_text = "以上" if op == ">=" else "以下" if op == "<=" else "と同じ" if op == "=" else ""
+            return f"自分のマナゾーンにある文明の数が{val}{op_text}なら"
+
+        COND_HANDLERS = {
+            "OPPONENT_DRAW_COUNT": lambda d: _handle_opponent_draw_count(d),
+            "COMPARE_STAT": lambda d: _handle_compare_stat(d),
+            "SHIELD_COUNT": lambda d: _handle_shield_count(d),
+            "COMPARE_INPUT": lambda d: _handle_compare_input(d, action),
+            "CIVILIZATION_MATCH": lambda d: _handle_civ_match(d),
+            "PLAYED_WITHOUT_MANA_TARGET": lambda d: _handle_played_without_mana(d),
+            "MANA_CIVILIZATION_COUNT": lambda d: _handle_mana_civ_count(d),
+        }
+
         if isinstance(cond_detail, dict):
             cond_type = cond_detail.get("type", "NONE")
-            if cond_type == "OPPONENT_DRAW_COUNT":
-                val = cond_detail.get("value", 0)
-                cond_text = f"相手がカードを{val}枚目以上引いたなら"
-            elif cond_type == "COMPARE_STAT":
-                key = cond_detail.get("stat_key", "")
-                op = cond_detail.get("op", "=")
-                val = cond_detail.get("value", 0)
-                stat_name, unit = CardTextResources.STAT_KEY_MAP.get(key, (key, ""))
-                op_text = ""
-                if op == ">=":
-                    op_text = f"{val}{unit}以上"
-                elif op == "<=":
-                    op_text = f"{val}{unit}以下"
-                elif op == "=" or op == "==":
-                    op_text = f"{val}{unit}"
-                elif op == ">":
-                    op_text = f"{val}{unit}より多い"
-                elif op == "<":
-                    op_text = f"{val}{unit}より少ない"
-                cond_text = f"自分の{stat_name}が{op_text}なら"
-            elif cond_type == "SHIELD_COUNT":
-                val = cond_detail.get("value", 0)
-                op = cond_detail.get("op", ">=")
-                op_text = "以上" if op == ">=" else "以下" if op == "<=" else ""
-                if op == "=": op_text = ""
-                cond_text = f"自分のシールドが{val}つ{op_text}なら"
-            elif cond_type == "COMPARE_INPUT":
-                val = cond_detail.get("value", 0)
-                op = cond_detail.get("op", ">=")
-                input_key = action.get("input_value_key", "")
-                # 入力キー名をより読みやすい形式に変換
-                input_desc_map = {
-                    "spell_count": "墓地の呪文の数",
-                    "card_count": "カードの数",
-                    "creature_count": "クリーチャーの数",
-                    "element_count": "エレメントの数"
-                }
-                input_desc = input_desc_map.get(input_key, input_key if input_key else "入力値")
-                op_text = ""
-                if op == ">=":
-                    try:
-                        op_text = f"{int(val) + 1}以上"
-                    except Exception:
-                        op_text = f"{val}以上"
-                elif op == "<=":
-                    op_text = f"{val}以下"
-                elif op == "=" or op == "==":
-                    op_text = f"{val}"
-                elif op == ">":
-                    op_text = f"{val}より多い"
-                elif op == "<":
-                    op_text = f"{val}より少ない"
-                cond_text = f"{input_desc}が{op_text}なら"
-            elif cond_type == "CIVILIZATION_MATCH":
-                cond_text = "マナゾーンに同じ文明があれば"
-            elif cond_type == "PLAYED_WITHOUT_MANA_TARGET":
-                cond_text = "指定した対象をコストを支払わずに出していれば"
-            elif cond_type == "MANA_CIVILIZATION_COUNT":
-                val = cond_detail.get("value", 0)
-                op = cond_detail.get("op", ">=")
-                op_text = "以上" if op == ">=" else "以下" if op == "<=" else "と同じ" if op == "=" else ""
-                cond_text = f"自分のマナゾーンにある文明の数が{val}{op_text}なら"
+            handler = COND_HANDLERS.get(cond_type)
+            if handler:
+                try:
+                    cond_text = handler(cond_detail)
+                except Exception:
+                    cond_text = ""
 
         if not cond_text and atype != "ELSE":
             cond_text = "もし条件を満たすなら"

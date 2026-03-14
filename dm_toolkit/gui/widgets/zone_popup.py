@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QDialog, QVBoxLayout, QPushButton, QScrollArea, QWid
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.widgets.zone_widget import ZoneWidget
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class ZonePopup(QDialog):
     def __init__(self, title, card_data_list, card_db, civ_map=None, legal_commands=None, parent=None):
@@ -30,7 +31,7 @@ class ZonePopup(QDialog):
         layout.addWidget(scroll_area)
 
         close_btn = QPushButton(tr("Close"))
-        close_btn.clicked.connect(self.accept)
+        safe_connect(close_btn, 'clicked', self.accept)
         layout.addWidget(close_btn)
 
     def showEvent(self, event):

@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal, Qt
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class ControlPanel(QWidget):
     """
@@ -60,31 +61,31 @@ class ControlPanel(QWidget):
 
         self.start_btn = QPushButton(tr("Start Sim"))
         self.start_btn.setShortcut("F5")
-        self.start_btn.clicked.connect(self.start_simulation_clicked.emit)
+        safe_connect(self.start_btn, 'clicked', self.start_simulation_clicked.emit)
         game_ctrl_layout.addWidget(self.start_btn)
 
         self.step_btn = QPushButton(tr("Step"))
         self.step_btn.setShortcut("Space")
-        self.step_btn.clicked.connect(self.step_clicked.emit)
+        safe_connect(self.step_btn, 'clicked', self.step_clicked.emit)
         game_ctrl_layout.addWidget(self.step_btn)
 
         self.pass_btn = QPushButton(tr("Pass / End Turn"))
         self.pass_btn.setShortcut("Ctrl+E")
-        self.pass_btn.clicked.connect(self.pass_clicked.emit)
+        safe_connect(self.pass_btn, 'clicked', self.pass_clicked.emit)
         self.pass_btn.setVisible(False)
         self.pass_btn.setStyleSheet("background-color: #FF9800; color: white; font-weight: bold;")
         game_ctrl_layout.addWidget(self.pass_btn)
 
         self.confirm_btn = QPushButton(tr("Confirm Selection"))
         self.confirm_btn.setShortcut("Return")
-        self.confirm_btn.clicked.connect(self.confirm_clicked.emit)
+        safe_connect(self.confirm_btn, 'clicked', self.confirm_clicked.emit)
         self.confirm_btn.setVisible(False)
         self.confirm_btn.setStyleSheet("background-color: #4CAF50; color: white; font-weight: bold;")
         game_ctrl_layout.addWidget(self.confirm_btn)
 
         self.reset_btn = QPushButton(tr("Reset"))
         self.reset_btn.setShortcut("Ctrl+R")
-        self.reset_btn.clicked.connect(self.reset_clicked.emit)
+        safe_connect(self.reset_btn, 'clicked', self.reset_clicked.emit)
         game_ctrl_layout.addWidget(self.reset_btn)
 
         self.game_ctrl_group.setLayout(game_ctrl_layout)
@@ -96,14 +97,14 @@ class ControlPanel(QWidget):
 
         self.setup_config_btn = QPushButton(tr("Setup Config"))
         self.setup_config_btn.setToolTip(tr("Configure decks and setup options"))
-        self.setup_config_btn.clicked.connect(self.setup_config_clicked.emit)
+        safe_connect(self.setup_config_btn, 'clicked', self.setup_config_clicked.emit)
         setup_layout.addWidget(self.setup_config_btn)
 
         self.setup_btn = QPushButton(tr("Setup"))
         self.setup_btn.setToolTip(tr("Shuffle decks and place cards (deck / shields / hand)"))
         self.setup_btn.setStyleSheet("background-color: #2196F3; color: white; font-weight: bold;")
         self.setup_btn.setShortcut("Ctrl+Shift+S")
-        self.setup_btn.clicked.connect(self.setup_clicked.emit)
+        safe_connect(self.setup_btn, 'clicked', self.setup_clicked.emit)
         setup_layout.addWidget(self.setup_btn)
 
         self.setup_group.setLayout(setup_layout)
@@ -119,7 +120,7 @@ class ControlPanel(QWidget):
         self.p0_group = QButtonGroup()
         self.p0_group.addButton(self.p0_human_radio)
         self.p0_group.addButton(self.p0_ai_radio)
-        self.p0_human_radio.toggled.connect(self._update_p0_controls_visibility)
+        safe_connect(self.p0_human_radio, 'toggled', self._update_p0_controls_visibility)
 
         mode_layout.addWidget(self.p0_human_radio)
         mode_layout.addWidget(self.p0_ai_radio)
@@ -140,15 +141,15 @@ class ControlPanel(QWidget):
         tools_group = QGroupBox(tr("Tools"))
         tools_layout = QVBoxLayout()
         self.deck_builder_btn = QPushButton(tr("Deck Builder"))
-        self.deck_builder_btn.clicked.connect(self.deck_builder_clicked.emit)
+        safe_connect(self.deck_builder_btn, 'clicked', self.deck_builder_clicked.emit)
         tools_layout.addWidget(self.deck_builder_btn)
 
         self.card_editor_btn = QPushButton(tr("Card Editor"))
-        self.card_editor_btn.clicked.connect(self.card_editor_clicked.emit)
+        safe_connect(self.card_editor_btn, 'clicked', self.card_editor_clicked.emit)
         tools_layout.addWidget(self.card_editor_btn)
 
         self.sim_dialog_btn = QPushButton(tr("Batch Simulation"))
-        self.sim_dialog_btn.clicked.connect(self.batch_sim_clicked.emit)
+        safe_connect(self.sim_dialog_btn, 'clicked', self.batch_sim_clicked.emit)
         tools_layout.addWidget(self.sim_dialog_btn)
         tools_group.setLayout(tools_layout)
         self.layout_main.addWidget(tools_group)
@@ -157,11 +158,11 @@ class ControlPanel(QWidget):
         deck_group = QGroupBox(tr("Deck Management"))
         deck_layout = QVBoxLayout()
         self.load_deck_p0_btn = QPushButton(tr("Load Deck P0"))
-        self.load_deck_p0_btn.clicked.connect(self.load_deck_p0_clicked.emit)
+        safe_connect(self.load_deck_p0_btn, 'clicked', self.load_deck_p0_clicked.emit)
         deck_layout.addWidget(self.load_deck_p0_btn)
 
         self.load_deck_p1_btn = QPushButton(tr("Load Deck P1"))
-        self.load_deck_p1_btn.clicked.connect(self.load_deck_p1_clicked.emit)
+        safe_connect(self.load_deck_p1_btn, 'clicked', self.load_deck_p1_clicked.emit)
         deck_layout.addWidget(self.load_deck_p1_btn)
         deck_group.setLayout(deck_layout)
         self.layout_main.addWidget(deck_group)
@@ -169,11 +170,11 @@ class ControlPanel(QWidget):
         # --- Options
         self.god_view_check = QCheckBox(tr("God View"))
         self.god_view_check.setChecked(False)
-        self.god_view_check.stateChanged.connect(lambda state: self.god_view_toggled.emit(state == Qt.CheckState.Checked.value))
+        safe_connect(self.god_view_check, 'stateChanged', lambda state: self.god_view_toggled.emit(state == Qt.CheckState.Checked.value))
         self.layout_main.addWidget(self.god_view_check)
 
         self.help_btn = QPushButton(tr("Help / Manual"))
-        self.help_btn.clicked.connect(self.help_clicked.emit)
+        safe_connect(self.help_btn, 'clicked', self.help_clicked.emit)
         self.layout_main.addWidget(self.help_btn)
 
         # --- P0 Human Controls（人間プレイヤー操作パネル）
@@ -200,8 +201,8 @@ class ControlPanel(QWidget):
             "QListWidget::item:selected { background-color: #3498db; color: white; }"
             "QListWidget::item:hover { background-color: #dce9f5; color: #333; }"
         )
-        self.action_list.itemDoubleClicked.connect(self._on_action_double_clicked)
-        self.action_list.itemClicked.connect(self._on_action_clicked)
+        safe_connect(self.action_list, 'itemDoubleClicked', self._on_action_double_clicked)
+        safe_connect(self.action_list, 'itemClicked', self._on_action_clicked)
         p0_ctrl_layout.addWidget(self.action_list, stretch=1)
 
         # 実行ボタン
@@ -211,14 +212,14 @@ class ControlPanel(QWidget):
             "background-color: #27ae60; color: white; font-weight: bold; "
             "padding: 6px; border-radius: 3px;"
         )
-        self.action_execute_btn.clicked.connect(self._on_action_execute)
+        safe_connect(self.action_execute_btn, 'clicked', self._on_action_execute)
         p0_ctrl_layout.addWidget(self.action_execute_btn)
 
         # パス/ターン終了 + 確定（横並び）
         op_row = QHBoxLayout()
         self.p0_ctrl_pass = QPushButton(tr("Pass / End"))
         self.p0_ctrl_pass.setShortcut("Ctrl+E")
-        self.p0_ctrl_pass.clicked.connect(self.pass_clicked.emit)
+        safe_connect(self.p0_ctrl_pass, 'clicked', self.pass_clicked.emit)
         self.p0_ctrl_pass.setEnabled(False)
         self.p0_ctrl_pass.setStyleSheet(
             "background-color: #FF9800; color: white; font-weight: bold; border-radius: 3px;"
@@ -227,7 +228,7 @@ class ControlPanel(QWidget):
 
         self.p0_ctrl_confirm = QPushButton(tr("Confirm"))
         self.p0_ctrl_confirm.setShortcut("Return")
-        self.p0_ctrl_confirm.clicked.connect(self.confirm_clicked.emit)
+        safe_connect(self.p0_ctrl_confirm, 'clicked', self.confirm_clicked.emit)
         self.p0_ctrl_confirm.setStyleSheet(
             "background-color: #4CAF50; color: white; font-weight: bold; border-radius: 3px;"
         )
@@ -238,7 +239,7 @@ class ControlPanel(QWidget):
         # リセット
         self.p0_ctrl_reset = QPushButton(tr("Reset"))
         self.p0_ctrl_reset.setShortcut("Ctrl+R")
-        self.p0_ctrl_reset.clicked.connect(self.reset_clicked.emit)
+        safe_connect(self.p0_ctrl_reset, 'clicked', self.reset_clicked.emit)
         p0_ctrl_layout.addWidget(self.p0_ctrl_reset)
 
         self.p0_control_group.setLayout(p0_ctrl_layout)

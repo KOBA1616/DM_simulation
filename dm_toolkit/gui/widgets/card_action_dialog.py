@@ -11,6 +11,7 @@ from PyQt6.QtCore import Qt
 import dm_ai_module
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.card_helpers import get_card_name
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 
 class CardActionDialog(QDialog):
@@ -81,11 +82,11 @@ class CardActionDialog(QDialog):
         btn_layout = QHBoxLayout()
         
         ok_btn = QPushButton(tr("OK"))
-        ok_btn.clicked.connect(self.accept)
+        safe_connect(ok_btn, 'clicked', self.accept)
         btn_layout.addWidget(ok_btn)
         
         cancel_btn = QPushButton(tr("Cancel"))
-        cancel_btn.clicked.connect(self.reject)
+        safe_connect(cancel_btn, 'clicked', self.reject)
         btn_layout.addWidget(cancel_btn)
         
         layout.addLayout(btn_layout)

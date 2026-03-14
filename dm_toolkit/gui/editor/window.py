@@ -197,8 +197,8 @@ class CardEditor(QMainWindow):
             index = indexes[0]
             self.inspector.set_selection(index)
 
-            # Update Preview
-            self.update_current_preview()
+            # Request preview update (immediate for selection changes)
+            self.request_preview_update(immediate=True)
 
             # Auto-expand if it's a card and not already expanded
             item = self.tree_widget.standard_model.itemFromIndex(index)
@@ -226,7 +226,8 @@ class CardEditor(QMainWindow):
             pass
 
     def update_preview_manual(self):
-        self.on_data_changed()
+        # Manual update should force immediate preview refresh
+        self.request_preview_update(immediate=True)
 
     def update_current_preview(self):
         idx = self.tree_widget.currentIndex()
@@ -377,7 +378,8 @@ class CardEditor(QMainWindow):
                         except Exception:
                             pass
                         try:
-                            self.update_current_preview()
+                            # Use centralized preview request (immediate)
+                            self.request_preview_update(immediate=True)
                         except Exception:
                             pass
                     return True
@@ -445,7 +447,8 @@ class CardEditor(QMainWindow):
             cur = self.tree_widget.currentIndex()
             if cur.isValid():
                 self.inspector.set_selection(cur)
-            self.update_current_preview()
+            # Centralized preview update request (immediate after structural mutation)
+            self.request_preview_update(immediate=True)
 
     def _find_card_item_from_item(self, item):
         """Resolve and return the parent card item for a given tree item.
@@ -471,6 +474,36 @@ class CardEditor(QMainWindow):
                 return grand if grand is not None else None
 
         return None
+
+    def request_preview_update(self, immediate: bool = False):
+        """Centralized API for requesting preview updates.
+
+        - If `immediate` is True, cancel debounce and update immediately.
+        - Otherwise, start the existing debounce timer used by `on_data_changed`.
+        """
+        try:
+            if immediate:
+                # Stop any pending debounced update and update now
+                try:
+                    self._preview_debounce_timer.stop()
+                except Exception:
+                    pass
+                try:
+                    self.update_current_preview()
+                except Exception:
+                    pass
+            else:
+                try:
+                    self._preview_debounce_timer.start()
+                except Exception:
+                    # Fallback: immediate update if timer unavailable
+                    try:
+                        self.update_current_preview()
+                    except Exception:
+                        pass
+        except Exception:
+            # Ensure no exception bubbles from preview request
+            pass
 
     def _handle_add_child_effect(self, item, payload):
         """Handle adding specific child effect types; extracted for testability."""
@@ -515,7 +548,8 @@ class CardEditor(QMainWindow):
             cur = self.tree_widget.currentIndex()
             if cur.isValid():
                 self.inspector.set_selection(cur)
-            self.update_current_preview()
+            # Use centralized preview request API to respect debounce behavior
+            self.request_preview_update(immediate=True)
         except Exception:
             pass
 

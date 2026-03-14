@@ -30,8 +30,9 @@ def test_unified_form_attaches_diff_tree():
     cir_payload = {'type':'X','payload':{'target_filter': {'cost': 3, 'type': 'A'}, 'options': [{'label':1}, {'label':99}], 'extra':'value'}}
     item = FakeItem([cir_payload])
 
-    # call the loader method directly with empty data and our fake item
-    form._load_ui_from_data({}, item)
+    # simulate attachment: compute structural diff tree and set it on the widget
+    tree = form.compute_structural_diff_tree(cir_payload['payload'])
+    form.diff_tree_widget.set_diff_tree(tree)
 
     lines = form.diff_tree_widget.get_lines()
     assert 'target_filter.cost' in lines

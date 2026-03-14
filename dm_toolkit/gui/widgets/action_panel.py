@@ -13,6 +13,7 @@ from PyQt6.QtCore import pyqtSignal, Qt
 
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.command_describer import describe_command
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 
 class ActionPanel(QWidget):
@@ -62,8 +63,8 @@ class ActionPanel(QWidget):
             "QListWidget::item:selected { background-color: #3498db; color: white; }"
             "QListWidget::item:hover { background-color: #ecf0f1; color: #333; }"
         )
-        self.cmd_list.itemDoubleClicked.connect(self._on_item_double_clicked)
-        self.cmd_list.itemClicked.connect(self._on_item_clicked)
+        safe_connect(self.cmd_list, 'itemDoubleClicked', self._on_item_double_clicked)
+        safe_connect(self.cmd_list, 'itemClicked', self._on_item_clicked)
         layout.addWidget(self.cmd_list, stretch=1)
 
         # 実行ボタン
@@ -73,7 +74,7 @@ class ActionPanel(QWidget):
             "background-color: #27ae60; color: white; font-weight: bold; "
             "padding: 5px; border-radius: 3px;"
         )
-        self.execute_btn.clicked.connect(self._on_execute_clicked)
+        safe_connect(self.execute_btn, 'clicked', self._on_execute_clicked)
         layout.addWidget(self.execute_btn)
 
     # ---- 公開API ----

@@ -68,14 +68,17 @@ class ReactionEditForm(BaseEditForm):
         self.cost_spin.setVisible(True)
 
         # Propagate visibility update to condition widget
+        # Use centralized visibility rules from ReactionConditionWidget where possible
         self.reaction_condition.update_visibility(rtype)
 
-        if rtype == "STRIKE_BACK":
+        # Cost visibility rules: hide for specific types
+        COST_HIDDEN_FOR = {"STRIKE_BACK", "REVOLUTION_0_TRIGGER"}
+        if rtype in COST_HIDDEN_FOR:
             self.label_cost.setVisible(False)
             self.cost_spin.setVisible(False)
-        elif rtype == "REVOLUTION_0_TRIGGER":
-            self.label_cost.setVisible(False)
-            self.cost_spin.setVisible(False)
+        else:
+            self.label_cost.setVisible(True)
+            self.cost_spin.setVisible(True)
 
     def _load_ui_from_data(self, data, item):
         # data is passed directly from BaseEditForm.load_data

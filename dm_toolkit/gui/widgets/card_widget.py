@@ -304,9 +304,9 @@ class CardWidget(QFrame):
             # and let the engine resolve/ask target, BUT the engine usually generates distinct actions.
             # For now, list them all but try to be descriptive.
 
-            act = QAction(label, self)
-            # Use a closure to capture the specific action
-            act.triggered.connect(lambda checked, a=action: self.command_triggered.emit(a))
+                act = QAction(label, self)
+                # Use a closure to capture the specific action
+                safe_connect(act, 'triggered', lambda checked, a=action: self.command_triggered.emit(a))
             menu.addAction(act)
 
         menu.exec(event.globalPos())

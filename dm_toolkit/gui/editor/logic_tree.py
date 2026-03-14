@@ -7,6 +7,7 @@ from dm_toolkit.gui.editor.data_manager import CardDataManager
 from dm_toolkit.gui.editor.context_menus import LogicTreeContextMenuHandler
 from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
 from dm_toolkit.gui.editor.qt_impl import QtEditorModel, QtEditorItem
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 import uuid
 
 class LogicTreeWidget(QTreeView):
@@ -30,11 +31,11 @@ class LogicTreeWidget(QTreeView):
 
         # Initialize Context Menu Handler
         self.context_menu_handler = LogicTreeContextMenuHandler(self)
-        self.customContextMenuRequested.connect(self.context_menu_handler.show_context_menu)
+        safe_connect(self, 'customContextMenuRequested', self.context_menu_handler.show_context_menu)
 
         sel = self.selectionModel()
         if sel is not None:
-            sel.selectionChanged.connect(self.on_selection_changed)
+            safe_connect(sel, 'selectionChanged', self.on_selection_changed)
 
     def on_selection_changed(self, selected, deselected):
         indexes = selected.indexes()
