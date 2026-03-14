@@ -7,18 +7,16 @@ backwards compatibility during migration.
 """
 from typing import Any, Dict
 
-try:
-    from dm_toolkit.gui.editor.action_converter import ActionConverter
-except Exception:
-    ActionConverter = None
-
 
 class CommandConverter:
     @staticmethod
     def convert(action: Any) -> Dict[str, Any]:
-        if ActionConverter is not None:
-            return ActionConverter.convert(action)
-        # Fallback: best-effort mapping
+        """Convert various action-like inputs to a normalized command dict.
+
+        This implementation is self-contained and no longer depends on the
+        legacy `action_converter` shim. It accepts dicts, objects exposing
+        `to_dict()`, or falls back to a minimal representation.
+        """
         if isinstance(action, dict):
             return action
         if hasattr(action, 'to_dict'):

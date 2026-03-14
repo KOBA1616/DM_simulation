@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QTreeView, QAbstractItemView, QInputDialog, QMessageBox
 from PyQt6.QtGui import QStandardItemModel, QStandardItem
-from PyQt6.QtCore import Qt, QModelIndex
+from PyQt6.QtCore import Qt, QModelIndex, pyqtSignal
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.data_manager import CardDataManager
 from dm_toolkit.gui.editor.context_menus import LogicTreeContextMenuHandler
@@ -10,6 +10,7 @@ from dm_toolkit.gui.editor.qt_impl import QtEditorModel, QtEditorItem
 import uuid
 
 class LogicTreeWidget(QTreeView):
+    tree_changed = pyqtSignal()
     def __init__(self, parent=None):
         super().__init__(parent)
         self.standard_model = QStandardItemModel()
@@ -103,6 +104,10 @@ class LogicTreeWidget(QTreeView):
         if sel is not None:
             current = self.currentIndex()
             sel.setCurrentIndex(current, sel.SelectionFlag.ClearAndSelect)
+            try:
+                self.tree_changed.emit()
+            except Exception:
+                pass
 
     def add_keywords(self, parent_index):
         if not parent_index.isValid(): return
@@ -150,6 +155,10 @@ class LogicTreeWidget(QTreeView):
         if new_item and isinstance(new_item, QtEditorItem):
             self.setExpanded(new_item.parent().get_raw_item().index(), True)
             self.setCurrentIndex(new_item.get_raw_item().index())
+            try:
+                self.tree_changed.emit()
+            except Exception:
+                pass
 
     def add_action_sibling(self, action_index, action_data=None):
         pass
@@ -243,6 +252,10 @@ class LogicTreeWidget(QTreeView):
 
         # Restore Expansion State
         self._restore_expansion_state(expanded_ids)
+        try:
+            self.tree_changed.emit()
+        except Exception:
+            pass
 
     def _save_expansion_state(self):
         """Saves the IDs of expanded items."""
@@ -290,6 +303,10 @@ class LogicTreeWidget(QTreeView):
         if item and isinstance(item, QtEditorItem):
             self.setCurrentIndex(item.get_raw_item().index())
             self.expand(item.get_raw_item().index())
+            try:
+                self.tree_changed.emit()
+            except Exception:
+                pass
         return item
 
     def add_child_item(self, parent_index, item_type, data, label):
@@ -297,6 +314,10 @@ class LogicTreeWidget(QTreeView):
         if new_item and isinstance(new_item, QtEditorItem):
             self.setExpanded(parent_index, True)
             self.setCurrentIndex(new_item.get_raw_item().index())
+            try:
+                self.tree_changed.emit()
+            except Exception:
+                pass
         return new_item
 
     def remove_current_item(self):
@@ -313,14 +334,26 @@ class LogicTreeWidget(QTreeView):
             # Select next item which is now at 'row'
             new_idx = self.standard_model.index(row, 0, parent)
             self.setCurrentIndex(new_idx)
+            try:
+                self.tree_changed.emit()
+            except Exception:
+                pass
         elif self.standard_model.rowCount(parent) > 0:
             # Select last item
             new_idx = self.standard_model.index(self.standard_model.rowCount(parent) - 1, 0, parent)
             self.setCurrentIndex(new_idx)
+            try:
+                self.tree_changed.emit()
+            except Exception:
+                pass
         else:
             # Select parent
             if parent.isValid():
                 self.setCurrentIndex(parent)
+                try:
+                    self.tree_changed.emit()
+                except Exception:
+                    pass
 
     def add_spell_side(self, card_index):
         if not card_index.isValid(): return

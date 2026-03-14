@@ -213,7 +213,7 @@ class CardDataManager:
         # Determine target container based on selection
         if type_ in ["EFFECT", "OPTION", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]:
             target_item = item
-        elif type_ in ["COMMAND", "LEGACY_ACTION"]:
+        elif type_ in ["COMMAND", "LEGACY_CMD"]:
              cmd_model = self.get_item_model_obj(item)
              cmd_type = None
              if hasattr(cmd_model, 'type'):
@@ -310,7 +310,7 @@ class CardDataManager:
 
             # 再発防止: 旧形式のアクションは後方互換で扱う。
             # 新規作成アイテムは必ず "COMMAND" を使用すること。
-            if role_type in ("LEGACY_ACTION", "COMMAND"):
+            if role_type in ("LEGACY_CMD", "COMMAND"):
                 try:
                     label = item.text()
                 except Exception:

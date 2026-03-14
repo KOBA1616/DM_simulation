@@ -6,8 +6,21 @@ from PyQt6.QtWidgets import (
     QMainWindow, QSplitter, QVBoxLayout, QWidget, QMessageBox, QToolBar, QFileDialog,
     QSizePolicy
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QAction, QKeySequence, QStandardItem
+
+# QSize location differs between PyQt builds; try core then gui, else provide
+# a lightweight fallback for headless/test stubs.
+try:
+    from PyQt6.QtCore import QSize
+except Exception:
+    try:
+        from PyQt6.QtGui import QSize
+    except Exception:
+        class QSize:
+            def __init__(self, w, h):
+                self.width = w
+                self.height = h
 from dm_toolkit.gui.editor.logic_tree import LogicTreeWidget
 from dm_toolkit.gui.editor.property_inspector import PropertyInspector
 from dm_toolkit.gui.editor.preview_pane import CardPreviewWidget
@@ -127,6 +140,12 @@ class CardEditor(QMainWindow):
         if sel is not None:
             sel.selectionChanged.connect(self.on_selection_changed)
 
+        # Listen for structural changes from the tree widget
+        try:
+            self.tree_widget.tree_changed.connect(self.on_tree_changed)
+        except Exception:
+            pass
+
         # Connect Data Changes from Inspector to Preview
         self.inspector.card_form.dataChanged.connect(self.on_data_changed)
         self.inspector.effect_form.dataChanged.connect(self.on_data_changed)
@@ -139,15 +158,17 @@ class CardEditor(QMainWindow):
         self.inspector.structure_update_requested.connect(self.on_structure_update)
 
     def load_data(self):
-        if os.path.exists(self.json_path):
+        from dm_toolkit.gui.editor.utils import safe_load_json
+
+        data = safe_load_json(self.json_path)
+        if data is None:
             try:
-                with open(self.json_path, 'r', encoding='utf-8') as f:
-                    self.cards_data = json.load(f)
-            except Exception as e:
-                QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load JSON')}: {e}")
-                self.cards_data = []
-        else:
+                QMessageBox.warning(self, tr("Warning"), tr("No card JSON found; starting empty."))
+            except Exception:
+                pass
             self.cards_data = []
+        else:
+            self.cards_data = data
 
         self.tree_widget.load_data(self.cards_data)
 
@@ -233,144 +254,239 @@ class CardEditor(QMainWindow):
         else:
             self.preview_widget.clear_preview()
 
+    def _structure_handlers(self, card_item, item, item_type, payload):
+        """Return a mapping of structure command to handler callables.
+
+        Extracted for testability and to reduce complexity in on_structure_update.
+        Handlers should return True when they mutate the tree.
+        """
+        def _add_spell_side():
+            self.tree_widget.add_spell_side(card_item.index())
+            self.tree_widget.expand(card_item.index())
+            return True
+
+        def _remove_spell_side():
+            self.tree_widget.remove_spell_side(card_item.index())
+            return True
+
+        def _add_rev_change():
+            self.tree_widget.add_rev_change(card_item.index(), payload=payload)
+            self.tree_widget.expand(card_item.index())
+            return True
+
+        def _remove_rev_change():
+            self.tree_widget.remove_rev_change(card_item.index())
+            return True
+
+        def _add_mekraid():
+            self.tree_widget.add_mekraid(card_item.index(), payload=payload)
+            self.tree_widget.expand(card_item.index())
+            return True
+
+        def _remove_mekraid():
+            self.tree_widget.remove_mekraid(card_item.index())
+            return True
+
+        def _add_friend_burst():
+            self.tree_widget.add_friend_burst(card_item.index(), payload=payload)
+            self.tree_widget.expand(card_item.index())
+            return True
+
+        def _remove_friend_burst():
+            self.tree_widget.remove_friend_burst(card_item.index())
+            return True
+
+        def _add_mega_last_burst():
+            self.tree_widget.add_mega_last_burst(card_item.index())
+            self.tree_widget.expand(card_item.index())
+            return True
+
+        def _remove_mega_last_burst():
+            self.tree_widget.remove_mega_last_burst(card_item.index())
+            return True
+
+        def _generate_options():
+            count = payload.get('count', 1)
+            action_item = None
+            if item_type in ["LEGACY_CMD", "COMMAND"]:
+                action_item = item
+            if action_item:
+                self.tree_widget.data_manager.add_option_slots(action_item, count)
+                self.tree_widget.expand(action_item.index())
+                return True
+            return False
+
+        def _generate_branches():
+            self.tree_widget.generate_branches_for_current()
+            return True
+
+        def _move_effect():
+            item_obj = payload.get('item')
+            target_type = payload.get('target_type')
+            if item_obj and target_type:
+                self.tree_widget.move_effect_item(item_obj, target_type)
+                return True
+            return False
+
+        def _add_child_effect():
+            eff_type = payload.get('type')
+            if eff_type == "KEYWORDS":
+                self.tree_widget.add_keywords(item.index())
+                return True
+            elif eff_type == "TRIGGERED":
+                self.tree_widget.add_trigger(item.index())
+                return True
+            elif eff_type == "STATIC":
+                self.tree_widget.add_static(item.index())
+                return True
+            elif eff_type == "REACTION":
+                self.tree_widget.add_reaction(item.index())
+                return True
+            return False
+
+        def _add_child_action():
+            if item_type == "EFFECT":
+                self.tree_widget.add_action_to_effect(item.index())
+                return True
+            elif item_type == "OPTION":
+                self.tree_widget.add_action_to_option(item.index())
+                return True
+            elif item_type in ["LEGACY_CMD", "COMMAND"]:
+                self.tree_widget.add_action_sibling(item.index())
+                return True
+            return False
+
+        def _replace_with_command():
+            # Support payload forms:
+            # - direct data: payload is the new_data
+            # - wrapped: {'target_item': <item>, 'new_data': {...}}
+            target_data = payload
+            target_idx = None
+
+            if isinstance(payload, dict) and 'target_item' in payload and 'new_data' in payload:
+                target_item = payload.get('target_item')
+                target_data = payload.get('new_data')
+                if target_item:
+                    try:
+                        target_idx = target_item.index()
+                    except Exception:
+                        target_idx = None
+            else:
+                # fallback: use provided item index
+                try:
+                    target_idx = item.index()
+                except Exception:
+                    target_idx = None
+
+            if target_idx is not None:
+                try:
+                    self.tree_widget.replace_item_with_command(target_idx, target_data)
+                    # After replacement, update selection/preview
+                    cur = self.tree_widget.currentIndex()
+                    if cur.isValid():
+                        try:
+                            self.inspector.set_selection(cur)
+                        except Exception:
+                            pass
+                        try:
+                            self.update_current_preview()
+                        except Exception:
+                            pass
+                    return True
+                except Exception:
+                    return False
+            return False
+
+        return {
+            STRUCT_CMD_ADD_SPELL_SIDE: _add_spell_side,
+            STRUCT_CMD_REMOVE_SPELL_SIDE: _remove_spell_side,
+            STRUCT_CMD_ADD_REV_CHANGE: _add_rev_change,
+            STRUCT_CMD_REMOVE_REV_CHANGE: _remove_rev_change,
+            STRUCT_CMD_ADD_MEKRAID: _add_mekraid,
+            STRUCT_CMD_REMOVE_MEKRAID: _remove_mekraid,
+            STRUCT_CMD_ADD_FRIEND_BURST: _add_friend_burst,
+            STRUCT_CMD_REMOVE_FRIEND_BURST: _remove_friend_burst,
+            STRUCT_CMD_ADD_MEGA_LAST_BURST: _add_mega_last_burst,
+            STRUCT_CMD_REMOVE_MEGA_LAST_BURST: _remove_mega_last_burst,
+            STRUCT_CMD_GENERATE_OPTIONS: _generate_options,
+            STRUCT_CMD_GENERATE_BRANCHES: _generate_branches,
+            STRUCT_CMD_MOVE_EFFECT: _move_effect,
+            STRUCT_CMD_ADD_CHILD_EFFECT: _add_child_effect,
+            STRUCT_CMD_ADD_CHILD_ACTION: _add_child_action,
+            STRUCT_CMD_REPLACE_WITH_COMMAND: _replace_with_command,
+        }
+
     def on_structure_update(self, command, payload):
         idx = self.tree_widget.currentIndex()
         tree_changed = False
 
-        # Determine context for updates that modify hierarchy
-        if command == STRUCT_CMD_REPLACE_WITH_COMMAND:
-            target_data = payload
-            target_idx = idx
+        # Special-case: replacement handler (keeps original early-return behavior)
+        # Note: replacement commands are handled via the dispatch handlers
+        # returned by `_structure_handlers` for testability and to reduce
+        # branching in this method.
 
-            # Handle new payload structure with explicit target item
-            if 'target_item' in payload and 'new_data' in payload:
-                target_item = payload['target_item']
-                if target_item:
-                    target_idx = target_item.index()
-                target_data = payload['new_data']
-
-            if target_idx.isValid():
-                self.tree_widget.replace_item_with_command(target_idx, target_data)
-                tree_changed = True
-                cur = self.tree_widget.currentIndex()
-                if cur.isValid():
-                    self.inspector.set_selection(cur)
-                    self.update_current_preview()
+        if not idx.isValid():
             return
 
-        if not idx.isValid(): return
-
-        # Ensure we are operating on the Card Item
+        # Resolve context item and card_item via helper
         item = self.tree_widget.standard_model.itemFromIndex(idx)
         if item is None:
             return
-        card_item = None
 
-        item_type = item.data(Qt.ItemDataRole.UserRole + 1)
-        if item_type == "CARD":
-            card_item = item
-        elif item_type in ["EFFECT", "SPELL_SIDE"]:
-            parent = item.parent()
-            if parent is not None:
-                card_item = parent
-        # 再発防止: 旧形式のアクションは後方互換で扱われるが、新規アイテムは "COMMAND" のみ使用すること。
-        elif item_type in ["LEGACY_ACTION", "COMMAND"]:
-            parent = item.parent()
-            if parent is not None:
-                grand = parent.parent()
-                if grand is not None:
-                    card_item = grand
-
+        card_item = self._find_card_item_from_item(item)
         if card_item is None:
             return
 
-        if command == STRUCT_CMD_ADD_SPELL_SIDE:
-            self.tree_widget.add_spell_side(card_item.index())
-            self.tree_widget.expand(card_item.index())
-            tree_changed = True
-        elif command == STRUCT_CMD_REMOVE_SPELL_SIDE:
-            self.tree_widget.remove_spell_side(card_item.index())
-            tree_changed = True
-        elif command == STRUCT_CMD_ADD_REV_CHANGE:
-            # 再発防止: payload に races がある場合は革命チェンジテンプレートに種族を反映する。
-            self.tree_widget.add_rev_change(card_item.index(), payload=payload)
-            self.tree_widget.expand(card_item.index())
-            tree_changed = True
-        elif command == STRUCT_CMD_REMOVE_REV_CHANGE:
-            self.tree_widget.remove_rev_change(card_item.index())
-            tree_changed = True
-        elif command == STRUCT_CMD_ADD_MEKRAID:
-            self.tree_widget.add_mekraid(card_item.index(), payload=payload)
-            self.tree_widget.expand(card_item.index())
-            tree_changed = True
-        elif command == STRUCT_CMD_REMOVE_MEKRAID:
-            self.tree_widget.remove_mekraid(card_item.index())
-            tree_changed = True
-        elif command == STRUCT_CMD_ADD_FRIEND_BURST:
-            # 再発防止: payload に races がある場合はフレンドバーストテンプレートに種族を反映する。
-            self.tree_widget.add_friend_burst(card_item.index(), payload=payload)
-            self.tree_widget.expand(card_item.index())
-            tree_changed = True
-        elif command == STRUCT_CMD_REMOVE_FRIEND_BURST:
-            self.tree_widget.remove_friend_burst(card_item.index())
-            tree_changed = True
-        elif command == STRUCT_CMD_ADD_MEGA_LAST_BURST:
-            self.tree_widget.add_mega_last_burst(card_item.index())
-            self.tree_widget.expand(card_item.index())
-            tree_changed = True
-        elif command == STRUCT_CMD_REMOVE_MEGA_LAST_BURST:
-            self.tree_widget.remove_mega_last_burst(card_item.index())
-            tree_changed = True
-        elif command == STRUCT_CMD_GENERATE_OPTIONS:
-            count = payload.get('count', 1)
-            # Find the actual Action Item from the current selection
-              action_item = None
-              if item_type in ["LEGACY_ACTION", "COMMAND"]:  # 再発防止: 旧形式のアクションは後方互換として扱う
-                  action_item = item
-
-            if action_item:
-                 self.tree_widget.data_manager.add_option_slots(action_item, count)
-                 self.tree_widget.expand(action_item.index())
-                 tree_changed = True
-        elif command == STRUCT_CMD_GENERATE_BRANCHES:
-            self.tree_widget.generate_branches_for_current()
-            tree_changed = True
-        elif command == STRUCT_CMD_MOVE_EFFECT:
-             item_obj = payload.get('item')
-             target_type = payload.get('target_type')
-             if item_obj and target_type:
-                 self.tree_widget.move_effect_item(item_obj, target_type)
-                 tree_changed = True
-        elif command == STRUCT_CMD_ADD_CHILD_EFFECT:
-            eff_type = payload.get('type')
-            if eff_type == "KEYWORDS":
-                self.tree_widget.add_keywords(item.index())
-                tree_changed = True
-            elif eff_type == "TRIGGERED":
-                self.tree_widget.add_trigger(item.index())
-                tree_changed = True
-            elif eff_type == "STATIC":
-                self.tree_widget.add_static(item.index())
-                tree_changed = True
-            elif eff_type == "REACTION":
-                self.tree_widget.add_reaction(item.index())
-                tree_changed = True
-        elif command == STRUCT_CMD_ADD_CHILD_ACTION:
-            if item_type == "EFFECT":
-                self.tree_widget.add_action_to_effect(item.index())
-                tree_changed = True
-            elif item_type == "OPTION":
-                self.tree_widget.add_action_to_option(item.index())
-                tree_changed = True
-            elif item_type in ["LEGACY_ACTION", "COMMAND"]:  # 再発防止: 旧形式のアクションは後方互換として扱う
-                self.tree_widget.add_action_sibling(item.index())
-                tree_changed = True
+        handlers = self._structure_handlers(card_item, item, item_type, payload)
+        # Add global APPLY_CIR handler to let forms request application of CIR
+        handlers.setdefault('APPLY_CIR', lambda: (self.inspector.unified_form.apply_cir(payload.get('cir', [])), False)[1])
+        handler = handlers.get(command)
+        if handler:
+            try:
+                tree_changed = handler()
+            except Exception:
+                tree_changed = False
 
         if tree_changed:
             cur = self.tree_widget.currentIndex()
             if cur.isValid():
                 self.inspector.set_selection(cur)
             self.update_current_preview()
+
+    def _find_card_item_from_item(self, item):
+        """Resolve and return the parent card item for a given tree item.
+
+        This encapsulates the branching logic to make `on_structure_update`
+        simpler and testable.
+        """
+        if item is None:
+            return None
+
+        item_type = item.data(Qt.ItemDataRole.UserRole + 1)
+        if item_type == "CARD":
+            return item
+
+        if item_type in ["EFFECT", "SPELL_SIDE"]:
+            parent = item.parent()
+            return parent if parent is not None else None
+
+        if item_type in ["LEGACY_CMD", "COMMAND"]:
+            parent = item.parent()
+            if parent is not None:
+                grand = parent.parent()
+                return grand if grand is not None else None
+
+        return None
+
+    def on_tree_changed(self):
+        # Centralized handler for tree structure changes
+        try:
+            cur = self.tree_widget.currentIndex()
+            if cur.isValid():
+                self.inspector.set_selection(cur)
+            self.update_current_preview()
+        except Exception:
+            pass
 
     def new_card(self):
         self.tree_widget.add_new_card()
@@ -415,7 +531,7 @@ class CardEditor(QMainWindow):
 
         # Centralized logic in LogicTreeWidget
         # 再発防止: 旧形式のアクションは後方互換で扱うが、新規生成は "COMMAND" のみ。
-        valid_types = ["EFFECT", "OPTION", "COMMAND", "LEGACY_ACTION", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]
+        valid_types = ["EFFECT", "OPTION", "COMMAND", "LEGACY_CMD", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]
         if type_ in valid_types:
             self.tree_widget.add_command_contextual()
         else:

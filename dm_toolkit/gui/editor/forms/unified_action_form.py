@@ -6,6 +6,7 @@
 
 import json
 import os
+from typing import Any
 from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QComboBox, QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QStackedWidget
 )
@@ -16,6 +17,7 @@ from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dic
 from dm_toolkit.gui.editor.models import CommandModel
 from dm_toolkit.gui.editor.widget_factory import WidgetFactory
 from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 from dm_toolkit.gui.editor.schema_def import SchemaLoader, get_schema, FieldSchema, FieldType
 from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_OPTIONS
 from dm_toolkit.gui.editor.consistency import format_integrity_warnings, validate_command_list
@@ -49,18 +51,30 @@ class UnifiedActionForm(BaseEditForm):
         self.action_group_combo = QComboBox()
         self.populate_combo(self.action_group_combo, list(COMMAND_GROUPS.keys()), display_func=tr)
         self.main_layout.addRow(tr("Command Group"), self.action_group_combo)
-        self.action_group_combo.currentIndexChanged.connect(self.on_group_changed)
+        safe_connect(self.action_group_combo, 'currentIndexChanged', self.on_group_changed)
 
         # Type Combo
         self.type_combo = QComboBox()
         self.main_layout.addRow(tr("Command Type"), self.type_combo)
-        self.type_combo.currentIndexChanged.connect(self.on_type_changed)
+        safe_connect(self.type_combo, 'currentIndexChanged', self.on_type_changed)
 
         # Dynamic Content Container
         self.dynamic_container = QWidget()
         self.dynamic_layout = QFormLayout(self.dynamic_container)
         self.dynamic_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.addRow(self.dynamic_container)
+
+        # CIR summary + action (minimal integration)
+        cir_row = QHBoxLayout()
+        self.cir_label = QLabel("")
+        self.cir_label.setVisible(False)
+        cir_row.addWidget(self.cir_label)
+        self.apply_cir_btn = QPushButton(tr("Apply CIR"))
+        self.apply_cir_btn.setEnabled(False)
+        safe_connect(self.apply_cir_btn, 'clicked', self.on_apply_cir)
+        cir_row.addWidget(self.apply_cir_btn)
+        cir_row.addStretch()
+        self.main_layout.addRow(cir_row)
 
         # Trigger initial population
         self.on_group_changed()
@@ -212,6 +226,12 @@ class UnifiedActionForm(BaseEditForm):
 
     def _load_ui_from_data(self, data, item):
         """Loads data using interface-based widgets."""
+        # Clear any previous diff highlights before rebuilding/loading
+        try:
+            self.clear_diff_highlight()
+        except Exception:
+            pass
+
         if not data: data = {}
         # Handle case where data is already a CommandModel instance
         if isinstance(data, CommandModel):
@@ -292,6 +312,190 @@ class UnifiedActionForm(BaseEditForm):
 
         # Clear validation styles on load
         self._clear_validation_styles()
+
+        # Minimal CIR UI integration: show count and enable apply button
+        try:
+            cir = None
+            if item is not None and hasattr(item, 'data'):
+                cir = item.data('ROLE_CIR')
+            if cir:
+                self.cir_label.setText(tr("CIR entries: {n}").format(n=len(cir)))
+                self.cir_label.setVisible(True)
+                self.apply_cir_btn.setEnabled(True)
+                # tooltip for debugging
+                # show tooltip with CIR and shallow diff summary
+                try:
+                    summary = self.compute_diff_summary(cir[0].get('payload', cir[0]))
+                    tip = str(cir)
+                    if summary:
+                        tip += '\nDiff keys: ' + ','.join(summary)
+                    self.cir_label.setToolTip(tip)
+                except Exception:
+                    self.cir_label.setToolTip(str(cir))
+                # Highlight differences between current UI/model and first CIR payload
+                try:
+                    first = cir[0]
+                    if isinstance(first, dict):
+                        self.highlight_diff(first.get('payload', first))
+                except Exception:
+                    pass
+            else:
+                self.cir_label.setVisible(False)
+                self.apply_cir_btn.setEnabled(False)
+        except Exception:
+            self.cir_label.setVisible(False)
+            self.apply_cir_btn.setEnabled(False)
+
+    def on_apply_cir(self):
+        """Handler for Apply CIR button - emits an action for higher layers to consume.
+
+        Currently this performs a best-effort emit with the CIR payload; actual
+        model population logic can be implemented iteratively in follow-up tasks.
+        """
+        try:
+            cir = None
+            if self.current_item is not None and hasattr(self.current_item, 'data'):
+                cir = self.current_item.data('ROLE_CIR')
+            if cir:
+                # Emit for CardEditor or other listeners to act upon
+                self.structure_update_requested.emit('APPLY_CIR', {'cir': cir})
+        except Exception:
+            pass
+
+    def highlight_diff(self, cir_payload: dict[str, Any]) -> None:
+        """Mark widgets whose current value differs from CIR payload.
+
+        This is a best-effort shallow comparison keyed by param name.
+        Widgets are expected to be accessible via `self.widgets_map[name]`
+        and expose `get_value()` and `setStyleSheet()`.
+        """
+        if not cir_payload:
+            return
+        for key, widget in getattr(self, 'widgets_map', {}).items():
+            try:
+                widget_val = None
+                # prefer widget.get_value() if available
+                if hasattr(widget, 'get_value'):
+                    widget_val = widget.get_value()
+                else:
+                    widget_val = getattr(widget, 'value', None)
+
+                cir_val = cir_payload.get(key)
+                if cir_val is None:
+                    # no comparison value; clear highlight
+                    if hasattr(widget, 'setStyleSheet'):
+                        widget.setStyleSheet('')
+                    continue
+
+                if widget_val != cir_val:
+                    if hasattr(widget, 'setStyleSheet'):
+                        widget.setStyleSheet('background: yellow;')
+                else:
+                    if hasattr(widget, 'setStyleSheet'):
+                        widget.setStyleSheet('')
+            except Exception:
+                # best-effort: ignore widget failures
+                continue
+
+    def clear_diff_highlight(self) -> None:
+        """Clear any diff highlights on managed widgets."""
+        for widget in getattr(self, 'widgets_map', {}).values():
+            try:
+                if hasattr(widget, 'setStyleSheet'):
+                    widget.setStyleSheet('')
+            except Exception:
+                continue
+
+    def compute_diff_summary(self, cir_payload: dict[str, Any]) -> list[str]:
+        """Return list of keys where cir_payload and current widget/model differ.
+
+        - Keys present in payload but missing in widgets are included (as 'extra').
+        - Keys present in widgets but missing in payload are not considered changed.
+        - Shallow comparison only.
+        """
+        diffs: list[str] = []
+        if not cir_payload:
+            return diffs
+
+        # compare keys present in payload
+        for k, v in cir_payload.items():
+            w = getattr(self, 'widgets_map', {}).get(k)
+            try:
+                if w is None:
+                    diffs.append(k)
+                    continue
+                if hasattr(w, 'get_value'):
+                    wval = w.get_value()
+                else:
+                    wval = getattr(w, 'value', None)
+
+                if wval != v:
+                    diffs.append(k)
+            except Exception:
+                diffs.append(k)
+
+        return diffs
+
+    def apply_cir(self, cir_list: list) -> bool:
+        """Apply a canonical IR payload to the current form.
+
+        This is a best-effort mapper: it takes the first CIR entry, maps its
+        `type` to the form's type selector and copies any payload keys into
+        corresponding widgets (via `set_value`) and into `current_model.params`.
+        Returns True if any widget/model was updated.
+        """
+        if not cir_list:
+            return False
+        cir = cir_list[0]
+        updated = False
+        try:
+            # Set type if present
+            ctype = cir.get('type') or cir.get('kind')
+            if ctype:
+                try:
+                    self.set_combo_by_data(self.action_group_combo, 'OTHER')
+                    self.set_combo_by_data(self.type_combo, ctype)
+                except Exception:
+                    # best-effort: ignore if combo helpers unavailable
+                    pass
+
+            payload = cir.get('payload') or cir.get('params') or {}
+            if not isinstance(payload, dict):
+                payload = {}
+
+            # Ensure current_model exists
+            if self.current_model is None:
+                try:
+                    self.current_model = CommandModel(type=ctype if ctype else 'UNKNOWN')
+                except Exception:
+                    pass
+
+            for k, v in payload.items():
+                # Update model.params
+                try:
+                    if not hasattr(self.current_model, 'params'):
+                        self.current_model.params = {}
+                    self.current_model.params[k] = v
+                    updated = True
+                except Exception:
+                    pass
+
+                # Update widget if present
+                w = self.widgets_map.get(k)
+                if w and hasattr(w, 'set_value'):
+                    try:
+                        w.set_value(v)
+                        updated = True
+                    except Exception:
+                        pass
+            # After applying values, clear any diff highlights (best-effort)
+            try:
+                self.clear_diff_highlight()
+            except Exception:
+                pass
+        except Exception:
+            return False
+        return updated
 
     def _save_ui_to_data(self, data):
         """Saves data using interface-based widgets and provides validation feedback."""

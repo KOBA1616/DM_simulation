@@ -4,6 +4,7 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import pyqtSignal
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class ReactionConditionWidget(QGroupBox):
     """
@@ -30,21 +31,21 @@ class ReactionConditionWidget(QGroupBox):
         # 再発防止: addItem(表示テキスト, 生値) パターン。get_data() は currentData() を使用する。
         for raw in ["NONE", "ON_BLOCK_OR_ATTACK", "ON_SHIELD_ADD", "ON_ATTACK_PLAYER"]:
             self.trigger_event_combo.addItem(tr(raw), raw)
-        self.trigger_event_combo.currentTextChanged.connect(self.dataChanged)
+        safe_connect(self.trigger_event_combo, 'currentTextChanged', self.dataChanged)
         layout.addRow(self.label_trigger, self.trigger_event_combo)
 
         self.civ_match_check = QCheckBox(tr("Civilization Match Required"))
-        self.civ_match_check.stateChanged.connect(self.dataChanged)
+        safe_connect(self.civ_match_check, 'stateChanged', self.dataChanged)
         layout.addRow(self.civ_match_check)
 
         self.shield_civ_match_check = QCheckBox(tr("Same Civilization Shield Required"))
-        self.shield_civ_match_check.stateChanged.connect(self.dataChanged)
+        safe_connect(self.shield_civ_match_check, 'stateChanged', self.dataChanged)
         layout.addRow(self.shield_civ_match_check)
 
         self.label_mana = QLabel(tr("Min Mana Required"))
         self.mana_min_spin = QSpinBox()
         self.mana_min_spin.setRange(0, 99)
-        self.mana_min_spin.valueChanged.connect(self.dataChanged)
+        safe_connect(self.mana_min_spin, 'valueChanged', self.dataChanged)
         layout.addRow(self.label_mana, self.mana_min_spin)
 
     def set_data(self, cond_data):

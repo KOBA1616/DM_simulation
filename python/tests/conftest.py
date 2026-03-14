@@ -65,6 +65,8 @@ def _setup_minimal_gui_stubs():
         def setWindowTitle(self, title): pass
         def setLayout(self, layout): pass
         def setGeometry(self, *args): pass
+        def resize(self, *args): pass
+        def setIconSize(self, *args): pass
         def show(self): pass
         def close(self): return True
         def addWidget(self, widget, *args): pass  # Accept extra args for Grid Layout
@@ -118,6 +120,7 @@ def _setup_minimal_gui_stubs():
     class DummyQMainWindow(DummyQWidget):
         def setCentralWidget(self, widget): pass
         def setMenuBar(self, menu): pass
+        def addToolBar(self, toolbar): pass
         def addDockWidget(self, area, dock): pass
         def setStatusBar(self, bar): pass
 
@@ -359,7 +362,7 @@ def _setup_minimal_gui_stubs():
     # Populate with stub classes
     qt_widgets.QMainWindow = DummyQMainWindow
     qt_widgets.QWidget = DummyQWidget
-    qt_widgets.QApplication = type('QApplication', (), {'__init__': lambda s, a: None, 'exec': lambda s: 0})
+    qt_widgets.QApplication = type('QApplication', (), {'__init__': lambda s, a: None, 'exec': lambda s: 0, 'instance': staticmethod(lambda: None)})
 
     qt_widgets.QAbstractItemView = DummyAbstractItemView
     qt_widgets.QTreeView = DummyTreeView
@@ -387,8 +390,24 @@ def _setup_minimal_gui_stubs():
 
     qt_core.Qt = DummyQt
     qt_core.QModelIndex = type('QModelIndex', (object,), {})
+    qt_core.QRect = type('QRect', (), {})
     qt_core.QObject = type('QObject', (object,), {'__init__': lambda s, *a: None, 'blockSignals': lambda s, b: False})
-    qt_core.QTimer = type('QTimer', (object,), {'singleShot': lambda *a: None, 'start': lambda s, t: None, 'stop': lambda s: None})
+    class _FakeQTimer:
+        def __init__(self, parent=None):
+            self._single = False
+            # Provide a signal-like object for timeout so .connect works
+            self.timeout = MockSignal()
+        def setSingleShot(self, val):
+            self._single = val
+        def setSingleShot(self, *a, **k):
+            return None
+        def setInterval(self, *a, **k):
+            return None
+        def start(self):
+            return None
+        def stop(self):
+            return None
+    qt_core.QTimer = _FakeQTimer
     qt_core.pyqtSignal = lambda *args: unittest.mock.MagicMock(emit=lambda *a: None, connect=lambda *a: None)
     qt_core.QMimeData = type('QMimeData', (), {})
     qt_core.QRectF = type('QRectF', (), {})
@@ -397,6 +416,8 @@ def _setup_minimal_gui_stubs():
     qt_gui.QAction = type('QAction', (DummyQWidget,), {})
     qt_gui.QKeySequence = type('QKeySequence', (), {})
     qt_gui.QStandardItem = type('QStandardItem', (object,), {'__init__': lambda s, *a: None})
+    qt_gui.QCursor = type('QCursor', (), {})
+    qt_widgets.QGraphicsDropShadowEffect = type('QGraphicsDropShadowEffect', (), {})
     qt_gui.QDrag = type('QDrag', (), {})
     qt_gui.QPen = type('QPen', (), {})
     qt_gui.QBrush = type('QBrush', (), {})

@@ -102,7 +102,7 @@ class TestDataManagerMocked(unittest.TestCase):
 
         # Setup an item structure that represents an ACTION
         action_item = MockItem("Action: DRAW_CARD")
-        action_item.setData("LEGACY_ACTION", ROLE_TYPE)  # UserRole + 1
+        action_item.setData("LEGACY_CMD", ROLE_TYPE)  # UserRole + 1
         action_item.setData(action_data, ROLE_DATA)  # UserRole + 2
 
         # Mock legacy ActionConverter via the CommandConverter shim
@@ -121,7 +121,7 @@ class TestDataManagerMocked(unittest.TestCase):
     def test_collect_conversion_preview(self):
         # Create a tree: ROOT -> ACTION
         action_item = MockItem("Action: DRAW_CARD")
-        action_item.setData("LEGACY_ACTION", ROLE_TYPE)
+        action_item.setData("LEGACY_CMD", ROLE_TYPE)
         action_item.setData({"type": "DRAW_CARD"}, ROLE_DATA)
 
         root = self.model.invisibleRootItem()

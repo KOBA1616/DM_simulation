@@ -4,6 +4,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.consts import CIVILIZATIONS
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class CivilizationSelector(QWidget):
     changed = pyqtSignal()
@@ -71,7 +72,7 @@ class CivilizationSelector(QWidget):
             self.group.addButton(btn)
             self.buttons[civ] = btn
 
-            btn.clicked.connect(self.changed.emit)
+            safe_connect(btn, 'clicked', self.changed.emit)
 
         layout.addStretch()
 

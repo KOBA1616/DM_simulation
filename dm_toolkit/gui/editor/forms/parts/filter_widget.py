@@ -295,7 +295,7 @@ class FilterEditorWidget(QWidget):
         safe_connect(self.sort_mode_combo, "currentIndexChanged", self.filterChanged.emit)
         safe_connect(self.sort_key_combo, "currentIndexChanged", self.filterChanged.emit)
 
-        self.filterChanged.connect(self.update_summary_label)
+        safe_connect(self, "filterChanged", self.update_summary_label)
 
         self.on_mode_changed() # Init visibility
         self.on_sort_mode_changed()

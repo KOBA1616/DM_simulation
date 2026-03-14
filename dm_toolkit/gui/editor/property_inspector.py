@@ -123,6 +123,12 @@ class PropertyInspector(QWidget):
         self.breadcrumb_label.setVisible(False)
         header_layout.addWidget(self.breadcrumb_label)
 
+        # CIR 状態表示ラベル: 選択中アイテムに正規化IRがあれば表示
+        self.cir_label = QLabel("")
+        self.cir_label.setStyleSheet("color: #2a7; font-size: 10px; padding: 1px 0px;")
+        self.cir_label.setVisible(False)
+        header_layout.addWidget(self.cir_label)
+
         # 区切り線
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
@@ -182,7 +188,7 @@ class PropertyInspector(QWidget):
             "EFFECT": self.effect_form,
             # 再発防止: 旧形式のアクションキーは後方互換として扱うが、
             # 新規コードは必ず "COMMAND" を使用すること。
-            "LEGACY_ACTION": self.unified_form,  # レガシー後方互換用
+            "LEGACY_CMD": self.unified_form,  # レガシー後方互換用
             "COMMAND": self.unified_form,
             "SPELL_SIDE": self.spell_side_form,
             "REACTION_ABILITY": self.reaction_form,
@@ -208,5 +214,18 @@ class PropertyInspector(QWidget):
 
         if hasattr(widget, 'set_data'):
             widget.set_data(item)
+
+        # Show CIR summary if available on the selected item
+        try:
+            cir = item.data('ROLE_CIR')
+            if cir:
+                self.cir_label.setText(tr("CIR entries: {n}").format(n=len(cir)))
+                # Tooltip holds serialized CIR for debugging
+                self.cir_label.setToolTip(str(cir))
+                self.cir_label.setVisible(True)
+            else:
+                self.cir_label.setVisible(False)
+        except Exception:
+            self.cir_label.setVisible(False)
 
         self.stack.setCurrentWidget(widget)

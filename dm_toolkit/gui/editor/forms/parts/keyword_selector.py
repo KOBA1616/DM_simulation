@@ -6,6 +6,7 @@ Used by both GRANT_KEYWORD and SET_KEYWORD modifiers.
 
 from PyQt6.QtWidgets import QComboBox
 from PyQt6.QtCore import pyqtSignal
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 
 
@@ -31,8 +32,8 @@ class KeywordSelectorWidget(QComboBox):
         self.allow_settable = allow_settable
         self._populate_keywords()
         
-        # Connect selection change signal
-        self.currentIndexChanged.connect(self._on_selection_changed)
+        # Connect selection change signal via safe_connect
+        safe_connect(self, 'currentIndexChanged', self._on_selection_changed)
     
     def _populate_keywords(self):
         """Populate combobox with keywords in Japanese."""
