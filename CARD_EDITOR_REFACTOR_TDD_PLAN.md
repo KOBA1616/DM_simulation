@@ -81,8 +81,9 @@
     - 進捗: 2026-03-15
       - `CommandModel` の `params` に対して `SearchParams` を追加し、`SEARCH_DECK` コマンドを型化しました。
       - 単体テスト `python/tests/unit/test_commandmodel_searchparams.py` を追加し、`SEARCH_DECK` の ingest/serialize が型付きで動作することを検証（1 passed）。
-    - 次: 他の高頻度コマンド（`MEKRAID`, `ADD_KEYWORD` など）について同様の型導入を進める予定です。
-    - 進捗2: `LOOK_AND_ADD` 用の `LookAndAddParams` を追加し、`ingest_legacy_structure` で `LOOK_AND_ADD` を `LookAndAddParams` にマッピングしました（モデル実装・マッピング済）。ユニットテストの追加は次工程です。
+    - 次: 他の高頻度コマンド（`MEKRAID` など）について同様の型導入を進める予定です。
+    - 進捗2: `LOOK_AND_ADD` 用の `LookAndAddParams` を追加し、`ingest_legacy_structure` で `LOOK_AND_ADD` を `LookAndAddParams` にマッピングしました（モデル実装・マッピング済）。
+    - 進捗3: `ADD_KEYWORD` 用の `AddKeywordParams` を追加し、`ingest_legacy_structure` で `ADD_KEYWORD` を `AddKeywordParams` にマッピングしました。ユニットテスト `python/tests/unit/test_commandmodel_add_keyword.py` を追加し、`ADD_KEYWORD` の ingest/serialize を検証（1 passed）。
 
 ---
 
