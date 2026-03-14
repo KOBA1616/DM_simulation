@@ -64,6 +64,16 @@
         - `dm_toolkit/gui/editor/forms/base_form.py` (55)
     - [ ] `window.py` と `text_generator.py` の局所改善結果を数値で残す
       - 次: `text_generator.py` のさらなるマップ化を優先で進め、`unified_action_form.py` と `logic_tree.py` を次点としてアサインします。
+  - テストサマリ (フル実行 2026-03-15):
+    - 実行結果: 302 tests collected — 300 passed, 1 failed, 1 skipped
+    - 失敗テスト: `tests/test_per_card_effects.py::TestCard13MagnumSingleshot::test_on_play_creates_pending_effect`
+    - 表示: ON_PLAY 後の pending_effects が 0 を返し期待値 1 と不一致
+    - 初期対応方針: `Card 13 (id=13)` の ON_PLAY 発火経路を調査し、データ（`data/cards.json`）の定義、pipeline の CHECK_CREATURE_ENTER_TRIGGERS、及び `TriggerManager` の early-return ロジックを順に確認します。
+    - 次工程（推奨）:
+      1. 失敗を再現する単体スクリプトで最小再現ケースを作る
+      2. `cards.json` の `effects` 定義が正しいか確認
+      3. native ログ（stderr）を詳細化してどのコマンド/トリガーが発火したか追跡
+      4. 必要なら `trigger_manager.cpp` / pipeline 実装を疑い、回帰原因を特定
 
 ### 高優先
 
