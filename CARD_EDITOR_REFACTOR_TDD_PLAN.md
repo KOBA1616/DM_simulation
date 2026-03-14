@@ -30,8 +30,17 @@
 
 2. 分岐削減の定量目標を更新して追跡する
    - ベースライン: 2026-03-14 時点で Python 全体の branch 合計 5096
+   - 最新スキャン: 2026-03-15 実行
+     - Files with branches: 309
+     - Total if: 4544, elif: 565, total branches: 5109
+     - Top files by branch count:
+       - dm_toolkit/gui/editor/text_generator.py: 873
+       - dm_toolkit/engine/compat.py: 165
+       - training/head2head.py: 160
+       - dm_toolkit/gui/app.py: 134
+       - dm_toolkit/gui/editor/forms/unified_action_form.py: 129
    - 完了条件:
-     - [ ] `scripts/count_branches.py` を再実行して最新値を記録
+     - [x] `scripts/count_branches.py` を再実行して最新値を記録
      - [ ] 上位ファイルの削減対象を再選定
      - [ ] `window.py` と `text_generator.py` の局所改善結果を数値で残す
 
@@ -43,6 +52,13 @@
      - [ ] 重複定義の一覧を作成
      - [ ] `dm_toolkit/consts.py` または `data/configs/command_ui.json` に寄せる
      - [ ] 読み込み側の参照先を 1 系統へ整理
+   - 進捗: 2026-03-15
+     - `schema_config.py` の `TARGET_SCOPES` と `DURATION_OPTIONS` を `dm_toolkit.consts` の定義に移管しました（`TargetScope` と `DURATION_TYPES` を参照）。
+     - 追加移管: `MUTATION_TYPES`, `EFFECT_IDS`, `APPLY_MODIFIER_OPTIONS`, `MUTATION_KINDS_FOR_MUTATE` を `dm_toolkit.consts` 側に移動し、`schema_config.py` 側を参照に更新しました（小さな段階移管）。
+    - 追加移管2: `DELAYED_EFFECT_IDS` を `dm_toolkit.consts` 側に移動しました（`REGISTER_DELAYED_EFFECT` の options に使用）。
+    - 検証: `schema_config` が `DELAYED_EFFECT_IDS` を `consts` と一致して参照することを検証するユニットテストを追加しました（python/tests/unit/test_schema_consts_sot.py）。
+    - テスト結果: 1 passed
+     - 動作確認: 関連ユニットテストを実行し回帰なし（複数テスト合格）。
 
 4. CIR を編集フローで実利用できる形に進める
    - 現状: 読み込み・保持・一部UI反映までは完了
@@ -101,6 +117,8 @@
 - 条件追加時に UI 分岐を書き足さずに済む
 - テストは schema の検証に寄せられる
 
+- 実装メモ: `CONDITION_UI_CONFIG` を用いた宣言的切替を既存ウィジェットに導入済み。小さなカバレッジテストを追加してスキーマ整合性を検証（python/tests/unit/test_condition_ui_schema.py）。
+
 ### 2.3 条件プレビューを常時表示する
 
 問題:
@@ -127,6 +145,11 @@
 期待効果:
 - 保存前エラーの集中を防げる
 - 入力フローが軽くなる
+
+進捗: 2026-03-15
+- 小タスク実施: `ConditionEditorWidget.validate_condition_model()` を追加し、条件データの即時検証を可能にしました。
+- 追加テスト: `python/tests/unit/test_condition_validation.py` を追加し、ヘッドレス環境での検証を確認（3 passed）。
+- 備考: まずは必須フィールドの有無を検出する軽量実装とし、将来的に型チェック・相互矛盾チェックを拡張予定。
 
 ### 2.5 trigger 条件と target_filter 条件を分離する
 
@@ -199,16 +222,13 @@
 ## 5. 次の実装候補
 
 候補A: `window.py` の構造変更後処理をポリシー化する
-- 対象ファイル: 1〜2 個
-- 期待成果: `on_structure_update()` の更なる分岐削減
 
 候補B: 条件設定フォームに schema 駆動の表示切替を導入する
-- 対象ファイル: 条件フォーム + テスト
-- 期待成果: 条件追加時の変更箇所削減
 
 候補C: `text_generator.py` の残り条件フォーマッタを追加マップ化する
-- 対象ファイル: `text_generator.py` + unit test
-- 期待成果: ブランチ数の継続削減
+ - 進捗: 2026-03-15
+   - `MUTATE` 処理の分岐をハンドラ辞書化してマップ駆動に変更しました（`_format_special_effect_command` 内）。
+   - 併せてユニットテスト `python/tests/unit/test_text_generator_mutate_map.py` を追加し、基本ケースを検証するようにしました。
 
 ---
 
@@ -218,3 +238,183 @@
 - 必ず `RED -> GREEN -> REFACTOR` で進める
 - 実装後は関係する最小テストだけを先に回す
 - 大量の完了ログはこのファイルに戻さず、必要なら別レポートか Git 履歴へ残す
+
+---
+
+## 7. フィルタ実装の再点検と改善点（追記）
+
+### 7.1 フィルタ定義の一元化を最優先で進める
+
+問題:
+- `target_filter` / `trigger_filter` / static `filter` が実質同じ概念なのに、検証・表示・保存の入口が分散している
+- 空フィルタ文言やセクション表示キーの不整合が発生している
+
+改善案:
+- `FilterSpec` を単一スキーマとして定義し、用途は `context` で切り替える
+  - `context=TARGET`
+  - `context=TRIGGER`
+  - `context=STATIC`
+- `UnifiedFilterHandler` は `FilterSpec` の adapter のみ担当させる
+- `filter_widget` の表示制御キーを enum 化し、不正キー入力時は警告ログを出す
+
+期待効果:
+- フィルタ関連の実装/検証/文言生成のズレを抑止できる
+- 画面表示と保存データの責務境界が明確になる
+
+### 7.2 フィルタ値型の統一（bool/int混在解消）
+
+問題:
+- `is_tapped` などのフラグが UI では bool、validator では int(0/1) 前提になっている
+
+改善案:
+- フィルタフラグは bool に統一する
+- 既存データ読込時のみ互換変換を行う（0/1 -> bool）
+- validator 側は bool を正とし、int は互換警告に落とす
+
+期待効果:
+- 入出力の型不整合による誤検知を防げる
+- mypy 対応とテスト記述が簡潔になる
+
+### 7.3 フィルタ文言生成の単一路線化
+
+問題:
+- `text_generator` と `unified_filter_handler` 側で近い責務が重複し、文言ゆれが起きやすい
+
+改善案:
+- `describe_filter(filter_spec, usage)` を単一 API として切り出す
+- 画面要約、トリガー説明、本文生成は同 API を使う
+
+期待効果:
+- 文言差分の再発防止
+- 文言変更時の影響範囲を限定できる
+
+---
+
+## 8. コマンドグループ/コマンド種別の再確認と改善点（追記）
+
+### 8.1 コマンド定義SSOTの再構成
+
+問題:
+- コマンド種別の定義が複数箇所に分散し、集合差分が恒常化している
+  - `command_ui.json`
+  - `schema_config.py`
+  - `card_validator.py`
+  - `consts.py` fallback
+
+改善案:
+- `CommandRegistry`（SSOT）を新設し、以下を同居させる
+  - `type`
+  - `group`
+  - `fields`
+  - `visibility`
+  - `validator rule`
+  - `text generation hint`
+- 既存ファイルは registry から生成/参照する薄い層に置換する
+
+期待効果:
+- 定義ズレの根本原因を除去できる
+- 新コマンド追加時の変更漏れを防げる
+
+### 8.2 CIでの差分検出を必須化
+
+問題:
+- 定義差分がレビュー時に見落とされやすい
+
+改善案:
+- CI に「コマンド集合一致チェック」を追加する
+  - UI設定 vs schema
+  - schema vs validator
+  - validator vs consts fallback
+
+期待効果:
+- 差分の早期検出
+- 仕様変更の追従漏れを自動で止められる
+
+### 8.3 旧形式定義ファイルの段階的縮退
+
+問題:
+- `command_schema.json` の内容が現行実装と乖離し、混乱源になっている
+
+改善案:
+- `command_schema.json` を「互換用/参照専用」に明示するか、registry 生成物に置換する
+- 参照コードを段階的に削除して、読むべき定義を一本化する
+
+期待効果:
+- 開発者の認知負荷低減
+- 誤参照による修正ミスを防げる
+
+---
+
+## 9. 効果タイプ実装の見直し（追記）
+
+### 9.1 用語と責務の分離
+
+問題:
+- 「効果タイプ」が Editor 概念・JSON概念・C++ pending 実行概念で混線している
+
+改善案:
+- 用語を3軸に分離して明示する
+  - `AbilityKind`（TRIGGERED / STATIC / REPLACEMENT / REACTION）
+  - `TriggerType`（ON_PLAY など）
+  - `PendingEffectType`（C++実行制御）
+- 変換は `effect_normalizer` 1箇所に集約する
+
+期待効果:
+- 仕様議論と実装の対応関係が明確になる
+- 変換漏れによるバグを追跡しやすくなる
+
+### 9.2 TriggerType の世代混在を解消
+
+問題:
+- `ON_*` 系と `AT_*` 系の旧名が validator / logic mask に残り、判定が不安定
+
+改善案:
+- 正式 TriggerType を `consts.py` と C++ enum に固定する
+- 旧名は読み込み時 alias 変換のみ許可し、保存時には正規化する
+
+期待効果:
+- トリガー候補表示とバリデーションの不一致を解消
+- データの世代差を吸収しつつ新規作成の一貫性を保てる
+
+### 9.3 C++ pending 分岐のテーブル駆動化
+
+問題:
+- `pending_strategy.cpp` の分岐集中で追加時リスクが高い
+
+改善案:
+- `EffectType -> handler` の dispatch table を導入する
+- 共通前処理（優先度・controller判定）と個別処理を分離する
+
+期待効果:
+- 可読性向上
+- 効果タイプ追加時の回帰リスク低減
+
+---
+
+## 10. フィルタ統合案（実装ロードマップ追記）
+
+1. Step 1: `FilterSpec` と serializer を導入する
+   - 完了条件:
+     - [ ] `FilterSpec`（型定義）追加
+     - [ ] 旧dict <-> FilterSpec 変換 adapter を実装
+
+2. Step 2: UI層を `FilterSpec` に切替える
+   - 完了条件:
+     - [ ] `filter_widget` の `get_data/set_data` を FilterSpec 前提に更新
+     - [ ] `UnifiedFilterHandler` の不正表示キーを排除
+
+3. Step 3: 検証・文言生成を統合する
+   - 完了条件:
+     - [ ] `FilterValidator` を FilterSpec ベースへ移行
+     - [ ] フィルタ説明APIを単一化
+
+4. Step 4: コマンド定義と接続する
+   - 完了条件:
+     - [ ] `CommandRegistry` から filter field 制約を参照
+     - [ ] コマンドごとの allowed filter fields を統一ルールで適用
+
+5. Step 5: 回帰テストと差分検査を固定化する
+   - 完了条件:
+     - [ ] フィルタ統合テスト（UI->保存->再読込）を追加
+     - [ ] コマンド定義差分テストを CI に追加
+     - [ ] TriggerType 正規化テストを追加

@@ -1681,37 +1681,61 @@ class CardTextGenerator:
                  elif duration_key in CardTextResources.DURATION_TRANSLATION:
                      duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
 
-             if mkind == "TAP":
-                 template = "{target}を{amount}{unit}選び、タップする。"
-             elif mkind == "UNTAP":
-                 template = "{target}を{amount}{unit}選び、アンタップする。"
-             elif mkind == "POWER_MOD" or mkind == "GIVE_POWER":
+             # Map mutate kinds to handlers to reduce branching and centralize formatting.
+             def _m_tap(amount, unit):
+                 if amount == 0:
+                     return f"{target_str}をすべてタップする。"
+                 return f"{target_str}を{amount}{unit}選び、タップする。"
+
+             def _m_untap(amount, unit):
+                 if amount == 0:
+                     return f"{target_str}をすべてアンタップする。"
+                 return f"{target_str}を{amount}{unit}選び、アンタップする。"
+
+             def _m_power(amount, unit):
                  sign = "+" if val1 >= 0 else ""
                  return f"{duration_text}{target_str}のパワーを{sign}{val1}する。"
-             elif mkind == "ADD_KEYWORD" or mkind == "GIVE_ABILITY":
+
+             def _m_add_keyword(amount, unit):
                  keyword = CardTextResources.get_keyword_text(str_param)
-                 # Revert amount usage for MUTATE - it usually comes from val1 which is amount
                  return cls._format_keyword_grant_text(target_str, str_param, keyword, duration_text, val1, skip_selection=is_target_linked)
-             elif mkind == "REMOVE_KEYWORD":
+
+             def _m_remove_keyword(amount, unit):
                  keyword = CardTextResources.get_keyword_text(str_param)
                  return f"{duration_text}{target_str}の「{keyword}」を無視する。"
-             elif mkind == "ADD_PASSIVE_EFFECT" or mkind == "ADD_MODIFIER":
-                 # Use str_param if available to describe what is added
+
+             def _m_add_passive(amount, unit):
                  if str_param:
                      kw = CardTextResources.get_keyword_text(str_param)
-                     # Check if it looks like a keyword (standard mapping) or generic
                      return f"{duration_text}{target_str}に「{kw}」を与える。"
-                 else:
-                     return f"{duration_text}{target_str}にパッシブ効果を与える。"
-             elif mkind == "ADD_COST_MODIFIER":
-                 return f"{duration_text}{target_str}にコスト修正を追加する。"
-             else:
-                 template = f"状態変更({tr(mkind)}): {{target}} (値:{val1})"
+                 return f"{duration_text}{target_str}にパッシブ効果を与える。"
 
-             if val1 == 0:
-                 template = template.replace("{amount}{unit}選び、", "すべて") # Simplified "choose all"
-                 val1 = ""
-             return template
+             def _m_add_cost(amount, unit):
+                 return f"{duration_text}{target_str}にコスト修正を追加する。"
+
+             MKIND_HANDLER = {
+                 "TAP": _m_tap,
+                 "UNTAP": _m_untap,
+                 "POWER_MOD": _m_power,
+                 "GIVE_POWER": _m_power,
+                 "ADD_KEYWORD": _m_add_keyword,
+                 "GIVE_ABILITY": _m_add_keyword,
+                 "REMOVE_KEYWORD": _m_remove_keyword,
+                 "ADD_PASSIVE_EFFECT": _m_add_passive,
+                 "ADD_MODIFIER": _m_add_passive,
+                 "ADD_COST_MODIFIER": _m_add_cost,
+             }
+
+             handler = MKIND_HANDLER.get(mkind)
+             if handler:
+                 try:
+                     return handler(val1, unit)
+                 except Exception:
+                     # Fallback to generic template on error
+                     return f"状態変更({tr(mkind)}): {target_str} (値:{val1})"
+
+             # Default fallback
+             return f"状態変更({tr(mkind)}): {target_str} (値:{val1})"
 
         elif atype == "SUMMON_TOKEN":
              token_id = action.get("str_val", "")

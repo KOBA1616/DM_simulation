@@ -277,6 +277,44 @@ GRANTABLE_KEYWORDS = [
 SETTABLE_KEYWORDS = GRANTABLE_KEYWORDS.copy()
 
 # =============================================================================
+# Mutation / Effect UI Lists (editor subsets kept here to avoid duplication)
+# =============================================================================
+# Mutation types used in editor selection for ADD_KEYWORD and similar
+MUTATION_TYPES = [
+    "SPEED_ATTACKER", "BLOCKER", "SLAYER", "DOUBLE_BREAKER", "TRIPLE_BREAKER",
+    "POWER_ATTACKER", "S_TRIGGER", "MACH_FIGHTER", "UNBLOCKABLE",
+    "CANNOT_BE_BLOCKED", "ALWAYS_WIN_BATTLE", "INFINITE_POWER_ATTACKER",
+    "JUST_DIVER", "G_STRIKE", "HYPER_ENERGY", "SHIELD_BURN", "EX_LIFE",
+    "SUPER_SOUL_X",
+]
+
+# Effect IDs for APPLY_MODIFIER (not keywords)
+EFFECT_IDS = [
+    "CANNOT_ATTACK",
+    "CANNOT_BLOCK",
+    "CANNOT_ATTACK_OR_BLOCK",
+    "CANNOT_ATTACK_AND_BLOCK",
+    "CANNOT_LEAVE_BATTLE",
+]
+
+# Convenience option list used by schema definitions
+APPLY_MODIFIER_OPTIONS = EFFECT_IDS + ["COST"]
+
+# Mutation kinds used for MUTATE command
+MUTATION_KINDS_FOR_MUTATE = [
+    "POWER_MOD", "ADD_KEYWORD"
+]
+
+# Delayed effect IDs used by REGISTER_DELAYED_EFFECT schema options
+DELAYED_EFFECT_IDS = [
+    "AT_END_OF_TURN_DESTROY",
+    "AT_END_OF_TURN_RETURN_TO_HAND",
+    "AT_END_OF_TURN_UNTAP",
+    "AT_START_OF_TURN_DRAW",
+    "AT_ATTACK_END_UNTAP"
+]
+
+# =============================================================================
 # Trigger Types (Effect Triggers)
 # 再発防止: C++ の TriggerType enum (card_json_types.hpp) と必ず1:1対応を保つこと。
 #   新しいトリガーを追加したら card_json_types.hpp / bind_core.cpp / trigger_manager.cpp

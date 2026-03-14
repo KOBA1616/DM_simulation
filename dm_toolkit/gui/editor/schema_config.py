@@ -1,57 +1,29 @@
 # -*- coding: utf-8 -*-
 from dm_toolkit.gui.editor.schema_def import CommandSchema, FieldSchema, FieldType, register_schema
 from dm_toolkit.gui.i18n import tr
-from dm_toolkit.consts import QUERY_MODES
+from dm_toolkit.consts import (
+    QUERY_MODES, TargetScope, DURATION_TYPES,
+    MUTATION_TYPES, EFFECT_IDS, APPLY_MODIFIER_OPTIONS, MUTATION_KINDS_FOR_MUTATE,
+    DELAYED_EFFECT_IDS
+)
 
 # Define constants for selection lists
 # TODO (C-3): These constant lists are duplicated in other modules (consts, schema_def,
 # and possibly data/configs). Plan: consolidate into a single source (e.g.,
 # dm_toolkit/consts.py or data/configs/command_ui.json) and import from there.
 # Add TODO markers where similar definitions exist to phase out duplicates.
-MUTATION_TYPES = [
-    "SPEED_ATTACKER", "BLOCKER", "SLAYER", "DOUBLE_BREAKER", "TRIPLE_BREAKER",
-    "POWER_ATTACKER", "S_TRIGGER", "MACH_FIGHTER", "UNBLOCKABLE",
-    "CANNOT_BE_BLOCKED", "ALWAYS_WIN_BATTLE", "INFINITE_POWER_ATTACKER",
-    "JUST_DIVER", "G_STRIKE", "HYPER_ENERGY", "SHIELD_BURN", "EX_LIFE",
-    "SUPER_SOUL_X",
-]
+# Local lists minimized: canonical lists are provided by dm_toolkit.consts
 
-DELAYED_EFFECT_IDS = [
-    "AT_END_OF_TURN_DESTROY",
-    "AT_END_OF_TURN_RETURN_TO_HAND",
-    "AT_END_OF_TURN_UNTAP",
-    "AT_START_OF_TURN_DRAW",
-    "AT_ATTACK_END_UNTAP"
-]
+# NOTE: EFFECT_IDS, APPLY_MODIFIER_OPTIONS, MUTATION_KINDS_FOR_MUTATE and
+# MUTATION_TYPES are defined in `dm_toolkit.consts` and imported above to
+# avoid duplicate definitions.
 
-# Effect IDs for APPLY_MODIFIER (not keywords)
-EFFECT_IDS = [
-    "CANNOT_ATTACK",
-    "CANNOT_BLOCK",
-    "CANNOT_ATTACK_OR_BLOCK",
-    "CANNOT_ATTACK_AND_BLOCK",
-    "CANNOT_LEAVE_BATTLE",
-]
+# Reuse canonical definitions from dm_toolkit.consts to avoid duplication.
+# `TargetScope` provides unified values and legacy PLAYER_* aliases.
+TARGET_SCOPES = [TargetScope.PLAYER_SELF, TargetScope.PLAYER_OPPONENT, TargetScope.ALL]
 
-APPLY_MODIFIER_OPTIONS = EFFECT_IDS + ["COST"]
-
-MUTATION_KINDS_FOR_MUTATE = [
-    "POWER_MOD", "ADD_KEYWORD"
-]
-
-TARGET_SCOPES = [
-    "PLAYER_SELF", "PLAYER_OPPONENT", "ALL"
-]
-
-DURATION_OPTIONS = [
-    "PERMANENT",
-    "THIS_TURN",
-    "UNTIL_END_OF_OPPONENT_TURN",
-    "UNTIL_START_OF_OPPONENT_TURN",
-    "UNTIL_END_OF_YOUR_TURN",
-    "UNTIL_START_OF_YOUR_TURN",
-    "DURING_OPPONENT_TURN"
-]
+# Use `DURATION_TYPES` from consts as the canonical duration options.
+DURATION_OPTIONS = DURATION_TYPES
 
 def register_all_schemas():
     """
