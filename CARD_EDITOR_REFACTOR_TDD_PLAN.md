@@ -45,8 +45,25 @@
       - dm_toolkit/command_builders.py: 93
    - 完了条件:
      - [x] `scripts/count_branches.py` を再実行して最新値を記録
-     - [ ] 上位ファイルの削減対象を再選定
-     - [ ] `window.py` と `text_generator.py` の局所改善結果を数値で残す
+    - [x] 上位ファイルの削減対象を再選定
+      - 選定結果（上位15）:
+        - `dm_toolkit/gui/editor/text_generator.py` (868)
+        - `dm_toolkit/engine/compat.py` (165)
+        - `training/head2head.py` (160)
+        - `dm_toolkit/gui/app.py` (134)
+        - `dm_toolkit/gui/editor/forms/unified_action_form.py` (129)
+        - `tests/test_game_integrity.py` (129)
+        - `dm_toolkit/command_builders.py` (93)
+        - `dm_toolkit/gui/widgets/scenario_tools.py` (70)
+        - `python/tests/conftest.py` (70)
+        - `dm_toolkit/gui/editor/logic_tree.py` (69)
+        - `dm_toolkit/gui/simulation_dialog.py` (63)
+        - `dm_toolkit/gui/editor/forms/effect_form.py` (60)
+        - `dm_toolkit/gui/widgets/zone_widget.py` (60)
+        - `dm_toolkit/gui/game_session.py` (58)
+        - `dm_toolkit/gui/editor/forms/base_form.py` (55)
+    - [ ] `window.py` と `text_generator.py` の局所改善結果を数値で残す
+      - 次: `text_generator.py` のさらなるマップ化を優先で進め、`unified_action_form.py` と `logic_tree.py` を次点としてアサインします。
 
 ### 高優先
 
