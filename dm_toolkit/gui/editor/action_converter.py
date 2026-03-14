@@ -1,27 +1,37 @@
 # -*- coding: utf-8 -*-
-"""Legacy compatibility shim for old action->command conversion.
+"""Deprecated legacy shim for action->command conversion.
 
-再発防止: dm_toolkit の旧形式アクション→コマンド変換モジュールは削除済み。
-古いテストや統合が利用する際の互換シムを提供します。
+This module is retained only for backward compatibility with older tests
+and integrations. It delegates to `CommandConverter` in
+`dm_toolkit.gui.editor.command_converter` and emits a DeprecationWarning.
+Remove this shim only after all consumers migrate to `CommandConverter`.
 """
 
-from __future__ import annotations
-
 from typing import Any, Dict
+import warnings
 
-# 再発防止: dm_toolkit.action_to_command は削除済み。ローカル版の変換で代替します。
-def _map_action_local(action: Any) -> Dict[str, Any]:
-    if isinstance(action, dict):
-        return action
-    if hasattr(action, 'to_dict'):
-        try:
-            return action.to_dict()
-        except Exception:
-            pass
-    return {'type': str(getattr(action, 'type', 'UNKNOWN'))}
+try:
+    from dm_toolkit.gui.editor.command_converter import CommandConverter
+except Exception:
+    CommandConverter = None
 
 
 class ActionConverter:
     @staticmethod
     def convert(action: Any) -> Dict[str, Any]:
-        return _map_action_local(action)
+        warnings.warn(
+            "dm_toolkit.gui.editor.action_converter is deprecated; use command_converter.CommandConverter.convert",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        if CommandConverter is not None:
+            return CommandConverter.convert(action)
+        # Fallback: best-effort mapping
+        if isinstance(action, dict):
+            return action
+        if hasattr(action, 'to_dict'):
+            try:
+                return action.to_dict()
+            except Exception:
+                pass
+        return {'type': str(getattr(action, 'type', 'UNKNOWN'))}

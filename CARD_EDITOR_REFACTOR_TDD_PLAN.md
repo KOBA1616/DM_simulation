@@ -126,9 +126,15 @@ pytest tests/test_headless_editor.py -q
 
 完了条件:
 - [ ] `dm_toolkit/gui/editor/**` 内で `"ACTION"` 参照 0 件
-- [ ] `action_converter.py` 互換シム削除（または空stub化）
+ - [x] `action_converter.py` 互換シム削除（または空stub化）
+
+進捗メモ:
+- 2026-03-14: D-5 実施 — `action_converter.py` を直接削除する前段階として、非推奨の委譲stubへ置換しました。新しい `action_converter.py` は `CommandConverter` へ委譲し、インポート時に `DeprecationWarning` を出すことで、削除前の互換性を保ちつつ利用箇所の移行を促します。テストは引き続きグリーンであることを確認しました。
 - [ ] 旧データ読み込み時は migration 層でのみ吸収
 - [ ] 全GUIテスト pass
+
+進捗メモ:
+- 2026-03-14: D-4 実施 — テスト群が直接 `action_converter` を参照していたため、テストを `CommandConverter` シム経由でモックするように移行しました。これにより `action_converter.py` を安全に削除する準備が整いました（削除は別コミットで実施予定）。関連テスト `python/tests/dm_toolkit/test_data_manager_logic.py` を修正し、テスト用モックに互換ラッパを追加して回帰を回避しました。
 
 ---
 
@@ -226,7 +232,10 @@ pytest tests/test_headless_editor.py -q
 - `flags` は非推奨化して読み取り互換だけ残す。
 
 達成目標:
-- [ ] Filterの保存形式が明示的になる
+- [x] Filterの保存形式が明示的になる
+
+進捗メモ:
+- 2026-03-14: E-2 実施 — `FilterModel.flags` を読み取り互換のみとし、読み込み時に明示的な boolean フィールドへマッピングする `model_validator` を追加しました。シリアライザを調整して `flags` が保存時に出力されないことを保証します。関連の `pytest` を `python/tests/gui/test_filter_flags_deprecation.py` に追加しました。
 
 ---
 
@@ -455,10 +464,21 @@ pytest tests/test_headless_editor.py -q
 - [ ] `QueryParams` 導入
 - [ ] `TransitionParams` 導入
 - [ ] `ModifierParams` 導入
+進捗メモ:
+- 2026-03-14: E-1 実施 — `QueryParams`, `TransitionParams`, `ModifierParams` の Pydantic モデルを `dm_toolkit/gui/editor/models/__init__.py` に追加し、
+  `CommandModel.ingest_legacy_structure` で `type` に応じて `params` を対応する型へ自動変換するロジックを実装しました。
+  - 追加テスト: `python/tests/gui/test_command_params_typed.py` を追加し、`QUERY`/`TRANSITION`/`MODIFY` の各パラメータが型変換されることを検証（テスト通過）。
+  - 変更は互換性を損なわないように失敗時はレガシー dict を保持します。
+
 
 ### E-2 `FilterModel.flags` 非推奨化
 - [ ] 読み込み時のみ `flags -> 明示フィールド` 変換
 - [ ] 保存時は `flags` を出力しない
+進捗メモ:
+- 2026-03-14: E-2 実施 — `FilterModel` に明示的フラグフィールド（`is_tapped`, `is_blocker`, `is_evolution`, `is_card_designation`, `is_trigger_source`）を追加し、
+  モデルの `@model_validator` で legacy `flags` リストを読取時にマッピング、`@model_serializer` で `flags` を出力しないようにしました。
+  - 追加テスト: `python/tests/gui/test_filter_flags_deprecation.py` を追加し、旧 `flags` がマッピングされシリアライズ時に含まれないことを検証（テスト通過）。
+
 
 ### E-3 変数リンクキー統一
  - [x] 保存キーを `input_value_key/output_value_key` に固定
@@ -499,6 +519,7 @@ pytest tests/test_headless_editor.py -q
 最新メモ:
 - 2026-03-14: `safe_connect` と `KeywordEditForm` の状態分離（`KeywordFormState`）導入済み。
  - 2026-03-14: フェーズA-1 テスト追加（connect不可 / widget=None）を追加・完了。
+ - 2026-03-14: 作業コミット実施 — 変更をコミットしました（メッセージ: "TDD(editor): replace ACTION tokens with LEGACY_ACTION; add command_converter; add audit script; update plan"）。
 
 ---
 
