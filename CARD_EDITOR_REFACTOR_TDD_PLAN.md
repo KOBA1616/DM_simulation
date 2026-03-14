@@ -76,6 +76,10 @@
      - [ ] 高頻度コマンドの `params: Any` 残件を洗い出す
      - [ ] 追加の型モデルを導入する
      - [ ] 型付きモデルの serialize / deserialize テストを追加する
+    - 進捗: 2026-03-15
+      - `CommandModel` の `params` に対して `SearchParams` を追加し、`SEARCH_DECK` コマンドを型化しました。
+      - 単体テスト `python/tests/unit/test_commandmodel_searchparams.py` を追加し、`SEARCH_DECK` の ingest/serialize が型付きで動作することを検証（1 passed）。
+      - 次: 他の高頻度コマンド（`LOOK_AND_ADD`, `MEKRAID`, `ADD_KEYWORD` など）について同様の型導入を進める予定です。
 
 ---
 
