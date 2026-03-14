@@ -10,6 +10,7 @@ from dm_toolkit.gui.editor.forms.unified_widgets import (
 )
 from dm_toolkit.gui.editor.schema_def import FieldType, FieldSchema
 import importlib
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 # Import correct widgets from actual file structure
 from dm_toolkit.gui.editor.forms.parts.filter_widget import FilterEditorWidget
@@ -68,7 +69,7 @@ class OptionsControlWidget(QWidget):
 
         self.spin = NumberWidget(self, 1, 10)
         self.btn = QPushButton(tr("Generate Options"))
-        self.btn.clicked.connect(callback)
+        safe_connect(self.btn, 'clicked', callback)
         self.label = QLabel(tr("Options Count"))
 
         self.layout.addWidget(self.label)
@@ -211,36 +212,36 @@ class WidgetFactory:
 
         if w_type == 'text':
             widget = TextWidget(parent)
-            widget.textChanged.connect(lambda: update_callback())
+            safe_connect(widget, 'textChanged', lambda: update_callback())
 
         elif w_type == 'spinbox':
             widget = NumberWidget(parent)
-            widget.valueChanged.connect(lambda: update_callback())
+            safe_connect(widget, 'valueChanged', lambda: update_callback())
 
         elif w_type == 'checkbox':
             widget = BoolCheckWidget(field_config.get('label', ''), parent)
-            widget.stateChanged.connect(lambda: update_callback())
+            safe_connect(widget, 'stateChanged', lambda: update_callback())
 
         elif w_type == 'player_scope':
             widget = PlayerScopeWidget(parent)
-            widget.self_chk.stateChanged.connect(lambda: update_callback())
-            widget.opp_chk.stateChanged.connect(lambda: update_callback())
+            safe_connect(widget.self_chk, 'stateChanged', lambda: update_callback())
+            safe_connect(widget.opp_chk, 'stateChanged', lambda: update_callback())
 
         elif w_type == 'zone_combo':
             widget = ZoneCombo(parent)
-            widget.currentIndexChanged.connect(lambda: update_callback())
+            safe_connect(widget, 'currentIndexChanged', lambda: update_callback())
 
         elif w_type == 'scope_combo':
             widget = ScopeCombo(parent)
-            widget.currentIndexChanged.connect(lambda: update_callback())
+            safe_connect(widget, 'currentIndexChanged', lambda: update_callback())
 
         elif w_type == 'filter_editor':
             widget = FilterEditorWrapper(parent)
-            widget.dataChanged.connect(update_callback)
+            safe_connect(widget, 'dataChanged', update_callback)
 
         elif w_type == 'variable_link':
             widget = VariableLinkWrapper(parent)
-            widget.dataChanged.connect(update_callback)
+            safe_connect(widget, 'dataChanged', update_callback)
 
         elif w_type == 'options_control':
             cb = getattr(parent, 'request_generate_options', lambda: None)
@@ -248,12 +249,12 @@ class WidgetFactory:
 
         elif w_type == 'ref_mode_combo':
             widget = RefModeComboWrapper(parent)
-            widget.currentIndexChanged.connect(lambda: update_callback())
+            safe_connect(widget, 'currentIndexChanged', lambda: update_callback())
 
         # Fallback for generic combo
         if widget is None and w_type and 'combo' in w_type:
             widget = SelectComboWidget(parent)
-            widget.currentIndexChanged.connect(lambda: update_callback())
+            safe_connect(widget, 'currentIndexChanged', lambda: update_callback())
 
         return widget
 
@@ -263,7 +264,7 @@ def _create_string_widget(parent, schema, cb):
     widget = TextWidget(parent)
     if schema.tooltip:
         widget.setPlaceholderText(schema.tooltip)
-    widget.textChanged.connect(lambda: cb())
+    safe_connect(widget, 'textChanged', lambda: cb())
     return widget
 
 def _create_int_widget(parent, schema, cb):
@@ -276,34 +277,34 @@ def _create_int_widget(parent, schema, cb):
     # step が指定されている場合はスピンボックスの増減幅を設定する
     if getattr(schema, 'step', None):
         widget.setSingleStep(schema.step)
-    widget.valueChanged.connect(lambda: cb())
+    safe_connect(widget, 'valueChanged', lambda: cb())
     return widget
 
 def _create_bool_widget(parent, schema, cb):
     widget = BoolCheckWidget(schema.label, parent)
     if schema.tooltip: widget.setToolTip(schema.tooltip)
-    widget.stateChanged.connect(lambda: cb())
+    safe_connect(widget, 'stateChanged', lambda: cb())
     return widget
 
 def _create_player_widget(parent, schema, cb):
     widget = PlayerScopeWidget(parent)
-    widget.self_chk.stateChanged.connect(lambda: cb())
-    widget.opp_chk.stateChanged.connect(lambda: cb())
+    safe_connect(widget.self_chk, 'stateChanged', lambda: cb())
+    safe_connect(widget.opp_chk, 'stateChanged', lambda: cb())
     return widget
 
 def _create_zone_widget(parent, schema, cb):
     widget = ZoneCombo(parent)
-    widget.currentIndexChanged.connect(lambda: cb())
+    safe_connect(widget, 'currentIndexChanged', lambda: cb())
     return widget
 
 def _create_filter_widget(parent, schema, cb):
     widget = FilterEditorWrapper(parent)
-    widget.filterChanged.connect(cb)
+    safe_connect(widget, 'filterChanged', cb)
     return widget
 
 def _create_link_widget(parent, schema, cb):
     widget = VariableLinkWrapper(parent)
-    widget.linkChanged.connect(cb)
+    safe_connect(widget, 'linkChanged', cb)
     return widget
 
 def _create_options_control(parent, schema, cb):
@@ -314,20 +315,20 @@ def _create_options_control(parent, schema, cb):
 
 def _create_civ_widget(parent, schema, cb):
     widget = CivilizationWrapper(parent)
-    widget.changed.connect(lambda: cb())
+    safe_connect(widget, 'changed', lambda: cb())
     return widget
 
 def _create_races_widget(parent, schema, cb):
     # Use a simple text-based editor for comma-separated races
     widget = RacesEditorWidget(parent)
-    widget.textChanged.connect(lambda: cb())
+    safe_connect(widget, 'textChanged', lambda: cb())
     return widget
 
 def _create_type_select_widget(parent, schema, cb):
     widget = SelectComboWidget(parent)
     for t in CARD_TYPES:
         widget.addItem(t, t)
-    widget.currentIndexChanged.connect(lambda: cb())
+    safe_connect(widget, 'currentIndexChanged', lambda: cb())
     return widget
 
 def _create_select_widget(parent, schema, cb):
@@ -356,7 +357,7 @@ def _create_select_widget(parent, schema, cb):
 
                 widget.addItem(label, opt) # Display label, store value (opt)
 
-    widget.currentIndexChanged.connect(lambda: cb())
+    safe_connect(widget, 'currentIndexChanged', lambda: cb())
     return widget
 
 def _create_enum_widget(parent, schema, cb):
@@ -380,12 +381,12 @@ def _create_enum_widget(parent, schema, cb):
             from dm_toolkit.gui.i18n import tr as _tr
             widget.addItem(_tr("ERROR"), None)
 
-    widget.currentIndexChanged.connect(lambda: cb())
+    safe_connect(widget, 'currentIndexChanged', lambda: cb())
     return widget
 
 def _create_condition_widget(parent, schema, cb):
     widget = ConditionEditorWrapper(parent)
-    widget.dataChanged.connect(cb)
+    safe_connect(widget, 'dataChanged', cb)
     return widget
 
 # --- Register Core Types ---

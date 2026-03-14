@@ -164,6 +164,25 @@ pytest tests/test_headless_editor.py -q
     - ユニットテスト `python/tests/unit/test_diff_summary_unified_form.py` を追加・実行（1 passed）。
   - 次の作業: ネスト／構造差分の可視化（ツリー表示 or 行単位 diff）へ拡張する予定です。
 
+### 新規完了: ネスト差分の整形出力追加
+
+- 2026-03-14: `UnifiedActionForm.format_structural_diff` を追加しました。
+  - 変更点:
+    - `dm_toolkit/gui/editor/forms/unified_action_form.py` に `format_structural_diff(cir_payload)` を追加し、`compute_structural_diff` の結果を人間向けの複数行文字列に整形する機能を実装しました（例: `target_filter.cost` を改行区切りで表示）。
+    - CIRのツールチップ表示を浅いカンマ区切りからマルチラインの差分表示へ更新しました。
+    - ユニットテスト `python/tests/unit/test_format_structural_diff.py` を追加し検証（1 passed）。既存の構造差分テストも合わせて実行し、両方パスしました（2 passed）。
+  - 理由: UI側での差分可視化（後続タスク：ツリー表示や差分パネル）に向け、整形ロジックを先に実装しておくことでUI実装を小さく安全に進められます。
+
+
+### 新規完了: ネスト差分検出（構造比較）
+
+- 2026-03-14: `UnifiedActionForm.compute_structural_diff` を追加しました。
+  - 変更点:
+    - `dm_toolkit/gui/editor/forms/unified_action_form.py` に `compute_structural_diff(cir_payload)` を追加し、ネストされた dict/list を再帰的に比較して差分パス（例: `target_filter.cost`, `options[1].label`）を返すようにしました。
+    - ユニットテスト `python/tests/unit/test_nested_diff_unified_form.py` を追加し、ネストされた dict と list の差分が期待通りに検出されることを検証（1 passed）。
+  - 理由: 浅いキー差分だけではネスト構造の違いを表現できないため、将来的なツリー表示や差分パネルの下地として構造的な差分検出APIを実装しました。
+
+
 
 ---
 
@@ -776,3 +795,10 @@ pytest tests/test_headless_editor.py -q
 - 実施: `pytest python/tests/gui` を実行し、CIR の読み込み・添付・永続化の追加が GUI 回帰を生まないことを確認しました。
   - 結果: `78 passed in 9.50s` — 全件パス。
   - 備考: これにより今回の変更が GUI レイヤーに与える影響がないことを確認できました。今後は CIR を編集フローへ段階的に組み込む作業に進めます。
+
+### 新規完了: `safe_connect` 残件一掃検証
+
+- 2026-03-14: `filter_widget.py`, `condition_widget.py`, `card_form.py` に対して、生の `.connect(` 呼び出しが残存していないことを検出するユニットテストを追加しました: `python/tests/unit/test_no_raw_connect_target_files.py`。
+  - 検証結果: テスト実行で対象ファイルに `.connect(` の直書きがないことを確認（1 passed）。
+  - 影響: `safe_connect` への統一確認が完了し、ヘッドレス環境での初期化安定性が改善されました。
+
