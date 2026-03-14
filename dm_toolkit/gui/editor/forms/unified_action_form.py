@@ -325,10 +325,12 @@ class UnifiedActionForm(BaseEditForm):
                 # tooltip for debugging
                 # show tooltip with CIR and shallow diff summary
                 try:
-                    summary = self.compute_diff_summary(cir[0].get('payload', cir[0]))
+                    # Use structural diff for richer nested/key path summaries
+                    # Use formatted structural diff for tooltip (multiline)
+                    summary = self.format_structural_diff(cir[0].get('payload', cir[0]))
                     tip = str(cir)
                     if summary:
-                        tip += '\nDiff keys: ' + ','.join(summary)
+                        tip += '\nDiff:\n' + summary
                     self.cir_label.setToolTip(tip)
                 except Exception:
                     self.cir_label.setToolTip(str(cir))
@@ -435,6 +437,160 @@ class UnifiedActionForm(BaseEditForm):
                 diffs.append(k)
 
         return diffs
+
+    def compute_structural_diff(self, cir_payload: dict[str, Any]) -> list[str]:
+        """Return flattened paths of keys where cir_payload and current widget/model differ.
+
+        Examples of returned paths:
+        - 'target_filter.cost' for nested dicts
+        - 'options[1].label' for lists of dicts
+        - top-level keys that have no corresponding widget will be returned as-is
+        """
+        diffs: list[str] = []
+        if not cir_payload:
+            return diffs
+
+        def _get_widget_value_for_key(key: str):
+            w = getattr(self, 'widgets_map', {}).get(key)
+            if w is None:
+                return None, False
+            try:
+                if hasattr(w, 'get_value'):
+                    return w.get_value(), True
+                return getattr(w, 'value', None), True
+            except Exception:
+                return None, True
+
+        def _compare(prefix: str, payload_val, widget_val):
+            # payload_val exists; widget_val may be None meaning missing widget or missing value
+            if isinstance(payload_val, dict):
+                if not isinstance(widget_val, dict):
+                    # widget missing or not a dict: report full prefix
+                    diffs.append(prefix)
+                    return
+                for k, v in payload_val.items():
+                    new_prefix = f"{prefix}.{k}" if prefix else k
+                    _compare(new_prefix, v, widget_val.get(k))
+            elif isinstance(payload_val, list):
+                if not isinstance(widget_val, list):
+                    diffs.append(prefix)
+                    return
+                # compare element-wise; if lengths differ, mark extra indices as diffs
+                min_len = min(len(payload_val), len(widget_val))
+                for i in range(min_len):
+                    pv = payload_val[i]
+                    wv = widget_val[i]
+                    new_prefix = f"{prefix}[{i}]"
+                    if isinstance(pv, dict):
+                        if not isinstance(wv, dict):
+                            diffs.append(new_prefix)
+                        else:
+                            for kk, vv in pv.items():
+                                _compare(f"{new_prefix}.{kk}", vv, wv.get(kk))
+                    else:
+                        if pv != wv:
+                            diffs.append(new_prefix)
+                # extra payload elements are considered diffs
+                if len(payload_val) > len(widget_val):
+                    for i in range(min_len, len(payload_val)):
+                        diffs.append(f"{prefix}[{i}]")
+            else:
+                # primitive comparison
+                if widget_val != payload_val:
+                    diffs.append(prefix)
+
+        # top-level: iterate payload keys and fetch widget values
+        for key, val in cir_payload.items():
+            widget_val, has_widget = _get_widget_value_for_key(key)
+            if not has_widget:
+                # no widget present for this key: include it
+                diffs.append(key)
+                continue
+            _compare(key, val, widget_val)
+
+        return diffs
+
+    def compute_structural_diff_tree(self, cir_payload: dict[str, Any]) -> dict:
+        """Return nested dict marking paths that differ between payload and widgets.
+
+        Leaves are True to indicate a difference. Example:
+        { 'target_filter': { 'cost': True }, 'options': { 1: { 'label': True } }, 'extra': True }
+        """
+        tree: dict = {}
+        if not cir_payload:
+            return tree
+
+        def _set_path(t: dict, parts: list, value=True):
+            if not parts:
+                return
+            key = parts[0]
+            if len(parts) == 1:
+                t[key] = value
+                return
+            if key not in t or not isinstance(t[key], dict):
+                t[key] = {}
+            _set_path(t[key], parts[1:], value)
+
+        def _get_widget_value_for_key(key: str):
+            w = getattr(self, 'widgets_map', {}).get(key)
+            if w is None:
+                return None, False
+            try:
+                if hasattr(w, 'get_value'):
+                    return w.get_value(), True
+                return getattr(w, 'value', None), True
+            except Exception:
+                return None, True
+
+        def _recurse(prefix_parts: list, payload_val, widget_val):
+            if isinstance(payload_val, dict):
+                if not isinstance(widget_val, dict):
+                    _set_path(tree, prefix_parts)
+                    return
+                for k, v in payload_val.items():
+                    _recurse(prefix_parts + [k], v, widget_val.get(k))
+            elif isinstance(payload_val, list):
+                if not isinstance(widget_val, list):
+                    _set_path(tree, prefix_parts)
+                    return
+                min_len = min(len(payload_val), len(widget_val))
+                for i in range(min_len):
+                    pv = payload_val[i]
+                    wv = widget_val[i]
+                    if isinstance(pv, dict):
+                        for kk, vv in pv.items():
+                            _recurse(prefix_parts + [i, kk], vv, (wv.get(kk) if isinstance(wv, dict) else None))
+                    else:
+                        if pv != wv:
+                            _set_path(tree, prefix_parts + [i])
+                if len(payload_val) > len(widget_val):
+                    for i in range(min_len, len(payload_val)):
+                        _set_path(tree, prefix_parts + [i])
+            else:
+                if widget_val != payload_val:
+                    _set_path(tree, prefix_parts)
+
+        for key, val in cir_payload.items():
+            widget_val, has_widget = _get_widget_value_for_key(key)
+            if not has_widget:
+                tree[key] = True
+                continue
+            _recurse([key], val, widget_val)
+
+        return tree
+
+    def format_structural_diff(self, cir_payload: dict[str, Any]) -> str:
+        """Return a human-readable multiline summary for structural diffs.
+
+        Each changed path is on its own line. For lists/dicts the path format
+        follows compute_structural_diff (e.g. 'options[1].label').
+        """
+        paths = self.compute_structural_diff(cir_payload)
+        if not paths:
+            return ''
+        # Sort for deterministic output
+        paths = sorted(paths)
+        return '\n'.join(paths)
 
     def apply_cir(self, cir_list: list) -> bool:
         """Apply a canonical IR payload to the current form.
