@@ -52,12 +52,13 @@
      - [ ] 重複定義の一覧を作成
      - [ ] `dm_toolkit/consts.py` または `data/configs/command_ui.json` に寄せる
      - [ ] 読み込み側の参照先を 1 系統へ整理
-   - 進捗: 2026-03-15
      - `schema_config.py` の `TARGET_SCOPES` と `DURATION_OPTIONS` を `dm_toolkit.consts` の定義に移管しました（`TargetScope` と `DURATION_TYPES` を参照）。
      - 追加移管: `MUTATION_TYPES`, `EFFECT_IDS`, `APPLY_MODIFIER_OPTIONS`, `MUTATION_KINDS_FOR_MUTATE` を `dm_toolkit.consts` 側に移動し、`schema_config.py` 側を参照に更新しました（小さな段階移管）。
     - 追加移管2: `DELAYED_EFFECT_IDS` を `dm_toolkit.consts` 側に移動しました（`REGISTER_DELAYED_EFFECT` の options に使用）。
     - 検証: `schema_config` が `DELAYED_EFFECT_IDS` を `consts` と一致して参照することを検証するユニットテストを追加しました（python/tests/unit/test_schema_consts_sot.py）。
     - テスト結果: 1 passed
+     - 次工程: `window.py` の構造更新処理の分岐削減を継続しました。具体的には `_handle_add_child_effect` の if/elif チェーンをハンドラ辞書に置換し、分岐数と可読性を改善しました。
+     - 検証: 変更は headless テスト群に影響を与えていないことを確認済み（該当ユニットテスト実行で回帰無し）。
      - 動作確認: 関連ユニットテストを実行し回帰なし（複数テスト合格）。
 
 4. CIR を編集フローで実利用できる形に進める
@@ -226,12 +227,13 @@
 候補B: 条件設定フォームに schema 駆動の表示切替を導入する
 
 候補C: `text_generator.py` の残り条件フォーマッタを追加マップ化する
- - 進捗: 2026-03-15
    - `MUTATE` 処理の分岐をハンドラ辞書化してマップ駆動に変更しました（`_format_special_effect_command` 内）。
    - 併せてユニットテスト `python/tests/unit/test_text_generator_mutate_map.py` を追加し、基本ケースを検証するようにしました。
 
 ---
 
+   - 次工程: `window.py` の構造更新処理の分岐削減を継続しました。具体的には `_handle_add_child_effect` の if/elif チェーンをハンドラ辞書に置換し、分岐数と可読性を改善しました。
+   - 検証: 変更は headless テスト群に影響を与えていないことを確認済み（該当ユニットテスト実行で回帰無し）。
 ## 6. 実行ルール
 
 - 1回の実装は 1タスク・1症状・1〜3ファイル変更を原則とする

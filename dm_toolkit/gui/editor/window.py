@@ -511,36 +511,23 @@ class CardEditor(QMainWindow):
             eff_type = payload.get('type') if isinstance(payload, dict) else None
         except Exception:
             eff_type = None
+        # Map effect types to tree_widget handler methods to reduce branching.
+        HANDLERS = {
+            "KEYWORDS": lambda: self.tree_widget.add_keywords(item.index()),
+            "TRIGGERED": lambda: self.tree_widget.add_trigger(item.index()),
+            "STATIC": lambda: self.tree_widget.add_static(item.index()),
+            "REACTION": lambda: self.tree_widget.add_reaction(item.index()),
+        }
 
-        if eff_type == "KEYWORDS":
-            try:
-                self.tree_widget.add_keywords(item.index())
-            except Exception:
-                return False
+        handler = HANDLERS.get(eff_type)
+        if handler is None:
+            return False
+
+        try:
+            handler()
             return True
-
-        if eff_type == "TRIGGERED":
-            try:
-                self.tree_widget.add_trigger(item.index())
-            except Exception:
-                return False
-            return True
-
-        if eff_type == "STATIC":
-            try:
-                self.tree_widget.add_static(item.index())
-            except Exception:
-                return False
-            return True
-
-        if eff_type == "REACTION":
-            try:
-                self.tree_widget.add_reaction(item.index())
-            except Exception:
-                return False
-            return True
-
-        return False
+        except Exception:
+            return False
 
     def on_tree_changed(self):
         # Centralized handler for tree structure changes
