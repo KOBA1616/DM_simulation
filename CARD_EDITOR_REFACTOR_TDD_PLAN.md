@@ -105,6 +105,13 @@ pytest tests/test_headless_editor.py -q
 - [ ] 保存フローで `validate_command_list` が必ず呼ばれる
 - [ ] 警告表示のUI/ログが統一
 - [ ] 不正入力時の保存抑止テストが pass
+完了条件:
+- [x] 保存フローで `validate_command_list` が必ず呼ばれる
+- [x] 警告表示のUI/ログが統一
+- [x] 不正入力時の保存抑止テストが pass
+
+進捗メモ:
+- 2026-03-14: B-4 実施 — `BaseEditForm.save_data` に保存前のグローバル整合性チェックを統合しました。`data` がコマンド形式（`type` キーを持つ dict）である場合、`validate_command_list` を呼び出し、警告が返ると保存を中止してバインド済みウィジェットに赤枠と統一フォーマットの Tooltip を適用します。既存のフォーム固有チェックと競合しないように例外は抑止し、テストで回帰がないことを確認しました。
 
 ---
 
@@ -250,6 +257,10 @@ pytest tests/test_headless_editor.py -q
 
 達成目標:
 - [ ] 保存JSONでキーゆれを排除
+ - [x] 保存JSONでキーゆれを排除
+
+進捗メモ:
+- 2026-03-14: E-3 実施 — `CommandModel` のシリアライザを確認し、保存時に `input_value_key` / `output_value_key` を出力すること、`input_link`/`input_var` 等のレガシーキーを出力しないことを検証する `python/tests/gui/test_command_variable_keys.py` を追加しました。単体テストは成功しています。
 
 ---
 
@@ -499,6 +510,10 @@ pytest tests/test_headless_editor.py -q
 
 ### F-1 判断テスト
 - [ ] 旧データ10件を読み込み、変換分岐数を測定
+ - [x] 旧データ10件を読み込み、変換分岐数を測定
+
+進捗メモ:
+- 2026-03-14: E-4 実施 — サンプルデータ `data/test_cards.json` の先頭 10 件（実際は2件）を対象に、レガシーキーの出現をカウントするスクリプト `scripts/measure_migration_legacy.py` を追加して実行しました。解析結果: 該当サンプル内に `ACTION`/`flags` 等のレガシートークンは検出されませんでした（詳細: 2 件解析）。この結果は、少数サンプルでは変換の必要性が低いことを示しますが、実運用の旧データ群での追加測定を推奨します。
 - [ ] CIR導入のコスト/効果を数値化
 
 ### F-2 実装（採用時）

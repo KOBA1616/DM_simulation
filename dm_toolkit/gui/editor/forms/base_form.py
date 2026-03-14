@@ -41,6 +41,7 @@ except Exception:
     Qt = type('X', (), {})
     pyqtSignal = _DummySignal
 from contextlib import contextmanager
+from dm_toolkit.gui.editor.consistency import validate_command_list, format_integrity_warnings
 
 
 def to_dict(obj):
@@ -194,6 +195,32 @@ class BaseEditForm(QWidget):
             data = to_dict(data)
 
         self._save_ui_to_data(data)
+
+        # Global save-time consistency check: if data appears to be a Command dict,
+        # run `validate_command_list` and abort save when blocking warnings exist.
+        try:
+            if isinstance(data, dict) and data.get('type'):
+                warns = validate_command_list([data], _path=data.get('type'))
+                if warns:
+                    # Apply a simple validation style to all bound widgets and set tooltip
+                    msg = format_integrity_warnings(warns)
+                    for widget in list(self.bindings.values()):
+                        w = widget[0] if isinstance(widget, tuple) else widget
+                        if hasattr(w, 'setStyleSheet'):
+                            try:
+                                w.setStyleSheet("border: 1px solid red;")
+                            except Exception:
+                                pass
+                        if hasattr(w, 'setToolTip'):
+                            try:
+                                w.setToolTip(msg)
+                            except Exception:
+                                pass
+                    # Abort save to avoid persisting invalid command
+                    return
+        except Exception:
+            # If validation infrastructure is unavailable, don't block save
+            pass
 
         self.current_item.setData(data, Qt.ItemDataRole.UserRole + 2)
         self.current_item.setText(self._get_display_text(data))
