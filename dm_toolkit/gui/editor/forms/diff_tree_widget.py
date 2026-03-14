@@ -35,7 +35,14 @@ class DiffTreeWidget(QWidget):
                 part = f"[{key}]"
             else:
                 part = str(key)
-            path = f"{prefix}.{part}" if prefix else part
+            # When key is an int, append as [i] without an extra dot
+            if prefix:
+                if isinstance(key, int):
+                    path = f"{prefix}{part}"
+                else:
+                    path = f"{prefix}.{part}"
+            else:
+                path = part
             if val is True:
                 lines.append(path)
             elif isinstance(val, dict):

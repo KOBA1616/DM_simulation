@@ -173,6 +173,15 @@ pytest tests/test_headless_editor.py -q
     - ユニットテスト `python/tests/unit/test_format_structural_diff.py` を追加し検証（1 passed）。既存の構造差分テストも合わせて実行し、両方パスしました（2 passed）。
   - 理由: UI側での差分可視化（後続タスク：ツリー表示や差分パネル）に向け、整形ロジックを先に実装しておくことでUI実装を小さく安全に進められます。
 
+### 新規完了: 差分ツリーパネル基礎実装
+
+- 2026-03-14: `DiffTreeWidget` を追加しました。
+  - 変更点:
+    - `dm_toolkit/gui/editor/forms/diff_tree_widget.py` を追加し、差分ツリー（ネスト辞書）を受け取って表示ラインを生成するウィジェットを実装しました。
+    - ヘッドレス環境での単体テスト `python/tests/unit/test_diff_tree_widget.py` を追加・実行し、期待される path 文字列（例: `options[1].label`）が生成されることを確認（1 passed）。
+  - 補足: このウィジェットは最小 UI 表示とテスト用 API (`set_diff_tree`, `get_lines`) を提供します。今後、`UnifiedActionForm` へ埋め込みや差分パネル化を行う際の土台になります。
+
+
 
 ### 新規完了: ネスト差分検出（構造比較）
 

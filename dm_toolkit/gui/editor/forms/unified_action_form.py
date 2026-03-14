@@ -20,6 +20,7 @@ from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
 from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 from dm_toolkit.gui.editor.schema_def import SchemaLoader, get_schema, FieldSchema, FieldType
 from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_OPTIONS
+from dm_toolkit.gui.editor.forms.diff_tree_widget import DiffTreeWidget
 from dm_toolkit.gui.editor.consistency import format_integrity_warnings, validate_command_list
 
 COMMAND_GROUPS = EditorConfigLoader.get_command_groups()
@@ -75,6 +76,11 @@ class UnifiedActionForm(BaseEditForm):
         cir_row.addWidget(self.apply_cir_btn)
         cir_row.addStretch()
         self.main_layout.addRow(cir_row)
+
+        # Diff tree widget (hidden until CIR present)
+        self.diff_tree_widget = DiffTreeWidget()
+        self.diff_tree_widget.setVisible(False)
+        self.main_layout.addRow(tr("Diff"), self.diff_tree_widget)
 
         # Trigger initial population
         self.on_group_changed()
@@ -339,6 +345,14 @@ class UnifiedActionForm(BaseEditForm):
                     first = cir[0]
                     if isinstance(first, dict):
                         self.highlight_diff(first.get('payload', first))
+                        try:
+                            # attach structured diff tree to the diff widget
+                            if hasattr(self, 'diff_tree_widget'):
+                                tree = self.compute_structural_diff_tree(first.get('payload', first))
+                                self.diff_tree_widget.set_diff_tree(tree)
+                                self.diff_tree_widget.setVisible(bool(tree))
+                        except Exception:
+                            pass
                 except Exception:
                     pass
             else:
@@ -407,6 +421,12 @@ class UnifiedActionForm(BaseEditForm):
                     widget.setStyleSheet('')
             except Exception:
                 continue
+        try:
+            if hasattr(self, 'diff_tree_widget'):
+                self.diff_tree_widget.set_diff_tree({})
+                self.diff_tree_widget.setVisible(False)
+        except Exception:
+            pass
 
     def compute_diff_summary(self, cir_payload: dict[str, Any]) -> list[str]:
         """Return list of keys where cir_payload and current widget/model differ.
