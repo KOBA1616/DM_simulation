@@ -333,6 +333,15 @@ class CardEditor(QMainWindow):
         def _add_child_effect():
             return self._handle_add_child_effect(item, payload)
 
+        def _apply_cir():
+            try:
+                # payload may contain a 'cir' list
+                cir = payload.get('cir') if isinstance(payload, dict) else None
+                self.inspector.unified_form.apply_cir(cir or [])
+            except Exception:
+                pass
+            return False
+
         def _add_child_action():
             if item_type == "EFFECT":
                 self.tree_widget.add_action_to_effect(item.index())
@@ -404,6 +413,7 @@ class CardEditor(QMainWindow):
             STRUCT_CMD_ADD_CHILD_EFFECT: _add_child_effect,
             STRUCT_CMD_ADD_CHILD_ACTION: _add_child_action,
             STRUCT_CMD_REPLACE_WITH_COMMAND: _replace_with_command,
+            'APPLY_CIR': _apply_cir,
         }
 
     def on_structure_update(self, command, payload):
@@ -434,8 +444,6 @@ class CardEditor(QMainWindow):
             item_type = None
 
         handlers = self._structure_handlers(card_item, item, item_type, payload)
-        # Add global APPLY_CIR handler to let forms request application of CIR
-        handlers.setdefault('APPLY_CIR', lambda: (self.inspector.unified_form.apply_cir(payload.get('cir', [])), False)[1])
         handler = handlers.get(command)
         if handler:
             try:

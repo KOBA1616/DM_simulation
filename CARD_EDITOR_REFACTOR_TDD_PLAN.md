@@ -23,10 +23,11 @@
 
 1. `window.py` の構造更新処理の分岐削減を継続する
    - 目標: `on_structure_update()` と周辺処理を、構造コマンドごとの完全ディスパッチへ寄せる
-   - 完了条件:
-     - [ ] `STRUCT_CMD_* -> handler` の責務分離を完了
-     - [ ] 共通後処理を 1 箇所へ固定
-     - [ ] 主要構造変更の回帰テストを維持
+    - 完了条件:
+      - [x] `STRUCT_CMD_* -> handler` の責務分離を完了（`_structure_handlers` に抽出）
+      - [x] 共通後処理を 1 箇所へ固定（`request_preview_update` 経由で即時プレビュー更新）
+      - [ ] 主要構造変更の回帰テストを維持
+    - 進捗: `_structure_handlers` に `APPLY_CIR` を追加し、`on_structure_update` 側の ad-hoc setdefault を削除してハンドラ登録を一元化しました。既存ユニットテストで回帰を確認済み（1 passed）。
 
 2. 分岐削減の定量目標を更新して追跡する
    - ベースライン: 2026-03-14 時点で Python 全体の branch 合計 5096
