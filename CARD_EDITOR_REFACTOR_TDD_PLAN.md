@@ -26,8 +26,9 @@
     - 完了条件:
       - [x] `STRUCT_CMD_* -> handler` の責務分離を完了（`_structure_handlers` に抽出）
       - [x] 共通後処理を 1 箇所へ固定（`request_preview_update` 経由で即時プレビュー更新）
-      - [ ] 主要構造変更の回帰テストを維持
+      - [x] 主要構造変更の回帰テストを維持
     - 進捗: `_structure_handlers` に `APPLY_CIR` を追加し、`on_structure_update` 側の ad-hoc setdefault を削除してハンドラ登録を一元化しました。既存ユニットテストで回帰を確認済み（1 passed）。
+    - 進捗2: `APPLY_CIR` の回帰テストを追加し、`_structure_handlers` の `APPLY_CIR` 呼び出しが `inspector.unified_form.apply_cir` を呼ぶことを検証しました（python/tests/unit/test_window_apply_cir_handler.py: 1 passed）。
 
 2. 分岐削減の定量目標を更新して追跡する
    - ベースライン: 2026-03-14 時点で Python 全体の branch 合計 5096
