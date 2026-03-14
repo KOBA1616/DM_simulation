@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from pydantic import BaseModel, Field, field_validator, model_validator, PrivateAttr, model_serializer
 from typing import List, Optional, Union, Dict, Any, Literal
+from typing import TYPE_CHECKING
 import uuid
 
 def generate_uid():
@@ -91,12 +92,28 @@ class FilterModel(BaseModel):
 
         return out
 
+# --- Typed Params Models (E-1) ---
+class QueryParams(BaseModel):
+    query_string: str
+    options: List[str] = Field(default_factory=list)
+
+class TransitionParams(BaseModel):
+    target_state: str
+    reason: Optional[str] = None
+
+class ModifierParams(BaseModel):
+    amount: int
+    scope: Optional[str] = None
+
+
 # --- Command Models ---
 
 class CommandModel(BaseModel):
     uid: str = Field(default_factory=generate_uid)
     type: str  # DRAW_CARD, BREAK_SHIELD etc.
-    params: Dict[str, Any] = Field(default_factory=dict) # 汎用パラメータ格納
+    # Params can be either a generic dict (legacy) or a typed params model.
+    # We support typed params for high-frequency commands to improve safety.
+    params: Union[Dict[str, Any], 'QueryParams', 'TransitionParams', 'ModifierParams'] = Field(default_factory=dict) # 汎用パラメータ格納
 
     # 制御構造 (Composite Pattern)
     if_true: List['CommandModel'] = Field(default_factory=list)
@@ -152,6 +169,19 @@ class CommandModel(BaseModel):
                     params[k] = v
 
             new_data['params'] = params
+            # --- E-1: map params to typed models for known command types ---
+            cmd_type = new_data.get('type')
+            try:
+                if isinstance(new_data.get('params'), dict):
+                    if cmd_type == 'QUERY':
+                        new_data['params'] = QueryParams.model_validate(new_data['params'])
+                    elif cmd_type == 'TRANSITION':
+                        new_data['params'] = TransitionParams.model_validate(new_data['params'])
+                    elif cmd_type == 'MODIFY':
+                        new_data['params'] = ModifierParams.model_validate(new_data['params'])
+            except Exception:
+                # If conversion fails, keep legacy dict to avoid breaking ingest
+                pass
             return new_data
         return data
 
