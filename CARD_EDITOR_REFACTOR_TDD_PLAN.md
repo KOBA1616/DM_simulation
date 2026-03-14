@@ -30,15 +30,17 @@
 
 2. 分岐削減の定量目標を更新して追跡する
    - ベースライン: 2026-03-14 時点で Python 全体の branch 合計 5096
-   - 最新スキャン: 2026-03-15 実行
-     - Files with branches: 309
-     - Total if: 4544, elif: 565, total branches: 5109
-     - Top files by branch count:
-       - dm_toolkit/gui/editor/text_generator.py: 873
-       - dm_toolkit/engine/compat.py: 165
-       - training/head2head.py: 160
-       - dm_toolkit/gui/app.py: 134
-       - dm_toolkit/gui/editor/forms/unified_action_form.py: 129
+  - 最新スキャン: 2026-03-15 実行（再カウント）
+    - Files with branches: 312
+    - Total if: 4559, elif: 560, total branches: 5119
+    - Top files by branch count (抜粋):
+      - dm_toolkit/gui/editor/text_generator.py: 868
+      - dm_toolkit/engine/compat.py: 165
+      - training/head2head.py: 160
+      - dm_toolkit/gui/app.py: 134
+      - dm_toolkit/gui/editor/forms/unified_action_form.py: 129
+      - tests/test_game_integrity.py: 129
+      - dm_toolkit/command_builders.py: 93
    - 完了条件:
      - [x] `scripts/count_branches.py` を再実行して最新値を記録
      - [ ] 上位ファイルの削減対象を再選定
