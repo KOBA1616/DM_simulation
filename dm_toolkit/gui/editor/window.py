@@ -34,6 +34,7 @@ from dm_toolkit.gui.editor.consts import (
     STRUCT_CMD_GENERATE_BRANCHES, STRUCT_CMD_GENERATE_OPTIONS, STRUCT_CMD_MOVE_EFFECT, 
     STRUCT_CMD_ADD_CHILD_ACTION, STRUCT_CMD_REPLACE_WITH_COMMAND
 )
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class CardEditor(QMainWindow):
     data_saved = pyqtSignal()
@@ -49,7 +50,7 @@ class CardEditor(QMainWindow):
         self._preview_debounce_timer = QTimer(self)
         self._preview_debounce_timer.setSingleShot(True)
         self._preview_debounce_timer.setInterval(300)  # 300ms 無操作後に一度だけ更新
-        self._preview_debounce_timer.timeout.connect(self.update_current_preview)
+        safe_connect(self._preview_debounce_timer, 'timeout', self.update_current_preview)
         self.init_ui()
         self.load_data()
 
@@ -61,33 +62,33 @@ class CardEditor(QMainWindow):
         toolbar.setStyleSheet("QToolBar { padding: 2px; }")
 
         new_act = QAction(tr("New Card"), self)
-        new_act.triggered.connect(self.new_card)
+        safe_connect(new_act, 'triggered', self.new_card)
         new_act.setShortcut(QKeySequence.StandardKey.New)
         new_act.setStatusTip(tr("Create a new card"))
         toolbar.addAction(new_act)
 
         save_act = QAction(tr("Save JSON"), self)
-        save_act.triggered.connect(self.save_data)
+        safe_connect(save_act, 'triggered', self.save_data)
         save_act.setShortcut(QKeySequence.StandardKey.Save)
         save_act.setStatusTip(tr("Save all changes to JSON"))
         toolbar.addAction(save_act)
 
         add_eff_act = QAction(tr("Add Effect"), self)
-        add_eff_act.triggered.connect(self.add_effect)
+        safe_connect(add_eff_act, 'triggered', self.add_effect)
         add_eff_act.setShortcut("Ctrl+Shift+E")
         add_eff_act.setText(tr("Add Eff"))
         add_eff_act.setStatusTip(tr("Add a new effect to the selected card"))
         toolbar.addAction(add_eff_act)
 
         add_act_act = QAction(tr("Add Command"), self)
-        add_act_act.triggered.connect(self.add_command)
+        safe_connect(add_act_act, 'triggered', self.add_command)
         add_act_act.setShortcut("Ctrl+Shift+C")
         add_act_act.setText(tr("Add Cmd"))
         add_act_act.setStatusTip(tr("Add a command to the selected effect"))
         toolbar.addAction(add_act_act)
 
         del_act = QAction(tr("Delete Item"), self)
-        del_act.triggered.connect(self.delete_item)
+        safe_connect(del_act, 'triggered', self.delete_item)
         del_act.setShortcut(QKeySequence.StandardKey.Delete)
         del_act.setText(tr("Delete"))
         del_act.setStatusTip(tr("Delete the selected item"))
@@ -99,7 +100,7 @@ class CardEditor(QMainWindow):
         toolbar.addWidget(empty)
 
         update_preview_act = QAction(tr("Update Preview"), self)
-        update_preview_act.triggered.connect(self.update_preview_manual)
+        safe_connect(update_preview_act, 'triggered', self.update_preview_manual)
         update_preview_act.setShortcut(QKeySequence.StandardKey.Refresh)
         update_preview_act.setText(tr("Update"))
         update_preview_act.setStatusTip(tr("Force update the card preview"))
@@ -138,24 +139,24 @@ class CardEditor(QMainWindow):
         # Signals
         sel = self.tree_widget.selectionModel()
         if sel is not None:
-            sel.selectionChanged.connect(self.on_selection_changed)
+            safe_connect(sel, 'selectionChanged', self.on_selection_changed)
 
         # Listen for structural changes from the tree widget
         try:
-            self.tree_widget.tree_changed.connect(self.on_tree_changed)
+            safe_connect(self.tree_widget, 'tree_changed', self.on_tree_changed)
         except Exception:
             pass
 
         # Connect Data Changes from Inspector to Preview
-        self.inspector.card_form.dataChanged.connect(self.on_data_changed)
-        self.inspector.effect_form.dataChanged.connect(self.on_data_changed)
+        safe_connect(self.inspector.card_form, 'dataChanged', self.on_data_changed)
+        safe_connect(self.inspector.effect_form, 'dataChanged', self.on_data_changed)
         # Unified form replaces previous action/command editors
-        self.inspector.unified_form.dataChanged.connect(self.on_data_changed)
-        self.inspector.spell_side_form.dataChanged.connect(self.on_data_changed)
-        self.inspector.modifier_form.dataChanged.connect(self.on_data_changed)
+        safe_connect(self.inspector.unified_form, 'dataChanged', self.on_data_changed)
+        safe_connect(self.inspector.spell_side_form, 'dataChanged', self.on_data_changed)
+        safe_connect(self.inspector.modifier_form, 'dataChanged', self.on_data_changed)
 
         # Connect Structural Changes
-        self.inspector.structure_update_requested.connect(self.on_structure_update)
+        safe_connect(self.inspector, 'structure_update_requested', self.on_structure_update)
 
     def load_data(self):
         from dm_toolkit.gui.editor.utils import safe_load_json
@@ -329,20 +330,7 @@ class CardEditor(QMainWindow):
             return False
 
         def _add_child_effect():
-            eff_type = payload.get('type')
-            if eff_type == "KEYWORDS":
-                self.tree_widget.add_keywords(item.index())
-                return True
-            elif eff_type == "TRIGGERED":
-                self.tree_widget.add_trigger(item.index())
-                return True
-            elif eff_type == "STATIC":
-                self.tree_widget.add_static(item.index())
-                return True
-            elif eff_type == "REACTION":
-                self.tree_widget.add_reaction(item.index())
-                return True
-            return False
+            return self._handle_add_child_effect(item, payload)
 
         def _add_child_action():
             if item_type == "EFFECT":
@@ -437,6 +425,12 @@ class CardEditor(QMainWindow):
         if card_item is None:
             return
 
+        # Determine the item_type for dispatch and handlers
+        try:
+            item_type = item.data(Qt.ItemDataRole.UserRole + 1)
+        except Exception:
+            item_type = None
+
         handlers = self._structure_handlers(card_item, item, item_type, payload)
         # Add global APPLY_CIR handler to let forms request application of CIR
         handlers.setdefault('APPLY_CIR', lambda: (self.inspector.unified_form.apply_cir(payload.get('cir', [])), False)[1])
@@ -477,6 +471,43 @@ class CardEditor(QMainWindow):
                 return grand if grand is not None else None
 
         return None
+
+    def _handle_add_child_effect(self, item, payload):
+        """Handle adding specific child effect types; extracted for testability."""
+        try:
+            eff_type = payload.get('type') if isinstance(payload, dict) else None
+        except Exception:
+            eff_type = None
+
+        if eff_type == "KEYWORDS":
+            try:
+                self.tree_widget.add_keywords(item.index())
+            except Exception:
+                return False
+            return True
+
+        if eff_type == "TRIGGERED":
+            try:
+                self.tree_widget.add_trigger(item.index())
+            except Exception:
+                return False
+            return True
+
+        if eff_type == "STATIC":
+            try:
+                self.tree_widget.add_static(item.index())
+            except Exception:
+                return False
+            return True
+
+        if eff_type == "REACTION":
+            try:
+                self.tree_widget.add_reaction(item.index())
+            except Exception:
+                return False
+            return True
+
+        return False
 
     def on_tree_changed(self):
         # Centralized handler for tree structure changes
