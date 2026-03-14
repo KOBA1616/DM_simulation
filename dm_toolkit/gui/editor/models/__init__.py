@@ -112,6 +112,13 @@ class SearchParams(BaseModel):
     # filter can be either dict or FilterModel; keep flexible
     filter: Optional[Dict[str, Any]] = None
 
+class LookAndAddParams(BaseModel):
+    look_count: int = 3
+    add_count: int = 1
+    rest_zone: str = "DECK_BOTTOM"
+    # optional filter for candidates
+    filter: Optional[Dict[str, Any]] = None
+
 
 # --- Command Models ---
 
@@ -120,7 +127,7 @@ class CommandModel(BaseModel):
     type: str  # DRAW_CARD, BREAK_SHIELD etc.
     # Params can be either a generic dict (legacy) or a typed params model.
     # We support typed params for high-frequency commands to improve safety.
-    params: Union[Dict[str, Any], 'QueryParams', 'TransitionParams', 'ModifierParams', 'SearchParams'] = Field(default_factory=dict) # 汎用パラメータ格納
+    params: Union[Dict[str, Any], 'QueryParams', 'TransitionParams', 'ModifierParams', 'SearchParams', 'LookAndAddParams'] = Field(default_factory=dict) # 汎用パラメータ格納
 
     # 制御構造 (Composite Pattern)
     if_true: List['CommandModel'] = Field(default_factory=list)
@@ -184,6 +191,8 @@ class CommandModel(BaseModel):
                         new_data['params'] = QueryParams.model_validate(new_data['params'])
                     elif cmd_type == 'SEARCH_DECK':
                         new_data['params'] = SearchParams.model_validate(new_data['params'])
+                    elif cmd_type == 'LOOK_AND_ADD':
+                        new_data['params'] = LookAndAddParams.model_validate(new_data['params'])
                     elif cmd_type == 'TRANSITION':
                         new_data['params'] = TransitionParams.model_validate(new_data['params'])
                     elif cmd_type == 'MODIFY':
