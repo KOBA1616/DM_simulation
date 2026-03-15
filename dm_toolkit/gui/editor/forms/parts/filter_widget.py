@@ -9,6 +9,7 @@ from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 from typing import Any
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
 from dm_toolkit.consts import ZONES, CARD_TYPES
+from dm_toolkit.gui.editor.models import FilterSpec, dict_to_filterspec, filterspec_to_dict
 
 class FilterEditorWidget(QWidget):
     """
@@ -53,7 +54,8 @@ class FilterEditorWidget(QWidget):
         # 再発防止: カテゴリ別2分割は UI が煩雑になるため単一 toggle にまとめた。
         #   zone_group_buttons は後方互換のため維持 (1要素のリスト)。
         self.zone_checks = {}
-        ALL_ZONES = ["BATTLE_ZONE", "MANA_ZONE", "SHIELD_ZONE", "HAND", "DECK", "GRAVEYARD"]
+        # Use canonical zone list from dm_toolkit.consts to avoid duplicated definitions
+        ALL_ZONES = ZONES
         zone_section = QWidget()
         zone_section_layout = QVBoxLayout(zone_section)
         zone_section_layout.setContentsMargins(0, 0, 0, 0)
@@ -397,9 +399,24 @@ class FilterEditorWidget(QWidget):
 
     def set_data(self, filt_data):
         """
-        Populate UI from dictionary (FilterDef).
+        Populate UI from `FilterSpec` or legacy dictionary.
+
+        New code should prefer `set_filter_spec(FilterSpec(...))` and pass
+        `FilterSpec` instances. Passing a legacy dict is still supported for
+        backward-compatibility but will emit a DeprecationWarning to guide
+        callers toward `FilterSpec` usage.
         """
         self.blockSignals(True)
+        # Accept FilterSpec instance or legacy dict
+        if isinstance(filt_data, FilterSpec):
+            filt_data = filterspec_to_dict(filt_data)
+        elif isinstance(filt_data, dict):
+            import warnings
+            warnings.warn(
+                "Passing legacy dict to FilterEditorWidget.set_data is deprecated; use FilterSpec",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         if not filt_data: filt_data = {}
 
         # Zones
@@ -474,6 +491,7 @@ class FilterEditorWidget(QWidget):
     def get_data(self):
         """
         Return dictionary (FilterDef) from UI.
+        Note: New API `get_filter_spec()` returns a `FilterSpec` instance.
         """
         filt: dict[str, Any] = {}
 
@@ -534,6 +552,16 @@ class FilterEditorWidget(QWidget):
                 filt['selection_sort_key'] = sort_key
 
         return filt
+
+    def set_filter_spec(self, fs: FilterSpec):
+        """Populate UI from a `FilterSpec` instance."""
+        if not isinstance(fs, FilterSpec):
+            raise TypeError("set_filter_spec expects a FilterSpec instance")
+        self.set_data(filterspec_to_dict(fs))
+
+    def get_filter_spec(self) -> FilterSpec:
+        """Return a `FilterSpec` representing current UI state."""
+        return dict_to_filterspec(self.get_data())
 
     def blockSignals(self, block):
         super().blockSignals(block)

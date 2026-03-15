@@ -1250,13 +1250,11 @@
     "effects": [
       {
         "uid": "9d06719e-5df4-4b6d-9489-a672c4ddb2c8",
-        "trigger": "ON_OPPONENT_CREATURE_ENTER",
-        "mode": "REPLACEMENT",
-        "timing_mode": "PRE",
-        "trigger_scope": "PLAYER_OPPONENT",
+        "trigger": "ON_PLAY",
+        "trigger_scope": "NONE",
         "trigger_filter": {},
         "condition": {
-          "type": "DURING_YOUR_TURN",
+          "type": "NONE",
           "value": 0,
           "extra_fields": {}
         },

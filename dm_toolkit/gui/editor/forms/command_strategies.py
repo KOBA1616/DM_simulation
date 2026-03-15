@@ -2,6 +2,7 @@
 from PyQt6.QtWidgets import QComboBox, QLineEdit
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
+from dm_toolkit.gui.editor.schema_def import get_schema
 from dm_toolkit.consts import GRANTABLE_KEYWORDS
 
 class CommandUIStrategy:
@@ -58,7 +59,13 @@ class CommandUIStrategy:
         form.filter_group.setVisible(cfg.get('target_filter_visible', False))
         if cfg.get('target_filter_visible', False):
              try:
-                 form.filter_widget.set_allowed_fields(cfg.get('allowed_filter_fields', None))
+                 # Prefer explicit config, fall back to schema hint if available
+                 allowed = cfg.get('allowed_filter_fields', None)
+                 if not allowed:
+                     schema = get_schema(self.command_type)
+                     if schema and getattr(schema, 'allowed_filter_fields', None):
+                         allowed = schema.allowed_filter_fields
+                 form.filter_widget.set_allowed_fields(allowed)
                  # Reset title to default unless overridden
                  form.filter_widget.setTitle(tr("Filter"))
              except Exception:

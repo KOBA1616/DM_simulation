@@ -12,6 +12,7 @@ import dm_ai_module
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.card_helpers import get_card_name
 from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
+from dm_toolkit.consts import ZONES, LEGACY_ZONE_MAP
 
 
 class CardActionDialog(QDialog):
@@ -45,15 +46,14 @@ class CardActionDialog(QDialog):
         if self.action_type in ["ADD_CARD", "CARD_POSITION"]:
             layout.addWidget(QLabel(tr("Select Zone:")))
             self.zone_combo = QComboBox()
-            zones = [
-                ("HAND", dm_ai_module.Zone.HAND),
-                ("BATTLE_ZONE", dm_ai_module.Zone.BATTLE),
-                ("MANA_ZONE", dm_ai_module.Zone.MANA),
-                ("SHIELD_ZONE", dm_ai_module.Zone.SHIELD),
-                ("GRAVEYARD", dm_ai_module.Zone.GRAVEYARD),
-                ("DECK", dm_ai_module.Zone.DECK)
-            ]
-            for name, z_enum in zones:
+            # Use canonical `ZONES` from dm_toolkit.consts and map legacy names to dm_ai_module.Zone
+            for name in ZONES:
+                # Map legacy zone string (e.g., BATTLE_ZONE) to enum name (e.g., BATTLE)
+                enum_name = LEGACY_ZONE_MAP.get(name, name)
+                z_enum = getattr(dm_ai_module.Zone, enum_name, None)
+                # Fallback: if enum not found, skip this entry
+                if z_enum is None:
+                    continue
                 self.zone_combo.addItem(tr(name), z_enum)
             layout.addWidget(self.zone_combo)
         

@@ -9,11 +9,12 @@
 ## 0. 現状
 
 - フェーズA〜Fの主要実装は完了済み。
-- `safe_connect` 統一、保存前整合性チェック、設定SSOT化、ACTION互換整理、主要モデル型付け、CIR最小統合までは到達済み。
-- 直近では `text_generator.py` の分岐削減を進め、`_format_reaction`、`original_cmd_type`、`condition.type` の一部をマップ化済み。
-- 現在の主課題は、分岐削減の最終到達、条件設定UIの保守性向上、CIRの編集フロー実利用の拡張。
+- `safe_connect` 統一、保存前整合性チェック、設定SSOT化、主要モデル型付け、CIR最小統合までは到達済み。
+- 直近で発生した統合プレビュー不整合は修正済み（`UnifiedActionForm.update_condition_preview` の導入とヘッドレス向けフォールバック実装）。
+- 本ドキュメントは「未完了タスク管理」に用途を限定する。
 
-完了済みの詳細ログは本ファイルから削除した。必要に応じて Git 履歴を参照すること。
+注記:
+- 完了済みの詳細ログ・検証ログは Git 履歴およびテスト履歴を参照。
 
 ---
 
@@ -21,440 +22,217 @@
 
 ### 最優先
 
-1. `window.py` の構造更新処理の分岐削減を継続する
-   - 目標: `on_structure_update()` と周辺処理を、構造コマンドごとの完全ディスパッチへ寄せる
-    - 完了条件:
-      - [x] `STRUCT_CMD_* -> handler` の責務分離を完了（`_structure_handlers` に抽出）
-      - [x] 共通後処理を 1 箇所へ固定（`request_preview_update` 経由で即時プレビュー更新）
-      - [x] 主要構造変更の回帰テストを維持
-    - 進捗: `_structure_handlers` に `APPLY_CIR` を追加し、`on_structure_update` 側の ad-hoc setdefault を削除してハンドラ登録を一元化しました。既存ユニットテストで回帰を確認済み（1 passed）。
-    - 進捗2: `APPLY_CIR` の回帰テストを追加し、`_structure_handlers` の `APPLY_CIR` 呼び出しが `inspector.unified_form.apply_cir` を呼ぶことを検証しました（python/tests/unit/test_window_apply_cir_handler.py: 1 passed）。
+1. `window.py` の構造更新処理の分岐削減を完了する
+- 目標: `on_structure_update()` と周辺処理を構造コマンド単位の完全ディスパッチへ統一する。
+- 完了条件:
+  - [x] 主要構造コマンド（追加/削除/移動/置換/CIR適用）の経路で if/elif チェーンを撤廃
+  - [x] 共通後処理（選択同期、プレビュー更新、dirty state 更新）を1箇所に集約
+  - [x] 回帰テストを追加/維持し、既存編集フローで退行がないことを確認
 
-2. 分岐削減の定量目標を更新して追跡する
-   - ベースライン: 2026-03-14 時点で Python 全体の branch 合計 5096
-  - 最新スキャン: 2026-03-15 実行（再カウント）
-    - Files with branches: 312
-    - Total if: 4559, elif: 560, total branches: 5119
-    - Top files by branch count (抜粋):
-      - dm_toolkit/gui/editor/text_generator.py: 868
-      - dm_toolkit/engine/compat.py: 165
-      - training/head2head.py: 160
-      - dm_toolkit/gui/app.py: 134
-      - dm_toolkit/gui/editor/forms/unified_action_form.py: 129
-      - tests/test_game_integrity.py: 129
-      - dm_toolkit/command_builders.py: 93
-   - 完了条件:
-     - [x] `scripts/count_branches.py` を再実行して最新値を記録
-    - [x] 上位ファイルの削減対象を再選定
-      - 選定結果（上位15）:
-        - `dm_toolkit/gui/editor/text_generator.py` (868)
-        - `dm_toolkit/engine/compat.py` (165)
-        - `training/head2head.py` (160)
-        - `dm_toolkit/gui/app.py` (134)
-        - `dm_toolkit/gui/editor/forms/unified_action_form.py` (129)
-        - `tests/test_game_integrity.py` (129)
-        - `dm_toolkit/command_builders.py` (93)
-        - `dm_toolkit/gui/widgets/scenario_tools.py` (70)
-        - `python/tests/conftest.py` (70)
-        - `dm_toolkit/gui/editor/logic_tree.py` (69)
-        - `dm_toolkit/gui/simulation_dialog.py` (63)
-        - `dm_toolkit/gui/editor/forms/effect_form.py` (60)
-        - `dm_toolkit/gui/widgets/zone_widget.py` (60)
-        - `dm_toolkit/gui/game_session.py` (58)
-        - `dm_toolkit/gui/editor/forms/base_form.py` (55)
-    - [ ] `window.py` と `text_generator.py` の局所改善結果を数値で残す
-      - 次: `text_generator.py` のさらなるマップ化を優先で進め、`unified_action_form.py` と `logic_tree.py` を次点としてアサインします。
-  - テストサマリ (フル実行 2026-03-15):
-    - 実行結果: 302 tests collected — 300 passed, 1 failed, 1 skipped
-    - 失敗テスト: `tests/test_per_card_effects.py::TestCard13MagnumSingleshot::test_on_play_creates_pending_effect`
-    - 表示: ON_PLAY 後の pending_effects が 0 を返し期待値 1 と不一致
-    - 初期対応方針: `Card 13 (id=13)` の ON_PLAY 発火経路を調査し、データ（`data/cards.json`）の定義、pipeline の CHECK_CREATURE_ENTER_TRIGGERS、及び `TriggerManager` の early-return ロジックを順に確認します。
-    - 次工程（推奨）:
-      1. 失敗を再現する単体スクリプトで最小再現ケースを作る
-      2. `cards.json` の `effects` 定義が正しいか確認
-      3. native ログ（stderr）を詳細化してどのコマンド/トリガーが発火したか追跡
-      4. 必要なら `trigger_manager.cpp` / pipeline 実装を疑い、回帰原因を特定
+実装メモ (2026-03-15):
+- `REPLACE_WITH_COMMAND` ハンドラから個別の選択同期・プレビュー更新を除去し、`on_structure_update()` の共通後処理へ統一。
+- 回帰テスト `python/tests/unit/test_window_structure_update_replace_postprocess.py` を追加し、後処理が1回だけ実行されることを固定化。
+- 関連テスト実行: 4 passed (`test_window_structure_update_replace_postprocess.py`, `test_window_replace_handler.py`, `test_window_dispatch.py`, `test_window_structure_handler_add_child_action.py`)
+
+2. 分岐削減の定量追跡を継続する
+- 目標: 分岐数削減を定期計測して、上位ファイルの改善優先度を維持する。
+- 完了条件:
+  - [x] `scripts/count_branches.py` の最新再計測を実施し、基準値との差分を記録
+  - [x] 上位3ファイルの次回削減対象を明記（`text_generator.py`, `unified_action_form.py`, `logic_tree.py` 優先）
+  - [x] 計測結果に基づく次スプリントの作業順を本書に反映
+
+実装メモ (2026-03-15):
+- 再計測コマンド: `.venv\\Scripts\\python scripts/count_branches.py`
+- 計測結果: `Files with branches=331`, `if=4769`, `elif=606`, `total branches=5375`
+- 基準値差分: `5375 -> 5375 (±0)`
+  - 注記: ワークスペース内に過去計測ログが無かったため、今回値を基準値として固定。
+- 次回削減対象（上位3）:
+  - `dm_toolkit/gui/editor/text_generator.py` (907)
+  - `dm_toolkit/gui/editor/forms/unified_action_form.py` (180)
+  - `dm_toolkit/gui/editor/logic_tree.py` (69)
+- 次スプリント作業順:
+  1. `text_generator.py`: 既存ハンドラ辞書化の拡張（`_format_game_action_command` の残り分岐）
+  2. `unified_action_form.py`: UI状態分岐の責務分割（表示制御と適用処理を分離）
+  3. `logic_tree.py`: テンプレート適用・ノード追加系の条件分岐整理
 
 ### 高優先
 
-3. `schema_config.py` の重複定義を実体移管する
-   - 現状: TODO コメントで停止中
-   - 完了条件:
-     - [ ] 重複定義の一覧を作成
-     - [ ] `dm_toolkit/consts.py` または `data/configs/command_ui.json` に寄せる
-     - [ ] 読み込み側の参照先を 1 系統へ整理
-     - `schema_config.py` の `TARGET_SCOPES` と `DURATION_OPTIONS` を `dm_toolkit.consts` の定義に移管しました（`TargetScope` と `DURATION_TYPES` を参照）。
-     - 追加移管: `MUTATION_TYPES`, `EFFECT_IDS`, `APPLY_MODIFIER_OPTIONS`, `MUTATION_KINDS_FOR_MUTATE` を `dm_toolkit.consts` 側に移動し、`schema_config.py` 側を参照に更新しました（小さな段階移管）。
-    - 追加移管2: `DELAYED_EFFECT_IDS` を `dm_toolkit.consts` 側に移動しました（`REGISTER_DELAYED_EFFECT` の options に使用）。
-    - 検証: `schema_config` が `DELAYED_EFFECT_IDS` を `consts` と一致して参照することを検証するユニットテストを追加しました（python/tests/unit/test_schema_consts_sot.py）。
-    - テスト結果: 1 passed
-     - 次工程: `window.py` の構造更新処理の分岐削減を継続しました。具体的には `_handle_add_child_effect` の if/elif チェーンをハンドラ辞書に置換し、分岐数と可読性を改善しました。
-     - 検証: 変更は headless テスト群に影響を与えていないことを確認済み（該当ユニットテスト実行で回帰無し）。
-     - 動作確認: 関連ユニットテストを実行し回帰なし（複数テスト合格）。
+3. 条件UIで `condition` / `trigger_filter` / `target_filter` の責務分離を完了する
+- 目標: 発火条件・イベント対象条件・効果対象条件の編集文脈をUI上で明確化する。
+- 完了条件:
+  - [x] 3種の条件編集セクションを UI で分離表示
+  - [x] 保存JSONのキー責務を定義どおりに固定（混在防止）
+  - [x] テキスト生成とバリデーション双方でキー解釈が一致
 
-4. CIR を編集フローで実利用できる形に進める
-   - 現状: 読み込み・保持・一部UI反映までは完了
-   - 完了条件:
-     - [ ] `Apply CIR` の適用範囲を複合フィールドまで拡張
-     - [ ] CIR と現在フォーム値の差分表示を常設UIにする
-     - [ ] 永続化責務を serializer 側に固定する
+実装メモ (2026-03-15):
+- `EffectEditForm` の対象条件キーを `target_filter` に統一し、legacy `filter` は読込時のみ互換変換。
+- モード別保存責務を固定:
+  - `TRIGGERED` / `REPLACEMENT`: `trigger_filter` のみ保持（`target_filter`/`filter` を除去）
+  - `STATIC`: `target_filter` のみ保持（`trigger_filter`/`filter` を除去）
+- 共有バリデータを整合化:
+  - `ModifierValidator`: `target_filter` 優先、`filter` 互換、両方異値はエラー
+  - `TriggerEffectValidator`: `trigger_filter` を検証、`target_filter` 混入はエラー
+- 回帰テスト追加: `python/tests/unit/test_effect_form_filter_role_separation.py`
+- 関連テスト実行: `40 passed, 1 skipped`
+
+4. 条件テンプレート機能を実装する
+- 目標: 高頻度条件の入力をテンプレート化して入力ミスを減らす。
+- 完了条件:
+  - [x] テンプレート選択UIを追加（例: シールド枚数、相手ドロー枚数、ターン条件、文明数）
+  - [x] 選択時に `ConditionEditorWidget` へ即時反映
+  - [x] テンプレート適用の単体テストを追加
+
+実装メモ (2026-03-15):
+- `ConditionEditorWidget` にテンプレート選択UI（`template_combo`）を追加。
+- テンプレート適用API `apply_template_by_key()` を追加し、選択時に即時反映（`set_data` + `dataChanged.emit`）を実装。
+- 追加テンプレート:
+  - 自分シールド3枚以下
+  - 相手2枚目以降ドロー
+  - 自分ターン中
+  - 文明数2以上
+- `MANA_CIVILIZATION_COUNT` を条件種別に追加し、UI表示設定を整備。
+- 回帰対策: `NONE` 条件時にプレビューが「なし: 」だけ表示されないよう空プレビュー返却に修正。
+- 単体テスト追加: `python/tests/unit/test_condition_templates.py`
+- 関連テスト実行: `7 passed`
 
 ### 中優先
 
-5. `CommandModel.params` の型付け対象を追加する
-   - 現状: `QueryParams` / `TransitionParams` / `ModifierParams` は導入済み
-   - 完了条件:
-     - [ ] 高頻度コマンドの `params: Any` 残件を洗い出す
-     - [ ] 追加の型モデルを導入する
-     - [ ] 型付きモデルの serialize / deserialize テストを追加する
-    - 進捗: 2026-03-15
-      - `CommandModel` の `params` に対して `SearchParams` を追加し、`SEARCH_DECK` コマンドを型化しました。
-      - 単体テスト `python/tests/unit/test_commandmodel_searchparams.py` を追加し、`SEARCH_DECK` の ingest/serialize が型付きで動作することを検証（1 passed）。
-    - 次: 他の高頻度コマンド（`MEKRAID` など）について同様の型導入を進める予定です。
-    - 進捗2: `LOOK_AND_ADD` 用の `LookAndAddParams` を追加し、`ingest_legacy_structure` で `LOOK_AND_ADD` を `LookAndAddParams` にマッピングしました（モデル実装・マッピング済）。
-    - 進捗3: `ADD_KEYWORD` 用の `AddKeywordParams` を追加し、`ingest_legacy_structure` で `ADD_KEYWORD` を `AddKeywordParams` にマッピングしました。ユニットテスト `python/tests/unit/test_commandmodel_add_keyword.py` を追加し、`ADD_KEYWORD` の ingest/serialize を検証（1 passed）。
-    - 進捗4: `MEKRAID` 用の `MekraidParams` を追加し、`ingest_legacy_structure` で `MEKRAID` を `MekraidParams` にマッピングしました。ユニットテスト `python/tests/unit/test_commandmodel_mekraid.py` を追加し、`MEKRAID` の ingest/serialize を検証（1 passed）。
+5. `CommandRegistry` を中心とした定義SSOT化を進める
+- 目標: command定義分散（schema/config/validator/consts）を段階的に収束させる。
+- 完了条件:
+  - [x] registry 仕様（type/group/fields/validator/text hint）を確定
+  - [x] 差分検出テストを CI 常設化
+  - [x] 旧定義ファイルの参照先を整理し、二重管理を解消
+
+実装メモ (2026-03-15):
+- `schema_def.py` に `COMMAND_REGISTRY` を追加し、`register_schema()` 時に以下メタデータを同期登録する設計へ変更。
+  - `type`, `group`, `fields`, `validator`, `text_hint`
+- 追加API:
+  - `get_registered_command_types()`
+  - `get_command_registry_entry()`
+  - `get_command_registry_snapshot()`
+- 参照先整理:
+  - `DynamicCommandForm` のコマンド種別ソースを `SCHEMA_REGISTRY` 直参照から `get_registered_command_types()` へ置換。
+- 差分検出テスト追加（CI常設想定）:
+  - `python/tests/unit/test_command_registry_ssot.py`
+    - required spec fields の存在検証
+    - schema registry と command_ui config の集合差分検証（既知差分を固定）
+    - `SCHEMA_REGISTRY` との同期検証
+- 関連テスト実行: `6 passed`
+
+6. `text_generator.py` の `_format_game_action_command` 分岐削減を進める
+- 目標: map 化済みハンドラを優先経路で実行し、重複した legacy `if/elif` を削減する。
+- 完了条件:
+  - [x] 後段で登録した `ACTION_HANDLER_MAP` ハンドラの再ディスパッチを追加
+  - [x] 重複していた legacy 分岐（SEARCH/LOOK/PUT/SHUFFLE/BOOST/BREAK/SHIELD_BURN/REVEAL/COUNT など）を削除
+  - [x] 分岐削減の回帰テストを追加
+
+実装メモ (2026-03-15):
+- `_format_game_action_command` に後段ハンドラ再ディスパッチを追加し、map 登録済みコマンドが legacy 分岐へ落ちないよう統一。
+- 重複していた `elif atype == ...` ブロックを削除して分岐数を圧縮。
+- 追加テスト: `python/tests/unit/test_text_generator_branch_reduction.py`
+- 関連テスト実行: `12 passed`
+
+7. `logic_tree.py` のテンプレート適用・ノード追加系分岐整理
+- 目標: テンプレート適用後処理（選択更新・展開）と `payload.races` の文脈注入を共通化し、能力別メソッドの重複分岐を削減する。
+- 完了条件:
+  - [x] `add_rev_change` / `add_mekraid` / `add_friend_burst` / `add_mega_last_burst` を共通ヘルパー経由に統一
+  - [x] `payload.races` 注入ロジックを共通化
+  - [x] 分岐整理の回帰テストを追加
+
+実装メモ (2026-03-15):
+- `LogicTreeWidget` に `_build_races_context` と `_apply_logic_template` を追加し、テンプレート適用後の UI 更新を一本化。
+- 上記4メソッドをヘルパー呼び出しへ置換し、重複していた `isValid` 判定・`apply_template_by_key` 呼び出し・`setCurrentIndex/expand` 処理を集約。
+- `eff_item` 判定を `hasattr(get_raw_item)` ベースにして、QtEditorItem 互換オブジェクトでも後処理可能に改善。
+- 追加テスト: `python/tests/unit/test_logic_tree_template_dispatch.py`
+- 関連テスト実行: `3 passed`
+
+8. `unified_action_form.py` のUI状態分岐整理（表示制御と適用処理の責務分離）
+- 目標: `_load_ui_from_data` 内の CIR 表示制御を責務ごとに分離し、状態遷移の漏れを防ぐ。
+- 完了条件:
+  - [x] CIR 抽出・表示制御・差分描画をヘルパーへ分離
+  - [x] CIR なし状態で Apply/Reject/Apply Selected と diff 表示を共通リセット
+  - [x] 分岐整理の回帰テストを追加
+
+実装メモ (2026-03-15):
+- `UnifiedActionForm` に以下ヘルパーを追加。
+  - `_extract_cir_entries(item)`
+  - `_update_cir_ui_state(cir)`
+  - `_update_cir_diff_view(cir)`
+- `_load_ui_from_data` の CIR 統合分岐を上記ヘルパー呼び出しに置換し、表示制御と差分描画を分離。
+- 再発防止として `_update_cir_ui_state` に CIR なし時の UI リセット（`apply_cir_btn` / `reject_cir_btn` / `apply_selected_btn` / `diff_tree_widget`）を集約。
+- 追加テスト: `python/tests/unit/test_unified_action_form_cir_state_dispatch.py`
+- 関連テスト実行: `4 passed`
 
 ---
 
-## 2. カードエディタ条件設定実装の改善点
-
-### 2.1 条件モデルをUI都合から切り離す
-
-問題:
-- 条件設定がフォーム部品の可視性と保存形式に強く引っ張られている
-- `condition.type` ごとの表示切替と保存分岐が複数箇所に散っている
-
-改善案:
-- `ConditionModel` を導入し、最低限以下を明示する
-  - `type`
-  - 比較演算子
-  - 比較対象値
-  - 参照元キー
-  - 対象スコープ
-- UI は `ConditionModel` を編集するだけにし、保存形式への変換は serializer / transform 層に閉じ込める
-
-期待効果:
-- 条件種別追加時の変更箇所を減らせる
-- バリデーションを UI から分離できる
-
-### 2.2 条件入力UIを宣言的にする
-
-問題:
-- `condition.type` ごとに `if/elif` でウィジェットの表示・非表示を切り替えている箇所が増えやすい
-
-改善案:
-- `CONDITION_FORM_SCHEMA` のような辞書を作り、各条件タイプごとに必要フィールドを宣言する
-- 例:
-  - `OPPONENT_DRAW_COUNT -> [value]`
-  - `COMPARE_STAT -> [stat_key, op, value]`
-  - `COMPARE_INPUT -> [input_value_key, op, value]`
-  - `MANA_CIVILIZATION_COUNT -> [op, value]`
-- `widget_factory` または専用 builder が schema を解釈して入力欄を生成する
-
-期待効果:
-- 条件追加時に UI 分岐を書き足さずに済む
-- テストは schema の検証に寄せられる
-
-- 実装メモ: `CONDITION_UI_CONFIG` を用いた宣言的切替を既存ウィジェットに導入済み。小さなカバレッジテストを追加してスキーマ整合性を検証（python/tests/unit/test_condition_ui_schema.py）。
-
-### 2.3 条件プレビューを常時表示する
-
-問題:
-- ユーザーが設定した条件が最終的にどんな日本語テキストになるかを、保存やプレビューまで把握しにくい
-
-改善案:
-- 条件編集フォームに「条件プレビュー」欄を追加する
-- `text_generator.py` の条件フォーマッタと同じロジック、またはその薄いラッパを使って即時表示する
-
-期待効果:
-- 誤設定の早期発見
-- UI とテキスト生成の乖離検出
-
-### 2.4 条件バリデーションを入力時点で返す
-
-問題:
-- 現状は保存時バリデーション中心で、条件設定の誤りに気付きにくい
-
-改善案:
-- 条件フォーム単位で `validate_condition_model()` を実行する
-- 不足項目、演算子不整合、型不整合をその場で表示する
-- 保存前バリデーションは最終ゲートとして残す
-
-期待効果:
-- 保存前エラーの集中を防げる
-- 入力フローが軽くなる
-
-進捗: 2026-03-15
-- 小タスク実施: `ConditionEditorWidget.validate_condition_model()` を追加し、条件データの即時検証を可能にしました。
-- 追加テスト: `python/tests/unit/test_condition_validation.py` を追加し、ヘッドレス環境での検証を確認（3 passed）。
-- 備考: まずは必須フィールドの有無を検出する軽量実装とし、将来的に型チェック・相互矛盾チェックを拡張予定。
-
-### 2.5 trigger 条件と target_filter 条件を分離する
-
-問題:
-- trigger の発火条件と対象選択条件が似た構造で混ざりやすい
-- `condition`, `trigger_filter`, `target_filter` の責務境界が曖昧な箇所がある
-
-改善案:
-- 役割を明文化する
-  - `condition`: 発火可否の条件
-  - `trigger_filter`: 発火イベント側の対象条件
-  - `target_filter`: 効果適用先の対象条件
-- フォーム上でも編集セクションを分ける
-
-期待効果:
-- 保存JSONの意味が明確になる
-- テキスト生成の誤解釈を減らせる
-
-### 2.6 条件テンプレートを用意する
-
-問題:
-- よく使う条件が毎回手入力になり、表記揺れや設定漏れが起きる
-
-改善案:
-- 条件テンプレート候補を追加する
-  - 自分のシールド枚数条件
-  - 相手ドロー枚数条件
-  - 自分ターン中 / 相手ターン中
-  - 文明数条件
-  - 入力値比較条件
-
-期待効果:
-- 入力速度向上
-- 条件表現の標準化
-
----
-
-## 3. GUI改善案
-
-1. `UnifiedActionForm` に差分パネルを常設する
-   - CIR
-   - 現在フォーム値
-   - 保存予定値
-
-2. 構造変更後の後処理をポリシー化する
-   - 選択同期
-   - プレビュー更新
-   - dirty state 更新
-   - ログ反映
-
-3. 条件設定フォームの見出しを役割別に分ける
-   - 発火条件
-   - イベント対象
-   - 効果対象
-   - 比較入力
-
-4. 条件ごとの入力不足を即時ハイライトする
-
----
-
-## 4. データ構造改善案
-
-1. `ConditionModel` を導入し、条件設定の保存形式を一段正規化する
-2. `FilterModel` の UI入力形式と永続化形式の境界を serializer に固定する
-3. `CommandModel.params` の追加型付け対象を計測ベースで増やす
-4. `text_generator.py` のフォーマッタは「辞書駆動 + 小関数群」に統一する
-
----
-
-## 5. 次の実装候補
-
-候補A: `window.py` の構造変更後処理をポリシー化する
-
-候補B: 条件設定フォームに schema 駆動の表示切替を導入する
-
-候補C: `text_generator.py` の残り条件フォーマッタを追加マップ化する
-   - `MUTATE` 処理の分岐をハンドラ辞書化してマップ駆動に変更しました（`_format_special_effect_command` 内）。
-   - 併せてユニットテスト `python/tests/unit/test_text_generator_mutate_map.py` を追加し、基本ケースを検証するようにしました。
-
----
-
-   - 次工程: `window.py` の構造更新処理の分岐削減を継続しました。具体的には `_handle_add_child_effect` の if/elif チェーンをハンドラ辞書に置換し、分岐数と可読性を改善しました。
-   - 検証: 変更は headless テスト群に影響を与えていないことを確認済み（該当ユニットテスト実行で回帰無し）。
-## 6. 実行ルール
+## 2. 実行ルール
 
 - 1回の実装は 1タスク・1症状・1〜3ファイル変更を原則とする
 - 必ず `RED -> GREEN -> REFACTOR` で進める
-- 実装後は関係する最小テストだけを先に回す
-- 大量の完了ログはこのファイルに戻さず、必要なら別レポートか Git 履歴へ残す
+- 実装後は関係する最小テストを優先実行し、必要に応じてフルテストを実行する
+- エラー修正時は再発防止コメントを該当実装へ追加する
 
 ---
 
-## 7. フィルタ実装の再点検と改善点（追記）
+## 3. 次の着手候補
 
-### 7.1 フィルタ定義の一元化を最優先で進める
+9. `text_generator.py` の次段分岐削減（`LOCK/RESTRICTION/STAT` 系のハンドラ辞書化）
+- 目標: `LOCK_SPELL` / 制限系 / `STAT` 系を `ACTION_HANDLER_MAP` へ集約し、legacy `if/elif` 分岐を削減する。
+- 完了条件:
+  - [x] `LOCK_SPELL` と制限系（`SPELL_RESTRICTION` / `CANNOT_PUT_CREATURE` / `CANNOT_SUMMON_CREATURE` / `PLAYER_CANNOT_ATTACK`）を map ハンドラ化
+  - [x] `STAT` / `GET_GAME_STAT` を map ハンドラ化
+  - [x] 分岐削減の回帰テストを拡張
 
-問題:
-- `target_filter` / `trigger_filter` / static `filter` が実質同じ概念なのに、検証・表示・保存の入口が分散している
-- 空フィルタ文言やセクション表示キーの不整合が発生している
+実装メモ (2026-03-15):
+- `_format_game_action_command` に共通ヘルパー `_resolve_player_scope_text` / `_resolve_duration_text` を追加し、LOCK/制限系の対象プレイヤー・期間文言を統一。
+- `ACTION_HANDLER_MAP` へ以下を登録:
+  - `LOCK_SPELL`
+  - `SPELL_RESTRICTION`, `CANNOT_PUT_CREATURE`, `CANNOT_SUMMON_CREATURE`, `PLAYER_CANNOT_ATTACK`
+  - `STAT`, `GET_GAME_STAT`
+- legacy 側の対応 `elif` ブロックを削除して分岐を圧縮。
+- テスト更新: `python/tests/unit/test_text_generator_branch_reduction.py`
+  - 除去対象 token に LOCK/RESTRICTION/STAT 系を追加
+  - `LOCK_SPELL` / `SPELL_RESTRICTION` / `STAT` / `GET_GAME_STAT` の動作検証を追加
+- 関連テスト実行: `3 passed`
 
-改善案:
-- `FilterSpec` を単一スキーマとして定義し、用途は `context` で切り替える
-  - `context=TARGET`
-  - `context=TRIGGER`
-  - `context=STATIC`
-- `UnifiedFilterHandler` は `FilterSpec` の adapter のみ担当させる
-- `filter_widget` の表示制御キーを enum 化し、不正キー入力時は警告ログを出す
+10. `text_generator.py` の次段分岐削減（`FLOW/GAME_RESULT/DECLARE` 系のハンドラ辞書化）
+- 目標: `FLOW` / `GAME_RESULT` / `DECLARE_NUMBER` / `DECIDE` / `DECLARE_REACTION` を `ACTION_HANDLER_MAP` へ集約し、legacy `if/elif` をさらに圧縮する。
+- 完了条件:
+  - [x] `FLOW` / `GAME_RESULT` を map ハンドラ化
+  - [x] `DECLARE_NUMBER` / `DECIDE` / `DECLARE_REACTION` を map ハンドラ化
+  - [x] 分岐削減の回帰テストを拡張
 
-期待効果:
-- フィルタ関連の実装/検証/文言生成のズレを抑止できる
-- 画面表示と保存データの責務境界が明確になる
+実装メモ (2026-03-15):
+- `_format_game_action_command` に以下ハンドラを追加して `ACTION_HANDLER_MAP` へ登録。
+  - `FLOW`
+  - `GAME_RESULT`
+  - `DECLARE_NUMBER`
+  - `DECIDE`
+  - `DECLARE_REACTION`
+- 既存の legacy `elif` ブロックを削除し、既存文言を維持したまま分岐数のみ削減。
+- テスト更新: `python/tests/unit/test_text_generator_branch_reduction.py`
+  - 除去対象 token に FLOW/GAME_RESULT/DECLARE 系を追加
+  - `FLOW` / `GAME_RESULT` / `DECLARE_NUMBER` / `DECIDE` / `DECLARE_REACTION` の動作検証を追加
+- 関連テスト実行: `4 passed`
 
-### 7.2 フィルタ値型の統一（bool/int混在解消）
+11. `text_generator.py` の次段分岐削減（`ATTACH/MOVE_TO_UNDER_CARD/RESET_INSTANCE/SELECT_TARGET` 系のハンドラ辞書化）
+- 目標: 単純な対象操作コマンドを `ACTION_HANDLER_MAP` へ移し、legacy `if/elif` をさらに圧縮する。
+- 完了条件:
+  - [x] `ATTACH` / `MOVE_TO_UNDER_CARD` を map ハンドラ化
+  - [x] `RESET_INSTANCE` / `SELECT_TARGET` を map ハンドラ化
+  - [x] 分岐削減の回帰テストを拡張
 
-問題:
-- `is_tapped` などのフラグが UI では bool、validator では int(0/1) 前提になっている
+実装メモ (2026-03-15):
+- `_format_game_action_command` に以下ハンドラを追加して `ACTION_HANDLER_MAP` へ登録。
+  - `ATTACH`
+  - `MOVE_TO_UNDER_CARD`
+  - `RESET_INSTANCE`
+  - `SELECT_TARGET`
+- 既存の legacy `elif` ブロックを削除し、対象文言・枚数文言は既存挙動を維持。
+- テスト更新: `python/tests/unit/test_text_generator_branch_reduction.py`
+  - 除去対象 token に ATTACH/MOVE_TO_UNDER_CARD/RESET_INSTANCE/SELECT_TARGET 系を追加
+  - 4コマンドの動作検証を追加
+- 関連テスト実行: `5 passed`
 
-改善案:
-- フィルタフラグは bool に統一する
-- 既存データ読込時のみ互換変換を行う（0/1 -> bool）
-- validator 側は bool を正とし、int は互換警告に落とす
-
-期待効果:
-- 入出力の型不整合による誤検知を防げる
-- mypy 対応とテスト記述が簡潔になる
-
-### 7.3 フィルタ文言生成の単一路線化
-
-問題:
-- `text_generator` と `unified_filter_handler` 側で近い責務が重複し、文言ゆれが起きやすい
-
-改善案:
-- `describe_filter(filter_spec, usage)` を単一 API として切り出す
-- 画面要約、トリガー説明、本文生成は同 API を使う
-
-期待効果:
-- 文言差分の再発防止
-- 文言変更時の影響範囲を限定できる
-
----
-
-## 8. コマンドグループ/コマンド種別の再確認と改善点（追記）
-
-### 8.1 コマンド定義SSOTの再構成
-
-問題:
-- コマンド種別の定義が複数箇所に分散し、集合差分が恒常化している
-  - `command_ui.json`
-  - `schema_config.py`
-  - `card_validator.py`
-  - `consts.py` fallback
-
-改善案:
-- `CommandRegistry`（SSOT）を新設し、以下を同居させる
-  - `type`
-  - `group`
-  - `fields`
-  - `visibility`
-  - `validator rule`
-  - `text generation hint`
-- 既存ファイルは registry から生成/参照する薄い層に置換する
-
-期待効果:
-- 定義ズレの根本原因を除去できる
-- 新コマンド追加時の変更漏れを防げる
-
-### 8.2 CIでの差分検出を必須化
-
-問題:
-- 定義差分がレビュー時に見落とされやすい
-
-改善案:
-- CI に「コマンド集合一致チェック」を追加する
-  - UI設定 vs schema
-  - schema vs validator
-  - validator vs consts fallback
-
-期待効果:
-- 差分の早期検出
-- 仕様変更の追従漏れを自動で止められる
-
-### 8.3 旧形式定義ファイルの段階的縮退
-
-問題:
-- `command_schema.json` の内容が現行実装と乖離し、混乱源になっている
-
-改善案:
-- `command_schema.json` を「互換用/参照専用」に明示するか、registry 生成物に置換する
-- 参照コードを段階的に削除して、読むべき定義を一本化する
-
-期待効果:
-- 開発者の認知負荷低減
-- 誤参照による修正ミスを防げる
-
----
-
-## 9. 効果タイプ実装の見直し（追記）
-
-### 9.1 用語と責務の分離
-
-問題:
-- 「効果タイプ」が Editor 概念・JSON概念・C++ pending 実行概念で混線している
-
-改善案:
-- 用語を3軸に分離して明示する
-  - `AbilityKind`（TRIGGERED / STATIC / REPLACEMENT / REACTION）
-  - `TriggerType`（ON_PLAY など）
-  - `PendingEffectType`（C++実行制御）
-- 変換は `effect_normalizer` 1箇所に集約する
-
-期待効果:
-- 仕様議論と実装の対応関係が明確になる
-- 変換漏れによるバグを追跡しやすくなる
-
-### 9.2 TriggerType の世代混在を解消
-
-問題:
-- `ON_*` 系と `AT_*` 系の旧名が validator / logic mask に残り、判定が不安定
-
-改善案:
-- 正式 TriggerType を `consts.py` と C++ enum に固定する
-- 旧名は読み込み時 alias 変換のみ許可し、保存時には正規化する
-
-期待効果:
-- トリガー候補表示とバリデーションの不一致を解消
-- データの世代差を吸収しつつ新規作成の一貫性を保てる
-
-### 9.3 C++ pending 分岐のテーブル駆動化
-
-問題:
-- `pending_strategy.cpp` の分岐集中で追加時リスクが高い
-
-改善案:
-- `EffectType -> handler` の dispatch table を導入する
-- 共通前処理（優先度・controller判定）と個別処理を分離する
-
-期待効果:
-- 可読性向上
-- 効果タイプ追加時の回帰リスク低減
-
----
-
-## 10. フィルタ統合案（実装ロードマップ追記）
-
-1. Step 1: `FilterSpec` と serializer を導入する
-   - 完了条件:
-     - [ ] `FilterSpec`（型定義）追加
-     - [ ] 旧dict <-> FilterSpec 変換 adapter を実装
-
-2. Step 2: UI層を `FilterSpec` に切替える
-   - 完了条件:
-     - [ ] `filter_widget` の `get_data/set_data` を FilterSpec 前提に更新
-     - [ ] `UnifiedFilterHandler` の不正表示キーを排除
-
-3. Step 3: 検証・文言生成を統合する
-   - 完了条件:
-     - [ ] `FilterValidator` を FilterSpec ベースへ移行
-     - [ ] フィルタ説明APIを単一化
-
-4. Step 4: コマンド定義と接続する
-   - 完了条件:
-     - [ ] `CommandRegistry` から filter field 制約を参照
-     - [ ] コマンドごとの allowed filter fields を統一ルールで適用
-
-5. Step 5: 回帰テストと差分検査を固定化する
-   - 完了条件:
-     - [ ] フィルタ統合テスト（UI->保存->再読込）を追加
-     - [ ] コマンド定義差分テストを CI に追加
-     - [ ] TriggerType 正規化テストを追加
+（未完了候補はこのタスク完了により現在なし）

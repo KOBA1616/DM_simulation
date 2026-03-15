@@ -24,6 +24,7 @@ except ImportError:
     _HAS_MODULE = False
 
 from typing import Any, List
+from enum import Enum
 
 
 def _get_enum_names(enum_cls: Any) -> List[str]:
@@ -92,6 +93,9 @@ class TargetScope:
     def all_values(cls) -> list:
         """Get all valid scope values."""
         return [cls.SELF, cls.OPPONENT, cls.ALL]
+
+# Canonical target scopes for editor/schema usage (preserve PLAYER_* aliases for compatibility)
+TARGET_SCOPES = [TargetScope.PLAYER_SELF, TargetScope.PLAYER_OPPONENT, TargetScope.ALL]
 
 # =============================================================================
 # Zones
@@ -304,6 +308,48 @@ APPLY_MODIFIER_OPTIONS = EFFECT_IDS + ["COST"]
 MUTATION_KINDS_FOR_MUTATE = [
     "POWER_MOD", "ADD_KEYWORD"
 ]
+
+
+# Central enum for mutation kinds. Use `str` subclass so JSON dumps as string.
+class MutationKind(str, Enum):
+    # Core mutation kinds used by MUTATE commands and text generation
+    POWER_MOD = "POWER_MOD"
+    ADD_KEYWORD = "ADD_KEYWORD"
+    TAP = "TAP"
+    UNTAP = "UNTAP"
+    GIVE_POWER = "GIVE_POWER"
+    GIVE_ABILITY = "GIVE_ABILITY"
+    REMOVE_KEYWORD = "REMOVE_KEYWORD"
+    ADD_PASSIVE_EFFECT = "ADD_PASSIVE_EFFECT"
+    ADD_MODIFIER = "ADD_MODIFIER"
+    ADD_COST_MODIFIER = "ADD_COST_MODIFIER"
+
+    # Keyword-like mutation kinds (from MUTATION_TYPES / Grantable keywords)
+    SPEED_ATTACKER = "SPEED_ATTACKER"
+    BLOCKER = "BLOCKER"
+    SLAYER = "SLAYER"
+    DOUBLE_BREAKER = "DOUBLE_BREAKER"
+    TRIPLE_BREAKER = "TRIPLE_BREAKER"
+    POWER_ATTACKER = "POWER_ATTACKER"
+    S_TRIGGER = "S_TRIGGER"
+    MACH_FIGHTER = "MACH_FIGHTER"
+    UNBLOCKABLE = "UNBLOCKABLE"
+    CANNOT_BE_BLOCKED = "CANNOT_BE_BLOCKED"
+    ALWAYS_WIN_BATTLE = "ALWAYS_WIN_BATTLE"
+    INFINITE_POWER_ATTACKER = "INFINITE_POWER_ATTACKER"
+    JUST_DIVER = "JUST_DIVER"
+    G_STRIKE = "G_STRIKE"
+    SHIELD_BURN = "SHIELD_BURN"
+    REVOLUTION_CHANGE = "REVOLUTION_CHANGE"
+
+    # Restriction-style mutation kinds
+    CANNOT_ATTACK = "CANNOT_ATTACK"
+    CANNOT_BLOCK = "CANNOT_BLOCK"
+    CANNOT_ATTACK_OR_BLOCK = "CANNOT_ATTACK_OR_BLOCK"
+    CANNOT_ATTACK_AND_BLOCK = "CANNOT_ATTACK_AND_BLOCK"
+    # Targeting helpers used by some static/mutation entries in card data
+    TARGET_THIS_FORCE_SELECT = "TARGET_THIS_FORCE_SELECT"
+    TARGET_THIS_CANNOT_SELECT = "TARGET_THIS_CANNOT_SELECT"
 
 # Delayed effect IDs used by REGISTER_DELAYED_EFFECT schema options
 DELAYED_EFFECT_IDS = [

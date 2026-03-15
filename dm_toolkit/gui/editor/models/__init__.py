@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator, Private
 from typing import List, Optional, Union, Dict, Any, Literal
 from typing import TYPE_CHECKING
 import uuid
+from dm_toolkit import consts
 
 def generate_uid():
     return str(uuid.uuid4())
@@ -92,6 +93,128 @@ class FilterModel(BaseModel):
 
         return out
 
+
+# --- FilterSpec (single canonical filter schema) ---
+class FilterSpec(BaseModel):
+    zones: List[str] = Field(default_factory=list)
+    civilizations: List[str] = Field(default_factory=list)
+    races: List[str] = Field(default_factory=list)
+    min_cost: Optional[int] = None
+    max_cost: Optional[int] = None
+    min_power: Optional[int] = None
+    max_power: Optional[int] = None
+    owner: Optional[str] = None
+    is_tapped: Optional[bool] = None
+    is_blocker: Optional[bool] = None
+    is_evolution: Optional[bool] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+    class Config:
+        extra = "allow"
+
+
+def dict_to_filterspec(d: Dict[str, Any]) -> FilterSpec:
+    """Convert legacy filter dict to canonical FilterSpec.
+
+    This function is intentionally conservative: it maps known keys and
+    preserves unknown keys under `extras`.
+    """
+    if not d:
+        return FilterSpec()
+    extras = {}
+    known = {}
+    for k, v in d.items():
+        if k in ("zones", "civilizations", "races", "owner", "types"):
+            known[k] = v
+        elif k in ("min_cost", "max_cost", "min_power", "max_power"):
+            known[k] = v
+        elif k in ("is_tapped", "is_blocker", "is_evolution"):
+            # 再発防止: 0/1 以外の数値を bool に丸めると不正値(例: 2)を見逃す。
+            # 0/1 のみ互換変換し、それ以外は validator 側で検出できるよう保持する。
+            if isinstance(v, (int, float)) and v in (0, 1):
+                known[k] = bool(v)
+            else:
+                known[k] = v
+        else:
+            extras[k] = v
+
+    return FilterSpec(**known, extras=extras)
+
+
+def filterspec_to_dict(fs: FilterSpec) -> Dict[str, Any]:
+    """Convert `FilterSpec` back to a serializable dict for legacy consumers."""
+    out: Dict[str, Any] = {}
+    if fs.zones: out['zones'] = fs.zones
+    if fs.civilizations: out['civilizations'] = fs.civilizations
+    if fs.races: out['races'] = fs.races
+    if fs.min_cost is not None: out['min_cost'] = fs.min_cost
+    if fs.max_cost is not None: out['max_cost'] = fs.max_cost
+    if fs.min_power is not None: out['min_power'] = fs.min_power
+    if fs.max_power is not None: out['max_power'] = fs.max_power
+    if fs.owner is not None: out['owner'] = fs.owner
+    if fs.is_tapped is not None: out['is_tapped'] = fs.is_tapped
+    if fs.is_blocker is not None: out['is_blocker'] = fs.is_blocker
+    if fs.is_evolution is not None: out['is_evolution'] = fs.is_evolution
+    if fs.extras:
+        out.update(fs.extras)
+    return out
+
+
+def describe_filterspec(fs_input: Any) -> str:
+    """Generate a concise human-readable description from a FilterSpec or legacy dict.
+
+    Output is a semicolon-separated list of present constraints in stable order.
+    """
+    if fs_input is None:
+        return "(no filter)"
+
+    if isinstance(fs_input, dict):
+        try:
+            fs = dict_to_filterspec(fs_input)
+        except Exception:
+            return "(invalid filter)"
+    elif isinstance(fs_input, FilterSpec):
+        fs = fs_input
+    else:
+        # Try to coerce via Pydantic model if possible
+        try:
+            fs = dict_to_filterspec(fs_input)
+        except Exception:
+            return "(invalid filter)"
+
+    parts: List[str] = []
+    if fs.zones:
+        parts.append(f"Zones: {', '.join(map(str, fs.zones))}")
+    if getattr(fs, 'civilizations', None):
+        parts.append(f"Civilizations: {', '.join(map(str, fs.civilizations))}")
+    if getattr(fs, 'types', None):
+        parts.append(f"Types: {', '.join(map(str, fs.types))}")
+    if getattr(fs, 'races', None):
+        parts.append(f"Races: {', '.join(map(str, fs.races))}")
+    if getattr(fs, 'min_cost', None) is not None or getattr(fs, 'max_cost', None) is not None:
+        minc = getattr(fs, 'min_cost', '')
+        maxc = getattr(fs, 'max_cost', '')
+        parts.append(f"Cost: {minc}-{maxc}")
+    if getattr(fs, 'owner', None):
+        parts.append(f"Owner: {fs.owner}")
+    # Flags
+    flags = []
+    for f in ('is_tapped', 'is_blocker', 'is_evolution'):
+        v = getattr(fs, f, None)
+        if v:
+            flags.append(f)
+    if flags:
+        parts.append(f"Flags: {', '.join(flags)}")
+
+    # Extras presence
+    extras = getattr(fs, 'extras', None)
+    if extras:
+        parts.append(f"Extras: {len(extras)} items")
+
+    if not parts:
+        return "(no constraints)"
+    return '; '.join(parts)
+
 # --- Typed Params Models (E-1) ---
 class QueryParams(BaseModel):
     query_string: str
@@ -104,6 +227,77 @@ class TransitionParams(BaseModel):
 class ModifierParams(BaseModel):
     amount: int
     scope: Optional[str] = None
+
+
+class MutateParams(BaseModel):
+    # Accept either string or consts.MutationKind; validator will coerce when possible.
+    mutation_kind: Optional[consts.MutationKind] = None
+    amount: Optional[int] = None
+    target: Optional[str] = None
+    filter: Optional[FilterSpec] = None
+    duration: Optional[int] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode='before')
+    @classmethod
+    def coerce_mutation_kind(cls, v):
+        # v is the input dict before model construction; ensure mutation_kind in nested dict coerced
+        if isinstance(v, dict) and 'mutation_kind' in v:
+            mk = v.get('mutation_kind')
+            if isinstance(mk, str):
+                try:
+                    v['mutation_kind'] = consts.MutationKind(mk)
+                except Exception:
+                    # leave as-is for unknown/legacy values
+                    pass
+        return v
+    @model_serializer
+    def serialize_mutate(self) -> Dict[str, Any]:
+        out: Dict[str, Any] = {}
+        # Ensure enum is serialized as its string value for legacy consumers
+        if self.mutation_kind is not None:
+            # If Enum-like, prefer its value attribute; otherwise fall back to str
+            if hasattr(self.mutation_kind, 'value'):
+                out['mutation_kind'] = getattr(self.mutation_kind, 'value')
+            else:
+                out['mutation_kind'] = str(self.mutation_kind)
+        if self.amount is not None:
+            out['amount'] = self.amount
+        if self.target is not None:
+            out['target'] = self.target
+        if self.filter is not None:
+            # Convert FilterSpec to legacy dict
+            out['filter'] = filterspec_to_dict(self.filter)
+        if self.duration is not None:
+            out['duration'] = self.duration
+        if self.extras:
+            out.update(self.extras)
+        return out
+
+
+class ApplyModifierParams(BaseModel):
+    modifier_type: str
+    value: int
+    scope: Optional[str] = None
+    condition: Optional[Dict[str, Any]] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class PlayFromZoneParams(BaseModel):
+    source_zone: str
+    destination_zone: Optional[str] = None
+    amount: int = 1
+    up_to: Optional[bool] = None
+    filter: Optional[Dict[str, Any]] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CastSpellParams(BaseModel):
+    spell_id: Optional[int] = None
+    target: Optional[str] = None
+    cost: Optional[int] = None
+    use_mana_from: Optional[str] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
 
 class SearchParams(BaseModel):
     amount: int = 1
@@ -132,6 +326,177 @@ class MekraidParams(BaseModel):
     filter: Optional[Dict[str, Any]] = None
 
 
+class RevealCardsParams(BaseModel):
+    value1: int = 1
+    scope: Optional[str] = None
+    input_value_key: Optional[str] = None
+    # legacy fields may include other misc keys; keep extras
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class CountCardsParams(BaseModel):
+    filter: Optional[Dict[str, Any]] = None
+    scope: Optional[str] = None
+    mode: Optional[str] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class AddShieldParams(BaseModel):
+    amount: int = 1
+    source_zone: Optional[str] = None
+
+
+class BoostManaParams(BaseModel):
+    amount: int = 1
+    # future: civilization breakdown or source info
+    civ: Optional[str] = None
+
+
+class DrawCardParams(BaseModel):
+    amount: int = 1
+    up_to: Optional[bool] = None
+    destination: Optional[str] = None
+
+
+class DiscardParams(BaseModel):
+    amount: int = 1
+    up_to: Optional[bool] = None
+    reason: Optional[str] = None
+
+
+class MoveCardParams(BaseModel):
+    from_zone: Optional[str] = None
+    to_zone: Optional[str] = None
+    amount: int = 1
+    up_to: Optional[bool] = None
+
+
+class SummonTokenParams(BaseModel):
+    token_id: Optional[str] = None
+    amount: int = 1
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class DeclareNumberParams(BaseModel):
+    # DECLARE_NUMBER: declare a numeric choice within a range
+    value1: int
+    value2: Optional[int] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class PowerModParams(BaseModel):
+    # POWER_MOD: adjust power of matching cards
+    amount: int = 0
+    target_group: Optional[str] = None
+    target_filter: Optional[Dict[str, Any]] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class PutCreatureParams(BaseModel):
+    # PUT_CREATURE: place a creature instance from a source (e.g., hand) to battle zone
+    card_id: Optional[int] = None
+    from_zone: Optional[str] = None
+    to_zone: Optional[str] = None
+    tapped: Optional[bool] = None
+    summoned_for_free: Optional[bool] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ReplaceCardMoveParams(BaseModel):
+    # REPLACE_CARD_MOVE: replace a card move destination with another destination
+    from_zone: Optional[str] = None
+    to_zone: Optional[str] = None
+    replacement_to_zone: Optional[str] = None
+    amount: int = 1
+    filter: Optional[Dict[str, Any]] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SendShieldToGraveParams(BaseModel):
+    # SEND_SHIELD_TO_GRAVE: move opponent's shield to graveyard
+    amount: int = 1
+    target_group: Optional[str] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ShieldBurnParams(BaseModel):
+    # SHIELD_BURN: burn (reveal and destroy) shield(s)
+    amount: int = 1
+    target_group: Optional[str] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LookToBufferParams(BaseModel):
+    # LOOK_TO_BUFFER: peek from a zone into a temporary buffer
+    from_zone: Optional[str] = "DECK"
+    amount: int = 1
+    input_var: Optional[str] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class RegisterDelayedEffectParams(BaseModel):
+    # REGISTER_DELAYED_EFFECT: register a delayed effect by ID with duration
+    str_param: Optional[str] = None  # Effect ID
+    amount: int = 1                  # Duration in turns
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class RevealToBufferParams(BaseModel):
+    # REVEAL_TO_BUFFER: reveal cards from a zone into buffer
+    from_zone: Optional[str] = "DECK"
+    amount: int = 1
+    input_var: Optional[str] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class SelectFromBufferParams(BaseModel):
+    # SELECT_FROM_BUFFER: select cards from the temporary buffer
+    filter: Optional[Dict[str, Any]] = None
+    amount: int = 1
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class MoveBufferToZoneParams(BaseModel):
+    # MOVE_BUFFER_TO_ZONE: move cards from buffer to a zone
+    to_zone: Optional[str] = "HAND"
+    amount: int = 1
+    filter: Optional[Dict[str, Any]] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class MoveBufferRemainToZoneParams(BaseModel):
+    # MOVE_BUFFER_REMAIN_TO_ZONE: move the remainder of buffer to a zone
+    to_zone: Optional[str] = "HAND"
+    filter: Optional[Dict[str, Any]] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class LockSpellParams(BaseModel):
+    # LOCK_SPELL: restrict spells for a duration (used for rule locks)
+    target_group: Optional[str] = None
+    filter: Optional[Dict[str, Any]] = None
+    duration: Optional[str] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class PlayFromBufferParams(BaseModel):
+    # PLAY_FROM_BUFFER: play a card from the temporary buffer to a destination
+    buffer_index: Optional[int] = None  # index in buffer, if specific
+    to_zone: Optional[str] = "BATTLE_ZONE"
+    tapped: Optional[bool] = None
+    summoned_for_free: Optional[bool] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
+class IgnoreAbilityParams(BaseModel):
+    # IGNORE_ABILITY: temporarily ignore a specific ability or ability group
+    ability_id: Optional[str] = None
+    target_group: Optional[str] = None
+    duration: Optional[int] = None  # duration in turns (if applicable)
+    reason: Optional[str] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+
 # --- Command Models ---
 
 class CommandModel(BaseModel):
@@ -139,7 +504,7 @@ class CommandModel(BaseModel):
     type: str  # DRAW_CARD, BREAK_SHIELD etc.
     # Params can be either a generic dict (legacy) or a typed params model.
     # We support typed params for high-frequency commands to improve safety.
-    params: Union[Dict[str, Any], 'QueryParams', 'TransitionParams', 'ModifierParams', 'SearchParams', 'LookAndAddParams', 'AddKeywordParams', 'MekraidParams'] = Field(default_factory=dict) # 汎用パラメータ格納
+    params: Union[Dict[str, Any], 'QueryParams', 'TransitionParams', 'ModifierParams', 'MutateParams', 'ApplyModifierParams', 'PlayFromZoneParams', 'CastSpellParams', 'SearchParams', 'LookAndAddParams', 'AddKeywordParams', 'MekraidParams', 'RevealCardsParams', 'CountCardsParams', 'DrawCardParams', 'DiscardParams', 'MoveCardParams', 'AddShieldParams', 'BoostManaParams', 'PowerModParams', 'SummonTokenParams', 'DeclareNumberParams', 'PutCreatureParams', 'ReplaceCardMoveParams', 'SendShieldToGraveParams', 'RegisterDelayedEffectParams', 'LookToBufferParams', 'ShieldBurnParams', 'RevealToBufferParams', 'SelectFromBufferParams', 'MoveBufferToZoneParams', 'MoveBufferRemainToZoneParams', 'LockSpellParams', 'PlayFromBufferParams', 'IgnoreAbilityParams'] = Field(default_factory=dict) # 汎用パラメータ格納
 
     # 制御構造 (Composite Pattern)
     if_true: List['CommandModel'] = Field(default_factory=list)
@@ -195,6 +560,12 @@ class CommandModel(BaseModel):
                     params[k] = v
 
             new_data['params'] = params
+            # Normalize legacy 'filter' key for command types that expect 'target_filter'
+            # e.g., POWER_MOD uses 'target_filter' in its typed params model.
+            cmd_type = data.get('type') or data.get('type')
+            if isinstance(params, dict) and 'filter' in params:
+                if cmd_type == 'POWER_MOD' and 'target_filter' not in params:
+                    params['target_filter'] = params.pop('filter')
             # --- E-1: map params to typed models for known command types ---
             cmd_type = new_data.get('type')
             try:
@@ -209,10 +580,64 @@ class CommandModel(BaseModel):
                         new_data['params'] = AddKeywordParams.model_validate(new_data['params'])
                     elif cmd_type == 'MEKRAID':
                         new_data['params'] = MekraidParams.model_validate(new_data['params'])
+                    elif cmd_type == 'REVEAL_CARDS':
+                        new_data['params'] = RevealCardsParams.model_validate(new_data['params'])
+                    elif cmd_type == 'COUNT_CARDS':
+                        new_data['params'] = CountCardsParams.model_validate(new_data['params'])
+                    elif cmd_type == 'DRAW_CARD':
+                        new_data['params'] = DrawCardParams.model_validate(new_data['params'])
+                    elif cmd_type == 'DISCARD':
+                        new_data['params'] = DiscardParams.model_validate(new_data['params'])
+                    elif cmd_type == 'MOVE_CARD':
+                        new_data['params'] = MoveCardParams.model_validate(new_data['params'])
+                    elif cmd_type == 'ADD_SHIELD':
+                        new_data['params'] = AddShieldParams.model_validate(new_data['params'])
+                    elif cmd_type == 'BOOST_MANA':
+                        new_data['params'] = BoostManaParams.model_validate(new_data['params'])
                     elif cmd_type == 'TRANSITION':
                         new_data['params'] = TransitionParams.model_validate(new_data['params'])
                     elif cmd_type == 'MODIFY':
                         new_data['params'] = ModifierParams.model_validate(new_data['params'])
+                    elif cmd_type == 'MUTATE':
+                        new_data['params'] = MutateParams.model_validate(new_data['params'])
+                    elif cmd_type == 'APPLY_MODIFIER':
+                        new_data['params'] = ApplyModifierParams.model_validate(new_data['params'])
+                    elif cmd_type == 'POWER_MOD':
+                        new_data['params'] = PowerModParams.model_validate(new_data['params'])
+                    elif cmd_type == 'PLAY_FROM_ZONE':
+                        new_data['params'] = PlayFromZoneParams.model_validate(new_data['params'])
+                    elif cmd_type == 'SEND_SHIELD_TO_GRAVE':
+                        new_data['params'] = SendShieldToGraveParams.model_validate(new_data['params'])
+                    elif cmd_type == 'SHIELD_BURN':
+                        new_data['params'] = ShieldBurnParams.model_validate(new_data['params'])
+                    elif cmd_type == 'REPLACE_CARD_MOVE':
+                        new_data['params'] = ReplaceCardMoveParams.model_validate(new_data['params'])
+                    elif cmd_type == 'LOOK_TO_BUFFER':
+                        new_data['params'] = LookToBufferParams.model_validate(new_data['params'])
+                    elif cmd_type == 'PLAY_FROM_BUFFER':
+                        new_data['params'] = PlayFromBufferParams.model_validate(new_data['params'])
+                    elif cmd_type == 'IGNORE_ABILITY':
+                        new_data['params'] = IgnoreAbilityParams.model_validate(new_data['params'])
+                    elif cmd_type == 'REVEAL_TO_BUFFER':
+                        new_data['params'] = RevealToBufferParams.model_validate(new_data['params'])
+                    elif cmd_type == 'SELECT_FROM_BUFFER':
+                        new_data['params'] = SelectFromBufferParams.model_validate(new_data['params'])
+                    elif cmd_type == 'LOCK_SPELL':
+                        new_data['params'] = LockSpellParams.model_validate(new_data['params'])
+                    elif cmd_type == 'MOVE_BUFFER_TO_ZONE':
+                        new_data['params'] = MoveBufferToZoneParams.model_validate(new_data['params'])
+                    elif cmd_type == 'MOVE_BUFFER_REMAIN_TO_ZONE':
+                        new_data['params'] = MoveBufferRemainToZoneParams.model_validate(new_data['params'])
+                    elif cmd_type == 'PUT_CREATURE':
+                        new_data['params'] = PutCreatureParams.model_validate(new_data['params'])
+                    elif cmd_type == 'CAST_SPELL':
+                        new_data['params'] = CastSpellParams.model_validate(new_data['params'])
+                    elif cmd_type == 'SUMMON_TOKEN':
+                        new_data['params'] = SummonTokenParams.model_validate(new_data['params'])
+                    elif cmd_type == 'DECLARE_NUMBER':
+                        new_data['params'] = DeclareNumberParams.model_validate(new_data['params'])
+                    elif cmd_type == 'REGISTER_DELAYED_EFFECT':
+                        new_data['params'] = RegisterDelayedEffectParams.model_validate(new_data['params'])
             except Exception:
                 # If conversion fails, keep legacy dict to avoid breaking ingest
                 pass
@@ -243,6 +668,10 @@ class CommandModel(BaseModel):
             except Exception:
                 # On any unexpected failure, skip flattening to avoid breaking serialization
                 pass
+
+        # Backwards-compat: if typed params used 'target_filter', also expose legacy 'filter' key
+        if 'target_filter' in result and 'filter' not in result:
+            result['filter'] = result['target_filter']
 
         # 3. Handle recursive fields
         if self.if_true:

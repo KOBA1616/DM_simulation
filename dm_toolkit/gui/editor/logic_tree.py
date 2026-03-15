@@ -368,17 +368,42 @@ class LogicTreeWidget(QTreeView):
         if not card_index.isValid(): return
         self.data_manager.remove_spell_side_item(card_index)
 
-    def add_rev_change(self, card_index, payload=None):
-        if not card_index.isValid(): return
-        # 再発防止: payloadの races を extra_context としてテンプレートに渡す。
+    def _build_races_context(self, payload, context_key):
+        """Builds extra context from payload races for template substitution."""
         extra_context = {}
         if payload and payload.get('races'):
-            extra_context['rc_races'] = payload['races']
-        eff_item = self.data_manager.apply_template_by_key(card_index, "REVOLUTION_CHANGE", "Revolution Change", extra_context=extra_context)
-        if eff_item and isinstance(eff_item, QtEditorItem):
+            extra_context[context_key] = payload['races']
+        return extra_context
+
+    def _apply_logic_template(self, card_index, template_key, label, payload=None, races_context_key=None):
+        """Apply a logic template and normalize post-apply UI updates.
+        再発防止: テンプレート適用後の選択更新と展開処理を共通化し、能力別実装の差分漏れを防ぐ。"""
+        if not card_index.isValid():
+            return None
+
+        extra_context = {}
+        if races_context_key:
+            extra_context = self._build_races_context(payload, races_context_key)
+
+        eff_item = self.data_manager.apply_template_by_key(
+            card_index,
+            template_key,
+            label,
+            extra_context=extra_context,
+        )
+        if eff_item and hasattr(eff_item, 'get_raw_item'):
             self.setCurrentIndex(eff_item.get_raw_item().index())
             self.expand(card_index)
         return eff_item
+
+    def add_rev_change(self, card_index, payload=None):
+        return self._apply_logic_template(
+            card_index,
+            "REVOLUTION_CHANGE",
+            "Revolution Change",
+            payload=payload,
+            races_context_key="rc_races",
+        )
 
     def remove_rev_change(self, card_index):
         if not card_index.isValid(): return
@@ -386,16 +411,13 @@ class LogicTreeWidget(QTreeView):
 
     def add_mekraid(self, card_index, payload=None):
         """メクレイド効果を追加"""
-        if not card_index.isValid(): return
-        extra_context = {}
-        # 再発防止: payload の races をテンプレート置換に渡し、MEKRAID 条件へ反映する。
-        if payload and payload.get('races'):
-            extra_context['mekraid_races'] = payload['races']
-        eff_item = self.data_manager.apply_template_by_key(card_index, "MEKRAID", "Mekraid", extra_context=extra_context)
-        if eff_item and isinstance(eff_item, QtEditorItem):
-            self.setCurrentIndex(eff_item.get_raw_item().index())
-            self.expand(card_index)
-        return eff_item
+        return self._apply_logic_template(
+            card_index,
+            "MEKRAID",
+            "Mekraid",
+            payload=payload,
+            races_context_key="mekraid_races",
+        )
 
     def remove_mekraid(self, card_index):
         """メクレイド効果を削除"""
@@ -404,17 +426,14 @@ class LogicTreeWidget(QTreeView):
 
     def add_friend_burst(self, card_index, payload=None):
         """フレンド・バースト効果を追加"""
-        if not card_index.isValid(): return
-        # 再発防止: payloadの races を extra_context としてテンプレートに渡す。
         # フレンドバースト論理ノードの FRIEND_BURSTコマンドに str_param/target_filter.races が設定される。
-        extra_context = {}
-        if payload and payload.get('races'):
-            extra_context['fb_races'] = payload['races']
-        eff_item = self.data_manager.apply_template_by_key(card_index, "FRIEND_BURST", "Friend Burst", extra_context=extra_context)
-        if eff_item and isinstance(eff_item, QtEditorItem):
-            self.setCurrentIndex(eff_item.get_raw_item().index())
-            self.expand(card_index)
-        return eff_item
+        return self._apply_logic_template(
+            card_index,
+            "FRIEND_BURST",
+            "Friend Burst",
+            payload=payload,
+            races_context_key="fb_races",
+        )
 
     def remove_friend_burst(self, card_index):
         """フレンド・バースト効果を削除"""
@@ -423,12 +442,7 @@ class LogicTreeWidget(QTreeView):
 
     def add_mega_last_burst(self, card_index):
         """メガ・ラスト・バースト効果を追加"""
-        if not card_index.isValid(): return
-        eff_item = self.data_manager.apply_template_by_key(card_index, "MEGA_LAST_BURST", "Mega Last Burst")
-        if eff_item and isinstance(eff_item, QtEditorItem):
-            self.setCurrentIndex(eff_item.get_raw_item().index())
-            self.expand(card_index)
-        return eff_item
+        return self._apply_logic_template(card_index, "MEGA_LAST_BURST", "Mega Last Burst")
 
     def remove_mega_last_burst(self, card_index):
         """メガ・ラスト・バースト効果を削除"""

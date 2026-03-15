@@ -9,6 +9,7 @@ import sys
 import os
 sys.path.insert(0, 'bin/Release')
 import dm_ai_module
+from dm_toolkit.consts import ZONES
 
 _CARDS_JSON = os.path.join(os.path.dirname(__file__), 'data', 'cards.json')
 
@@ -61,10 +62,12 @@ if __name__ == '__main__':
             pid, len(p.hand), len(p.deck), len(p.shield_zone), len(p.mana_zone), len(p.battle_zone)))
     print("  turn={} active={} phase={}".format(s.turn_number, s.active_player_id, s.current_phase))
 
+    # Use canonical zone names from dm_toolkit.consts and map to player attributes
+    _ZONE_ATTRS = [z.lower() for z in ZONES]
     total_cards_start = sum(
         len(getattr(p, z, []))
         for p in s.players
-        for z in ["hand", "deck", "shield_zone", "mana_zone", "battle_zone", "graveyard"]
+        for z in _ZONE_ATTRS
     )
     print("  総カード数: {}".format(total_cards_start))
     print()
@@ -134,7 +137,7 @@ if __name__ == '__main__':
     print()
     print("=== 最終状態 ===")
     all_iids = []
-    zones = ["hand", "deck", "shield_zone", "mana_zone", "battle_zone", "graveyard"]
+    zones = _ZONE_ATTRS
     for pid in [0, 1]:
         p = s.players[pid]
         print("  P{}: hand={} deck={} shield={} mana={} bz={} grave={}".format(

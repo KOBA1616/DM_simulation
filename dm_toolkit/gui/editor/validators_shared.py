@@ -8,6 +8,7 @@ Separated from individual form validators to enable cross-form consistency check
 
 from typing import List, Dict, Any
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.models import FilterSpec, filterspec_to_dict, dict_to_filterspec
 
 
 class ConditionValidator:
@@ -96,69 +97,54 @@ class FilterValidator:
         Returns:
             List of error messages.
         """
-        if not isinstance(filter_def, dict):
-            return ["Filter must be a dictionary"]
-        
-        errors = []
-        
+        # Normalize to FilterSpec for consistent validation
+        if isinstance(filter_def, FilterSpec):
+            fs = filter_def
+        elif isinstance(filter_def, dict):
+            try:
+                fs = dict_to_filterspec(filter_def)
+            except Exception:
+                return ["Failed to convert dict to FilterSpec"]
+        else:
+            return ["Filter must be a dictionary or FilterSpec"]
+
+        errors: List[str] = []
+
         # Validate numeric fields: cost, power
-        numeric_fields = {
-            'min_cost': (0, 99999),
-            'max_cost': (0, 99999),
-            'min_power': (0, 999999),
-            'max_power': (0, 999999)
-        }
-        
-        for field, (min_val, max_val) in numeric_fields.items():
-            if field in filter_def:
-                val = filter_def[field]
+        numeric_checks = [
+            ('min_cost', 0, 99999),
+            ('max_cost', 0, 99999),
+            ('min_power', 0, 999999),
+            ('max_power', 0, 999999)
+        ]
+
+        for field, min_val, max_val in numeric_checks:
+            val = getattr(fs, field, None)
+            if val is not None:
                 if isinstance(val, int):
                     if not (min_val <= val <= max_val):
-                        errors.append(
-                            f"{field} out of valid range [{min_val}, {max_val}]: {val}"
-                        )
-                elif not isinstance(val, dict):
-                    # Allow dict (for input_link references)
-                    errors.append(f"{field} must be int or variable link, got {type(val)}")
-        
+                        errors.append(f"{field} out of valid range [{min_val}, {max_val}]: {val}")
+                else:
+                    errors.append(f"{field} must be int when present, got {type(val)}")
+
         # Validate owner (scope) if present
-        if 'owner' in filter_def:
-            owner = filter_def['owner']
+        owner = getattr(fs, 'owner', None)
+        if owner is not None:
             if owner not in ['SELF', 'OPPONENT', '']:
                 errors.append(f"Invalid owner value: '{owner}'. Valid: SELF, OPPONENT, or empty")
-        
-        # Validate civilization list
-        if 'civilizations' in filter_def:
-            civs = filter_def['civilizations']
-            if not isinstance(civs, list):
-                errors.append(f"'civilizations' must be a list, got {type(civs)}")
-        
-        # Validate type list
-        if 'types' in filter_def:
-            types = filter_def['types']
-            if not isinstance(types, list):
-                errors.append(f"'types' must be a list, got {type(types)}")
-        
-        # Validate race list
-        if 'races' in filter_def:
-            races = filter_def['races']
-            if not isinstance(races, list):
-                errors.append(f"'races' must be a list, got {type(races)}")
-        
-        # Validate zone list
-        if 'zones' in filter_def:
-            zones = filter_def['zones']
-            if not isinstance(zones, list):
-                errors.append(f"'zones' must be a list, got {type(zones)}")
-        
+
+        # Validate list fields
+        for name in ('civilizations', 'types', 'races', 'zones'):
+            val = getattr(fs, name, None)
+            if val is not None and not isinstance(val, list):
+                errors.append(f"'{name}' must be a list, got {type(val)}")
+
         # Validate boolean flags
-        bool_flags = ['is_tapped', 'is_blocker', 'is_evolution']
-        for flag in bool_flags:
-            if flag in filter_def:
-                val = filter_def[flag]
-                if not isinstance(val, int) or val not in [0, 1]:
-                    errors.append(f"'{flag}' must be 0 or 1, got {val}")
-        
+        for flag in ('is_tapped', 'is_blocker', 'is_evolution'):
+            val = getattr(fs, flag, None)
+            if val is not None and not isinstance(val, bool):
+                errors.append(f"'{flag}' must be bool when present, got {type(val)}")
+
         return errors
 
 
@@ -256,9 +242,15 @@ class ModifierValidator:
             errors.extend(cond_errors)
         
         # Filter validation
-        if 'filter' in modifier:
-            filter_errors = FilterValidator.validate(modifier.get('filter', {}))
+        # 再発防止: static対象条件は target_filter を正とし、legacy filter は互換入力として扱う。
+        filter_def = modifier.get('target_filter', modifier.get('filter'))
+        if filter_def is not None:
+            filter_errors = FilterValidator.validate(filter_def)
             errors.extend(filter_errors)
+
+        if 'target_filter' in modifier and 'filter' in modifier:
+            if modifier.get('target_filter') != modifier.get('filter'):
+                errors.append("Do not mix different values in 'target_filter' and legacy 'filter'")
         
         # IMPORTANT: Modifiers should NOT have 'commands' field
         if 'commands' in modifier and modifier.get('commands'):
@@ -316,6 +308,14 @@ class TriggerEffectValidator:
         if 'condition' in effect:
             cond_errors = ConditionValidator.validate_trigger(effect.get('condition', {}))
             errors.extend(cond_errors)
+
+        # Trigger event conditions should be carried by trigger_filter.
+        if 'trigger_filter' in effect:
+            filter_errors = FilterValidator.validate(effect.get('trigger_filter', {}))
+            errors.extend(filter_errors)
+
+        if 'target_filter' in effect:
+            errors.append("Trigger Effect should use 'trigger_filter' instead of 'target_filter'")
         
         # IMPORTANT: Trigger effects should NOT have modifier-specific fields
         forbidden_fields = ['type', 'value', 'str_val', 'scope']

@@ -2,10 +2,34 @@
 from dm_toolkit.gui.editor.schema_def import CommandSchema, FieldSchema, FieldType, register_schema
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.consts import (
-    QUERY_MODES, TargetScope, DURATION_TYPES,
+    QUERY_MODES, TargetScope, DURATION_TYPES, TARGET_SCOPES,
     MUTATION_TYPES, EFFECT_IDS, APPLY_MODIFIER_OPTIONS, MUTATION_KINDS_FOR_MUTATE,
     DELAYED_EFFECT_IDS
 )
+
+# Declarative schema for condition editor fields.
+# Maps a condition `type` to the list of field keys that the condition editor
+# should expose. This enables the UI builder to generate inputs declaratively
+# instead of scattering `if/elif` across form code.
+CONDITION_FORM_SCHEMA = {
+    "NONE": [],
+    "OPPONENT_DRAW_COUNT": ["value"],
+    "COMPARE_STAT": ["stat_key", "op", "value"],
+    "COMPARE_INPUT": ["input_value_key", "op", "value"],
+    "MANA_CIVILIZATION_COUNT": ["op", "value"],
+    "HAS_TARGET": ["target"],
+    # Generic fallback for string-based condition parameters
+    "CUSTOM": ["str_val"]
+}
+
+
+def get_condition_form_fields(cond_type: str):
+    """Return ordered list of field keys for the given condition type.
+
+    Falls back to an empty list for unknown types.
+    """
+    return CONDITION_FORM_SCHEMA.get(cond_type, [])
+
 
 # Define constants for selection lists
 # TODO (C-3): These constant lists are duplicated in other modules (consts, schema_def,
@@ -20,7 +44,7 @@ from dm_toolkit.consts import (
 
 # Reuse canonical definitions from dm_toolkit.consts to avoid duplication.
 # `TargetScope` provides unified values and legacy PLAYER_* aliases.
-TARGET_SCOPES = [TargetScope.PLAYER_SELF, TargetScope.PLAYER_OPPONENT, TargetScope.ALL]
+TARGET_SCOPES = TARGET_SCOPES
 
 # Use `DURATION_TYPES` from consts as the canonical duration options.
 DURATION_OPTIONS = DURATION_TYPES

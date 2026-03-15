@@ -2,7 +2,10 @@
 from PyQt6.QtWidgets import QFormLayout, QComboBox, QWidget
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dict
-from dm_toolkit.gui.editor.schema_def import CommandSchema, FieldSchema, FieldType, get_schema, register_schema
+from dm_toolkit.gui.editor.schema_def import (
+    CommandSchema, FieldSchema, FieldType, get_schema, register_schema,
+    get_registered_command_types,
+)
 from dm_toolkit.gui.editor.widget_factory import FormBuilder
 from dm_toolkit.gui.editor.schema_config import register_all_schemas
 from dm_toolkit.gui.i18n import tr
@@ -34,9 +37,8 @@ class DynamicCommandForm(BaseEditForm):
         """Registers all schemas and populates the type combo."""
         register_all_schemas()
 
-        # Populate combo from registry, sorted
-        from dm_toolkit.gui.editor.schema_def import SCHEMA_REGISTRY
-        types = sorted(list(SCHEMA_REGISTRY.keys()))
+        # Populate combo from CommandRegistry SSOT
+        types = get_registered_command_types()
         self.populate_combo(self.type_combo, types)
 
     def on_type_changed(self):

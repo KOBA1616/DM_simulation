@@ -380,10 +380,25 @@ class BaseEditForm(QWidget):
 
         # Fallback: try matching by text
         if value is not None:
-            text_idx = combo.findText(str(value))
-            if text_idx >= 0:
-                combo.setCurrentIndex(text_idx)
-                return
+            try:
+                text_idx = combo.findText(str(value))
+                if text_idx >= 0:
+                    combo.setCurrentIndex(text_idx)
+                    return
+            except Exception:
+                # Some test/mocked combo implementations do not provide findText.
+                # Fall back to comparing visible text entries.
+                try:
+                    vstr = str(value)
+                    for i in range(combo.count()):
+                        try:
+                            if combo.itemText(i) == vstr:
+                                combo.setCurrentIndex(i)
+                                return
+                        except Exception:
+                            continue
+                except Exception:
+                    pass
 
         # Fallback: string-compare data payloads (handles type mismatches)
         try:

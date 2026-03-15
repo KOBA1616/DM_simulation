@@ -66,16 +66,100 @@ class CommandSchema:
     """
     Defines the layout and fields for a specific Command Type.
     """
-    def __init__(self, type_name: str, fields: List[FieldSchema], label_override: str = ""):
+    def __init__(self, type_name: str, fields: List[FieldSchema], label_override: str = "", allowed_filter_fields: Optional[List[str]] = None):
         self.type_name = type_name
         self.fields = fields
         self.label_override = label_override
+        # Optional constraint hint for Filter widgets (e.g., ['zones','types'])
+        self.allowed_filter_fields = allowed_filter_fields
 
 # Registry
 SCHEMA_REGISTRY = {}
+COMMAND_REGISTRY: Dict[str, Dict[str, Any]] = {}
+
+
+def _build_group_lookup() -> Dict[str, str]:
+    lookup: Dict[str, str] = {}
+    try:
+        groups = EditorConfigLoader.get_command_groups() or {}
+        for gname, cmds in groups.items():
+            if not isinstance(cmds, list):
+                continue
+            for cmd in cmds:
+                if isinstance(cmd, str):
+                    lookup[cmd] = str(gname)
+    except Exception:
+        return {}
+    return lookup
+
+
+def _resolve_command_group(type_name: str) -> str:
+    try:
+        cfg = EditorConfigLoader.get_command_ui_config().get(type_name, {})
+        if isinstance(cfg, dict):
+            explicit = cfg.get('group')
+            if isinstance(explicit, str) and explicit:
+                return explicit
+    except Exception:
+        pass
+    lookup = _build_group_lookup()
+    return lookup.get(type_name, 'OTHER')
+
+
+def _resolve_validator_hint(type_name: str) -> str:
+    try:
+        cfg = EditorConfigLoader.get_command_ui_config().get(type_name, {})
+        if isinstance(cfg, dict):
+            v = cfg.get('validator')
+            if isinstance(v, str):
+                return v
+    except Exception:
+        pass
+    return ''
+
+
+def _resolve_text_hint(type_name: str) -> str:
+    try:
+        cfg = EditorConfigLoader.get_command_ui_config().get(type_name, {})
+        if isinstance(cfg, dict):
+            hint = cfg.get('text_hint') or cfg.get('description')
+            if isinstance(hint, str):
+                return hint
+    except Exception:
+        pass
+    return ''
+
+
+def _sync_command_registry_entry(schema: 'CommandSchema') -> None:
+    """Keep command metadata SSOT synchronized with schema registration.
+
+    Required spec fields: type, group, fields, validator, text_hint.
+    """
+    COMMAND_REGISTRY[schema.type_name] = {
+        'type': schema.type_name,
+        'group': _resolve_command_group(schema.type_name),
+        'fields': [f.key for f in schema.fields],
+        'validator': _resolve_validator_hint(schema.type_name),
+        'text_hint': _resolve_text_hint(schema.type_name),
+    }
+
+
+def get_registered_command_types() -> List[str]:
+    if COMMAND_REGISTRY:
+        return sorted(COMMAND_REGISTRY.keys())
+    return sorted(SCHEMA_REGISTRY.keys())
+
+
+def get_command_registry_entry(type_name: str) -> Optional[Dict[str, Any]]:
+    return COMMAND_REGISTRY.get(type_name)
+
+
+def get_command_registry_snapshot() -> Dict[str, Dict[str, Any]]:
+    return dict(COMMAND_REGISTRY)
 
 def register_schema(schema: CommandSchema):
     SCHEMA_REGISTRY[schema.type_name] = schema
+    _sync_command_registry_entry(schema)
 
 def get_schema(type_name: str) -> Optional[CommandSchema]:
     return SCHEMA_REGISTRY.get(type_name)
@@ -158,7 +242,7 @@ class SchemaLoader:
                         field_def.label = config['label_up_to']
                     fields.append(field_def)
 
-            schema = CommandSchema(type_name=cmd_type, fields=fields)
+            schema = CommandSchema(type_name=cmd_type, fields=fields, allowed_filter_fields=config.get('allowed_filter_fields', None))
             register_schema(schema)
 
     @classmethod

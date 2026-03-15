@@ -215,6 +215,35 @@ class ModelSerializer:
                 cards.append(self._serialize_card_model(card_model))
         return cards
 
+    def save_full_data(self, model_or_list: Any, path: str) -> bool:
+        """Persist full data to JSON file.
+
+        - If `model_or_list` is a sequence (list/tuple), it is written as-is.
+        - Otherwise, it is treated as an IEditorModel and `get_full_data` is used.
+        Returns True on success, False on failure.
+        """
+        try:
+            import json
+            if isinstance(model_or_list, (list, tuple)):
+                data = list(model_or_list)
+            else:
+                data = self.get_full_data(model_or_list)
+
+            # Ensure parent dir exists
+            import os
+            parent = os.path.dirname(path)
+            if parent and not os.path.exists(parent):
+                try:
+                    os.makedirs(parent, exist_ok=True)
+                except Exception:
+                    pass
+
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            return True
+        except Exception:
+            return False
+
     def _serialize_card_model(self, card_model: CardModel) -> dict:
         """Serialize a CardModel to a persistable dict.
 

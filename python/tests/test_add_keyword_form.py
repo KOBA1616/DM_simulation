@@ -92,9 +92,8 @@ def test_text_generation_with_duration():
 
 def test_command_ui_config():
     """command_ui.jsonの設定を確認"""
-    with open('data/configs/command_ui.json', 'r', encoding='utf-8') as f:
-        config = json.load(f)
-    
+    from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
+    config = EditorConfigLoader.get_command_ui_config()
     add_keyword_config = config.get("ADD_KEYWORD")
     assert add_keyword_config is not None, "ADD_KEYWORD not found in command_ui.json"
     

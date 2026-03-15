@@ -113,7 +113,8 @@ class EffectEditForm(BaseEditForm):
         # Target Filter - Unified Handler
         self.target_filter = UnifiedFilterHandler.create_filter_widget("STATIC", self)
         safe_connect(self.target_filter, "filterChanged", self.update_data)
-        self.register_widget(self.target_filter, 'filter')
+        # 再発防止: 効果対象条件は target_filter に統一し、trigger_filter/filter と混在させない。
+        self.register_widget(self.target_filter, 'target_filter')
         self.target_filter_area = QScrollArea()
         self.target_filter_area.setWidgetResizable(True)
         self.target_filter_area.setWidget(self.target_filter)
@@ -294,6 +295,9 @@ class EffectEditForm(BaseEditForm):
             if 'layer_str' in data: data['str_val'] = data['layer_str']
             if 'static_condition' in data and 'condition' not in data:
                  data['condition'] = data['static_condition']
+            # Legacy互換: 旧キー filter で保存された対象条件を target_filter に正規化
+            if 'target_filter' not in data and 'filter' in data:
+                data['target_filter'] = data.get('filter', {})
 
         # Use Bindings
         self._apply_bindings(data)
@@ -360,6 +364,10 @@ class EffectEditForm(BaseEditForm):
         # Apply bindings (collects into data)
         self._collect_bindings(data)
 
+        # 再発防止: 旧キー filter が混在した場合は target_filter に正規化する。
+        if 'target_filter' not in data and 'filter' in data:
+            data['target_filter'] = data.get('filter', {})
+
         # 後方互換: 旧実装の内部値 PRE:<TRIGGER> を正規化
         raw_trigger = data.get('trigger')
         if isinstance(raw_trigger, str) and raw_trigger.startswith('PRE:'):
@@ -391,7 +399,7 @@ class EffectEditForm(BaseEditForm):
                 pass
 
             # Clean Static/Legacy keys
-            for k in ['type', 'value', 'str_val', 'filter', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'trigger_condition']:
+            for k in ['type', 'value', 'str_val', 'filter', 'target_filter', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'trigger_condition']:
                 data.pop(k, None)
 
         elif mode == "REPLACEMENT":
@@ -399,7 +407,7 @@ class EffectEditForm(BaseEditForm):
             data['mode'] = 'REPLACEMENT'
             data['timing_mode'] = 'PRE'
             data['trigger_filter'] = self.trigger_filter.get_data()
-            for k in ['type', 'value', 'str_val', 'filter', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'trigger_condition']:
+            for k in ['type', 'value', 'str_val', 'filter', 'target_filter', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'trigger_condition']:
                 data.pop(k, None)
 
         else: # STATIC
@@ -407,11 +415,12 @@ class EffectEditForm(BaseEditForm):
             if not self.layer_str_edit.text():
                 data.pop('str_val', None)
 
+            # STATICは target_filter を正として保存し、trigger_filter/filter は持たない。
+            data['target_filter'] = self.target_filter.get_data()
+
             # Clean Trigger/Legacy keys
             # Preserve trigger_scope to maintain user selection across mode toggles.
-            # Also preserve trigger_filter so that returning to TRIGGERED restores previous filter.
-            # Other legacy/static normalization keys can be safely cleaned.
-            for k in ['trigger', 'trigger_condition', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'mode', 'timing_mode']:
+            for k in ['trigger', 'trigger_filter', 'filter', 'trigger_condition', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'mode', 'timing_mode']:
                 data.pop(k, None)
 
     def _get_display_text(self, data):

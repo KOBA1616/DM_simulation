@@ -174,22 +174,46 @@ class CardEditor(QMainWindow):
         self.tree_widget.load_data(self.cards_data)
 
     def save_data(self):
-        data = self.tree_widget.get_full_data_from_model()
+        # Delegate persistence to ModelSerializer to centralize file format
         try:
-            with open(self.json_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            self.data_saved.emit()
-            sb = self.statusBar()
-            if sb is not None:
-                sb.showMessage(tr("Cards saved successfully!"), 3000)
-            # Also show a confirmation dialog so the user notices the save action
+            serializer = None
             try:
-                QMessageBox.information(self, tr("Saved"), tr("Cards saved successfully!"))
+                serializer = self.tree_widget.data_manager.serializer
             except Exception:
-                # If running headless or dialogs fail, ignore
+                serializer = None
+
+            saved = False
+            if serializer is not None:
+                try:
+                    saved = serializer.save_full_data(self.tree_widget, self.json_path)
+                except Exception:
+                    saved = False
+
+            # Fallback to previous behavior if serializer not available or failed
+            if not saved:
+                data = self.tree_widget.get_full_data_from_model()
+                try:
+                    with open(self.json_path, 'w', encoding='utf-8') as f:
+                        json.dump(data, f, indent=2, ensure_ascii=False)
+                    saved = True
+                except Exception as e:
+                    QMessageBox.critical(self, tr("Error"), f"{tr('Failed to save JSON')}: {e}")
+
+            if saved:
+                self.data_saved.emit()
+                sb = self.statusBar()
+                if sb is not None:
+                    sb.showMessage(tr("Cards saved successfully!"), 3000)
+                try:
+                    QMessageBox.information(self, tr("Saved"), tr("Cards saved successfully!"))
+                except Exception:
+                    pass
+        except Exception:
+            # Top-level safety: ensure no exception bubbles to UI loop
+            try:
+                QMessageBox.critical(self, tr("Error"), tr("Failed to save JSON"))
+            except Exception:
                 pass
-        except Exception as e:
-            QMessageBox.critical(self, tr("Error"), f"{tr('Failed to save JSON')}: {e}")
 
     def on_selection_changed(self, selected, deselected):
         indexes = selected.indexes()
@@ -379,18 +403,8 @@ class CardEditor(QMainWindow):
             if target_idx is not None:
                 try:
                     self.tree_widget.replace_item_with_command(target_idx, target_data)
-                    # After replacement, update selection/preview
-                    cur = self.tree_widget.currentIndex()
-                    if cur.isValid():
-                        try:
-                            self.inspector.set_selection(cur)
-                        except Exception:
-                            pass
-                        try:
-                            # Use centralized preview request (immediate)
-                            self.request_preview_update(immediate=True)
-                        except Exception:
-                            pass
+                    # 再発防止: 構造更新後処理は on_structure_update の共通経路で1回だけ実行する。
+                    # 個別ハンドラで selection/preview を呼ぶと二重更新になり、表示と状態が揺れる。
                     return True
                 except Exception:
                     return False
