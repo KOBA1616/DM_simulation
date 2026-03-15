@@ -120,7 +120,7 @@ class FilterEditorWidget(QWidget):
         # Civilizations
         self.civ_label = QLabel(tr("文明:"))
         basic_layout.addWidget(self.civ_label, 2, 0)
-        self.civ_selector = CivilizationSelector()
+        self.civ_selector = CivilizationSelector(allow_multicolor=True)
         safe_connect(self.civ_selector, "changed", self.filterChanged.emit)
         basic_layout.addWidget(self.civ_selector, 2, 1)
 

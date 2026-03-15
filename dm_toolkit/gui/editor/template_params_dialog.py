@@ -55,7 +55,7 @@ class LookSelectTemplateDialog(QDialog):
         form.addRow(tr("選ぶ枚数 (すべて=-1):"), self.select_spin)
 
         # --- 文明フィルタ ---
-        self.civ_selector = CivilizationSelector()
+        self.civ_selector = CivilizationSelector(allow_multicolor=True)
         form.addRow(tr("文明フィルタ:"), self.civ_selector)
 
         # --- 種族フィルタ ---

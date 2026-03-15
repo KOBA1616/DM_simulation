@@ -791,6 +791,8 @@ _CPP_COMMAND_TYPE_STRINGS: set = {
     "MANA_CHARGE", "SELECT_TARGET",
     # 以下はエンジン内部専用（cards.json では通常使用しない）
     "APPLY_MODIFIER", "GRANT_KEYWORD", "PUT_CREATURE",
+    # 再発防止: cards.json で REVOLUTION_CHANGE を使うため enum 監査リストに含める。
+    "REVOLUTION_CHANGE",
     "REPLACE_CARD_MOVE", "ADD_RESTRICTION",
     "COST_MODIFIER",
     # 再発防止: 新しい CommandType を追加したらここにも追加すること
@@ -841,6 +843,11 @@ _CPP_IMPLEMENTED_COMMANDS: set = {
     "LOOK_TO_BUFFER", "REVEAL_TO_BUFFER", "SELECT_FROM_BUFFER", "MOVE_BUFFER_TO_ZONE",
     "MOVE_BUFFER_REMAIN_TO_ZONE",
     "REGISTER_DELAYED_EFFECT",
+    # 再発防止: REVOLUTION_CHANGE は cards.json で ability DECLARATION として記録されており
+    #   generate_instructions では明示的 no-op として実装済み（MOVE命令は生成しない）。
+    #   実際のスワップ処理は trigger_manager → pending_strategy 経由で行われる。
+    #   command_system.cpp の case REVOLUTION_CHANGE: を削除しないこと（削除すると warning 再発）。
+    "REVOLUTION_CHANGE",
 }
 
 

@@ -2,19 +2,20 @@
     "REVOLUTION_CHANGE": {
         "root_type": "EFFECT",
         "data": {
-            "trigger": "ON_ATTACK_FROM_HAND",
+            "trigger": "ON_ATTACK",
+            "trigger_scope": "PLAYER_SELF",
             "commands": [
                 {
                     "type": "REVOLUTION_CHANGE",
-                    "mutation_kind": "REVOLUTION_CHANGE",
                     "target_filter": {
-                        "races": ["__RC_RACES__"]
+                        "civilizations": [],
+                        "races": [],
+                        "types": ["CREATURE"],
+                        "min_cost": -1,
+                        "max_cost": -1
                     }
                 }
             ]
-        },
-        "keywords": {
-            "revolution_change": true
         }
     },
     "MEKRAID": {

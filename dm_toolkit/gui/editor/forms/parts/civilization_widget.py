@@ -9,10 +9,13 @@ from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 class CivilizationSelector(QWidget):
     changed = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, allow_multicolor: bool = False):
         super().__init__(parent)
         # Use dynamically loaded civilizations from consts (via dm_ai_module)
-        self.civs = CIVILIZATIONS
+        self.civs = list(CIVILIZATIONS)
+        # 再発防止: フィルタ条件では「多色」を明示指定できるようにする。
+        if allow_multicolor and "MULTICOLOR" not in self.civs:
+            self.civs.append("MULTICOLOR")
         self.buttons = {}
         self.setup_ui()
 
@@ -33,6 +36,7 @@ class CivilizationSelector(QWidget):
             "FIRE":     ("#FF0000", "#FFE4E1"),  # Red / MistyRose
             "NATURE":   ("#008000", "#90EE90"),  # Green / LightGreen
             "ZERO":     ("#808080", "#F5F5F5"),  # Gray / WhiteSmoke
+            "MULTICOLOR": ("#8A2BE2", "#F3E8FF"),  # BlueViolet / light purple tint
         }
 
         # Default style for unknown civilizations

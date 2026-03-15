@@ -54,10 +54,16 @@ static bool already_pending_once(const GameState& state, const PendingEffect& pe
         if (p.source_instance_id != pending.source_instance_id) continue;
         if (p.controller != pending.controller) continue;
         if (p.resolve_type != pending.resolve_type) continue;
-        nlohmann::json ja;
-        nlohmann::json jb;
-        dm::core::to_json(ja, p.effect_def);
-        dm::core::to_json(jb, pending.effect_def);
+        // 再発防止: std::optional<EffectDef> を直接 to_json すると ADL 解決で C2665 になる。
+        // has_value() を確認し、value/null を比較して重複判定する。
+        nlohmann::json ja = nullptr;
+        nlohmann::json jb = nullptr;
+        if (p.effect_def.has_value()) {
+            dm::core::to_json(ja, p.effect_def.value());
+        }
+        if (pending.effect_def.has_value()) {
+            dm::core::to_json(jb, pending.effect_def.value());
+        }
         if (ja == jb) return true;
     }
     return false;
@@ -204,6 +210,13 @@ namespace dm::engine::systems {
                         }
                     } else {
                         trigger_match = (effect.trigger == trigger_type);
+                        // 再発防止: 旧データの ON_ATTACK_FROM_HAND は実質的に攻撃時トリガーとして運用される。
+                        // map_event_to_trigger は ATTACK_INITIATE -> ON_ATTACK を返すため、
+                        // 互換エイリアスを認めないと革命チェンジ系 pending_effect が生成されない。
+                        if (!trigger_match && trigger_type == TriggerType::ON_ATTACK &&
+                            effect.trigger == TriggerType::ON_ATTACK_FROM_HAND) {
+                            trigger_match = true;
+                        }
                     }
 
                     if (trigger_match && td_ptr) {

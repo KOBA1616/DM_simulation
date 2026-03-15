@@ -31,6 +31,8 @@ class LogicTreeContextMenuHandler:
             safe_connect(add_cmd_br, 'triggered', lambda: self.tree_widget._add_command_to_branch(index))
             menu.addAction(add_cmd_br)
 
+        self._add_reorder_actions(menu, index)
+
         if not menu.isEmpty():
             vp = self.tree_widget.viewport()
             if vp is not None:
@@ -93,3 +95,25 @@ class LogicTreeContextMenuHandler:
         remove_action = QAction(label, self.tree_widget)
         safe_connect(remove_action, 'triggered', lambda: self.tree_widget.remove_current_item())
         menu.addAction(remove_action)
+
+    def _add_reorder_actions(self, menu, index):
+        if not index.isValid():
+            return
+
+        if not menu.isEmpty():
+            menu.addSeparator()
+
+        move_up_action = QAction(tr("上へ移動 (Alt+↑)"), self.tree_widget)
+        safe_connect(move_up_action, 'triggered', lambda: self._move_item(index, up=True))
+        menu.addAction(move_up_action)
+
+        move_down_action = QAction(tr("下へ移動 (Alt+↓)"), self.tree_widget)
+        safe_connect(move_down_action, 'triggered', lambda: self._move_item(index, up=False))
+        menu.addAction(move_down_action)
+
+    def _move_item(self, index, up):
+        self.tree_widget.setCurrentIndex(index)
+        if up:
+            self.tree_widget.move_current_item_up()
+        else:
+            self.tree_widget.move_current_item_down()

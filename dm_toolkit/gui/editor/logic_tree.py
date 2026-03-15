@@ -68,6 +68,68 @@ class LogicTreeWidget(QTreeView):
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
 
+    def keyPressEvent(self, event):
+        """Handle quick reorder shortcuts.
+        再発防止: ドラッグ操作に依存しない並び替え経路を用意して、誤ドロップや操作不能を避ける。"""
+        modifiers = event.modifiers()
+        key = event.key()
+        if modifiers == Qt.KeyboardModifier.AltModifier and key == Qt.Key.Key_Up:
+            if self.move_current_item_up():
+                event.accept()
+                return
+        if modifiers == Qt.KeyboardModifier.AltModifier and key == Qt.Key.Key_Down:
+            if self.move_current_item_down():
+                event.accept()
+                return
+        super().keyPressEvent(event)
+
+    def move_current_item_up(self):
+        return self._move_current_item_by_offset(-1)
+
+    def move_current_item_down(self):
+        return self._move_current_item_by_offset(1)
+
+    def _move_current_item_by_offset(self, offset):
+        idx = self.currentIndex()
+        if not idx.isValid() or offset == 0:
+            return False
+
+        row = idx.row()
+        target_row = row + offset
+        parent_index = idx.parent()
+
+        if parent_index.isValid():
+            parent_item = self.standard_model.itemFromIndex(parent_index)
+            if parent_item is None:
+                return False
+            max_row = parent_item.rowCount() - 1
+            if target_row < 0 or target_row > max_row:
+                return False
+            moved_row = parent_item.takeRow(row)
+            if not moved_row:
+                return False
+            parent_item.insertRow(target_row, moved_row)
+            moved_item = moved_row[0]
+        else:
+            max_row = self.standard_model.rowCount() - 1
+            if target_row < 0 or target_row > max_row:
+                return False
+            moved_row = self.standard_model.takeRow(row)
+            if not moved_row:
+                return False
+            self.standard_model.insertRow(target_row, moved_row)
+            moved_item = moved_row[0]
+
+        # 再発防止: 並び替え後に選択ノードを明示的に更新し、インスペクタが古い行を参照しないようにする。
+        self.setCurrentIndex(moved_item.index())
+        if parent_index.isValid():
+            self.expand(parent_index)
+        try:
+            self.tree_changed.emit()
+        except Exception:
+            pass
+        return True
+
     def dropEvent(self, event):
         """ドラッグ&ドロップでのコマンド並び替えを制御する。
         再発防止: 異なる親への移動を禁止し、同一親内の並び替えのみ許可する。
@@ -400,13 +462,15 @@ class LogicTreeWidget(QTreeView):
         return self._apply_logic_template(
             card_index,
             "REVOLUTION_CHANGE",
-            "Revolution Change",
+            "自分のクリーチャーが攻撃する時",
             payload=payload,
             races_context_key="rc_races",
         )
 
     def remove_rev_change(self, card_index):
         if not card_index.isValid(): return
+        # 再発防止: 表示ラベル変更後も旧ラベル作成済みデータを削除できるよう両方を対象にする。
+        self.data_manager.remove_logic_by_label(card_index, "自分のクリーチャーが攻撃する時")
         self.data_manager.remove_logic_by_label(card_index, "Revolution Change")
 
     def add_mekraid(self, card_index, payload=None):

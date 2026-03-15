@@ -219,8 +219,8 @@ def register_all_schemas():
         # Keyword stored in str_val for text generation compatibility
         FieldSchema("str_val", tr("Keyword"), FieldType.SELECT, options=MUTATION_TYPES, default=None),
         FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS, default=None),
-        # Hidden amount (default 0) to satisfy INT requirement
-        FieldSchema("amount", tr("Amount"), FieldType.INT, default=0, widget_hint="hidden"),
+        # 再発防止: amount=0 は「すべて」，amount>0 は「N体選び」。widget_hint="hidden" は削除して UI から設定可能にする。
+        FieldSchema("amount", tr("Count (0 = all)"), FieldType.INT, default=0, min_value=0),
         f_links_in
     ]))
 
@@ -235,19 +235,24 @@ def register_all_schemas():
     ]))
 
     # PLAY_FROM_ZONE
+    # 再発防止: target_filter フィールドを追加して UI からフィルタ条件を設定できるようにする
     register_schema(CommandSchema("PLAY_FROM_ZONE", [
         FieldSchema("from_zone", tr("Source Zone"), FieldType.ZONE, default="HAND"),
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="BATTLE_ZONE"),
         FieldSchema("amount", tr("Max Cost"), FieldType.INT, default=99),
+        FieldSchema("target_filter", tr("Card Filter"), FieldType.FILTER),
         FieldSchema("str_param", tr("Hint"), FieldType.STRING),
-        FieldSchema("play_flags", tr("Play for Free"), FieldType.BOOL, default=False), # Mapped to checkbox
+        FieldSchema("play_flags", tr("Play for Free"), FieldType.BOOL, default=False),
         f_links_out
     ]))
 
     # CAST_SPELL
+    # 再発防止: play_flags フィールドを追加し「コストを支払わずに唯える」を UI から設定できるようにする
     register_schema(CommandSchema("CAST_SPELL", [
         f_target,
         FieldSchema("target_filter", tr("Spell Filter"), FieldType.FILTER),
+        FieldSchema("play_flags", tr("Play for Free"), FieldType.BOOL, default=False),
+        f_optional,
         f_links_out
     ]))
 

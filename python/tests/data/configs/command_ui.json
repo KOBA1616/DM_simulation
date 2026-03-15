@@ -68,7 +68,7 @@
   },
   "ADD_KEYWORD": {
     "visible": ["target_group", "target_filter", "explicit_self", "str_val", "duration", "amount", "input_link"],
-    "labels": { "explicit_self": "This Card", "str_val": "Keyword", "duration": "Duration", "amount": "Amount (Hidden)" }
+    "labels": { "explicit_self": "This Card", "str_val": "Keyword", "duration": "Duration", "amount": "Target Count (0 = all)" }
   },
   "QUERY": {
     "visible": ["target_group", "target_filter", "query_mode", "amount", "input_link", "output_link"],

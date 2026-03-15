@@ -289,6 +289,8 @@ class UnifiedActionForm(BaseEditForm):
             data_dict = data
         self.current_model = model
         self.current_item = item
+        # 再発防止: params は dict だけでなく Pydantic モデルでも来るため、読み出し前に辞書へ正規化する。
+        params_data = to_dict(getattr(model, 'params', {}))
 
         cmd_type = model.type
         # Legacy compatibility: ADD_KEYWORD used str_param in older data
@@ -326,7 +328,7 @@ class UnifiedActionForm(BaseEditForm):
         # Set current_item for VariableLinkWidget
         for key, widget in self.widgets_map.items():
             if key in ['links', 'input_link', 'output_link', 'input_var', 'output_var']:
-                if hasattr(widget, 'set_current_item'):
+                if item is not None and hasattr(widget, 'set_current_item'):
                     widget.set_current_item(item)
         
         # Populate widgets via interface
@@ -340,15 +342,15 @@ class UnifiedActionForm(BaseEditForm):
                     widget.set_value(data_dict)
                 elif key == 'target_filter':
                     # target_filter is now stored in params
-                    tf = model.params.get('target_filter')
+                    tf = params_data.get('target_filter')
                     widget.set_value(tf if tf else {})
                 elif key == 'options':
                     widget.set_value(model.options)
                 else:
-                    # check model attrs first, then params
-                    val = getattr(model, key, None)
+                    # 再発防止: コマンド固有値は typed params 側に入るため、params を優先して読む。
+                    val = params_data.get(key)
                     if val is None:
-                        val = model.params.get(key)
+                        val = getattr(model, key, None)
 
                     # Only set value if data actually exists (not None and not empty string)
                     # This ensures saved data is displayed, but unsaved fields remain empty ("---")
@@ -359,13 +361,13 @@ class UnifiedActionForm(BaseEditForm):
             elif hasattr(widget, 'set_data'):
                 # Structured widget that exposes set_data (e.g., ConditionEditorWidget)
                 try:
-                    # Determine value from model attrs first, then params
-                    val = getattr(model, key, None)
+                    # Determine value from typed params first, then top-level attrs
+                    val = params_data.get(key)
                     if val is None:
-                        val = model.params.get(key)
+                        val = getattr(model, key, None)
                     if val is None:
                         # For some commands, condition may be stored directly under params['condition']
-                        val = model.params.get(key)
+                        val = params_data.get(key)
                     # If the widget expects a dict-like payload, pass it directly
                     if val is not None:
                         widget.set_data(val)
@@ -1159,6 +1161,10 @@ class UnifiedActionForm(BaseEditForm):
             # Use Pydantic model for validation/structure
             # Initialize with type first
             model = CommandModel(type=cmd_type)
+            # 再発防止: params は dict / typed model の両方で来るため、保存時は dict に正規化して扱う。
+            params_data = to_dict(getattr(model, 'params', {}))
+            if not isinstance(params_data, dict):
+                params_data = {}
 
             for key, widget in self.widgets_map.items():
                 if hasattr(widget, 'get_value'):
@@ -1180,14 +1186,15 @@ class UnifiedActionForm(BaseEditForm):
                             model.output_var = out_key
 
                     elif key == 'target_filter':
-                        if val: model.params['target_filter'] = val
+                        if val:
+                            params_data['target_filter'] = val
                     else:
                         # Only save non-None values to avoid storing empty selections
                         if val is not None and val != '':
                             if hasattr(model, key):
                                 setattr(model, key, val)
                             else:
-                                model.params[key] = val
+                                params_data[key] = val
 
             # Required field checks for grant/keyword actions
             def _get_widget_value(field_key):
@@ -1225,18 +1232,21 @@ class UnifiedActionForm(BaseEditForm):
             key_var = new_data.get('input_value_key') or new_data.get('input_var')
 
             if usage == 'COST' and key_var:
-                if 'target_filter' in model.params:
-                    tf = model.params['target_filter']
+                if 'target_filter' in params_data:
+                    tf = params_data['target_filter']
                     if isinstance(tf, dict):
                         tf['cost_ref'] = key_var
-                        model.params['target_filter'] = tf
+                        params_data['target_filter'] = tf
 
                 # When using a dynamic cost reference (e.g. from selected number), target ALL matching cards by default
                 # 255 is the internal constant for AMOUNT_ALL
                 if hasattr(model, 'amount'):
                     model.amount = 255
                 else:
-                    model.params['amount'] = 255
+                    params_data['amount'] = 255
+
+            # Ensure dict-backed params are persisted even when initial params was typed model.
+            model.params = params_data
 
             # Merge model back to dict
             dump = model.model_dump(exclude_none=True)

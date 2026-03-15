@@ -68,6 +68,7 @@ class CardTextResources:
         "ON_OTHER_ENTER": "他のクリーチャーが出た時",
         "ON_OPPONENT_CREATURE_ENTER": "相手のクリーチャーが出た時",
         "ON_ATTACK": "このクリーチャーが攻撃する時",
+        # 再発防止: 旧トリガー ON_ATTACK_FROM_HAND を使う既存データ互換のため翻訳を維持する。
         "ON_ATTACK_FROM_HAND": "手札から攻撃する時",
         "ON_BLOCK": "このクリーチャーがブロックした時",
         "ON_DESTROY": "このクリーチャーが破壊された時",
@@ -224,7 +225,8 @@ class CardTextResources:
         "DARKNESS": "闇",
         "FIRE": "火",
         "NATURE": "自然",
-        "ZERO": "ゼロ"
+        "ZERO": "ゼロ",
+        "MULTICOLOR": "多色"
     }
     
     # Card type Japanese mapping

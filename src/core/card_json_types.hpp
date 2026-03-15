@@ -205,6 +205,7 @@ namespace dm::core {
         // cards.json で使用される追加コマンドタイプ
         // 再発防止: cards.json に新コマンドタイプを追加したら必ずここにも追加すること
         APPLY_MODIFIER,      // 一時的な修正効果付与 (APPLY_MODIFIER in JSON)
+        REVOLUTION_CHANGE,   // 革命チェンジ宣言/処理 (REVOLUTION_CHANGE in JSON)
         GRANT_KEYWORD,       // キーワード付与 (GRANT_KEYWORD in JSON)
         PUT_CREATURE,        // クリーチャーを場に出す (PUT_CREATURE in JSON)
         REPLACE_CARD_MOVE,   // カード移動の置換効果 (REPLACE_CARD_MOVE in JSON)
@@ -668,6 +669,8 @@ namespace dm::core {
         {CommandType::APPLY_MODIFIER, "APPLY_MODIFIER"},
         // 再発防止: 旧cards.json互換。COST_MODIFIER は APPLY_MODIFIER として扱う。
         {CommandType::APPLY_MODIFIER, "COST_MODIFIER"},
+        // 再発防止: cards.json の REVOLUTION_CHANGE は C++ enum に必ず登録し、NONE 変換を防ぐ。
+        {CommandType::REVOLUTION_CHANGE, "REVOLUTION_CHANGE"},
         {CommandType::GRANT_KEYWORD, "GRANT_KEYWORD"},
         {CommandType::PUT_CREATURE, "PUT_CREATURE"},
         {CommandType::REPLACE_CARD_MOVE, "REPLACE_CARD_MOVE"},
@@ -681,7 +684,7 @@ namespace dm::core {
         {CommandType::CANNOT_PUT_CREATURE, "CANNOT_PUT_CREATURE"},
         {CommandType::CANNOT_SUMMON_CREATURE, "CANNOT_SUMMON_CREATURE"},
         {CommandType::PLAYER_CANNOT_ATTACK, "PLAYER_CANNOT_ATTACK"},
-        {CommandType::IGNORE_ABILITY, "IGNORE_ABILITY"}
+        {CommandType::IGNORE_ABILITY, "IGNORE_ABILITY"},
         {CommandType::MOVE_BUFFER_REMAIN_TO_ZONE, "MOVE_BUFFER_REMAIN_TO_ZONE"},
     })
 

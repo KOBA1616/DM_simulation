@@ -22,7 +22,6 @@ from dm_toolkit.gui.editor.consts import (
 class KeywordFormState:
     keyword_flags: dict[str, bool]
     revolution_change: bool
-    revolution_change_races: list[str]
     mekraid: bool
     mekraid_races: list[str]
     friend_burst: bool
@@ -42,15 +41,11 @@ class KeywordFormState:
             else:
                 data.pop(key, None)
 
-        if self.revolution_change:
-            data["revolution_change"] = True
-            if self.revolution_change_races:
-                data["revolution_change_condition"] = {"races": self.revolution_change_races}
-            else:
-                data.pop("revolution_change_condition", None)
-        else:
-            data.pop("revolution_change", None)
-            data.pop("revolution_change_condition", None)
+        # 再発防止: 革命チェンジはキーワード直設定ではなく
+        # REVOLUTION_CHANGE ノードの有無を正とする設計に統一する。
+        # KeywordForm は構造生成トリガーのみを担い、保存時に rc キーを直接更新しない。
+        data.pop("revolution_change", None)
+        data.pop("revolution_change_condition", None)
 
         if self.mekraid:
             data["mekraid"] = True
@@ -148,17 +143,6 @@ class KeywordEditForm(BaseEditForm):
         self.rev_change_check.setToolTip(tr("革命チェンジを有効にすると、必要なロジックツリー構造が生成されます。"))
         safe_connect(self.rev_change_check, "stateChanged", self.toggle_rev_change)
         special_layout.addWidget(self.rev_change_check)
-        # 再発防止: 革命チェンジ条件の種族はキーワードフォームでも編集できるようにし、
-        # チェックON時/編集時にロジックテンプレートへ反映する。
-        self.rc_race_label = QLabel(tr("Revolution Change Race"))
-        self.rc_race_edit = QLineEdit()
-        self.rc_race_edit.setPlaceholderText(tr("Comma separated races (e.g. Dragon, Cyber Lord)"))
-        self.rc_race_label.setVisible(False)
-        self.rc_race_edit.setVisible(False)
-        safe_connect(self.rc_race_edit, "textChanged", self.update_data)
-        safe_connect(self.rc_race_edit, "editingFinished", self._on_rev_change_race_edited)
-        special_layout.addWidget(self.rc_race_label)
-        special_layout.addWidget(self.rc_race_edit)
 
         # Mekraid
         self.mekraid_check = QCheckBox(tr("Mekraid"))
@@ -227,12 +211,10 @@ class KeywordEditForm(BaseEditForm):
 
     def toggle_rev_change(self, state):
         is_checked = self._is_checked_state(state)
-        self.rc_race_label.setVisible(is_checked)
-        self.rc_race_edit.setVisible(is_checked)
         self.update_data()
-        payload = {'races': self._parse_races(self.rc_race_edit.text())}
         if is_checked:
-            self.structure_update_requested.emit(STRUCT_CMD_ADD_REV_CHANGE, payload)
+            # 再発防止: 革命チェンジは種族入力を持たず、チェック操作でテンプレートを直接生成する。
+            self.structure_update_requested.emit(STRUCT_CMD_ADD_REV_CHANGE, {})
         else:
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_REV_CHANGE, {})
 
@@ -258,15 +240,6 @@ class KeywordEditForm(BaseEditForm):
             self.structure_update_requested.emit(STRUCT_CMD_ADD_FRIEND_BURST, {'races': races})
         else:
             self.structure_update_requested.emit(STRUCT_CMD_REMOVE_FRIEND_BURST, {})
-
-    def _on_rev_change_race_edited(self):
-        # 再発防止: 種族編集後に既存テンプレートを再生成し、コマンド条件へ反映する。
-        if not self.rev_change_check.isChecked():
-            return
-        races = self._parse_races(self.rc_race_edit.text())
-        self.update_data()
-        self.structure_update_requested.emit(STRUCT_CMD_REMOVE_REV_CHANGE, {})
-        self.structure_update_requested.emit(STRUCT_CMD_ADD_REV_CHANGE, {'races': races})
 
     def _on_mekraid_race_edited(self):
         # 再発防止: 種族編集後に既存テンプレートを再生成し、コマンド条件へ反映する。
@@ -308,14 +281,10 @@ class KeywordEditForm(BaseEditForm):
             cb.setChecked(is_checked)
 
         self.rev_change_check.blockSignals(True)
-        rc_checked = data.get('revolution_change', False)
+        # 再発防止: 革命チェンジは keyword dict に保存しないため、
+        # 既存ノード（REVOLUTION_CHANGE / MUTATE+mutation_kind）からチェック状態を復元する。
+        rc_checked = self._has_revolution_change_node(item)
         self.rev_change_check.setChecked(rc_checked)
-        self.rc_race_label.setVisible(rc_checked)
-        self.rc_race_edit.setVisible(rc_checked)
-        rc_cond = data.get('revolution_change_condition', {})
-        if isinstance(rc_cond, dict):
-            rc_races = rc_cond.get('races', [])
-            self.rc_race_edit.setText(", ".join(rc_races) if rc_races else '')
         self.rev_change_check.blockSignals(False)
 
         self.mekraid_check.blockSignals(True)
@@ -356,7 +325,6 @@ class KeywordEditForm(BaseEditForm):
         return KeywordFormState(
             keyword_flags=keyword_flags,
             revolution_change=bool(self.rev_change_check.isChecked()),
-            revolution_change_races=self._parse_races(self.rc_race_edit.text()),
             mekraid=bool(self.mekraid_check.isChecked()),
             mekraid_races=self._parse_races(self.mk_race_edit.text()),
             friend_burst=bool(self.friend_burst_check.isChecked()),
@@ -375,12 +343,50 @@ class KeywordEditForm(BaseEditForm):
     def _get_display_text(self, data):
         return tr("Keywords")
 
+    def _has_revolution_change_node(self, item: Any) -> bool:
+        """Detect Revolution Change from sibling effect command nodes."""
+        if item is None:
+            return False
+        try:
+            card_item = item.parent()
+        except Exception:
+            card_item = None
+        if card_item is None:
+            return False
+
+        try:
+            child_count = card_item.rowCount()
+        except Exception:
+            child_count = 0
+
+        for i in range(child_count):
+            try:
+                child = card_item.child(i)
+                role = child.data(Qt.ItemDataRole.UserRole + 1)
+            except Exception:
+                continue
+            if role != "EFFECT":
+                continue
+
+            try:
+                eff_data = to_dict(child.data(Qt.ItemDataRole.UserRole + 2) or {})
+            except Exception:
+                eff_data = {}
+            commands = eff_data.get("commands", []) if isinstance(eff_data, dict) else []
+            for cmd in commands:
+                if not isinstance(cmd, dict):
+                    continue
+                ctype = cmd.get("type")
+                if ctype == "REVOLUTION_CHANGE":
+                    return True
+
+        return False
+
     def block_signals_all(self, block):
-        # 再発防止: rc_race_editはセッションで削除済み。参照すると AttributeError になるため除去。
+        # 再発防止: 革命チェンジ種族入力UIは削除済みのため、チェックボックスのみ制御する。
         for cb in self.keyword_checks.values():
             cb.blockSignals(block)
         self.rev_change_check.blockSignals(block)
-        self.rc_race_edit.blockSignals(block)
         self.mekraid_check.blockSignals(block)
         self.mk_race_edit.blockSignals(block)
         self.friend_burst_check.blockSignals(block)

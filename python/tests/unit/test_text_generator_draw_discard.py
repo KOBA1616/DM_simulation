@@ -7,7 +7,7 @@ def test_draw_card_handler():
     res = CardTextGenerator._format_game_action_command(
         "DRAW_CARD", {}, False, 2, 0, "カード", "枚", "", "", None
     )
-    assert res == "山札から2枚引く。"
+    assert res == "2枚引く。"
 
 
 def test_discard_handler_defaults_to_hand():

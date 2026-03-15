@@ -45,6 +45,7 @@ class CardEditor(QMainWindow):
         self.resize(1600, 900) # Optimized for 3-pane layout with room for OS/DE chrome
 
         self.cards_data = []
+        self._preview_target_index = None
         # 再発防止: 連続編集時にプレビューが毎フレーム再描画されないようデバウンスタイマーを
         # init_ui() より前に初期化する（シグナル接続時にタイマーが存在する必要がある）
         self._preview_debounce_timer = QTimer(self)
@@ -219,10 +220,16 @@ class CardEditor(QMainWindow):
         indexes = selected.indexes()
         if indexes:
             index = indexes[0]
-            self.inspector.set_selection(index)
+            self._preview_target_index = index
+            try:
+                self.inspector.set_selection(index)
+            except Exception:
+                # 再発防止: set_selection 例外で選択更新が止まると
+                # 切替後表示が更新されないため、最低限プレビュー更新は継続する。
+                pass
 
             # Request preview update (immediate for selection changes)
-            self.request_preview_update(immediate=True)
+            self.request_preview_update(immediate=True, index=index)
 
             # Auto-expand if it's a card and not already expanded
             item = self.tree_widget.standard_model.itemFromIndex(index)
@@ -231,7 +238,11 @@ class CardEditor(QMainWindow):
                 if type_ == "CARD":
                     self.tree_widget.expand(index)
         else:
-            self.inspector.set_selection(None)
+            self._preview_target_index = None
+            try:
+                self.inspector.set_selection(None)
+            except Exception:
+                pass
             self.preview_widget.clear_preview()
 
     def on_data_changed(self):
@@ -253,8 +264,10 @@ class CardEditor(QMainWindow):
         # Manual update should force immediate preview refresh
         self.request_preview_update(immediate=True)
 
-    def update_current_preview(self):
-        idx = self.tree_widget.currentIndex()
+    def update_current_preview(self, index=None):
+        idx = index if index is not None else self._preview_target_index
+        if idx is None or not idx.isValid():
+            idx = self.tree_widget.currentIndex()
         if not idx.isValid():
             self.preview_widget.clear_preview()
             return
@@ -279,6 +292,7 @@ class CardEditor(QMainWindow):
                 self.preview_widget.clear_preview()
         else:
             self.preview_widget.clear_preview()
+        self._preview_target_index = None
 
     def _structure_handlers(self, card_item, item, item_type, payload):
         """Return a mapping of structure command to handler callables.
@@ -485,7 +499,7 @@ class CardEditor(QMainWindow):
         if item_type == "CARD":
             return item
 
-        if item_type in ["EFFECT", "SPELL_SIDE"]:
+        if item_type in ["EFFECT", "SPELL_SIDE", "KEYWORDS", "MODIFIER", "REACTION_ABILITY"]:
             parent = item.parent()
             return parent if parent is not None else None
 
@@ -497,13 +511,17 @@ class CardEditor(QMainWindow):
 
         return None
 
-    def request_preview_update(self, immediate: bool = False):
+    def request_preview_update(self, immediate: bool = False, index=None):
         """Centralized API for requesting preview updates.
 
         - If `immediate` is True, cancel debounce and update immediately.
         - Otherwise, start the existing debounce timer used by `on_data_changed`.
         """
         try:
+            if index is not None:
+                # 再発防止: selectionChanged 直後は currentIndex が旧値のことがあるため、
+                # 明示的に渡された index を優先して次回プレビュー更新に使う。
+                self._preview_target_index = index
             if immediate:
                 # Stop any pending debounced update and update now
                 try:
@@ -511,7 +529,10 @@ class CardEditor(QMainWindow):
                 except Exception:
                     pass
                 try:
-                    self.update_current_preview()
+                    if index is None:
+                        self.update_current_preview()
+                    else:
+                        self.update_current_preview(index=index)
                 except Exception:
                     pass
             else:
@@ -520,7 +541,10 @@ class CardEditor(QMainWindow):
                 except Exception:
                     # Fallback: immediate update if timer unavailable
                     try:
-                        self.update_current_preview()
+                        if index is None:
+                            self.update_current_preview()
+                        else:
+                            self.update_current_preview(index=index)
                     except Exception:
                         pass
         except Exception:

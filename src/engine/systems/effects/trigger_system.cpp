@@ -24,10 +24,17 @@ static bool already_pending_once(const GameState& state, const PendingEffect& pe
         if (p.type != EffectType::TRIGGER_ABILITY) continue;
         if (p.source_instance_id != pending.source_instance_id) continue;
         if (p.controller != pending.controller) continue;
-        nlohmann::json ja;
-        nlohmann::json jb;
-        dm::core::to_json(ja, p.effect_def);
-        dm::core::to_json(jb, pending.effect_def);
+
+        // 再発防止: PendingEffect::effect_def は std::optional のため、
+        // 直接 to_json せず value/null を明示的に比較して C2665 を防ぐ。
+        nlohmann::json ja = nullptr;
+        nlohmann::json jb = nullptr;
+        if (p.effect_def.has_value()) {
+            dm::core::to_json(ja, p.effect_def.value());
+        }
+        if (pending.effect_def.has_value()) {
+            dm::core::to_json(jb, pending.effect_def.value());
+        }
         if (ja == jb) return true;
     }
     return false;

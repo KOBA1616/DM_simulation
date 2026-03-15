@@ -191,26 +191,40 @@ class CardEditForm(BaseEditForm):
         # Set values to widgets
         for key, widget in self.widgets_map.items():
             if hasattr(widget, 'set_value'):
-                val = flat_data.get(key)
+                field = next((f for f in CARD_SCHEMA.fields if f.key == key), None)
+                val = self._resolve_load_value(flat_data, field)
 
-                # Default handling
-                if val is None:
-                    # Look up default in schema
-                    field = next((f for f in CARD_SCHEMA.fields if f.key == key), None)
-                    if field and field.default is not None:
-                         val = field.default
-
-                    # Type-specific empty defaults
-                    if field and field.field_type.name == 'RACES': val = []
-                    if field and field.field_type.name == 'CIVILIZATION': val = []
-
-                if val is not None:
-                    # Block signals during load
-                    old_state = widget.blockSignals(True)
-                    widget.set_value(val)
-                    widget.blockSignals(old_state)
+                # 再発防止: 別カードへ切り替えたとき、未設定項目を明示的に空/既定値へ戻す。
+                # ここを skip すると前カードの値がフォームに残り、編集対象が食い違う。
+                old_state = widget.blockSignals(True)
+                widget.set_value(val)
+                widget.blockSignals(old_state)
 
         self._update_visibility()
+
+    def _resolve_load_value(self, flat_data, field: FieldSchema | None):
+        if field is None:
+            return None
+
+        val = flat_data.get(field.key)
+        if val is not None:
+            return val
+
+        if field.default is not None:
+            return field.default
+
+        if field.field_type.name in ('RACES', 'CIVILIZATION'):
+            return []
+        if field.field_type.name == 'BOOL':
+            return False
+        if field.field_type.name == 'INT':
+            return 0
+        if field.field_type.name == 'TYPE_SELECT':
+            return 'CREATURE'
+        if field.field_type.name == 'STRING':
+            return ''
+
+        return None
 
     def _save_ui_to_data(self, data):
         """

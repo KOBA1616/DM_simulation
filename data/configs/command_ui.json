@@ -63,7 +63,7 @@
   },
   "ADD_KEYWORD": {
     "visible": ["target_group", "target_filter", "explicit_self", "str_val", "duration", "amount", "input_link"],
-    "labels": { "explicit_self": "このカード", "str_val": "キーワード能力", "duration": "持続期間", "amount": "値（非表示）" }
+    "labels": { "explicit_self": "このカード", "str_val": "キーワード能力", "duration": "持続期間", "amount": "対象数（0 = すべて）" }
   },
   "QUERY": {
     "visible": ["target_group", "target_filter", "query_mode", "amount", "input_link", "output_link"],

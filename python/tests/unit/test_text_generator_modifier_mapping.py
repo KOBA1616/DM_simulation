@@ -25,12 +25,13 @@ def test_format_modifier_grant_keyword_and_set():
     # GRANT_KEYWORD
     mod_grant = {
         "type": "GRANT_KEYWORD",
-        "mutation_kind": "CANNOT_ATTACK",
+        "mutation_kind": "BLOCKER",
         "value": 1,
         "filter": {"types": ["CREATURE"]},
     }
     res_grant = CardTextGenerator._format_modifier(mod_grant)
     assert "与える" in res_grant or "与える。" in res_grant
+    assert "ブロッカー" in res_grant
 
     # SET_KEYWORD
     mod_set = {
@@ -40,3 +41,27 @@ def test_format_modifier_grant_keyword_and_set():
     }
     res_set = CardTextGenerator._format_modifier(mod_set)
     assert ("得る" in res_set) or ("能力" in res_set)
+
+
+def test_format_modifier_grant_keyword_uses_all_targets_when_value_zero():
+    mod_grant = {
+        "type": "GRANT_KEYWORD",
+        "mutation_kind": "BLOCKER",
+        "value": 0,
+        "filter": {"types": ["CREATURE"]},
+    }
+    res_grant = CardTextGenerator._format_modifier(mod_grant)
+    assert "選び" not in res_grant
+    assert "ブロッカー" in res_grant
+
+
+def test_format_modifier_grant_keyword_uses_selection_when_value_positive():
+    mod_grant = {
+        "type": "GRANT_KEYWORD",
+        "mutation_kind": "BLOCKER",
+        "value": 2,
+        "filter": {"types": ["CREATURE"]},
+    }
+    res_grant = CardTextGenerator._format_modifier(mod_grant)
+    assert "2体選び" in res_grant
+    assert "ブロッカー" in res_grant

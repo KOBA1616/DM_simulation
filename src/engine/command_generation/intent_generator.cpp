@@ -1,5 +1,6 @@
 #include "intent_generator.hpp"
 #include "core/constants.hpp"
+#include "engine/systems/effects/reaction_window.hpp"
 #include <fstream>
 #include <sstream>
 #include <filesystem>
@@ -107,6 +108,41 @@ namespace dm::engine {
             }
 
             dump_actions(actions, "waiting_for_user_input");
+            return actions;
+        }
+
+        // 再発防止: WAITING_FOR_REACTION 中は通常フェーズ戦略へ進まず、
+        // reaction_stack から専用の合法手を返す。ここを通さないと革命チェンジが
+        // USE_ABILITY として提示されず、AI が反応を宣言できない。
+        if (game_state.status == GameState::Status::WAITING_FOR_REACTION &&
+            !game_state.reaction_stack.empty()) {
+            std::vector<CommandDef> actions;
+            const auto& window = game_state.reaction_stack.back();
+
+            for (const auto& candidate : window.candidates) {
+                if (candidate.player_id != game_state.active_player_id) {
+                    continue;
+                }
+
+                if (candidate.type == dm::engine::systems::ReactionType::REVOLUTION_CHANGE) {
+                    CommandDef use;
+                    use.type = CommandType::USE_ABILITY;
+                    use.instance_id = candidate.instance_id;
+                    use.target_instance = game_state.current_attack.source_instance_id;
+                    actions.push_back(use);
+                } else if (candidate.type == dm::engine::systems::ReactionType::SHIELD_TRIGGER) {
+                    CommandDef st;
+                    st.type = CommandType::SHIELD_TRIGGER;
+                    st.instance_id = candidate.instance_id;
+                    actions.push_back(st);
+                }
+            }
+
+            CommandDef pass;
+            pass.type = CommandType::PASS;
+            actions.push_back(pass);
+
+            dump_actions(actions, "waiting_for_reaction");
             return actions;
         }
 

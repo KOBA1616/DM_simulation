@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-ADD_KEYWORDフォームのstr_val/duration機能テスト
+ADD_KEYWORDフォームのstr_val/duration/amount機能テスト
+再発防止: 数量フィールドを「非表示」ラベルへ戻すと、GUI上は見えていても
+設定ファイル由来のスキーマ検証と実表示が再び食い違うため、amount も固定で検証する。
 """
 import json
 
@@ -22,12 +24,16 @@ def test_add_keyword_schema():
     
     assert "str_val" in field_keys, "str_val field not found"
     assert "duration" in field_keys, "duration field not found"
+    assert "amount" in field_keys, "amount field not found"
     assert "target_group" in field_keys, "target_group field not found"
     
     # durationフィールドの選択肢を確認
     duration_field = next(f for f in schema.fields if f.key == "duration")
+    amount_field = next(f for f in schema.fields if f.key == "amount")
     print(f"Duration options: {duration_field.options}")
     assert "PERMANENT" in duration_field.options, "PERMANENT not in duration options"
+    assert amount_field.default == 0, f"Expected amount default=0, got {amount_field.default}"
+    assert amount_field.min_value == 0, f"Expected amount min_value=0, got {amount_field.min_value}"
     
     print("✅ ADD_KEYWORD schema test passed")
 
@@ -102,12 +108,31 @@ def test_command_ui_config():
     
     assert "str_val" in visible, "str_val not in visible fields"
     assert "duration" in visible, "duration not in visible fields"
+    assert "amount" in visible, "amount not in visible fields"
     
     labels = add_keyword_config.get("labels", {})
     assert "str_val" in labels, "str_val label not found"
     assert labels["str_val"] == "キーワード能力", f"Expected 'キーワード能力', got '{labels['str_val']}'"
+    assert labels.get("amount") == "対象数（0 = すべて）", f"Unexpected amount label: {labels.get('amount')}"
     
     print("✅ Command UI config test passed")
+
+
+def test_legacy_command_schema_amount_field():
+    """旧command_schema.jsonも数量設定に追従していることを確認"""
+    with open('data/configs/command_schema.json', 'r', encoding='utf-8') as f:
+        schema = json.load(f)
+
+    add_keyword = schema.get('ADD_KEYWORD')
+    assert add_keyword is not None, 'ADD_KEYWORD not found in command_schema.json'
+
+    fields = add_keyword.get('fields', [])
+    field_map = {field.get('key'): field for field in fields}
+
+    # 再発防止: 旧スキーマに duration 用 amount ラベルが残ると外部検証系で数量指定が誤解される。
+    assert 'amount' in field_map, 'amount field not found in command_schema.json'
+    assert field_map['amount'].get('label') == 'Target Count (0 = all)'
+    assert 'duration' in field_map, 'duration field not found in command_schema.json'
 
 
 if __name__ == "__main__":

@@ -187,6 +187,9 @@ class ModifierEditForm(BaseEditForm):
         if mtype is None:
             mtype = "COST_MODIFIER"  # Default fallback
 
+        # 再発防止: タイプ切替後も前タイプの範囲設定を引きずらないよう、毎回ベース範囲へ戻してから分岐する。
+        self.value_spin.setRange(-99999, 99999)
+
         # Defaults
         self.label_value.setVisible(False)
         self.value_spin.setVisible(False)
@@ -209,8 +212,12 @@ class ModifierEditForm(BaseEditForm):
             self.filter_widget.setTitle(tr("強化対象クリーチャー"))
 
         elif mtype == "GRANT_KEYWORD":
+            self.label_value.setVisible(True)
+            self.value_spin.setVisible(True)
             self.label_keyword.setVisible(True)
             self.keyword_combo.setVisible(True)
+            self.label_value.setText(tr("対象数（0 = すべて）"))
+            self.value_spin.setRange(0, 99999)
             self.filter_widget.setTitle(tr("対象クリーチャー"))
 
         elif mtype in ("TARGET_RESTRICTION", "SPELL_RESTRICTION", "TARGET_THIS_CANNOT_SELECT", "TARGET_THIS_FORCE_SELECT", "ADD_RESTRICTION"):

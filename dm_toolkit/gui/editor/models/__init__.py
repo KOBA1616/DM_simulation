@@ -217,8 +217,23 @@ def describe_filterspec(fs_input: Any) -> str:
 
 # --- Typed Params Models (E-1) ---
 class QueryParams(BaseModel):
-    query_string: str
+    # 再発防止: スキーマは str_param キーを使用するため、model_validator で両方のキーを受け入れる
+    query_string: Optional[str] = None  # legacy field name
+    str_param: Optional[str] = None     # schema key (Query Mode)
     options: List[str] = Field(default_factory=list)
+
+    @model_validator(mode='before')
+    @classmethod
+    def map_schema_to_legacy_keys(cls, v: Any) -> Any:
+        if isinstance(v, dict):
+            v = dict(v)
+            # Schema produces str_param; map to query_string for compatibility
+            if 'str_param' in v and 'query_string' not in v:
+                v['query_string'] = v['str_param']
+            # Reverse: legacy query_string → str_param
+            elif 'query_string' in v and 'str_param' not in v:
+                v['str_param'] = v['query_string']
+        return v
 
 class TransitionParams(BaseModel):
     target_state: str
@@ -276,20 +291,62 @@ class MutateParams(BaseModel):
 
 
 class ApplyModifierParams(BaseModel):
-    modifier_type: str
-    value: int
+    # 再発防止: スキーマは str_param/amount キーを使用; model_validator で両方向をサポート
+    modifier_type: Optional[str] = None   # legacy field name
+    value: Optional[int] = None           # legacy field name
+    str_param: Optional[str] = None       # schema key (Effect ID)
+    amount: Optional[int] = None          # schema key (Value)
+    duration: Optional[str] = None        # schema key (Duration, SELECT type → string)
     scope: Optional[str] = None
     condition: Optional[Dict[str, Any]] = None
     extras: Dict[str, Any] = Field(default_factory=dict)
 
+    @model_validator(mode='before')
+    @classmethod
+    def map_schema_to_legacy_keys(cls, v: Any) -> Any:
+        if isinstance(v, dict):
+            v = dict(v)
+            # Schema → legacy
+            if 'str_param' in v and 'modifier_type' not in v:
+                v['modifier_type'] = v['str_param']
+            if 'amount' in v and 'value' not in v:
+                v['value'] = v['amount']
+            # Legacy → schema
+            if 'modifier_type' in v and 'str_param' not in v:
+                v['str_param'] = v['modifier_type']
+            if 'value' in v and 'amount' not in v:
+                v['amount'] = v['value']
+        return v
+
 
 class PlayFromZoneParams(BaseModel):
-    source_zone: str
-    destination_zone: Optional[str] = None
+    # 再発防止: スキーマは from_zone/to_zone/target_filter を使用; model_validator でマッピング
+    source_zone: Optional[str] = None      # mapped from from_zone
+    destination_zone: Optional[str] = None # mapped from to_zone
+    from_zone: Optional[str] = None        # schema key
+    to_zone: Optional[str] = None          # schema key
     amount: int = 1
     up_to: Optional[bool] = None
-    filter: Optional[Dict[str, Any]] = None
+    filter: Optional[Dict[str, Any]] = None          # holds target_filter content
+    target_filter: Optional[Dict[str, Any]] = None   # schema key
+    play_flags: Optional[bool] = None      # schema key (Play for Free)
+    str_param: Optional[str] = None        # schema key (Hint)
     extras: Dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode='before')
+    @classmethod
+    def map_schema_to_legacy_keys(cls, v: Any) -> Any:
+        if isinstance(v, dict):
+            v = dict(v)
+            # Map schema zone keys to canonical fields
+            if 'from_zone' in v and 'source_zone' not in v:
+                v['source_zone'] = v['from_zone']
+            if 'to_zone' in v and 'destination_zone' not in v:
+                v['destination_zone'] = v['to_zone']
+            # Map schema filter key
+            if 'target_filter' in v and 'filter' not in v:
+                v['filter'] = v['target_filter']
+        return v
 
 
 class CastSpellParams(BaseModel):
@@ -297,6 +354,10 @@ class CastSpellParams(BaseModel):
     target: Optional[str] = None
     cost: Optional[int] = None
     use_mana_from: Optional[str] = None
+    target_group: Optional[str] = None
+    target_filter: Optional[Dict[str, Any]] = None
+    optional: Optional[bool] = None
+    play_flags: Optional[Any] = None
     extras: Dict[str, Any] = Field(default_factory=dict)
 
 class SearchParams(BaseModel):
@@ -314,16 +375,54 @@ class LookAndAddParams(BaseModel):
     filter: Optional[Dict[str, Any]] = None
 
 class AddKeywordParams(BaseModel):
-    keyword: str
+    # 再発防止: スキーマは str_val/explicit_self/duration(str) を使用; model_validator で両方向マッピング
+    keyword: Optional[str] = None         # legacy field name
+    str_val: Optional[str] = None         # schema key (Keyword)
+    explicit_self: Optional[bool] = None  # schema key (This Card)
     target: Optional[str] = None
-    duration: Optional[int] = None
+    duration: Optional[str] = None        # schema key → string (SELECT type)
+    amount: Optional[int] = None          # schema hidden field
     # legacy compatibility: allow extra fields
     extra: Dict[str, Any] = Field(default_factory=dict)
 
+    @model_validator(mode='before')
+    @classmethod
+    def map_schema_to_legacy_keys(cls, v: Any) -> Any:
+        if isinstance(v, dict):
+            v = dict(v)
+            # Schema → legacy
+            if 'str_val' in v and 'keyword' not in v:
+                v['keyword'] = v['str_val']
+            # Legacy → schema
+            elif 'keyword' in v and 'str_val' not in v:
+                v['str_val'] = v['keyword']
+        return v
+
 class MekraidParams(BaseModel):
-    reveal_count: int = 3
-    evolution_cost: Optional[int] = None
+    # 再発防止: スキーマは amount(Level)/val2(Look Count)/select_count を使用; model_validator でマッピング
+    reveal_count: int = 3                  # legacy field (= schema val2)
+    evolution_cost: Optional[int] = None   # legacy field (= schema amount = Max Cost Level)
+    amount: Optional[int] = None           # schema key (Level / Max Cost)
+    val2: Optional[int] = None             # schema key (Look Count)
+    select_count: Optional[int] = None     # schema key (Select Count)
     filter: Optional[Dict[str, Any]] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def map_schema_to_legacy_keys(cls, v: Any) -> Any:
+        if isinstance(v, dict):
+            v = dict(v)
+            # Schema → legacy
+            if 'val2' in v and v['val2'] is not None:
+                v.setdefault('reveal_count', v['val2'])
+            if 'amount' in v and v['amount'] is not None:
+                v.setdefault('evolution_cost', v['amount'])
+            # Legacy → schema
+            if 'reveal_count' in v and 'val2' not in v:
+                v['val2'] = v['reveal_count']
+            if 'evolution_cost' in v and v['evolution_cost'] is not None and 'amount' not in v:
+                v['amount'] = v['evolution_cost']
+        return v
 
 
 class RevealCardsParams(BaseModel):
@@ -394,9 +493,14 @@ class PowerModParams(BaseModel):
 
 class PutCreatureParams(BaseModel):
     # PUT_CREATURE: place a creature instance from a source (e.g., hand) to battle zone
+    # 再発防止: スキーマで編集可能な target_filter/target_group/amount をここで保持しないと、
+    # CommandModel 変換時に値が欠落して「保存されない」「生成テキストに反映されない」不具合になる。
     card_id: Optional[int] = None
     from_zone: Optional[str] = None
     to_zone: Optional[str] = None
+    amount: int = 1
+    target_group: Optional[str] = None
+    target_filter: Optional[Dict[str, Any]] = None
     tapped: Optional[bool] = None
     summoned_for_free: Optional[bool] = None
     extras: Dict[str, Any] = Field(default_factory=dict)
@@ -490,9 +594,10 @@ class PlayFromBufferParams(BaseModel):
 
 class IgnoreAbilityParams(BaseModel):
     # IGNORE_ABILITY: temporarily ignore a specific ability or ability group
+    # 再発防止: duration はスキーマで SELECT 型（文字列例 "THIS_TURN"）のため Optional[str] が正しい
     ability_id: Optional[str] = None
     target_group: Optional[str] = None
-    duration: Optional[int] = None  # duration in turns (if applicable)
+    duration: Optional[str] = None  # duration key string (e.g. "THIS_TURN", "THIS_BATTLE")
     reason: Optional[str] = None
     extras: Dict[str, Any] = Field(default_factory=dict)
 
@@ -546,6 +651,16 @@ class CommandModel(BaseModel):
 
             # If params already exists, use it, else create new
             params = data.get('params', {})
+            # 再発防止: params が既に Pydantic モデルインスタンスの場合は dict 化せずそのまま保持する
+            # (isinstance チェックで BaseModel を直接保持することで、型安全性を維持する)
+            if isinstance(params, BaseModel):
+                # Already a typed model: preserve it, skip dict-level merging below
+                new_data = {}
+                for k in known_fields:
+                    if k in data:
+                        new_data[k] = data[k]
+                new_data['params'] = params
+                return new_data
             if not isinstance(params, dict): params = {}
 
             new_data = {}

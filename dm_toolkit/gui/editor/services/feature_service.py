@@ -5,7 +5,7 @@ from dm_toolkit.gui.editor.models import CardModel, EffectModel, CommandModel, R
 from dm_toolkit.gui.editor.templates import LogicTemplateManager
 from dm_toolkit.editor.core.abstraction import IEditorModel, IEditorItem
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
 if TYPE_CHECKING:
     from dm_toolkit.gui.editor.models.serializer import ModelSerializer
 
@@ -192,7 +192,21 @@ class EditorFeatureService:
 
     @staticmethod
     def inject_keyword_logic(card_data):
-        keywords = card_data.get('keywords', {})
+        raw_keywords = card_data.get('keywords', {})
+        # 再発防止: keywords は dict だけでなく KeywordsModel（Pydantic）でも渡される。
+        # dict 前提で代入すると TypeError になるため、ここで必ず plain dict に正規化する。
+        keywords: Dict[str, Any]
+        if isinstance(raw_keywords, dict):
+            keywords = dict(raw_keywords)
+        elif hasattr(raw_keywords, 'model_dump'):
+            try:
+                dumped = raw_keywords.model_dump()  # type: ignore[attr-defined]
+                keywords = dumped if isinstance(dumped, dict) else {}
+            except Exception:
+                keywords = {}
+        else:
+            keywords = {}
+
         effects = card_data.get('effects', [])
 
         for eff in effects:

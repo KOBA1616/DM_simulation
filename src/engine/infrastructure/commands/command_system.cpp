@@ -225,6 +225,18 @@ std::vector<Instruction> CommandSystem::generate_instructions(
 
   // 再発防止: IF/IF_ELSE/ELSE は上部の primitive block に含まれているため重複 case を排除すること
 
+  case core::CommandType::REVOLUTION_CHANGE:
+    // 再発防止: REVOLUTION_CHANGE は cards.json の effects[].commands[] に「能力宣言」として
+    //   記述されており、generate_instructions ではMOVE命令を生成してはならない。
+    //   実際のカードスワップ処理は以下の経路で行われる:
+    //     trigger_manager.cpp → ReactionType::REVOLUTION_CHANGE を reaction スタックに登録
+    //     → intent_generator.cpp が USE_ABILITY CommandDef を生成
+    //     → commands.cpp::DeclareReactionCommand → PendingEffect(TRIGGER_ABILITY)
+    //     → pending_strategy.cpp が swap 命令を生成
+    //   ここで MOVE 命令を生成すると ON_PLAY など無関係な効果起動時に
+    //   不正なカード移動が起きてテスト失敗の原因になる（発生済みバグ #RC-001)。
+    break;
+
   default:
     break;
   }

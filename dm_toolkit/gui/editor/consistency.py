@@ -86,6 +86,43 @@ _IF_LIKE_TYPES = {"IF", "IF_ELSE", "CONDITIONAL"}
 _MULTI_OPTION_TYPES = {"SELECT_OPTION", "CHOICE", "PLAYER_CHOICE"}
 
 
+def _normalize_zone_token(zone: Any) -> str:
+    """Normalize zone tokens so validation can compare legacy and current keys safely."""
+    if zone is None:
+        return ""
+    z = str(zone).strip().upper()
+    # 再発防止: UI/legacy の揺れ（fromZone/source_zone 等）を同一判定できるよう正規化する。
+    aliases = {
+        "HAND": "HAND",
+        "MANA": "MANA_ZONE",
+        "MANA_ZONE": "MANA_ZONE",
+        "BATTLE": "BATTLE_ZONE",
+        "BATTLE_ZONE": "BATTLE_ZONE",
+        "GRAVE": "GRAVEYARD",
+        "GRAVEYARD": "GRAVEYARD",
+        "DECK": "DECK",
+        "DECK_BOTTOM": "DECK_BOTTOM",
+        "SHIELD": "SHIELD_ZONE",
+        "SHIELD_ZONE": "SHIELD_ZONE",
+        "NONE": "NONE",
+    }
+    return aliases.get(z, z)
+
+
+def _extract_filter_zones(params: Dict[str, Any]) -> List[str]:
+    """Extract normalized filter zones from either target_filter or filter payload."""
+    f = params.get("target_filter") or params.get("filter") or {}
+    if not isinstance(f, dict):
+        return []
+    zones = f.get("zones") or []
+    out: List[str] = []
+    for z in zones:
+        nz = _normalize_zone_token(z)
+        if nz and nz not in ("NONE",):
+            out.append(nz)
+    return out
+
+
 def _extract_command_fields(cmd: Any):
     """CommandModel または dict から (cmd_type, params, options, if_true, if_false) を返す.
 
@@ -128,6 +165,7 @@ def validate_command_list(
     - QUERY に str_param (query mode) が未設定
     - QUERY(SELECT_OPTION) で選択対象フィルタ/枚数が未設定（新仕様）
     - QUERY(SELECT_OPTION) の旧形式 str_val とブランチ数の不一致（レガシー互換）
+    - TRANSITION で from_zone と target_filter.zones が矛盾
     """
     warnings: List[str] = []
 
@@ -192,6 +230,19 @@ def validate_command_list(
                             f"不一致: {loc} 旧形式選択肢テキスト数 ({len(label_lines)}) と"
                             f" ブランチ数 ({branch_count}) が一致しません"
                         )
+
+        # 4) MOVE 系チェック: 移動元ゾーンとフィルターゾーンの矛盾
+        if cmd_type == "TRANSITION":
+            from_zone = _normalize_zone_token(
+                params.get("from_zone") or params.get("fromZone") or params.get("source_zone")
+            )
+            filter_zones = _extract_filter_zones(params)
+
+            # 再発防止: from_zone が固定されている場合、filter.zones と矛盾する設定を保存前に検知する。
+            if from_zone and from_zone not in ("NONE",) and filter_zones and from_zone not in filter_zones:
+                warnings.append(
+                    f"競合: {loc} Source Zone={from_zone} と Filter.zones={filter_zones} が一致していません"
+                )
 
         # 再帰チェック
         if if_true:

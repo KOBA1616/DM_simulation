@@ -79,4 +79,6 @@ def test_replace_card_move_event_source_without_explicit_selection():
 
     assert "そのクリーチャー" in generated
     assert "選び" not in generated
-    assert "入力元: EVENT_SOURCE (イベント発生源 (汎用))" in generated
+    assert "入力元: EVENT_SOURCE" in generated
+    assert "(イベント発生源" not in generated
+    assert "（イベント発生源" not in generated

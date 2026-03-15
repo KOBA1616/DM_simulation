@@ -214,7 +214,12 @@ class PropertyInspector(QWidget):
         widget = self.form_map.get(item_type, self.empty_page)
 
         if hasattr(widget, 'set_data'):
-            widget.set_data(item)
+            try:
+                widget.set_data(item)
+            except Exception:
+                # 再発防止: フォーム読込例外で選択更新全体が中断すると
+                # 「カード切替しても表示が変わらない」状態になるため、空ページへフォールバックする。
+                widget = self.empty_page
 
         # Show CIR summary if available on the selected item
         try:

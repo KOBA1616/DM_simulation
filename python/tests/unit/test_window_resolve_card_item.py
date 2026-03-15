@@ -52,3 +52,22 @@ def test_find_card_item_from_item_command():
 
     cmd = CmdItem()
     assert win._find_card_item_from_item(cmd) is grand
+
+
+def test_find_card_item_from_item_keywords():
+    win = object.__new__(CardEditor)
+
+    class Parent:
+        pass
+
+    parent = Parent()
+
+    class KeywordsItem:
+        def parent(self):
+            return parent
+
+        def data(self, role):
+            return "KEYWORDS"
+
+    keywords = KeywordsItem()
+    assert win._find_card_item_from_item(keywords) is parent

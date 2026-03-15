@@ -27,3 +27,29 @@ def test_serialize_flattens_put_creature_params():
     assert out['card_id'] == 7
     assert out['to_zone'] == 'BATTLE'
     assert out['summoned_for_free'] is False
+
+
+def test_put_creature_persists_filter_and_amount_fields():
+    data = {
+        'type': 'PUT_CREATURE',
+        'params': {
+            'from_zone': 'HAND',
+            'amount': 1,
+            'target_group': 'PLAYER_SELF',
+            'target_filter': {
+                'types': ['ELEMENT'],
+                'max_cost': 2,
+                'zones': ['HAND'],
+            },
+        },
+    }
+
+    cmd = CommandModel.model_validate(data)
+    assert isinstance(cmd.params, PutCreatureParams)
+    out = cmd.model_dump()
+
+    assert out['from_zone'] == 'HAND'
+    assert out['amount'] == 1
+    assert out['target_group'] == 'PLAYER_SELF'
+    assert out['target_filter']['types'] == ['ELEMENT']
+    assert out['target_filter']['max_cost'] == 2
