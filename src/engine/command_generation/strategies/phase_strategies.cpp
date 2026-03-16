@@ -3,6 +3,7 @@
 #include "engine/systems/mechanics/cost_payment_system.hpp"
 #include "engine/systems/mechanics/mana_system.hpp"
 #include "engine/utils/target_utils.hpp"
+#include "engine/systems/mechanics/payment_plan.hpp"
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -202,11 +203,14 @@ MainPhaseStrategy::generate(const CommandGenContext &ctx) {
             if (reduction.max_units != -1 && units > reduction.max_units)
               break;
 
-            int reduction_val = units * reduction.reduction_amount;
-            int adjusted_cost =
-                ManaSystem::get_adjusted_cost(game_state, active_player, def);
-            int effective_cost = std::max(reduction.min_mana_cost,
-                                          adjusted_cost - reduction_val);
+            // Use engine PaymentPlan evaluator to conservatively compute final cost
+            // after passive reductions and the selected active payment units.
+            std::optional<std::string> active_name;
+            if (!reduction.id.empty()) active_name = reduction.id;
+            else if (!reduction.name.empty()) active_name = reduction.name;
+
+            auto plan = dm::engine::evaluate_cost(def, units, active_name, units);
+            int effective_cost = plan.final_cost;
 
             int available_mana = ManaSystem::get_usable_mana_count(
                 game_state, active_player.id, def.civilizations, card_db);
@@ -215,14 +219,12 @@ MainPhaseStrategy::generate(const CommandGenContext &ctx) {
               CommandDef cmd;
               cmd.type = CommandType::PLAY_FROM_ZONE;
               cmd.instance_id = card.instance_id;
-              cmd.target_instance = units;
-              cmd.str_param = "ACTIVE_PAYMENT";
-              // 再発防止: 実行側でどの軽減定義を使うか曖昧にならないよう、
-              // コマンドに軽減名を持たせる（複数 ACTIVE_PAYMENT 共存時の誤適用防止）。
-              cmd.str_val = reduction.name;
+              // Express explicit payment intent so execution uses the same reduction
+              cmd.payment_mode = "ACTIVE_PAYMENT";
+              cmd.payment_units = units;
+              if (!reduction.id.empty()) cmd.reduction_id = reduction.id;
+              else cmd.str_val = reduction.name; // legacy fallback
               cmd.slot_index = static_cast<int>(i);
-              cmd.target_slot_index =
-                  units; // Mirror units to target_slot_index just in case
               actions.push_back(cmd);
             }
           }

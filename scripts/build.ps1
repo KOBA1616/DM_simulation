@@ -4,6 +4,7 @@
     [string]$Config = "Release",
     [string]$Generator = "",
     [switch]$Clean,
+    [switch]$EnableCppTests,
     [switch]$UseLibTorch = $false,
     [switch]$SkipAutoCleanup
 )
@@ -75,7 +76,14 @@ function Invoke-VsDevCmd {
 
     $vsDevCmd = Join-Path $installPath 'Common7\Tools\VsDevCmd.bat'
     if (-not (Test-Path $vsDevCmd)) {
-        throw "VsDevCmd.bat not found at: $vsDevCmd"
+        # Try fallback to vcvarsall if VsDevCmd isn't present (older VS/BuildTools layouts)
+        $vcvarsFallback = Join-Path $installPath 'VC\Auxiliary\Build\vcvarsall.bat'
+        if (Test-Path $vcvarsFallback) {
+            Write-Host "VsDevCmd.bat not found; falling back to vcvarsall: $vcvarsFallback"
+            $vsDevCmd = $vcvarsFallback
+        } else {
+            throw "VsDevCmd.bat not found at: $vsDevCmd and no vcvarsall fallback found."
+        }
     }
 
     # Import the environment variables produced by VsDevCmd into this PowerShell session.
@@ -119,6 +127,11 @@ if ($Toolchain -eq 'msvc') {
     }
 }
 
+if ($EnableCppTests) {
+    Write-Host "Enabling C++ tests: adding -DENABLE_CPP_TESTS=ON to CMake args"
+    $cmakeArgs += "-DENABLE_CPP_TESTS=ON"
+}
+
 if ($UseLibTorch) {
     Write-Host "Detecting LibTorch path from Python..."
     
@@ -147,6 +160,8 @@ if ($UseLibTorch) {
 } else {
     $cmakeArgs += "-DUSE_LIBTORCH=OFF"
 }
+
+# Googletest integration removed: project no longer fetches or builds googletest.
 
 Write-Host "Configuring (Generator=$Generator, Config=$Config)..."
 cmake @cmakeArgs

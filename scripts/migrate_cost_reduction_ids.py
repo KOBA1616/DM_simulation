@@ -11,8 +11,17 @@ from pathlib import Path
 
 
 def ensure_ids(cards):
+    """Ensure each dict in cards list has cost_reductions with ids.
+
+    Non-dict entries are skipped (useful for deck lists of ints/strings).
+    """
     for idx, card in enumerate(cards):
+        if not isinstance(card, dict):
+            # skip non-dict entries (e.g., deck lists of card ids)
+            continue
         crs = card.get('cost_reductions') or []
+        if not isinstance(crs, list):
+            continue
         for i, cr in enumerate(crs):
             if not isinstance(cr, dict):
                 continue
@@ -32,12 +41,23 @@ def main():
 
     data = json.loads(inp.read_text(encoding='utf8'))
     # handle either list of cards or top-level object with 'cards' key
-    if isinstance(data, dict) and 'cards' in data and isinstance(data['cards'], list):
-        data['cards'] = ensure_ids(data['cards'])
+    if isinstance(data, dict):
+        # common pattern: {'cards': [...]}
+        if 'cards' in data and isinstance(data['cards'], list):
+            data['cards'] = ensure_ids(data['cards'])
+        else:
+            # attempt to discover any top-level list of dicts and apply there
+            modified = False
+            for k, v in list(data.items()):
+                if isinstance(v, list) and any(isinstance(x, dict) for x in v):
+                    data[k] = ensure_ids(v)
+                    modified = True
+            if not modified:
+                raise SystemExit('Unrecognized JSON structure; no card list found')
     elif isinstance(data, list):
         data = ensure_ids(data)
     else:
-        raise SystemExit('Unrecognized JSON structure; expected list or {"cards": [...] }')
+        raise SystemExit('Unrecognized JSON structure; expected list or object with card lists')
 
     out.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf8')
     print('Wrote migrated JSON to', out)

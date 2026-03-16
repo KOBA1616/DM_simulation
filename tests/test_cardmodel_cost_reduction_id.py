@@ -14,4 +14,3 @@ def test_cardmodel_auto_assigns_cost_reduction_id():
     assert card.cost_reductions
     cr = card.cost_reductions[0]
     assert isinstance(cr.id, str) and cr.id
-*** End Patch

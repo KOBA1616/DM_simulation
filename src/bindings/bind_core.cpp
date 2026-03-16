@@ -86,6 +86,9 @@ py::dict command_to_dict(const CommandDef& c) {
     d["slot_index"] = c.slot_index;
     d["target_slot_index"] = c.target_slot_index;
     d["up_to"] = c.up_to;
+    d["payment_mode"] = c.payment_mode;
+    d["reduction_id"] = c.reduction_id;
+    d["payment_units"] = c.payment_units;
 
     py::list if_true_list;
     for (const auto& sub : c.if_true) {
@@ -573,6 +576,9 @@ void bind_core(py::module& m) {
         .def_readwrite("slot_index", &CommandDef::slot_index)
         .def_readwrite("target_slot_index", &CommandDef::target_slot_index)
         .def_readwrite("up_to", &CommandDef::up_to)
+        .def_readwrite("payment_mode", &CommandDef::payment_mode)
+        .def_readwrite("reduction_id", &CommandDef::reduction_id)
+        .def_readwrite("payment_units", &CommandDef::payment_units)
         .def_readwrite("options", &CommandDef::options)
         .def("to_dict", &command_to_dict);
 
@@ -803,6 +809,9 @@ void bind_core(py::module& m) {
              if (d.contains("mutation_kind")) cmd.mutation_kind = d["mutation_kind"].cast<std::string>();
              if (d.contains("input_value_key")) cmd.input_value_key = d["input_value_key"].cast<std::string>();
              if (d.contains("output_value_key")) cmd.output_value_key = d["output_value_key"].cast<std::string>();
+             if (d.contains("payment_mode")) cmd.payment_mode = d["payment_mode"].cast<std::string>();
+             if (d.contains("reduction_id")) cmd.reduction_id = d["reduction_id"].cast<std::string>();
+             if (d.contains("payment_units")) cmd.payment_units = d["payment_units"].cast<int>();
 
              dm::engine::systems::PipelineExecutor pipeline;
              const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();

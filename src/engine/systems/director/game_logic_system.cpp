@@ -11,6 +11,7 @@
 #include "engine/infrastructure/commands/command_system.hpp"
 #include "engine/systems/flow/phase_system.hpp"
 #include "engine/systems/mechanics/mana_system.hpp"
+#include "engine/systems/mechanics/payment_plan.hpp"
 #include "engine/systems/breaker/breaker_system.hpp"
 #include "engine/systems/mechanics/battle_system.hpp"
 #include "engine/systems/mechanics/shield_system.hpp"
@@ -20,6 +21,7 @@
 #include <iostream>
 #include <algorithm>
 #include <fstream>
+#include <optional>
 
 namespace dm::engine::systems {
 
@@ -84,24 +86,41 @@ namespace dm::engine::systems {
                         const auto& def = (is_spell_side && base_def.spell_side) ? *base_def.spell_side : base_def;
 
                         bool payment_success = false;
-                        if (cmd.str_param == "ACTIVE_PAYMENT") {
-                            const int requested_units =
-                                (cmd.target_instance > 0)
-                                    ? cmd.target_instance
-                                    : ((cmd.target_slot_index > 0) ? cmd.target_slot_index
-                                                                   : 0);
+                            std::cerr << "[PAYMENT TRACE] cmd.payment_mode='" << cmd.payment_mode
+                                      << "' cmd.str_param='" << cmd.str_param << "' cmd.str_val='" << cmd.str_val
+                                      << "' reduction_id='" << cmd.reduction_id << "' payment_units=" << cmd.payment_units << std::endl;
+                        if (cmd.payment_mode == "ACTIVE_PAYMENT" || cmd.str_param == "ACTIVE_PAYMENT") {
+                            // Determine requested units: prefer explicit `payment_units` when present
+                            int requested_units = 0;
+                            if (cmd.payment_units > 0) requested_units = cmd.payment_units;
+                            else if (cmd.target_instance > 0) requested_units = cmd.target_instance;
+                            else if (cmd.target_slot_index > 0) requested_units = cmd.target_slot_index;
+                            // If no explicit units were provided but an ACTIVE_PAYMENT exists,
+                            // default to 1 unit to avoid ambiguous zero-selection cases.
+                            if (requested_units == 0) requested_units = 1;
 
                             const CostReductionDef* selected_reduction = nullptr;
-                            if (!cmd.str_val.empty()) {
+                            // Prefer explicit reduction_id (stable identifier) when available
+                            if (!cmd.reduction_id.empty()) {
                                 for (const auto& reduction : def.cost_reductions) {
-                                    if (reduction.type != ReductionType::ACTIVE_PAYMENT)
-                                        continue;
+                                    if (reduction.type != ReductionType::ACTIVE_PAYMENT) continue;
+                                    if (reduction.id == cmd.reduction_id) {
+                                        selected_reduction = &reduction;
+                                        break;
+                                    }
+                                }
+                            }
+                            // Fallback: legacy name-based selection (str_val)
+                            if (!selected_reduction && !cmd.str_val.empty()) {
+                                for (const auto& reduction : def.cost_reductions) {
+                                    if (reduction.type != ReductionType::ACTIVE_PAYMENT) continue;
                                     if (reduction.name == cmd.str_val) {
                                         selected_reduction = &reduction;
                                         break;
                                     }
                                 }
                             }
+                            // Final fallback: pick first ACTIVE_PAYMENT entry
                             if (!selected_reduction) {
                                 for (const auto& reduction : def.cost_reductions) {
                                     if (reduction.type == ReductionType::ACTIVE_PAYMENT) {
@@ -115,6 +134,9 @@ namespace dm::engine::systems {
                                 const int max_units = CostPaymentSystem::calculate_max_units(
                                     state, state.active_player_id, *selected_reduction,
                                     card_db);
+                                // Trace: report selection and capacity
+                                std::cerr << "[PAYMENT TRACE] requested_units=" << requested_units
+                                          << " max_units=" << max_units << std::endl;
                                 if (requested_units <= max_units) {
                                     const int actual_reduction =
                                         CostPaymentSystem::execute_payment(
@@ -122,28 +144,36 @@ namespace dm::engine::systems {
                                             *selected_reduction, requested_units,
                                             card_db);
 
-                                    const int adjusted_cost = ManaSystem::get_adjusted_cost(
-                                        state, state.players[state.active_player_id],
-                                        def);
-                                    const int effective_cost =
-                                        std::max(selected_reduction->min_mana_cost,
-                                                 adjusted_cost - actual_reduction);
+                                    std::optional<std::string> active_name;
+                                    if (!selected_reduction->id.empty()) active_name = selected_reduction->id;
+                                    else if (!selected_reduction->name.empty()) active_name = selected_reduction->name;
 
-                                    // 再発防止: ACTIVE_PAYMENT の軽減計算結果を必ず
-                                    // 最終マナ支払いに反映する。判定系だけで軽減し、
-                                    // 実行系で無視すると「出せるはずなのに出せない」
-                                    // 回帰が再発する。
+                                    auto plan = dm::engine::evaluate_cost(def, requested_units, active_name, requested_units);
+                                    int effective_cost = plan.final_cost;
+
+                                    std::cerr << "[PAYMENT TRACE] selected_reduction.id='" << (selected_reduction->id.empty() ? "(empty)" : selected_reduction->id)
+                                              << "' name='" << (selected_reduction->name.empty() ? "(empty)" : selected_reduction->name)
+                                              << "' reduction_amount=" << selected_reduction->reduction_amount
+                                              << " actual_reduction=" << actual_reduction
+                                              << " plan.final_cost=" << effective_cost << std::endl;
+
+                                    // Ensure the payment calculation affects final mana tapping.
                                     payment_success = ManaSystem::auto_tap_mana(
                                         state, state.players[state.active_player_id],
                                         def, effective_cost, card_db);
+
+                                    std::cerr << "[PAYMENT TRACE] mana_auto_tap_result=" << (payment_success ? "OK" : "FAIL") << std::endl;
+                                } else {
+                                    std::cerr << "[PAYMENT TRACE] requested_units > max_units, cannot execute payment" << std::endl;
                                 }
                             }
                         } else {
+                            // Fallback: standard auto-tap when no ACTIVE_PAYMENT requested
                             payment_success = ManaSystem::auto_tap_mana(
                                 state, state.players[state.active_player_id], def,
                                 card_db);
                         }
-                        
+
                         if (payment_success) {
                             // Mark as paid (tap the stack card)
                             auto tap_cmd = std::make_unique<game_command::MutateCommand>(iid, game_command::MutateCommand::MutationType::TAP);

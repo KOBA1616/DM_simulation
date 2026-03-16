@@ -403,6 +403,11 @@ namespace dm::core {
         int slot_index = -1;
         int target_slot_index = -1;
         bool up_to = false;
+        // Payment intent fields: represent explicit payment selection produced by editor/AI
+        // These are optional and used to express `ACTIVE_PAYMENT` choices or other payment modes.
+        std::string payment_mode;    // e.g. "ACTIVE_PAYMENT", "PAY_FROM_MANA"
+        std::string reduction_id;    // id of cost_reductions entry
+        int payment_units = 0;       // units selected when using ACTIVE_PAYMENT
         std::vector<std::vector<CommandDef>> options;
     };
 
@@ -766,7 +771,7 @@ namespace dm::core {
             try { j.at("options").get_to(a.options); } catch (...) {}
         }
     }
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, str_val, duration, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, input_value_usage, output_value_key, slot_index, target_slot_index, up_to, options)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, str_val, duration, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, input_value_usage, output_value_key, slot_index, target_slot_index, up_to, payment_mode, reduction_id, payment_units, options)
 
     // フェーズ3: ConditionNode の JSON シリアライズ
     // 再発防止: FilterDef の NLOHMANN マクロの後でないとコンパイルエラーになるため、ここに定義。

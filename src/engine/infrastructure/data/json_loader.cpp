@@ -270,8 +270,10 @@ namespace dm::engine::infrastructure {
 
         def.cost_reductions = data.cost_reductions;
 
-        // Back-compat: ensure each cost_reduction has a non-empty name (used as identifier).
-        // If missing, generate a stable name based on card id and index.
+        // Back-compat: ensure each cost_reduction has a stable `id` (used as canonical identifier).
+        // Note: `name` is considered display-only and MUST NOT be relied upon as an identifier
+        // by engine logic. Older code paths used `name` as identifier; we preserve `id` and
+        // avoid overwriting `name` here to keep display labels intact.
         for (size_t i = 0; i < def.cost_reductions.size(); ++i) {
             auto &cr = def.cost_reductions[i];
             // Generate stable id if missing (new schema uses `id`)
@@ -280,10 +282,7 @@ namespace dm::engine::infrastructure {
                 ss << "cr_" << def.id << "_" << i;
                 cr.id = ss.str();
             }
-            // Preserve existing behavior: ensure name is non-empty for older code paths
-            if (cr.name.empty()) {
-                cr.name = cr.id;
-            }
+            // Do NOT auto-fill or overwrite `name` here; leave it for editors/UI to manage.
         }
 
         // Evolution Condition
