@@ -144,6 +144,14 @@ def _build_native_command(cmd_type_str: str, **kwargs: Any) -> Any:
     if 'slot_index' in kwargs: cmd.slot_index = kwargs['slot_index']
     if 'target_slot_index' in kwargs: cmd.target_slot_index = kwargs['target_slot_index']
 
+    # Payment-related metadata (editor/agent -> engine)
+    if 'payment_mode' in kwargs and kwargs['payment_mode'] is not None and hasattr(cmd, 'payment_mode'):
+        cmd.payment_mode = kwargs['payment_mode']
+    if 'reduction_id' in kwargs and kwargs['reduction_id'] is not None and hasattr(cmd, 'reduction_id'):
+        cmd.reduction_id = kwargs['reduction_id']
+    if 'payment_units' in kwargs and kwargs['payment_units'] is not None and hasattr(cmd, 'payment_units'):
+        cmd.payment_units = kwargs['payment_units']
+
     # Handle Target Group
     if 'target_group' in kwargs and kwargs['target_group'] is not None:
         tg = kwargs['target_group']

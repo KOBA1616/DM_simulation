@@ -258,6 +258,20 @@ add_library(dm_core OBJECT
 # We set properties directly.
 set_target_properties(dm_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+# Optionally build C++ unit tests (disabled by default to avoid long CI builds)
+option(ENABLE_CPP_TESTS "Build C++ unit tests" OFF)
+if(ENABLE_CPP_TESTS)
+    include(FetchContent)
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG release-1.14.0
+    )
+    FetchContent_MakeAvailable(googletest)
+    enable_testing()
+    add_subdirectory(tests/cpp)
+endif()
+
 
 # Python Module (Phase 3)
 pybind11_add_module(dm_ai_module

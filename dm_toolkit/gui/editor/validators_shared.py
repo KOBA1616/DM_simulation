@@ -1,3 +1,138 @@
+from typing import Dict, Any, List, Tuple
+import uuid
+
+def validate_cost_reductions(data: List[Dict[str, Any]]) -> List[str]:
+    """Validate a list of cost_reduction definitions.
+
+    Returns a list of error messages (empty if valid).
+    Checks performed:
+    - element is a dict
+    - known `type` value
+    - numeric fields are of correct sign/type
+    - ACTIVE_PAYMENT has minimal required fields
+    - duplicate ids are detected and reported
+    """
+    errors: List[str] = []
+    if not isinstance(data, list):
+        errors.append("cost_reductions must be a list")
+        return errors
+
+    seen_ids = set()
+    for idx, cr in enumerate(data):
+        prefix = f"cost_reductions[{idx}]"
+        if not isinstance(cr, dict):
+            errors.append(f"{prefix}: must be an object/dict")
+            continue
+
+        typ = cr.get("type")
+        if typ not in ("PASSIVE", "ACTIVE_PAYMENT"):
+            errors.append(f"{prefix}: unknown type '{typ}' (expected PASSIVE or ACTIVE_PAYMENT)")
+
+        # id checks: id is required and must be a non-empty unique string
+        cr_id = cr.get("id")
+        if cr_id is None:
+            errors.append(f"{prefix}: id is required for cost_reduction entries")
+        else:
+            if not isinstance(cr_id, str) or not cr_id:
+                errors.append(f"{prefix}: id must be a non-empty string")
+            elif cr_id in seen_ids:
+                errors.append(f"{prefix}: duplicate id '{cr_id}'")
+            else:
+                seen_ids.add(cr_id)
+
+        # numeric fields
+        if "min_mana_cost" in cr:
+            mm = cr["min_mana_cost"]
+            if not isinstance(mm, int) or mm < 0:
+                errors.append(f"{prefix}: min_mana_cost must be integer >= 0")
+
+        if "max_units" in cr:
+            mu = cr["max_units"]
+            if not isinstance(mu, int) or mu <= 0:
+                errors.append(f"{prefix}: max_units must be integer > 0")
+
+        if "reduction_per_unit" in cr:
+            rpu = cr["reduction_per_unit"]
+            if not isinstance(rpu, int) or rpu <= 0:
+                errors.append(f"{prefix}: reduction_per_unit must be integer > 0")
+
+        # ACTIVE_PAYMENT needs at least one of max_units/reduction_per_unit or units
+        if typ == "ACTIVE_PAYMENT":
+            has_units = "units" in cr and isinstance(cr.get("units"), int) and cr.get("units") > 0
+            has_cfg = ("max_units" in cr and isinstance(cr.get("max_units"), int) and cr.get("max_units") > 0) or (
+                "reduction_per_unit" in cr and isinstance(cr.get("reduction_per_unit"), int) and cr.get("reduction_per_unit") > 0
+            )
+            if not (has_units or has_cfg):
+                errors.append(f"{prefix}: ACTIVE_PAYMENT requires 'units' or both 'max_units'/'reduction_per_unit' configured")
+
+    return errors
+
+
+def validate_cost_reduction_item(cr: Dict[str, Any]) -> List[str]:
+    """Validate a single cost_reduction dict. Kept for convenience/tests."""
+    return validate_cost_reductions([cr])
+
+
+def generate_missing_ids(cost_reductions: List[Dict[str, Any]]) -> None:
+    """Mutate the provided list of cost_reductions, assigning a unique `id` where missing.
+
+    - Uses UUID4 hex strings for IDs.
+    - Preserves existing `id` values.
+    - Ensures resulting ids are unique within the list by regenerating on collision.
+    """
+    if not isinstance(cost_reductions, list):
+        return
+
+    seen = set()
+    # Collect existing ids
+    for cr in cost_reductions:
+        if isinstance(cr, dict):
+            cid = cr.get("id")
+            if isinstance(cid, str) and cid:
+                seen.add(cid)
+
+    for cr in cost_reductions:
+        if not isinstance(cr, dict):
+            continue
+        if not cr.get("id"):
+            # generate until unique
+            new_id = uuid.uuid4().hex
+            while new_id in seen:
+                new_id = uuid.uuid4().hex
+            cr["id"] = new_id
+            seen.add(new_id)
+
+
+def detect_passive_static_conflicts(card: Dict[str, Any]) -> List[str]:
+    """Detect potential conflicts between PASSIVE cost_reductions and static COST_MODIFIERs.
+
+    Returns a list of warning messages. The rule implemented here is conservative:
+    - If the card defines any `cost_reductions` of type PASSIVE and also has any
+      `static_abilities` with type `COST_MODIFIER`, emit a warning because the
+      effective composition and priority is implementation-defined and may lead
+      to surprising behavior at runtime.
+
+    This function intentionally avoids deep semantic overlap analysis; it is
+    intended as an early-warning for card authors and editors.
+    """
+    warnings: List[str] = []
+    if not isinstance(card, dict):
+        return warnings
+
+    crs = card.get('cost_reductions') or []
+    statics = card.get('static_abilities') or []
+
+    has_passive = any(isinstance(cr, dict) and cr.get('type') == 'PASSIVE' for cr in crs)
+    has_cost_mod = any(isinstance(m, dict) and m.get('type') == 'COST_MODIFIER' for m in statics)
+
+    if has_passive and has_cost_mod:
+        warnings.append(
+            "Card defines both PASSIVE cost_reductions and static_abilities of type COST_MODIFIER; "
+            "these may overlap or double-apply. Consider consolidating into static_abilities or documenting "
+            "priority rules."
+        )
+
+    return warnings
 # -*- coding: utf-8 -*-
 """
 Shared validators for Static Abilities and Trigger Effects.

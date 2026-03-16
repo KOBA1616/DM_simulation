@@ -13,6 +13,7 @@ from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 from dm_toolkit.gui.editor.configs.card_config import CARD_SCHEMA
 from dm_toolkit.gui.editor.widget_factory import WidgetFactory
 from dm_toolkit.gui.editor.schema_def import FieldSchema
+from dm_toolkit.gui.editor.forms.parts.cost_reduction_editor import CostReductionEditor
 
 class CardEditForm(BaseEditForm):
     # Signal to request structural changes in the Logic Tree
@@ -56,6 +57,11 @@ class CardEditForm(BaseEditForm):
         actions_layout.addWidget(self.add_effect_btn)
 
         self.form_layout.addRow(actions_group)
+
+        # Cost Reductions editor (special case)
+        self.cost_reduction_widget = CostReductionEditor()
+        self.widgets_map['cost_reductions'] = self.cost_reduction_widget
+        self.form_layout.addRow(tr("Cost Reductions"), self.cost_reduction_widget)
 
     def _create_field_widget(self, field: FieldSchema):
         # Determine target layout

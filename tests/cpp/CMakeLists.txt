@@ -1,0 +1,3 @@
+add_executable(test_payment_plan test_payment_plan.cpp)
+target_link_libraries(test_payment_plan PRIVATE gtest_main dm_core)
+add_test(NAME test_payment_plan COMMAND test_payment_plan)

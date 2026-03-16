@@ -1,6 +1,7 @@
 #include "mana_system.hpp"
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
+#include "engine/systems/mechanics/payment_plan.hpp"
 #include "engine/utils/target_utils.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include <algorithm>
@@ -18,6 +19,11 @@ namespace dm::engine {
 
         if (cost <= 0) return 0;
 
+        // Use PaymentPlan prototype to compute passive reductions defined on the card
+        auto plan = dm::engine::evaluate_cost(card_def, 1, std::nullopt, std::nullopt);
+        int adjusted = plan.adjusted_after_passive;
+
+        // Preserve runtime active_modifiers behavior by applying them on top of passive adjustments
         for (const auto& mod : game_state.active_modifiers) {
             if (mod.controller != player.id) continue;
 
@@ -25,14 +31,12 @@ namespace dm::engine {
             dummy_inst.card_id = card_def.id;
 
             if (dm::engine::utils::TargetUtils::is_valid_target(dummy_inst, card_def, mod.condition_filter, game_state, player.id, player.id)) {
-                cost -= mod.reduction_amount;
+                adjusted -= mod.reduction_amount;
             }
         }
 
-        if (cost < 1) cost = 1;
-        if (card_def.cost > 0 && cost < 1) cost = 1;
-
-        return cost;
+        if (adjusted < 1) adjusted = 1;
+        return adjusted;
     }
 
     // Internal helper with DB access

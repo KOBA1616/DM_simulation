@@ -50,6 +50,24 @@ from dm_toolkit.gui.game_controller import GameController
 import threading
 import time
 
+try:
+    from PyQt6.QtCore import QObject, QThread, pyqtSignal
+    _QT_AVAILABLE = True
+except ImportError:
+    _QT_AVAILABLE = False
+
+
+class _UiSignalBridge(QObject if _QT_AVAILABLE else object):
+    """Qt シグナルブリッジ: バックグラウンドスレッドから安全にUIコールバックを呼ぶ。
+
+    再発防止: QObject を継承したシグナルで emit すると Qt が自動的にメインスレッドの
+              イベントキューへ配送するため、バックグラウンドスレッドから直接 Qt Widget を
+              操作することによる 'QObject::setParent: Cannot set parent, new parent is in
+              a different thread' エラーを防ぐ。
+    """
+    if _QT_AVAILABLE:
+        ui_update_requested = pyqtSignal()
+
 
 class GameSession:
     """Simplified game session that leverages C++ engine for game progression."""
@@ -85,6 +103,21 @@ class GameSession:
         self._ai_stop_event = threading.Event()
         # UI callback safety helper: protects against blocking or exceptions
         self._ui_callback_timeout = 0.5  # seconds to wait for UI callback before logging timeout
+
+        # 再発防止: Qt スレッド安全 UI 更新ブリッジ。
+        #   バックグラウンドスレッドから直接 Qt Widget を操作すると
+        #   'QObject::setParent: Cannot set parent, new parent is in a different thread'
+        #   および 'QBasicTimer::start: QBasicTimer can only be used with threads started
+        #   with QThread' が多発するため、シグナルを経由してメインスレッドのイベントキューへ
+        #   配送する。_UiSignalBridge のシグナルは auto-connection でメインスレッドのスロットへ
+        #   届くため、バックグラウンドからの emit でも Qt イベントループが安全に処理する。
+        self._ui_bridge: Optional[_UiSignalBridge] = None
+        if _QT_AVAILABLE and callable(callback_update_ui):
+            try:
+                self._ui_bridge = _UiSignalBridge()
+                self._ui_bridge.ui_update_requested.connect(self.callback_update_ui)
+            except Exception:
+                self._ui_bridge = None
 
     def initialize_game(self, card_db: Optional[CardDB] = None, seed: int = 42) -> None:
         """Initialize game with C++ engine.
@@ -361,48 +394,37 @@ class GameSession:
             self.callback_log(traceback.format_exc())
 
     def _safe_callback_update_ui(self, wait: bool = True, timeout: Optional[float] = None) -> None:
-        """Call `callback_update_ui` with exception handling and optional timeout.
+        """UI コールバックをスレッドセーフに呼び出す。
+
+        再発防止: バックグラウンドスレッドから Qt Widget を直接操作すると
+                  'QObject::setParent: Cannot set parent, new parent is in a different thread'
+                  エラーが多発する。_UiSignalBridge でシグナルを emit し、Qt の auto-connection
+                  でメインスレッドへ配送することでスレッド安全性を確保する。
 
         Args:
-            wait: If True, wait up to `timeout` seconds for the callback to complete.
-            timeout: Seconds to wait; if None uses `self._ui_callback_timeout`.
+            wait: 現在は使用されない（後方互換のため残存）。
+                  シグナル経由の非同期配送に統一したため wait/timeout は意味を持たない。
+            timeout: 現在は使用されない（後方互換のため残存）。
         """
         if not callable(self.callback_update_ui):
             return
-        if timeout is None:
-            timeout = self._ui_callback_timeout
 
-        if not wait:
-            def _fire_and_forget():
-                try:
-                    self.callback_update_ui()
-                except Exception as e:
-                    try:
-                        self.callback_log(f"UI callback error: {e}")
-                    except Exception:
-                        pass
-
-            threading.Thread(target=_fire_and_forget, daemon=True).start()
-            return
-
-        done = threading.Event()
-
-        def _runner():
+        # Qt シグナルブリッジが利用可能かつ QApplication が動作中の場合はスレッドセーフに emit する
+        if self._ui_bridge is not None:
             try:
-                self.callback_update_ui()
-            except Exception as e:
-                try:
-                    self.callback_log(f"UI callback error: {e}")
-                except Exception:
-                    pass
-            finally:
-                done.set()
+                from PyQt6.QtWidgets import QApplication
+                if QApplication.instance() is not None:
+                    self._ui_bridge.ui_update_requested.emit()
+                    return
+            except Exception:
+                pass
 
-        t = threading.Thread(target=_runner, daemon=True)
-        t.start()
-        if not done.wait(timeout):
+        # フォールバック: Qt 未使用環境ではメインスレッドからの直接呼び出しのみ安全
+        try:
+            self.callback_update_ui()
+        except Exception as e:
             try:
-                self.callback_log("UI callback timeout")
+                self.callback_log(f"UI callback error: {e}")
             except Exception:
                 pass
 

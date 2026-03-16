@@ -217,6 +217,9 @@ MainPhaseStrategy::generate(const CommandGenContext &ctx) {
               cmd.instance_id = card.instance_id;
               cmd.target_instance = units;
               cmd.str_param = "ACTIVE_PAYMENT";
+              // 再発防止: 実行側でどの軽減定義を使うか曖昧にならないよう、
+              // コマンドに軽減名を持たせる（複数 ACTIVE_PAYMENT 共存時の誤適用防止）。
+              cmd.str_val = reduction.name;
               cmd.slot_index = static_cast<int>(i);
               cmd.target_slot_index =
                   units; // Mirror units to target_slot_index just in case

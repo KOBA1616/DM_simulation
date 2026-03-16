@@ -42,6 +42,10 @@ except Exception:
     pyqtSignal = _DummySignal
 from contextlib import contextmanager
 from dm_toolkit.gui.editor.consistency import validate_command_list, format_integrity_warnings
+try:
+    from dm_toolkit.gui.editor import validators_shared as _validators_shared
+except Exception:
+    _validators_shared = None
 
 
 def to_dict(obj):
@@ -220,6 +224,60 @@ class BaseEditForm(QWidget):
                     return
         except Exception:
             # If validation infrastructure is unavailable, don't block save
+            pass
+
+        # Additional: validate cost_reductions payloads when present
+        try:
+            if _validators_shared is not None and isinstance(data, dict) and 'cost_reductions' in data:
+                try:
+                    errs = _validators_shared.validate_cost_reductions(data.get('cost_reductions'))
+                except Exception:
+                    errs = []
+                if errs:
+                    msg = format_integrity_warnings(errs) if 'format_integrity_warnings' in globals() else '\n'.join(errs)
+                    for widget in list(self.bindings.values()):
+                        w = widget[0] if isinstance(widget, tuple) else widget
+                        if hasattr(w, 'setStyleSheet'):
+                            try:
+                                w.setStyleSheet("border: 1px solid red;")
+                            except Exception:
+                                pass
+                        if hasattr(w, 'setToolTip'):
+                            try:
+                                w.setToolTip(msg)
+                            except Exception:
+                                pass
+                    # Abort save to avoid persisting invalid data
+                    return
+        except Exception:
+            # Be permissive on any unexpected validator failure
+            pass
+
+        # Passive vs static conflict detection: show warnings but do not abort save
+        try:
+            if _validators_shared is not None and isinstance(data, dict):
+                try:
+                    conflicts = _validators_shared.detect_passive_static_conflicts(data)
+                except Exception:
+                    conflicts = []
+                if conflicts:
+                    # Display warnings on bound widgets but allow save to continue
+                    msg = format_integrity_warnings(conflicts) if 'format_integrity_warnings' in globals() else '\n'.join(conflicts)
+                    for widget in list(self.bindings.values()):
+                        w = widget[0] if isinstance(widget, tuple) else widget
+                        if hasattr(w, 'setToolTip'):
+                            try:
+                                existing = getattr(w, 'toolTip', None)
+                                w.setToolTip(msg)
+                            except Exception:
+                                pass
+                    # Also attach to data for editor consumers if possible
+                    try:
+                        if isinstance(data, dict):
+                            data.setdefault('_editor_warnings', []).extend(conflicts)
+                    except Exception:
+                        pass
+        except Exception:
             pass
 
         self.current_item.setData(data, Qt.ItemDataRole.UserRole + 2)

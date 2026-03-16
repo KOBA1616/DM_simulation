@@ -290,6 +290,7 @@ namespace dm::core {
         int reduction_amount;
         int max_units = -1;
         int min_mana_cost = 0;
+        std::string id; // unique identifier for the reduction (new)
         std::string name;
     };
 
@@ -870,7 +871,7 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionAbility, type, cost, zone, condition)
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CostDef, type, amount, filter, is_optional, cost_id)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CostReductionDef, type, unit_cost, reduction_amount, max_units, min_mana_cost, name)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CostReductionDef, type, unit_cost, reduction_amount, max_units, min_mana_cost, id, name)
 
     inline void to_json(nlohmann::json& j, const CardData& c) {
         j = nlohmann::json{

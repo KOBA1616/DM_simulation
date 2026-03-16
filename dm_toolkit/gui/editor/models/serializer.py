@@ -238,6 +238,39 @@ class ModelSerializer:
                 except Exception:
                     pass
 
+            # Ensure cost_reductions have ids for backward compatibility when saving
+            try:
+                from dm_toolkit.gui.editor.validators_shared import generate_missing_ids
+                if isinstance(data, list):
+                    for card in data:
+                        try:
+                            cr = card.get('cost_reductions') if isinstance(card, dict) else None
+                            if cr is not None:
+                                generate_missing_ids(cr)
+                        except Exception:
+                            pass
+            except Exception:
+                # If validator util is unavailable, continue without migration
+                pass
+
+            # Validate cost_reductions for errors (e.g., duplicate ids) and abort save if invalid
+            try:
+                from dm_toolkit.gui.editor.validators_shared import validate_cost_reductions
+                if isinstance(data, list):
+                    for card in data:
+                        try:
+                            cr = card.get('cost_reductions') if isinstance(card, dict) else None
+                            if cr is not None:
+                                errs = validate_cost_reductions(cr)
+                                if errs:
+                                    # Abort save when validation errors present
+                                    return False
+                        except Exception:
+                            pass
+            except Exception:
+                # If validator util is unavailable, continue without blocking
+                pass
+
             with open(path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
             return True

@@ -15,6 +15,7 @@
 #include "engine/systems/mechanics/battle_system.hpp"
 #include "engine/systems/mechanics/shield_system.hpp"
 #include "engine/systems/mechanics/play_system.hpp"
+#include "engine/systems/mechanics/cost_payment_system.hpp"
 #include "engine/utils/action_primitive_utils.hpp"
 #include <iostream>
 #include <algorithm>
@@ -81,8 +82,67 @@ namespace dm::engine::systems {
                     if (card_db.count(c->card_id)) {
                         const auto& base_def = card_db.at(c->card_id);
                         const auto& def = (is_spell_side && base_def.spell_side) ? *base_def.spell_side : base_def;
-                        
-                        bool payment_success = ManaSystem::auto_tap_mana(state, state.players[state.active_player_id], def, card_db);
+
+                        bool payment_success = false;
+                        if (cmd.str_param == "ACTIVE_PAYMENT") {
+                            const int requested_units =
+                                (cmd.target_instance > 0)
+                                    ? cmd.target_instance
+                                    : ((cmd.target_slot_index > 0) ? cmd.target_slot_index
+                                                                   : 0);
+
+                            const CostReductionDef* selected_reduction = nullptr;
+                            if (!cmd.str_val.empty()) {
+                                for (const auto& reduction : def.cost_reductions) {
+                                    if (reduction.type != ReductionType::ACTIVE_PAYMENT)
+                                        continue;
+                                    if (reduction.name == cmd.str_val) {
+                                        selected_reduction = &reduction;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!selected_reduction) {
+                                for (const auto& reduction : def.cost_reductions) {
+                                    if (reduction.type == ReductionType::ACTIVE_PAYMENT) {
+                                        selected_reduction = &reduction;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (selected_reduction && requested_units > 0) {
+                                const int max_units = CostPaymentSystem::calculate_max_units(
+                                    state, state.active_player_id, *selected_reduction,
+                                    card_db);
+                                if (requested_units <= max_units) {
+                                    const int actual_reduction =
+                                        CostPaymentSystem::execute_payment(
+                                            state, state.active_player_id,
+                                            *selected_reduction, requested_units,
+                                            card_db);
+
+                                    const int adjusted_cost = ManaSystem::get_adjusted_cost(
+                                        state, state.players[state.active_player_id],
+                                        def);
+                                    const int effective_cost =
+                                        std::max(selected_reduction->min_mana_cost,
+                                                 adjusted_cost - actual_reduction);
+
+                                    // 再発防止: ACTIVE_PAYMENT の軽減計算結果を必ず
+                                    // 最終マナ支払いに反映する。判定系だけで軽減し、
+                                    // 実行系で無視すると「出せるはずなのに出せない」
+                                    // 回帰が再発する。
+                                    payment_success = ManaSystem::auto_tap_mana(
+                                        state, state.players[state.active_player_id],
+                                        def, effective_cost, card_db);
+                                }
+                            }
+                        } else {
+                            payment_success = ManaSystem::auto_tap_mana(
+                                state, state.players[state.active_player_id], def,
+                                card_db);
+                        }
                         
                         if (payment_success) {
                             // Mark as paid (tap the stack card)

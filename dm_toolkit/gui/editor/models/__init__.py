@@ -619,6 +619,10 @@ class CommandModel(BaseModel):
     # 変数リンク
     input_var: Optional[str] = None
     output_var: Optional[str] = None
+    # Explicit payment fields to represent payment intent in commands
+    payment_mode: Optional[str] = None     # e.g. 'ACTIVE_PAYMENT', 'PAY_FROM_MANA'
+    reduction_id: Optional[str] = None     # id of cost_reductions entry
+    payment_units: Optional[int] = None    # units selected for ACTIVE_PAYMENT
 
     class Config:
         extra = "allow"
@@ -646,7 +650,9 @@ class CommandModel(BaseModel):
             known_fields = {
                 'uid', 'type', 'params',
                 'if_true', 'if_false', 'options',
-                'input_var', 'output_var'
+                'input_var', 'output_var',
+                # Payment-specific known fields (schema)
+                'payment_mode', 'reduction_id', 'payment_units'
             }
 
             # If params already exists, use it, else create new
@@ -788,6 +794,14 @@ class CommandModel(BaseModel):
         if 'target_filter' in result and 'filter' not in result:
             result['filter'] = result['target_filter']
 
+        # 2.5: Export explicit payment fields for legacy/consumer clarity
+        if getattr(self, 'payment_mode', None) is not None:
+            result['payment_mode'] = self.payment_mode
+        if getattr(self, 'reduction_id', None) is not None:
+            result['reduction_id'] = self.reduction_id
+        if getattr(self, 'payment_units', None) is not None:
+            result['payment_units'] = self.payment_units
+
         # 3. Handle recursive fields
         if self.if_true:
             result['if_true'] = [m.model_dump() for m in self.if_true]
@@ -828,6 +842,20 @@ class ModifierModel(BaseModel):
     mutation_kind: Optional[str] = None
     str_val: Optional[str] = None
     scope: str = "ALL"
+
+
+class CostReductionModel(BaseModel):
+    id: str
+    type: Literal['PASSIVE', 'ACTIVE_PAYMENT'] = 'PASSIVE'
+    name: Optional[str] = None
+    min_mana_cost: Optional[int] = None
+    max_units: Optional[int] = None
+    reduction_per_unit: Optional[int] = None
+    units: Optional[int] = None
+    extras: Dict[str, Any] = Field(default_factory=dict)
+
+    class Config:
+        extra = "allow"
 
 class ReactionModel(BaseModel):
     uid: str = Field(default_factory=generate_uid)
@@ -910,6 +938,8 @@ class CardModel(BaseModel):
 
     spell_side: Optional['CardModel'] = None
 
+    cost_reductions: List[CostReductionModel] = Field(default_factory=list)
+
     # Helper fields for editor logic (legacy cleanup)
     # Using PrivateAttr so it's not part of the standard schema but accessible
     _editor_warnings: List[str] = PrivateAttr(default_factory=list)
@@ -918,6 +948,24 @@ class CardModel(BaseModel):
     def parse_civs(cls, v):
         if isinstance(v, str):
             return [v]
+        return v
+
+    @model_validator(mode='before')
+    @classmethod
+    def ensure_cost_reduction_ids(cls, v: Any) -> Any:
+        # If input is a dict and cost_reductions missing ids, auto-generate via shared util
+        if isinstance(v, dict):
+            try:
+                crs = v.get('cost_reductions')
+                if isinstance(crs, list):
+                    try:
+                        from dm_toolkit.gui.editor.validators_shared import generate_missing_ids
+                        generate_missing_ids(crs)
+                        v['cost_reductions'] = crs
+                    except Exception:
+                        pass
+            except Exception:
+                pass
         return v
 
     class Config:

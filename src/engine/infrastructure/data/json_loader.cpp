@@ -270,6 +270,22 @@ namespace dm::engine::infrastructure {
 
         def.cost_reductions = data.cost_reductions;
 
+        // Back-compat: ensure each cost_reduction has a non-empty name (used as identifier).
+        // If missing, generate a stable name based on card id and index.
+        for (size_t i = 0; i < def.cost_reductions.size(); ++i) {
+            auto &cr = def.cost_reductions[i];
+            // Generate stable id if missing (new schema uses `id`)
+            if (cr.id.empty()) {
+                std::ostringstream ss;
+                ss << "cr_" << def.id << "_" << i;
+                cr.id = ss.str();
+            }
+            // Preserve existing behavior: ensure name is non-empty for older code paths
+            if (cr.name.empty()) {
+                cr.name = cr.id;
+            }
+        }
+
         // Evolution Condition
         if (data.evolution_condition.has_value()) {
             def.evolution_condition = data.evolution_condition;
