@@ -11,6 +11,14 @@ namespace dm::engine::infrastructure {
     std::map<int, dm::core::CardData> dm::engine::infrastructure::CardRegistry::cards;
     std::shared_ptr<std::map<dm::core::CardID, dm::core::CardDefinition>> dm::engine::infrastructure::CardRegistry::definitions_ptr;
 
+    void dm::engine::infrastructure::CardRegistry::set_definitions(const std::map<dm::core::CardID, dm::core::CardDefinition>& defs) {
+        if (!definitions_ptr) {
+            definitions_ptr = std::make_shared<std::map<dm::core::CardID, dm::core::CardDefinition>>(defs);
+            return;
+        }
+        *definitions_ptr = defs;
+    }
+
     void dm::engine::infrastructure::CardRegistry::load_from_json(const std::string& json_str) {
         // Correctly delegate to string loading
             // Parse and aggressively sanitize explicit JSON nulls produced by

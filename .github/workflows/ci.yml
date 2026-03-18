@@ -22,6 +22,10 @@ jobs:
   headless:
     name: Headless (no PyQt6)
     runs-on: windows-latest
+    env:
+      # 再発防止: headless CI では Qt 初期化順序の揺らぎで不安定化しうるため、
+      # editor 側をダミー Qt 実装へ固定して順序依存エラーを防ぐ。
+      DM_TOOLKIT_FORCE_DUMMY_QT: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -96,6 +100,9 @@ jobs:
     name: GUI (with PyQt6)
     runs-on: windows-latest
     needs: headless
+    env:
+      # 再発防止: GUI ジョブは実 Qt の回帰検知が目的なので、ダミー Qt 強制を無効化する。
+      DM_TOOLKIT_FORCE_DUMMY_QT: "0"
     steps:
       - uses: actions/checkout@v4
 

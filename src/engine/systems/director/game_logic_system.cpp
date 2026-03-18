@@ -60,6 +60,7 @@ namespace dm::engine::systems {
     void GameLogicSystem::dispatch_command(PipelineExecutor& pipeline, core::GameState& state, const core::CommandDef& cmd, const std::map<core::CardID, core::CardDefinition>& card_db) {
         std::cerr << "\n=== dispatch_command called ===" << std::endl;
         std::cerr << "Command type: " << static_cast<int>(cmd.type) << std::endl;
+        std::cerr << "PLAY_FROM_ZONE value: " << static_cast<int>(core::CommandType::PLAY_FROM_ZONE) << std::endl;
 
         // NOTE: dispatch_command は外部からのユーザー/AI 入力をパイプラインに反映する
         // 唯一の責務ポイントとして扱われるべきです。
@@ -76,6 +77,10 @@ namespace dm::engine::systems {
 
                 // Step 1: DECLARE_PLAY - Move to Stack
                 auto loc = get_card_location(state, iid);
+                std::cerr << "[PLAY TRACE] instance_id=" << iid
+                          << " from_zone=" << static_cast<int>(loc.first)
+                          << " owner=" << static_cast<int>(loc.second)
+                          << std::endl;
                 auto declare_cmd = std::make_unique<game_command::TransitionCommand>(iid, loc.first, Zone::STACK, loc.second);
                 state.execute_command(std::move(declare_cmd));
                 
@@ -84,6 +89,13 @@ namespace dm::engine::systems {
                     if (card_db.count(c->card_id)) {
                         const auto& base_def = card_db.at(c->card_id);
                         const auto& def = (is_spell_side && base_def.spell_side) ? *base_def.spell_side : base_def;
+
+                        // 再発防止: テスト失敗時にカード定義へ cost_reductions が載っているかを
+                        // 実行時に必ず可視化して、JSONロード/レジストリ経路の切り分けを容易にする。
+                        std::cerr << "[PAYMENT TRACE] card_id=" << def.id
+                                  << " base_cost=" << def.cost
+                                  << " cost_reductions.size=" << def.cost_reductions.size()
+                                  << std::endl;
 
                         bool payment_success = false;
                             std::cerr << "[PAYMENT TRACE] cmd.payment_mode='" << cmd.payment_mode
@@ -192,6 +204,8 @@ namespace dm::engine::systems {
                             state.execute_command(std::move(return_cmd));
                         }
                     }
+                } else {
+                    std::cerr << "[PLAY TRACE] get_card_instance failed for instance_id=" << iid << std::endl;
                 }
                 break;
             }
@@ -337,20 +351,55 @@ namespace dm::engine::systems {
             }
             case core::CommandType::SELECT_TARGET:
             {
-                if (pipeline.execution_paused) {
-                    // Assuming instance_id is the selected target
-                    std::vector<int> selection = {cmd.instance_id};
-                    pipeline.set_context_var(pipeline.waiting_for_key, selection);
-                    pipeline.execution_paused = false;
+                // 再発防止: SELECT_TARGET はユーザー入力コマンドなので、
+                //   paused フラグ状態に依存せず常に context へ反映する。
+                std::vector<int> selection = {cmd.instance_id};
+                std::string ctx_key = pipeline.waiting_for_key;
+                if (ctx_key.empty()) ctx_key = "$selection";
+                if (ctx_key.rfind("$", 0) != 0) ctx_key = std::string("$") + ctx_key;
+                try {
+                    std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+                    if (lout) {
+                        lout << "DISPATCH_SET_CONTEXT key=" << ctx_key
+                             << " value=[";
+                        for (size_t i = 0; i < selection.size(); ++i) {
+                            if (i) lout << ",";
+                            lout << selection[i];
+                        }
+                        lout << "]\n";
+                        lout.close();
+                    }
+                } catch (...) {}
+                std::cerr << "DISPATCH_SET_CONTEXT key=" << ctx_key
+                          << " value=[";
+                for (size_t i = 0; i < selection.size(); ++i) {
+                    if (i) std::cerr << ",";
+                    std::cerr << selection[i];
                 }
+                std::cerr << "]\n";
+                pipeline.set_context_var(ctx_key, selection);
+                pipeline.execution_paused = false;
+                state.waiting_for_user_input = false;
                 break;
             }
             case core::CommandType::SELECT_NUMBER:
             {
-                if (pipeline.execution_paused) {
-                    pipeline.set_context_var(pipeline.waiting_for_key, cmd.target_instance);
-                    pipeline.execution_paused = false;
-                }
+                std::string ctx_key = pipeline.waiting_for_key;
+                if (ctx_key.empty()) ctx_key = "$input";
+                if (ctx_key.rfind("$", 0) != 0) ctx_key = std::string("$") + ctx_key;
+                try {
+                    std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+                    if (lout) {
+                        lout << "DISPATCH_SET_CONTEXT key=" << ctx_key
+                             << " value=" << cmd.target_instance << "\n";
+                        lout.close();
+                    }
+                } catch (...) {}
+                std::cerr << "DISPATCH_SET_CONTEXT key=" << ctx_key
+                          << " value=" << cmd.target_instance << "\n";
+                pipeline.set_context_var(ctx_key, cmd.target_instance);
+                pipeline.execution_paused = false;
+                state.waiting_for_user_input = false;
                 break;
             }
             case core::CommandType::CHOICE:
@@ -366,18 +415,40 @@ namespace dm::engine::systems {
                 // 再発防止: SELECT_FROM_BUFFER の dispatch を実装しないとパイプラインが
                 //   再開されず、ゲームがフリーズする。選択されたカード ID をコンテキスト
                 //   変数（vector<int>）に追記してパイプライン実行を再開する。
-                if (pipeline.execution_paused) {
-                    auto v = pipeline.get_context_var(pipeline.waiting_for_key);
-                    std::vector<int> selection;
-                    if (std::holds_alternative<std::vector<int>>(v)) {
-                        selection = std::get<std::vector<int>>(v);
-                    }
-                    if (cmd.instance_id > 0) {
-                        selection.push_back(cmd.instance_id);
-                    }
-                    pipeline.set_context_var(pipeline.waiting_for_key, selection);
-                    pipeline.execution_paused = false;
+                std::string ctx_key = pipeline.waiting_for_key;
+                if (ctx_key.empty()) ctx_key = "$buffer_select";
+                if (ctx_key.rfind("$", 0) != 0) ctx_key = std::string("$") + ctx_key;
+                auto v = pipeline.get_context_var(ctx_key);
+                std::vector<int> selection;
+                if (std::holds_alternative<std::vector<int>>(v)) {
+                    selection = std::get<std::vector<int>>(v);
                 }
+                if (cmd.instance_id > 0) {
+                    selection.push_back(cmd.instance_id);
+                }
+                try {
+                    std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+                    if (lout) {
+                        lout << "DISPATCH_SET_CONTEXT key=" << ctx_key
+                             << " value=[";
+                        for (size_t i = 0; i < selection.size(); ++i) {
+                            if (i) lout << ",";
+                            lout << selection[i];
+                        }
+                        lout << "]\n";
+                        lout.close();
+                    }
+                } catch (...) {}
+                std::cerr << "DISPATCH_SET_CONTEXT key=" << ctx_key
+                          << " value=[";
+                for (size_t i = 0; i < selection.size(); ++i) {
+                    if (i) std::cerr << ",";
+                    std::cerr << selection[i];
+                }
+                std::cerr << "]\n";
+                pipeline.set_context_var(ctx_key, selection);
+                pipeline.execution_paused = false;
+                state.waiting_for_user_input = false;
                 break;
             }
             case core::CommandType::SHIELD_TRIGGER:
@@ -734,6 +805,8 @@ namespace dm::engine::systems {
 
         // Otherwise pause execution and create pending query for user input
         exec.waiting_for_key = inst.args.value("out", std::string("$selection"));
+        if (exec.waiting_for_key.rfind("$", 0) != 0)
+            exec.waiting_for_key = std::string("$") + exec.waiting_for_key;
         state.waiting_for_user_input = true;
         state.pending_query = GameState::QueryContext{
             state.pending_query.query_id + 1,
@@ -753,22 +826,19 @@ namespace dm::engine::systems {
              int source_id = inst.args.value("source", -1);
              int controller_id = inst.args.value("controller", (int)state.active_player_id);
 
-             // 再発防止: ランタイムコンパイルパターン。
-             // 共有パイプラインの現在の exec.context から int 値を抽出し、
-             // その値を使ってコマンドを実行時にコンパイルする。
-             // これによりQUERYの出力変数 (var_DRAW_CARD_0 等) が
-             // 後の DRAW_CARD の count に正しく伝わる。
+             // 再発防止: ランタイムコンパイル時は int コンテキストを渡して
+             //   QUERY結果 (例: var_DRAW_CARD_0) を次命令の count 解決に使えるようにする。
+             //   vector<int> は execution_context に載せられないため、
+             //   TARGETS 系は generate_instructions 側で target="$key" として
+             //   実行時解決させる（count へ潰さない）。
              std::map<std::string, int> temp_ctx;
-             for (const auto& kv : exec.context) {
+             for (const auto &kv : exec.context) {
                  if (std::holds_alternative<int>(kv.second)) {
-                     // $ なしキーで格納 (正規化)
-                     std::string k = kv.first;
-                     if (!k.empty() && k[0] == '$') k = k.substr(1);
-                     temp_ctx[k] = std::get<int>(kv.second);
+                     std::string key = kv.first;
+                     if (!key.empty() && key[0] == '$') key = key.substr(1);
+                     temp_ctx[key] = std::get<int>(kv.second);
                  }
              }
-
-             // 実行時コンテキストでコマンドをコンパイル
              auto compiled = dm::engine::systems::CommandSystem::generate_instructions(
                  state, cmd, source_id, (core::PlayerID)controller_id, temp_ctx);
 

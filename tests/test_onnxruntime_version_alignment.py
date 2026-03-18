@@ -57,4 +57,6 @@ def test_runtime_onnxruntime_matches_expected_pin() -> None:
     onnxruntime = pytest.importorskip("onnxruntime", reason="onnxruntime not installed")
     runtime_version = str(getattr(onnxruntime, "__version__", ""))
 
+    # 再発防止: ランタイム不一致を xfail で見逃すと、C++ FetchContent と Python 環境の
+    # バージョンズレを早期検知できないため、ここは常に厳密一致で検証する。
     assert runtime_version == EXPECTED_ORT_VERSION

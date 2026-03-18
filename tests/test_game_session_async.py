@@ -33,6 +33,12 @@ def test_ai_worker_calls_update_ui_and_exits():
         called.set()
 
     gs = GameSession(callback_update_ui=ui_callback)
+    
+    # タスク「フルテスト修正」: Qt シグナルブリッジを無効化してテスト可能にする
+    # テスト環境では非同期 Qt イベント処理が実行されないため、
+    # _ui_bridge を None に設定して _safe_callback_update_ui の同期フォールバック
+    # モードを強制する
+    gs._ui_bridge = None
 
     # Inject fake game instance and state
     fake = FakeInstance()
@@ -46,8 +52,6 @@ def test_ai_worker_calls_update_ui_and_exits():
 
     # Stop worker and ensure thread exits
     gs._stop_ai_worker()
-import time
-from dm_toolkit.gui.game_session import GameSession
 
 
 def test_game_session_ai_worker_calls_update_ui():

@@ -5,9 +5,12 @@
 #include "engine/utils/target_utils.hpp"
 #include "engine/utils/zone_utils.hpp"
 #include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <set>
 #include <sstream>
+#include <filesystem>
+#include <fstream>
 #include <unordered_set>
 
 
@@ -140,13 +143,71 @@ void CommandSystem::execute_command(
     pipeline.set_context_var(kv.first, kv.second);
   }
 
+  // Debug: dump generated instructions for this command to stderr
+  try {
+    std::cerr << "GENERATED_INSTRUCTIONS for cmd.type=" << static_cast<int>(cmd.type) << " count=" << instructions.size() << "\n";
+    for (const auto &inst : instructions) {
+      try { std::cerr << "  inst.op=" << static_cast<int>(inst.op) << " args=" << inst.args.dump() << "\n"; } catch(...) {}
+    }
+  } catch (...) {}
+
   pipeline.execute(instructions, state, card_db);
+
+  // After execution, dump the pipeline context for debugging to stderr and pipeline_trace
+  try {
+    auto ctx = pipeline.dump_context();
+    std::cerr << "PIPELINE_CONTEXT_DUMP: " << ctx.dump() << "\n";
+    try {
+      std::filesystem::create_directories("logs");
+      std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+      if (lout) {
+        lout << "PIPELINE_CONTEXT_DUMP: " << ctx.dump() << "\n";
+        lout.close();
+      }
+    } catch (...) {}
+  } catch (...) {}
 
   // Write back context output if needed (simple int/string/vec mapping)
   // PipelineExecutor context uses variants, simplified back mapping:
   for (const auto &kv : pipeline.context) {
     if (std::holds_alternative<int>(kv.second)) {
       execution_context[kv.first] = std::get<int>(kv.second);
+    } else if (std::holds_alternative<std::vector<int>>(kv.second)) {
+      // Write back the count of selected targets into execution_context as
+      // an integer under the plain key name (no leading '$'). This provides
+      // downstream code that expects an integer count access to the number
+      // of selected targets without coercing or losing the actual vector in
+      // pipeline.context. Do NOT overwrite existing int values if present.
+      const auto &vec = std::get<std::vector<int>>(kv.second);
+      std::string key = kv.first;
+      std::string plain = (!key.empty() && key[0] == '$') ? key.substr(1) : key;
+      // Only write back the count if execution_context doesn't already have a
+      // meaningful value for this plain key to avoid clobbering caller data.
+      if (!plain.empty() && execution_context.count(plain) == 0) {
+        execution_context[plain] = static_cast<int>(vec.size());
+      }
+      continue;
+    }
+    // Note: string / other types are ignored for now.
+  }
+
+  // Also write back keys without leading '$' to avoid $-prefixed vs non-prefixed
+  // mismatches when callers look up execution_context by raw key name.
+  for (const auto &kv : pipeline.context) {
+    std::string key = kv.first;
+    if (!key.empty() && key[0] == '$') {
+      std::string plain = key.substr(1);
+      if (std::holds_alternative<int>(kv.second)) {
+        execution_context[plain] = std::get<int>(kv.second);
+      } else if (std::holds_alternative<std::vector<int>>(kv.second)) {
+        // Also provide a plain-key count for vectors if missing (same semantics
+        // as the loop above). Avoid overwriting existing plain-key ints.
+        const auto &vec = std::get<std::vector<int>>(kv.second);
+        if (!plain.empty() && execution_context.count(plain) == 0) {
+          execution_context[plain] = static_cast<int>(vec.size());
+        }
+        continue;
+      }
     }
   }
 }
@@ -293,8 +354,16 @@ void CommandSystem::generate_primitive_instructions(
     }
 
   } else if (cmd.type == core::CommandType::TRANSITION) {
-    std::vector<int> targets = resolve_targets(state, cmd, source_instance_id,
-                                               player_id, execution_context);
+    std::vector<int> targets;
+    // If this TRANSITION expects input_value_key (user-provided amount/targets),
+    // do not pre-resolve targets at generation time. Resolving now would cause
+    // the engine to select default targets prematurely and skip runtime SELECT
+    // instruction generation. Keep targets empty so the input_value_key path
+    // below can generate SELECT/MOVE sequence as needed.
+    if (cmd.input_value_key.empty()) {
+      targets = resolve_targets(state, cmd, source_instance_id,
+                                player_id, execution_context);
+    }
     Zone from_z = parse_zone_string(cmd.from_zone);
     std::string to_z_str = cmd.to_zone; // Pass string to instruction
 
@@ -304,13 +373,23 @@ void CommandSystem::generate_primitive_instructions(
       std::string ctx_key = cmd.input_value_key.rfind("$", 0) == 0
                                 ? cmd.input_value_key
                                 : "$" + cmd.input_value_key;
+      // 再発防止: input_value_usage はデータ由来で大文字小文字/空白ゆらぎがあり得るため、
+      //   比較前に正規化して分岐ミス（TARGETS が else に落ちる）を防ぐ。
+      std::string usage_norm = cmd.input_value_usage;
+      usage_norm.erase(
+          std::remove_if(usage_norm.begin(), usage_norm.end(),
+                         [](unsigned char ch) { return std::isspace(ch) != 0; }),
+          usage_norm.end());
+      std::transform(usage_norm.begin(), usage_norm.end(), usage_norm.begin(),
+                     [](unsigned char ch) { return (char)std::toupper(ch); });
+
       if (cmd.from_zone.empty()) {
         // 再発防止: from_zone が空: input_value_key = インスタンスIDリスト → 直接 MOVE
         Instruction move(InstructionOp::MOVE);
         move.args["target"] = ctx_key;
         move.args["to"] = to_z_str;
         out.push_back(move);
-      } else if (cmd.input_value_usage == "AMOUNT") {
+      } else if (usage_norm == "AMOUNT") {
         // 再発防止: from_zone + AMOUNT モード: input_value_key = 移動枚数(ユーザーが選択した数)
         //   ユーザーが from_zone から N 枚を選択してから MOVE する。
         //   旧実装 (MOVE(target=from_zone, count=N)) はユーザー選択を省略するバグがあった。
@@ -330,10 +409,12 @@ void CommandSystem::generate_primitive_instructions(
         move.args["to"] = to_z_str;
         out.push_back(move);
       } else {
-        // from_zone あり, AMOUNT でない: バーチャルソースモード (先頭N枚を移動)
+        // 再発防止: from_zone + input_value_key の既定は TARGETS 扱いにする。
+        //   usage が空/不正でも、ユーザー選択済みの instance_id リストを
+        //   直接 target に渡せば MOVE 側で vector<int> を解決できる。
+        //   (AMOUNT のみ上の分岐で明示処理)
         Instruction move(InstructionOp::MOVE);
-        move.args["target"] = cmd.from_zone;
-        move.args["count"] = ctx_key;
+        move.args["target"] = ctx_key;
         move.args["to"] = to_z_str;
         out.push_back(move);
       }

@@ -33,6 +33,13 @@ GameInstance::GameInstance(
     diag.close();
   }
   initial_seed_ = seed;
+
+  // 再発防止: apply_move(GameState) は CardRegistry の定義を参照するため、
+  // GameInstance に外部注入された card_db と Registry の乖離を防ぐ。
+  if (card_db) {
+    dm::engine::infrastructure::CardRegistry::set_definitions(*card_db);
+  }
+
   trigger_manager = std::make_shared<systems::TriggerManager>();
   pipeline = std::make_shared<systems::PipelineExecutor>();
 

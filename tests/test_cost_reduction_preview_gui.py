@@ -1,10 +1,11 @@
 import os
+import importlib
+import sys
 import pytest
 
 # Skip if PyQt6 is not available
 try:
     from PyQt6.QtWidgets import QApplication
-    from dm_toolkit.gui.editor.forms.parts.cost_reduction_editor import CostReductionEditor
 except Exception:
     pytest.skip("PyQt6 not available, skipping GUI preview test", allow_module_level=True)
 
@@ -12,6 +13,14 @@ except Exception:
 def test_gui_preview_label_updates():
     # Ensure headless fallback is not forced
     os.environ.pop('DM_EDITOR_HEADLESS', None)
+
+    # 再発防止: 先行テストで headless 実装が import 済みだと、環境変数を戻しても
+    # fallback クラスが再利用されるため、GUI 実装を明示的に再ロードする。
+    mod_name = 'dm_toolkit.gui.editor.forms.parts.cost_reduction_editor'
+    if mod_name in sys.modules:
+        del sys.modules[mod_name]
+    CostReductionEditor = importlib.import_module(mod_name).CostReductionEditor
+
     app = QApplication.instance() or QApplication([])
     ed = CostReductionEditor()
     ed.set_value([

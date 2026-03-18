@@ -16,6 +16,12 @@ def test_gui_bindings_update_selected_fields():
     # Reload module to ensure Qt-backed implementation is used (tests may have
     # previously imported the module under headless mode)
     import sys, importlib
+    from PyQt6.QtWidgets import QApplication
+
+    # 再発防止: QWidget を生成する GUI テストで QApplication が未初期化だと
+    # プロセスクラッシュする環境があるため、必ず先にアプリを確保する。
+    _app = QApplication.instance() or QApplication([])
+
     mod_name = 'dm_toolkit.gui.editor.forms.parts.cost_reduction_editor'
     if mod_name in sys.modules:
         del sys.modules[mod_name]

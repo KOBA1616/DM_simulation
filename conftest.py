@@ -66,3 +66,35 @@ def pytest_cmdline_main(config):
             config.pluginmanager.register(plugin, name='progress-plugin')
     except Exception:
         pass
+
+
+# Ensure a QApplication exists for tests that require Qt widgets. This avoids
+# order-dependent failures where a test tries to construct a QWidget before
+# a QApplication is created (observed during shuffled test runs).
+import sys
+from pytest import fixture
+
+
+@fixture(scope='session', autouse=True)
+def ensure_qt_app():
+    try:
+        from PyQt5.QtWidgets import QApplication
+    except Exception:
+        try:
+            from PySide2.QtWidgets import QApplication
+        except Exception:
+            # Qt not available in this environment; nothing to do.
+            # 再発防止: generator fixture で return すると
+            # "did not yield a value" が発生するため必ず yield する。
+            yield
+            return
+
+    if QApplication.instance() is None:
+        app = QApplication(sys.argv[:])
+        yield
+        try:
+            app.quit()
+        except Exception:
+            pass
+    else:
+        yield

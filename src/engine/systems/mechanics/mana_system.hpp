@@ -13,8 +13,9 @@ namespace dm::engine {
         // Now requires GameState to check active cost modifiers
         static bool can_pay_cost(const dm::core::GameState& game_state, const dm::core::Player& player, const dm::core::CardDefinition& card_def, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
 
-        // Legacy overload for backward compatibility (assumes no game state context, i.e. no modifiers)
-        static bool can_pay_cost(const dm::core::Player& player, const dm::core::CardDefinition& card_def, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db);
+        // NOTE: Legacy overload removed in REFACTOR (2026-03-17).
+        // Use the GameState-aware overload below which accounts for runtime modifiers
+        // and delegates to the unified CostPaymentSystem.
 
 
         // Automatically taps mana for a card. Returns true if successful.

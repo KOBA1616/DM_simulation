@@ -22,7 +22,9 @@ bool NativeInferenceManager::load_onnx(const std::string& path) {
 #ifdef USE_ONNXRUNTIME
     std::lock_guard<std::mutex> lk(m_);
     try {
+        std::cerr << "NativeInferenceManager: load_onnx START path=" << path << std::endl;
         onnx_model_.reset(new OnnxModelImpl(path));
+        std::cerr << "NativeInferenceManager: load_onnx OK" << std::endl;
         return true;
     } catch (const std::exception& e) {
         std::cerr << "NativeInferenceManager: failed to load ONNX model: " << e.what() << std::endl;
@@ -39,11 +41,13 @@ bool NativeInferenceManager::load_torch(const std::string& path) {
 #ifdef USE_LIBTORCH
     std::lock_guard<std::mutex> lk(m_);
     try {
+        std::cerr << "NativeInferenceManager: load_torch START path=" << path << std::endl;
         torch_model_.reset(new TorchModelImpl());
         if (!torch_model_->load(path)) {
-            torch_model_.reset();
+            std::cerr << "NativeInferenceManager: load_torch FAILED during model->load" << std::endl;
             return false;
         }
+        std::cerr << "NativeInferenceManager: load_torch OK" << std::endl;
         return true;
     } catch (const std::exception& e) {
         std::cerr << "NativeInferenceManager: failed to load Torch model: " << e.what() << std::endl;
@@ -59,9 +63,11 @@ bool NativeInferenceManager::load_torch(const std::string& path) {
 void NativeInferenceManager::clear_models() {
     std::lock_guard<std::mutex> lk(m_);
 #ifdef USE_ONNXRUNTIME
+    std::cerr << "NativeInferenceManager: clear_models clearing onnx_model" << std::endl;
     onnx_model_.reset();
 #endif
 #ifdef USE_LIBTORCH
+    std::cerr << "NativeInferenceManager: clear_models clearing torch_model" << std::endl;
     torch_model_.reset();
 #endif
 }

@@ -219,7 +219,39 @@ void PipelineExecutor::execute(
     } catch (...) {
     }
 
+    try {
+      std::filesystem::create_directories("logs");
+      std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+      if (lout) {
+        std::string args_dump = "";
+        try { args_dump = inst.args.dump(); } catch (...) { args_dump = "<dump_err>"; }
+        try {
+          lout << "INST_BEFORE pc=" << frame.pc << " op=" << static_cast<int>(inst.op)
+               << " args=" << args_dump << " context=" << dump_context().dump() << "\n";
+        } catch (...) {
+          lout << "INST_BEFORE write_error\n";
+        }
+        lout.close();
+      }
+    } catch (...) {}
+
     execute_instruction(inst, state, card_db);
+
+    try {
+      std::filesystem::create_directories("logs");
+      std::ofstream lout2("logs/pipeline_trace.txt", std::ios::app);
+      if (lout2) {
+        std::string args_dump = "";
+        try { args_dump = inst.args.dump(); } catch (...) { args_dump = "<dump_err>"; }
+        try {
+          lout2 << "INST_AFTER pc=" << frame.pc << " op=" << static_cast<int>(inst.op)
+                << " args=" << args_dump << " context=" << dump_context().dump() << "\n";
+        } catch (...) {
+          lout2 << "INST_AFTER write_error\n";
+        }
+        lout2.close();
+      }
+    } catch (...) {}
 
     // low-level post-exec marker
     try {
@@ -324,7 +356,15 @@ void PipelineExecutor::resume(
 
 void PipelineExecutor::set_context_var(const std::string &key,
                                        ContextValue value) {
+  // Store both $-prefixed and plain forms to avoid lookup mismatches.
   context[key] = value;
+  if (!key.empty() && key[0] == '$') {
+    std::string plain = key.substr(1);
+    context[plain] = value;
+  } else {
+    std::string with_dollar = "$" + key;
+    context[with_dollar] = value;
+  }
 }
 
 ContextValue PipelineExecutor::get_context_var(const std::string &key) const {
@@ -856,6 +896,40 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
     auto target_val = inst.args["target"];
     if (target_val.is_string()) {
       std::string s = target_val.get<std::string>();
+      // If caller provided a count that is actually a context variable
+      // referring to an explicit list of targets (vector<int>), prefer
+      // using that vector directly. Some command-generation paths may
+      // incorrectly place the selected targets into the "count" field
+      // (as a $var) instead of the "target" field; handle that here to
+      // be tolerant and avoid dropping selections.
+      if (inst.args.contains("count") && inst.args["count"].is_string()) {
+        std::string count_ref = inst.args["count"].get<std::string>();
+        if (!count_ref.empty() && count_ref.rfind("$", 0) == 0) {
+          auto cv = get_context_var(count_ref);
+          if (std::holds_alternative<std::vector<int>>(cv)) {
+            targets = std::get<std::vector<int>>(cv);
+            // Log resolved fallback for debugging
+            try {
+              std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+              if (lout) {
+                lout << "RESOLVED_COUNT_AS_TARGETS count_ref=" << count_ref << " -> [";
+                for (size_t _i = 0; _i < targets.size(); ++_i) {
+                  if (_i) lout << ",";
+                  lout << targets[_i];
+                }
+                lout << "]\n";
+                lout.close();
+              }
+            } catch (...) {}
+            std::cerr << "RESOLVED_COUNT_AS_TARGETS count_ref=" << count_ref << " -> [";
+            for (size_t _i = 0; _i < targets.size(); ++_i) {
+              if (_i) std::cerr << ",";
+              std::cerr << targets[_i];
+            }
+            std::cerr << "]\n";
+          }
+        }
+      }
       if (s.rfind("$", 0) == 0) {
         auto v = get_context_var(s);
         if (std::holds_alternative<std::vector<int>>(v)) {
@@ -863,6 +937,25 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
         } else if (std::holds_alternative<int>(v)) {
           targets.push_back(std::get<int>(v));
         }
+        // Debug: log resolved targets from context variable
+        try {
+          std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+          if (lout) {
+            lout << "RESOLVED_TARGETS src=" << s << " -> [";
+            for (size_t _i = 0; _i < targets.size(); ++_i) {
+              if (_i) lout << ",";
+              lout << targets[_i];
+            }
+            lout << "]\n";
+            lout.close();
+          }
+        } catch (...) {}
+        std::cerr << "RESOLVED_TARGETS src=" << s << " -> [";
+        for (size_t _i = 0; _i < targets.size(); ++_i) {
+          if (_i) std::cerr << ",";
+          std::cerr << targets[_i];
+        }
+        std::cerr << "]\n";
       } else if (s == "DECK_TOP") {
         is_virtual_target = true;
         virtual_target_type = "DECK_TOP";
@@ -881,21 +974,30 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
       } else if (s == "HAND") {
         is_virtual_target = true;
         virtual_target_type = "HAND";
-        auto c_val = inst.args.contains("count") ? inst.args["count"]
-                                                 : nlohmann::json(1);
-        virtual_count = resolve_int(c_val);
+        // If a $count reference already resolved to an explicit vector of
+        // targets above, avoid interpreting the count as a virtual_count
+        // which would otherwise cause no-op when resolve_int returns 0.
+        if (targets.empty()) {
+          auto c_val = inst.args.contains("count") ? inst.args["count"]
+                                                   : nlohmann::json(1);
+          virtual_count = resolve_int(c_val);
+        }
       } else if (s == "MANA") {
         is_virtual_target = true;
         virtual_target_type = "MANA";
-        auto c_val = inst.args.contains("count") ? inst.args["count"]
-                                                 : nlohmann::json(1);
-        virtual_count = resolve_int(c_val);
+        if (targets.empty()) {
+          auto c_val = inst.args.contains("count") ? inst.args["count"]
+                                                   : nlohmann::json(1);
+          virtual_count = resolve_int(c_val);
+        }
       } else if (s == "BATTLE") {
         is_virtual_target = true;
         virtual_target_type = "BATTLE";
-        auto c_val = inst.args.contains("count") ? inst.args["count"]
-                                                 : nlohmann::json(1);
-        virtual_count = resolve_int(c_val);
+        if (targets.empty()) {
+          auto c_val = inst.args.contains("count") ? inst.args["count"]
+                                                   : nlohmann::json(1);
+          virtual_count = resolve_int(c_val);
+        }
       } else if (s == "BUFFER_REMAIN") {
         // 再発防止: BUFFER_REMAIN は $buffer_select に含まれないバッファ残余カードをすべて移動する。
         //   MOVE_BUFFER_TO_ZONE が生成する残余デッキボトム戻し命令で使用。
@@ -922,9 +1024,55 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
           targets = std::get<std::vector<int>>(v);
         else if (std::holds_alternative<int>(v))
           targets.push_back(std::get<int>(v));
+        // Debug: log resolved targets from input_value_key
+        try {
+          std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+          if (lout) {
+            lout << "RESOLVED_INPUT_VALUE_KEY key=" << ctx_key << " -> [";
+            for (size_t _i = 0; _i < targets.size(); ++_i) {
+              if (_i) lout << ",";
+              lout << targets[_i];
+            }
+            lout << "]\n";
+            lout.close();
+          }
+        } catch (...) {}
+        std::cerr << "RESOLVED_INPUT_VALUE_KEY key=" << ctx_key << " -> [";
+        for (size_t _i = 0; _i < targets.size(); ++_i) {
+          if (_i) std::cerr << ",";
+          std::cerr << targets[_i];
+        }
+        std::cerr << "]\n";
       }
     }
   }
+
+  // Diagnostic: if caller passed a count reference that resolves to a vector
+  // (selected instance ids) but targets resolved to empty here, emit a
+  // detailed trace to aid debugging. This helps catch cases where a
+  // $var_selected exists in pipeline.context but was not picked up by the
+  // MOVE resolution logic.
+  try {
+    if (targets.empty() && inst.args.contains("count") && inst.args["count"].is_string()) {
+      std::string count_ref = inst.args["count"].get<std::string>();
+      if (!count_ref.empty() && count_ref.rfind("$", 0) == 0) {
+        auto cv = get_context_var(count_ref);
+        if (std::holds_alternative<std::vector<int>>(cv)) {
+          const auto &vec = std::get<std::vector<int>>(cv);
+          std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+          if (lout) {
+            lout << "DIAG_MOVE_MISS count_ref=" << count_ref << " vec=[";
+            for (size_t i = 0; i < vec.size(); ++i) {
+              if (i) lout << ",";
+              lout << vec[i];
+            }
+            lout << "] inst_args=" << inst.args.dump() << " context=" << dump_context().dump() << "\n";
+            lout.close();
+          }
+        }
+      }
+    }
+  } catch (...) {}
 
   std::string to_zone_str = resolve_string(inst.args.value("to", ""));
   Zone to_zone = Zone::GRAVEYARD;
@@ -1009,6 +1157,16 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
     }
   }
 
+  // Debug: record the MOVE instruction's resolved targets and args
+  try {
+    std::cerr << "MOVE_INSTRUCTION args=" << inst.args.dump() << " resolved_targets=[";
+    for (size_t _i = 0; _i < targets.size(); ++_i) {
+      if (_i) std::cerr << ",";
+      std::cerr << targets[_i];
+    }
+    std::cerr << "] to_zone=" << to_zone_str << " to_bottom=" << to_bottom << "\n";
+  } catch (...) {}
+
   for (int id : targets) {
     const CardInstance *card_ptr = state.get_card_instance(id);
     if (!card_ptr) {
@@ -1028,10 +1186,12 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
       continue;
 
     PlayerID owner = card_ptr->owner;
+    // If owner is out-of-band, resolve from state; otherwise keep the
+    // recorded owner. Previously this branch unconditionally overwrote
+    // owner with the active player which caused moves to be applied to the
+    // wrong player's zones. Keep existing owner when valid.
     if (owner > 1) {
       owner = state.get_card_owner(id);
-    } else {
-      owner = state.active_player_id;
     }
 
     Zone from_zone = Zone::GRAVEYARD;
@@ -1500,11 +1660,24 @@ void PipelineExecutor::handle_wait_input(const Instruction &inst,
   std::cerr << "[PipelineExecutor::handle_wait_input] out_key=" << out_key
             << std::endl;
 
-  // If we already have the value (via resume), don't pause again
-  if (context.count(out_key)) {
-    std::cerr << "[PipelineExecutor::handle_wait_input] Already have value in "
-                 "context, returning"
-              << std::endl;
+  // If we already have the value (via resume), don't pause again.
+  // Use get_context_var which handles $-prefixed vs non-prefixed keys.
+  auto existing_val = get_context_var(out_key);
+  if (!std::holds_alternative<std::monostate>(existing_val)) {
+    std::cerr << "[PipelineExecutor::handle_wait_input] Already have value in context, returning" << std::endl;
+    // Dump full pipeline context for correlation debugging
+    try {
+      auto j = dump_context();
+      std::cerr << "[PipelineExecutor::handle_wait_input] FULL_CONTEXT=" << j.dump() << std::endl;
+      try {
+        std::filesystem::create_directories("logs");
+        std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+        if (lout) {
+          lout << "[PipelineExecutor::handle_wait_input] FULL_CONTEXT=" << j.dump() << "\n";
+          lout.close();
+        }
+      } catch (...) {}
+    } catch (...) {}
     return;
   }
 
@@ -1520,11 +1693,27 @@ void PipelineExecutor::handle_wait_input(const Instruction &inst,
   }
 
   execution_paused = true;
-  waiting_for_key = out_key;
+  // Normalize waiting_for_key to always include leading '$' so resume() and
+  // set_context_var use a consistent key form.
+  waiting_for_key = (out_key.rfind("$", 0) == 0) ? out_key : ("$" + out_key);
   state.waiting_for_user_input = true;
   std::cerr << "[PipelineExecutor::handle_wait_input] Setting "
                "execution_paused=true, waiting_for_user_input=true"
             << std::endl;
+
+  // Dump context at the moment we set pending_query for later correlation
+  try {
+    auto j2 = dump_context();
+    std::cerr << "[PipelineExecutor::handle_wait_input] CONTEXT_AT_PENDING=" << j2.dump() << std::endl;
+    try {
+      std::filesystem::create_directories("logs");
+      std::ofstream lout2("logs/pipeline_trace.txt", std::ios::app);
+      if (lout2) {
+        lout2 << "[PipelineExecutor::handle_wait_input] CONTEXT_AT_PENDING=" << j2.dump() << "\n";
+        lout2.close();
+      }
+    } catch (...) {}
+  } catch (...) {}
 
   // Setup pending query with min/max for SELECT_NUMBER
   std::map<std::string, int> param_map;

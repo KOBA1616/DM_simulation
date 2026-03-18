@@ -1,10 +1,18 @@
 import os
+import importlib
+import sys
 
 
 def test_input_assist_updates_fields():
     # Use headless fallback
     os.environ['DM_EDITOR_HEADLESS'] = '1'
-    from dm_toolkit.gui.editor.forms.parts.cost_reduction_editor import CostReductionEditor
+
+    # 再発防止: 先行GUIテストで同モジュールがQt実装としてロード済みの場合、
+    # 環境変数だけでは実装が切り替わらないため、明示的に再ロードする。
+    mod_name = 'dm_toolkit.gui.editor.forms.parts.cost_reduction_editor'
+    if mod_name in sys.modules:
+        del sys.modules[mod_name]
+    CostReductionEditor = importlib.import_module(mod_name).CostReductionEditor
 
     w = CostReductionEditor()
     sample = [{"type": "ACTIVE_PAYMENT", "amount": 1}]

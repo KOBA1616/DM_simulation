@@ -367,7 +367,21 @@ else:
 
         def _update_preview_display(self, units: int | None = None):
             try:
-                text = self.get_preview_text(units=units)
+                item = self.list_widget.currentItem()
+                if not item:
+                    text = "Preview: N/A"
+                else:
+                    entry = item.data(Qt.ItemDataRole.UserRole) or {}
+                    # 再発防止: Qt実装側では fallback クラスの get_preview_text を
+                    # 継承しないため、ここで明示的に同等計算を行って N/A 固定化を防ぐ。
+                    u = int(units) if units is not None else int(entry.get('amount', 1) or 1)
+                    unit_cost = int(entry.get('unit_cost', 0) or 0)
+                    max_units_raw = entry.get('max_units', u)
+                    max_units = int(max_units_raw) if max_units_raw is not None else u
+                    min_mana = int(entry.get('min_mana_cost', 0) or 0)
+                    applied_units = min(u, max_units) if max_units > 0 else u
+                    effective = max(unit_cost * applied_units, min_mana)
+                    text = f"Preview ({u} unit{'s' if u != 1 else ''}): {effective}"
             except Exception:
                 text = "Preview: N/A"
             self.preview_label.setText(text)

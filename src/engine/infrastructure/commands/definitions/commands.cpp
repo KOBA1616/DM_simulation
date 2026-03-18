@@ -86,14 +86,57 @@ void TransitionCommand::execute(core::GameState &state) {
                          });
 
   if (it == source_vec->end()) {
-    // Log missing instance for diagnostics
+    // Log missing instance for diagnostics with extended context
     try {
+      // Primary human-readable log
       std::ofstream lout("logs/transition_debug.txt", std::ios::app);
       if (lout) {
         lout << "[Transition] MISSING in source: id=" << card_instance_id
              << " owner=" << owner_id << " from=" << static_cast<int>(from_zone)
              << " to=" << static_cast<int>(to_zone) << "\n";
+
+        lout << "[Transition] OWNER_ZONE_COUNTS battle=" << owner.battle_zone.size()
+             << " hand=" << owner.hand.size()
+             << " mana=" << owner.mana_zone.size()
+             << " shield=" << owner.shield_zone.size()
+             << " deck=" << owner.deck.size()
+             << " grave=" << owner.graveyard.size() << "\n";
+
+        // Dump a snapshot of the source zone with instance_id:card_id pairs
+        lout << "[Transition] SOURCE_ZONE_SNAPSHOT entries=[";
+        for (size_t i = 0; i < source_vec->size(); ++i) {
+          if (i) lout << ", ";
+          const auto &ci = (*source_vec)[i];
+          lout << "(" << ci.instance_id << ":" << ci.card_id << ")";
+          if (i >= 199) { lout << ", ..."; break; }
+        }
+        lout << "]\n";
         lout.close();
+      }
+
+      // Also write a machine-readable snapshot file for post-mortem
+      try {
+        std::filesystem::create_directories("logs/transition_snapshots");
+        auto ts = std::to_string(std::time(nullptr));
+        std::string outpath = std::string("logs/transition_snapshots/missing_") + std::to_string(card_instance_id) + "_" + ts + ".log";
+        std::ofstream jout(outpath, std::ios::app);
+        if (jout) {
+          jout << "card_instance_id:" << card_instance_id << "\n";
+          jout << "owner_id:" << owner_id << "\n";
+          jout << "from_zone:" << static_cast<int>(from_zone) << "\n";
+          jout << "to_zone:" << static_cast<int>(to_zone) << "\n";
+          jout << "owner_counts: battle=" << owner.battle_zone.size() << ",hand=" << owner.hand.size() << ",mana=" << owner.mana_zone.size() << ",deck=" << owner.deck.size() << ",grave=" << owner.graveyard.size() << "\n";
+          jout << "source_entries:";
+          for (size_t i = 0; i < source_vec->size(); ++i) {
+            const auto &ci = (*source_vec)[i];
+            jout << ci.instance_id << ":" << ci.card_id;
+            if (i + 1 < source_vec->size()) jout << ",";
+            if (i >= 999) { jout << ",..."; break; }
+          }
+          jout << "\n";
+          jout.close();
+        }
+      } catch (...) {
       }
     } catch (...) {
     }

@@ -21,7 +21,9 @@ disable_native = os.environ.get('DM_DISABLE_NATIVE', '0') == '1'
 
 if not disable_native:
     # find candidate pyd files
-    candidates = list(ROOT.glob('dm_ai_module*.pyd')) + list((ROOT / 'bin').glob('dm_ai_module*.pyd'))
+    # 再発防止: ルート直下の古い .pyd を先に拾うと、bin の最新ビルドが反映されない。
+    # 常にビルド出力先(bin)を優先してロードする。
+    candidates = list((ROOT / 'bin').glob('dm_ai_module*.pyd')) + list(ROOT.glob('dm_ai_module*.pyd'))
     if not candidates:
         # No native candidate found; fall back to pure-Python shim
         _native = None

@@ -120,6 +120,10 @@ void bind_core(py::module& m) {
     py::bind_vector<std::vector<dm::core::CardInstance>>(m, "CardList");
     py::bind_vector<std::vector<dm::core::Civilization>>(m, "CivilizationList");
     py::bind_vector<std::vector<dm::core::Player>>(m, "PlayerList");
+    // 再発防止: std::vector<CostReductionDef> が bind されていないと、
+    // CardDefinition::cost_reductions (ベクトル型) が Python から見えなかった。
+    // 解決: 明示的に bind_vector で登録してコンテナ変換を確保。
+    py::bind_vector<std::vector<dm::core::CostReductionDef>>(m, "CostReductionDefList");
 
     // ... (Previous Enums and Classes) ...
     // GameEvent bindings
@@ -336,6 +340,24 @@ void bind_core(py::module& m) {
         .value("SET_KEYWORD", ModifierType::SET_KEYWORD)
         .value("ADD_RESTRICTION", ModifierType::ADD_RESTRICTION)
         .export_values();
+
+    // 再発防止: CostReductionDef がこの時点では未バインディングだったため Python から見えず、
+    // PASSIVE/ACTIVE_PAYMENT の軽減が engine で自動適用されていても Python 検証が失敗していた。
+    // 解決: ReductionType enum と CostReductionDef class をバインディング。
+    py::enum_<ReductionType>(m, "ReductionType")
+        .value("PASSIVE", ReductionType::PASSIVE)
+        .value("ACTIVE_PAYMENT", ReductionType::ACTIVE_PAYMENT)
+        .export_values();
+
+    py::class_<CostReductionDef>(m, "CostReductionDef")
+        .def(py::init<>())
+        .def_readwrite("type", &CostReductionDef::type)
+        .def_readwrite("unit_cost", &CostReductionDef::unit_cost)
+        .def_readwrite("reduction_amount", &CostReductionDef::reduction_amount)
+        .def_readwrite("max_units", &CostReductionDef::max_units)
+        .def_readwrite("min_mana_cost", &CostReductionDef::min_mana_cost)
+        .def_readwrite("id", &CostReductionDef::id)
+        .def_readwrite("name", &CostReductionDef::name);
 
     py::enum_<EffectPrimitive>(m, "EffectPrimitive")
         .value("DRAW_CARD", EffectPrimitive::DRAW_CARD)
@@ -636,6 +658,13 @@ void bind_core(py::module& m) {
         // container conversion always provides access from Python-side objects.
         .def_readwrite("metamorph_abilities", &CardDefinition::metamorph_abilities)
         .def_readwrite("static_abilities", &CardDefinition::static_abilities)
+            // 再発防止: cost_reductions が未公開だったのでテスト検証できなかった。
+            .def_readwrite("cost_reductions", &CardDefinition::cost_reductions)
+        .def("get_cost_reductions_size", [](const CardDefinition& cd) { return cd.cost_reductions.size(); })
+        .def("get_cost_reduction", [](const CardDefinition& cd, size_t idx) -> const CostReductionDef* {
+            if (idx < cd.cost_reductions.size()) return &cd.cost_reductions[idx];
+            return nullptr;
+        }, py::return_value_policy::reference_internal)
         .def_readwrite("evolution_condition", &CardDefinition::evolution_condition)
         .def_readwrite("revolution_change_condition", &CardDefinition::revolution_change_condition)
         .def_readwrite("is_key_card", &CardDefinition::is_key_card)

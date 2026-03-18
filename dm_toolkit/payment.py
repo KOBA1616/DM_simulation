@@ -57,7 +57,8 @@ def apply_passive_reductions(card: Dict[str, Any], base_cost: int, units: int = 
     if not isinstance(card, dict):
         return base_cost
 
-    crs = card.get('cost_reductions') or []
+    # Merge explicit cost_reductions with static COST_MODIFIERs for conservative evaluation.
+    crs = _merged_passive_definitions(card)
     total_reduction = 0
     floor_min = None
     for cr in crs:
@@ -156,7 +157,9 @@ def evaluate_cost(card: Dict[str, Any], base_cost: int, units: int = 1, active_r
     )
 
     # Apply PASSIVE reductions
-    crs = card.get('cost_reductions') or []
+    # Use merged passive definitions so that static COST_MODIFIER entries are
+    # considered alongside explicit PASSIVE cost_reductions in editor/agent evaluation.
+    crs = _merged_passive_definitions(card)
     floor_min = None
     total_red = 0
     passive_ids = []
@@ -239,6 +242,47 @@ def _compute_active_reduction(cr: Dict[str, Any], units: int) -> int:
         return cr['amount']
 
     return 0
+
+
+def _merged_passive_definitions(card: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Return a list of cost_reduction-like dicts including PASSIVE entries and
+    converted `static_abilities` entries of type `COST_MODIFIER`.
+
+    This helper is used only in the toolkit/editor evaluation paths to provide a
+    conservative, unified view of passive cost modifiers coming from multiple
+    data sources. It intentionally does not mutate the original card dict.
+    """
+    merged: List[Dict[str, Any]] = []
+    if not isinstance(card, dict):
+        return merged
+
+    # Start with explicit cost_reductions if present
+    explicit = card.get('cost_reductions') or []
+    for cr in explicit:
+        if isinstance(cr, dict):
+            merged.append(cr.copy())
+
+    # Convert static_abilities COST_MODIFIER entries into PASSIVE-like reductions
+    statics = card.get('static_abilities') or []
+    for idx, s in enumerate(statics):
+        if not isinstance(s, dict):
+            continue
+        if s.get('type') == 'COST_MODIFIER':
+            # Heuristic conversion: COST_MODIFIER.value -> PASSIVE.amount
+            val = s.get('value')
+            try:
+                val_int = int(val)
+            except Exception:
+                continue
+            if val_int == 0:
+                continue
+            merged.append({
+                'type': 'PASSIVE',
+                'id': f'static-cost-mod-{idx}',
+                'amount': val_int,
+            })
+
+    return merged
 
 
 def apply_active_payment(card: Dict[str, Any], base_cost: int, reduction_id: str, units: int = 1) -> int:

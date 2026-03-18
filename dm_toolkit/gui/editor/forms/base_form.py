@@ -1,11 +1,21 @@
 # -*- coding: utf-8 -*-
-try:
-    from PyQt6.QtWidgets import (
-        QWidget, QComboBox, QSpinBox, QLineEdit, QCheckBox,
-        QGroupBox, QDoubleSpinBox, QLabel, QFormLayout
-    )
-    from PyQt6.QtCore import Qt, pyqtSignal
-except Exception:
+import os
+
+# Allow tests to force a dummy Qt implementation to avoid QApplication
+# lifetime/order issues in headless or CI environments. Set
+# `DM_TOOLKIT_FORCE_DUMMY_QT=1` to enable the dummy shims.
+force_dummy = os.environ.get('DM_TOOLKIT_FORCE_DUMMY_QT') == '1'
+if not force_dummy:
+    try:
+        from PyQt6.QtWidgets import (
+            QWidget, QComboBox, QSpinBox, QLineEdit, QCheckBox,
+            QGroupBox, QDoubleSpinBox, QLabel, QFormLayout
+        )
+        from PyQt6.QtCore import Qt, pyqtSignal
+    except Exception:
+        force_dummy = True
+
+if force_dummy:
     # Provide minimal shims for headless/test environments where PyQt6 isn't available
     class _DummySignal:
         def __init__(self, *a, **k): pass
@@ -38,9 +48,13 @@ except Exception:
     QDoubleSpinBox = _DummyInput
     QLabel = _DummyLabel
     QFormLayout = _DummyFormLayout
-    Qt = type('X', (), {})
+    class _DummyQt:
+        class ItemDataRole:
+            UserRole = 0
+    Qt = _DummyQt
     pyqtSignal = _DummySignal
 from contextlib import contextmanager
+import uuid
 from dm_toolkit.gui.editor.consistency import validate_command_list, format_integrity_warnings
 try:
     from dm_toolkit.gui.editor import validators_shared as _validators_shared
@@ -199,6 +213,24 @@ class BaseEditForm(QWidget):
             data = to_dict(data)
 
         self._save_ui_to_data(data)
+
+        # Auto-assign missing `id` to cost_reductions to improve editor UX and
+        # avoid save-time validation failures when the user omitted an id in the UI.
+        # 再発防止: cards.json のロード経路では自動付与されるが、エディタの一時データ
+        # では欠落しがちなためここで補完する（緩和的措置）。
+        try:
+            if isinstance(data, dict) and 'cost_reductions' in data and data.get('cost_reductions') is not None:
+                cr_list = data.get('cost_reductions') or []
+                for cr in cr_list:
+                    try:
+                        if isinstance(cr, dict) and not cr.get('id'):
+                            cr['id'] = f"auto_{uuid.uuid4().hex[:8]}"
+                    except Exception:
+                        continue
+                data['cost_reductions'] = cr_list
+        except Exception:
+            # Be permissive; validation will handle remaining issues
+            pass
 
         # Global save-time consistency check: if data appears to be a Command dict,
         # run `validate_command_list` and abort save when blocking warnings exist.
