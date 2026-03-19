@@ -221,6 +221,8 @@ void bind_engine(py::module &m) {
              dm::engine::game_command::StatCommand::StatType::CARDS_DISCARDED)
       .value("CREATURES_PLAYED",
              dm::engine::game_command::StatCommand::StatType::CREATURES_PLAYED)
+            .value("CREATURES_DESTROYED",
+              dm::engine::game_command::StatCommand::StatType::CREATURES_DESTROYED)
       .value("SPELLS_CAST",
              dm::engine::game_command::StatCommand::StatType::SPELLS_CAST)
       .export_values();

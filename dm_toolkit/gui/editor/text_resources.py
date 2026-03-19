@@ -330,6 +330,28 @@ class CardTextResources:
         "GAME_RESULT": "ゲームを終了する（{result}）。",
     }
 
+    COMPARE_STAT_EDITOR_KEYS: Tuple[str, ...] = (
+        "MY_MANA_COUNT",
+        "OPPONENT_MANA_COUNT",
+        "MY_HAND_COUNT",
+        "OPPONENT_HAND_COUNT",
+        "MY_SHIELD_COUNT",
+        "OPPONENT_SHIELD_COUNT",
+        "MY_BATTLE_ZONE_COUNT",
+        "OPPONENT_BATTLE_ZONE_COUNT",
+        "SUMMON_COUNT_THIS_TURN",
+        "DESTROY_COUNT_THIS_TURN",
+    )
+
+    # Quick stats used by condition/query UIs for common measurements
+    EDITOR_QUICK_STATS_KEYS: Tuple[str, ...] = (
+        "MANA_CIVILIZATION_COUNT",
+        "SHIELD_COUNT",
+        "HAND_COUNT",
+        "CARDS_DRAWN_THIS_TURN",
+    )
+
+    # 再発防止: COMPARE_STAT_EDITOR_KEYS に追加したキーは必ずここへ翻訳を追加すること。
     STAT_KEY_MAP: Dict[str, Tuple[str, str]] = {
         "MANA_COUNT": ("マナゾーンのカード", "枚"),
         "CREATURE_COUNT": ("クリーチャー", "体"),
@@ -337,6 +359,12 @@ class CardTextResources:
         "HAND_COUNT": ("手札", "枚"),
         "GRAVEYARD_COUNT": ("墓地のカード", "枚"),
         "BATTLE_ZONE_COUNT": ("バトルゾーンのカード", "枚"),
+        "MY_MANA_COUNT": ("自分のマナゾーンのカード", "枚"),
+        "MY_HAND_COUNT": ("自分の手札", "枚"),
+        "MY_SHIELD_COUNT": ("自分のシールド", "つ"),
+        "MY_BATTLE_ZONE_COUNT": ("自分のバトルゾーンのカード", "枚"),
+        "SUMMON_COUNT_THIS_TURN": ("このターンに召喚したクリーチャー数", "体"),
+        "DESTROY_COUNT_THIS_TURN": ("このターンに破壊されたクリーチャー数", "体"),
         "OPPONENT_MANA_COUNT": ("相手のマナゾーンのカード", "枚"),
         "OPPONENT_CREATURE_COUNT": ("相手のクリーチャー", "体"),
         "OPPONENT_SHIELD_COUNT": ("相手のシールド", "つ"),

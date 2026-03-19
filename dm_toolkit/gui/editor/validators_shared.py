@@ -144,6 +144,7 @@ Separated from individual form validators to enable cross-form consistency check
 from typing import List, Dict, Any
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.models import FilterSpec, filterspec_to_dict, dict_to_filterspec
+from dm_toolkit.gui.editor.text_resources import CardTextResources
 
 
 class ConditionValidator:
@@ -161,7 +162,8 @@ class ConditionValidator:
         "NONE",
         "DURING_YOUR_TURN",
         "DURING_OPPONENT_TURN",
-        "OPPONENT_DRAW_COUNT"
+        "OPPONENT_DRAW_COUNT",
+        "COMPARE_STAT"
     }
     
     @staticmethod
@@ -204,6 +206,16 @@ class ConditionValidator:
             if cond_type == "OPPONENT_DRAW_COUNT":
                 if 'value' not in condition or not isinstance(condition.get('value'), int):
                     errors.append("OPPONENT_DRAW_COUNT condition requires 'value' (int)")
+            # Validate COMPARE_STAT stat_key against canonical registry
+            if cond_type == "COMPARE_STAT":
+                stat_key = condition.get('stat_key')
+                if not stat_key or not isinstance(stat_key, str):
+                    errors.append("COMPARE_STAT requires 'stat_key' (string)")
+                else:
+                    # Accept if key is in canonical editor list or has a translation entry
+                    if (stat_key not in CardTextResources.COMPARE_STAT_EDITOR_KEYS
+                            and stat_key not in CardTextResources.STAT_KEY_MAP):
+                        errors.append(f"COMPARE_STAT.stat_key '{stat_key}' is not a known stat key")
         
         return errors
     

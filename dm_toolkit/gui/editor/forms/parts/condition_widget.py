@@ -158,6 +158,9 @@ CONDITION_UI_CONFIG = {
     }
 }
 
+# 再発防止: COMPARE_STAT の候補キーは CardTextResources 側の単一定義のみ参照すること。
+COMMON_COMPARE_STAT_KEYS = list(CardTextResources.COMPARE_STAT_EDITOR_KEYS)
+
 class ConditionEditorWidget(QGroupBox):
     dataChanged = pyqtSignal()
 
@@ -206,13 +209,7 @@ class ConditionEditorWidget(QGroupBox):
         self.lbl_stat_key = QLabel(tr("Stat Key"))
         self.stat_key_combo = QComboBox()
         self.stat_key_combo.setEditable(True)
-        common_stats = [
-            "MY_MANA_COUNT", "OPPONENT_MANA_COUNT",
-            "MY_HAND_COUNT", "OPPONENT_HAND_COUNT",
-            "MY_SHIELD_COUNT", "OPPONENT_SHIELD_COUNT",
-            "MY_BATTLE_ZONE_COUNT", "OPPONENT_BATTLE_ZONE_COUNT"
-        ]
-        self.populate_combo(self.stat_key_combo, common_stats)
+        self.populate_combo(self.stat_key_combo, COMMON_COMPARE_STAT_KEYS)
         safe_connect(self.stat_key_combo, "editTextChanged", self.dataChanged.emit)
         safe_connect(self.stat_key_combo, "currentIndexChanged", self.dataChanged.emit)
         layout.addWidget(self.lbl_stat_key, 2, 0)

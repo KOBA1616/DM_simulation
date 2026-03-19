@@ -16,6 +16,18 @@ $projectRoot = Split-Path -Parent $scriptDir
 $buildDirName = if ($Toolchain -eq 'mingw') { 'build-mingw' } else { 'build-msvc' }
 $buildDir = Join-Path $projectRoot $buildDirName
 
+# If the expected build directory doesn't exist, try common alternatives
+if (-not (Test-Path $buildDir)) {
+    $altNames = @('build-ninja', 'build', 'build-msvc', 'build-mingw')
+    foreach ($name in $altNames) {
+        $candidate = Join-Path $projectRoot $name
+        if (Test-Path $candidate) {
+            Write-Host "Preferred build directory '$buildDir' not found; using detected directory: $candidate"
+            $buildDir = $candidate
+            break
+        }
+    }
+}
 function Get-ProjectPythonExe {
     param([string]$root)
     $venv = Join-Path $root '.venv\Scripts\python.exe'
@@ -71,21 +83,13 @@ if ($Review) {
 }
 
 if (-not (Test-Path $buildDir)) {
-    Write-Host "Build directory not found at $buildDir. Attempting automatic build..."
-    try {
-        & "$scriptDir/build.ps1" -Config $Config -Toolchain $Toolchain
-    }
-    catch {
-        Write-Error "Automatic build failed: $_"
-    }
-    if (-not (Test-Path $buildDir)) {
-        if (-not $AllowFallback) {
-            Write-Error "Build directory still missing after automatic build. Aborting to avoid running with Python fallback."
-            exit 1
-        }
-        else {
-            Write-Warning "Build directory still missing; proceeding with Python fallback as requested by -AllowFallback."
-        }
+    Write-Error "Build directory not found at $buildDir. This script no longer attempts automatic builds."
+    Write-Host "Run the build script to create native artifacts: $scriptDir\build.ps1 -Config $Config -Toolchain $Toolchain"
+    if (-not $AllowFallback) {
+        Write-Error "Aborting to avoid running with Python fallback. Use -AllowFallback to override."
+        exit 1
+    } else {
+        Write-Warning "Build directory missing; proceeding with Python fallback as requested by -AllowFallback."
     }
 }
 

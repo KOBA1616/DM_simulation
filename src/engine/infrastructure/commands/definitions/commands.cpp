@@ -2,12 +2,23 @@
 #include "core/game_event.hpp"
 #include "engine/infrastructure/data/card_registry.hpp" // Added for G-Neo lookup
 #include "engine/utils/zone_utils.hpp"
+#include "engine/infrastructure/commands/stat_update.hpp"
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 
 namespace dm::engine::game_command {
+
+// Common helper to centralize turn-stat updates for destroyed creatures.
+// Implemented here but declared in stat_update.hpp so other modules can
+// call it; centralization makes it easier to enforce replacement semantics
+// and to instrument logging/telemetry in a single place.
+void add_turn_destroyed_count(core::GameState &state, int amount) {
+  // Future extension point: route through a replacement-aware dispatcher.
+  state.turn_stats.creatures_destroyed_this_turn += amount;
+}
+
 
 // --- HistoryCommand ---
 
@@ -229,6 +240,20 @@ void TransitionCommand::execute(core::GameState &state) {
     dest_vec->push_back(card);
   } else {
     dest_vec->insert(dest_vec->begin() + destination_index, card);
+  }
+
+  // If a creature moved from BATTLE to GRAVEYARD, count it as destroyed this turn
+  if (from_zone == core::Zone::BATTLE && to_zone == core::Zone::GRAVEYARD) {
+    try {
+      const auto &card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
+      if (card_db.count(card.card_id)) {
+        const auto &def = card_db.at(card.card_id);
+        if (def.type == core::CardType::CREATURE) {
+          // Use centralized helper so replacement rules can be applied consistently.
+          add_turn_destroyed_count(state, 1);
+        }
+      }
+    } catch (...) {}
   }
 
   // Phase 6: Event Dispatch (ZONE_ENTER)
@@ -894,6 +919,10 @@ void StatCommand::execute(core::GameState &state) {
     previous_value = state.turn_stats.creatures_played_this_turn;
     state.turn_stats.creatures_played_this_turn += amount;
     break;
+  case StatType::CREATURES_DESTROYED:
+    previous_value = state.turn_stats.creatures_destroyed_this_turn;
+    add_turn_destroyed_count(state, amount);
+    break;
   case StatType::SPELLS_CAST:
     previous_value = state.turn_stats.spells_cast_this_turn;
     state.turn_stats.spells_cast_this_turn += amount;
@@ -912,6 +941,9 @@ void StatCommand::invert(core::GameState &state) {
     break;
   case StatType::CREATURES_PLAYED:
     state.turn_stats.creatures_played_this_turn = previous_value;
+    break;
+  case StatType::CREATURES_DESTROYED:
+    state.turn_stats.creatures_destroyed_this_turn = previous_value;
     break;
   case StatType::SPELLS_CAST:
     state.turn_stats.spells_cast_this_turn = previous_value;

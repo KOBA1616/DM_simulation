@@ -861,6 +861,12 @@ void PipelineExecutor::handle_get_stat(
     result = (int)controller.battle_zone.size();
   } else if (stat_name == "GRAVEYARD_COUNT") {
     result = (int)controller.graveyard.size();
+  } else if (stat_name == "SUMMON_COUNT_THIS_TURN") {
+    // 新規: このターンに召喚(出した)クリーチャーの数を返す
+    result = state.turn_stats.creatures_played_this_turn;
+  } else if (stat_name == "DESTROY_COUNT_THIS_TURN") {
+    // 新規: このターンに破壊されたクリーチャーの数を返す
+    result = state.turn_stats.creatures_destroyed_this_turn;
   } else if (stat_name.rfind("OPPONENT_", 0) == 0) {
     // 再発防止: OPPONENT_* は相手プレイヤーの統計を返す。
     //   PlayerID は 0/1 の 2 値前提で相手を (1 - controller_id) で求める。
@@ -1348,6 +1354,8 @@ void PipelineExecutor::handle_modify(const Instruction &inst,
       s_type = StatCommand::StatType::CARDS_DISCARDED;
     else if (stat_name == "CREATURES_PLAYED")
       s_type = StatCommand::StatType::CREATURES_PLAYED;
+    else if (stat_name == "CREATURES_DESTROYED")
+      s_type = StatCommand::StatType::CREATURES_DESTROYED;
     else if (stat_name == "SPELLS_CAST")
       s_type = StatCommand::StatType::SPELLS_CAST;
     else

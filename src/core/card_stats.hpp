@@ -70,11 +70,15 @@ namespace dm::core {
         int cards_drawn_this_turn = 0;
         int cards_discarded_this_turn = 0;
         int creatures_played_this_turn = 0;
+        int creatures_destroyed_this_turn = 0;
         int spells_cast_this_turn = 0;
         int current_chain_depth = 0;
         bool mana_charged_by_player[2] = {false, false};  // DM Rule: max 1 mana charge per turn per player
         // 再発防止: OPPONENT_DRAW_COUNT 条件評価のために相手のドロー数をプレイヤー別に追跡する
         int player_draw_count[2] = {0, 0};  // プレイヤー別ドロー数 (player_draw_count[player_id])
+        // シールドブレイク統計: 試行と解決を分離して追跡
+        int shield_break_attempt_count_this_turn = 0;  // ブレイク試行回数（試行された回数）
+        int shield_break_resolved_count_this_turn = 0; // 実際にシールドが割れた回数（解決済み）
     };
 
 }

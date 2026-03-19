@@ -238,6 +238,7 @@ public:
     CARDS_DRAWN,
     CARDS_DISCARDED,
     CREATURES_PLAYED,
+    CREATURES_DESTROYED,
     SPELLS_CAST
   };
   StatType stat;

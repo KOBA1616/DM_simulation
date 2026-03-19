@@ -20,29 +20,10 @@
   - 実行時間: 55.49s
 - 備考: 全体が GREEN（ただし 1 件 xfail は既知の ORT バージョン差分で意図的に xfail）。
 
-### 実装済みの要素
-- PaymentPlan の evaluate_cost() 実装 (`src/engine/systems/mechanics/payment_plan.cpp`) ✅
-- payment_mode/reduction_id/payment_units フィールド実装 + pybind11 バインディング ✅
-- CostReductionEditor ウィジェット (`dm_toolkit/gui/editor/forms/parts/cost_reduction_editor.py`) ✅
-- cost_reductions[].id と backward-compatibility 処理 ✅
-- バリデーション機能 (`dm_toolkit/gui/editor/validators_shared.py`) ✅
-- PASSIVE 軽減の処理 (`dm_toolkit/payment.py`, `src/engine/systems/mechanics/cost_payment_system.cpp`) ✅
-- 統合テスト （`tests/test_integration_apply_move_active_payment.py`）✅
-- 関連ユニットテスト × 9 ファイル ✅
-
-### 実装アーカイブ（2026-03-17）
-
-詳細な実装ログはアーカイブ化しました。必要な場合は [archive/implementation_2026-03-17.md](archive/implementation_2026-03-17.md#L1) を参照してください。
-
-### 実装と計画の乖離
-実装状況の進捗（2026-03-18 更新）：
-1. ✅ **タスク1: 二重判定の解消** - RED/GREEN 完了
-   - ManaSystem::can_pay_cost() を CostPaymentSystem::can_pay_cost() へ統一
-   - 9件テスト（RED 2 + 既存 7）全て PASS
-2. ✅ タスク2: PASSIVE/COST_MODIFIER の統合仕様明確化 - 完了（2026-03-18）
-3. ✅ タスク3: payment_* フィールドのランタイム利用状況確認 - 完了（2026-03-18）
-4. ✅ タスク6: 保存時バリデーション（競合警告詳細） - 完了（2026-03-18）
-5. ✅ タスク7: 回帰テストマトリクス - RED/GREEN 完了（5件 PASS）
+### 実装済み（概要）
+- 多数の修正・テスト追加・運用スクリプトを完了しました。詳細な変更履歴はアーカイブに移動しています。
+  - 参照: [archive/](archive/) 内の該当ファイル（例: [archive/implementation_2026-03-17.md](archive/implementation_2026-03-17.md#L1)）を参照してください。
+  - 本ドキュメントは今後、未完了タスクに集中するため、完了済みの詳細は原則アーカイブへ移動します。
 
 
 ## 1. 未完了バックログ（2026-03-18 時点）
@@ -79,8 +60,23 @@
       - 初回実行結果（ローカル、2026-03-18）: `-n 5` を実行 → `Runs: 5, Failures: 5`（すべて失敗）。原因はハーネスのデフォルト nodeid 指定がクラス内テストを正しく参照していなかったためで、実装を修正しました。
       - 修正後の結果: `-n 3` を実行 → `Runs: 3, Failures: 0`（`logs/repro_card1/summary.json` を参照）。
       - 次アクション:
-        - ネイティブを最新化した状態で同試行（`repeat_native_loader` / `run_tests_shuffled`）を再実行する。
-        - 再現時は `dumps/`、`logs/native_repeat/`、`logs/shuffled3/` をセットで保存する。
+            - ネイティブを最新化した状態で同試行（`repeat_native_loader` / `run_tests_shuffled`）を再実行する。
+            - コード変更: `TransitionCommand::execute` の欠損インスタンス診断を強化しました（詳細スナップショットおよび機械可読ダンプを `logs/transition_snapshots/` に出力）。
+              - 注意: 変更は C++ 側のソースに加えたため、`dm_ai_module` のネイティブ再ビルドが必要です（CI runner または Visual Studio/MSVC 環境）。
+            - 再現時は `dumps/`、`logs/native_repeat/`、`logs/shuffled3/` をセットで保存する。
+                - 解析: 追加したスナップショットを素早く集約するためのパーサを `scripts/parse_transition_snapshots.py` として追加しました。
+                  - 使い方:
+                    ```powershell
+                    python scripts/parse_transition_snapshots.py -i logs/transition_snapshots -o logs/transition_snapshots/summary.json
+                    ```
+                  - 出力: `logs/transition_snapshots/summary.json`（ファイル一覧＋集計）
+                - ネイティブ再現支援スクリプト: `scripts/run_native_repro_windows.ps1` を追加しました（Windows 用）。
+                  - 概要: 任意にネイティブをビルドし、`scripts/repeat_native_loader.py` を proc-dump でラップして反復実行します。DryRun オプションで実行コマンドのプレビューができます。
+                  - 使い方（DryRun で確認）:
+                    ```powershell
+                    powershell -File scripts/run_native_repro_windows.ps1 -DryRun -RunCount 100 -LogDir logs/native_repro
+                    ```
+                  - 注意: 実行には CMake / MSVC（または互換ツールチェイン）と ProcDump が必要です。CI またはビルド可能マシンでの実行を推奨します。
 
 ### P1（短期）
 
