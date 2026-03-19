@@ -919,6 +919,10 @@ void StatCommand::execute(core::GameState &state) {
     previous_value = state.turn_stats.creatures_played_this_turn;
     state.turn_stats.creatures_played_this_turn += amount;
     break;
+  case StatType::SUMMONS:
+    previous_value = state.turn_stats.summon_count_this_turn;
+    state.turn_stats.summon_count_this_turn += amount;
+    break;
   case StatType::CREATURES_DESTROYED:
     previous_value = state.turn_stats.creatures_destroyed_this_turn;
     add_turn_destroyed_count(state, amount);
@@ -945,6 +949,9 @@ void StatCommand::invert(core::GameState &state) {
     break;
   case StatType::CREATURES_PLAYED:
     state.turn_stats.creatures_played_this_turn = previous_value;
+    break;
+  case StatType::SUMMONS:
+    state.turn_stats.summon_count_this_turn = previous_value;
     break;
   case StatType::CREATURES_DESTROYED:
     state.turn_stats.creatures_destroyed_this_turn = previous_value;

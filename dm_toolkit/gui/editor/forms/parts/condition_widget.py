@@ -33,130 +33,10 @@ CONDITION_TEMPLATES = {
     },
 }
 
-# Configuration for Condition UI logic
-CONDITION_UI_CONFIG = {
-    "NONE": {
-        "show_val": False,
-        "show_str": False,
-        "label_val": "Value",
-        "label_str": "String"
-    },
-    "MANA_ARMED": {
-        "show_val": True,
-        "show_str": True, # Usually specifies civ
-        "label_val": "Count",
-        "label_str": "Civilization"
-    },
-    "SHIELD_COUNT": {
-        "show_val": True,
-        "show_str": False,
-        "label_val": "Count",
-        "label_str": "Comparison (Optional)"
-    },
-    "CIVILIZATION_MATCH": {
-        "show_val": False,
-        "show_str": True,
-        "label_val": "Value",
-        "label_str": "Civilization"
-    },
-    "OPPONENT_PLAYED_WITHOUT_MANA": {
-        "show_val": False,
-        "show_str": False,
-        "label_val": "Value",
-        "label_str": "String"
-    },
-    "PLAYED_WITHOUT_MANA_TARGET": {
-        "show_val": False,
-        "show_str": False,
-        "label_val": "Value",
-        "label_str": "String"
-    },
-    "OPPONENT_DRAW_COUNT": {
-        "show_val": True,
-        "show_str": False,
-        "label_val": "Count (>=)",
-        "label_str": "String"
-    },
-    "DURING_YOUR_TURN": {
-        "show_val": False,
-        "show_str": False,
-        "label_val": "Value",
-        "label_str": "String"
-    },
-    "DURING_OPPONENT_TURN": {
-        "show_val": False,
-        "show_str": False,
-        "label_val": "Value",
-        "label_str": "String"
-    },
-    "MANA_CIVILIZATION_COUNT": {
-        "show_val": True,
-        "show_str": False,
-        "show_op": True,
-        "label_val": "文明数",
-        "label_str": "String",
-        "label_op": "Operator"
-    },
-    "FIRST_ATTACK": {
-        "show_val": False,
-        "show_str": False,
-        "label_val": "Value",
-        "label_str": "String"
-    },
-    "EVENT_FILTER_MATCH": {
-        "show_val": False,
-        "show_str": False,
-        "show_filter": True,
-        "label_val": "Value",
-        "label_str": "String"
-    },
-    # Expanded Types
-    "COMPARE_STAT": {
-        "show_val": True,
-        "show_str": True,
-        "show_stat_key": True,
-        "show_op": True,
-        "label_val": "Threshold",
-        "label_str": "String Value (if applicable)",
-        "label_stat_key": "Stat Key (e.g. MY_SHIELD_COUNT)",
-        "label_op": "Operator"
-    },
-    "COMPARE_INPUT": {
-        "show_val": True,
-        "show_str": False,
-        "show_op": True,
-        "label_val": "Numeric Threshold",
-        "label_str": "String Value (if applicable)",
-        "label_op": "Operator"
-    },
-    "CARDS_MATCHING_FILTER": {
-        "show_val": True,
-        "show_str": True,
-        "show_op": True,
-        "show_filter": True,
-        "label_val": "Count Threshold",
-        "label_str": "String Value (if applicable)",
-        "label_op": "Operator"
-    },
-    "DECK_EMPTY": {
-        "show_val": False,
-        "show_str": False,
-        "label_val": "Value",
-        "label_str": "String"
-    },
-    "CUSTOM": {
-        "show_type_edit": True,
-        "show_val": True,
-        "show_str": True,
-        "show_stat_key": True,
-        "show_op": True,
-        "show_filter": True,
-        "label_val": "Value",
-        "label_str": "String",
-        "label_stat_key": "Stat Key",
-        "label_op": "Operator"
-    }
-}
+# Legacy per-type visibility dict removed. Use `schema_config.get_condition_form_fields`
+# and `CardTextResources` as the single source of truth for condition field
+# visibility and labels. This reduces duplication and ensures the editor UI
+# follows the canonical schema.
 
 # 再発防止: COMPARE_STAT の候補キーは CardTextResources 側の単一定義のみ参照すること。
 COMMON_COMPARE_STAT_KEYS = list(CardTextResources.COMPARE_STAT_EDITOR_KEYS)
@@ -346,24 +226,24 @@ class ConditionEditorWidget(QGroupBox):
         # dataChanged is connected directly
 
     def update_ui_visibility(self, condition_type):
-        # Prefer declarative schema from schema_config; fall back to legacy CONDITION_UI_CONFIG
+        # Use declarative schema to decide which UI pieces to show. Labels are
+        # simple fallbacks; translations are provided via `tr()`.
         fields = get_condition_form_fields(condition_type)
 
-        # Determine visibility by presence of canonical field keys
         show_type_edit = ('type' in fields) or (condition_type == 'CUSTOM')
-        show_val = ('value' in fields) or CONDITION_UI_CONFIG.get(condition_type, {}).get('show_val', True)
-        label_val = CONDITION_UI_CONFIG.get(condition_type, {}).get('label_val', 'Value')
+        show_val = ('value' in fields)
+        label_val = tr('Value')
 
-        show_str = ('str_val' in fields) or CONDITION_UI_CONFIG.get(condition_type, {}).get('show_str', True)
-        label_str = CONDITION_UI_CONFIG.get(condition_type, {}).get('label_str', 'String Value')
+        show_str = ('str_val' in fields)
+        label_str = tr('String Value')
 
-        show_stat_key = ('stat_key' in fields) or CONDITION_UI_CONFIG.get(condition_type, {}).get('show_stat_key', False)
-        label_stat_key = CONDITION_UI_CONFIG.get(condition_type, {}).get('label_stat_key', 'Stat Key')
+        show_stat_key = ('stat_key' in fields)
+        label_stat_key = tr('Stat Key')
 
-        show_op = ('op' in fields) or CONDITION_UI_CONFIG.get(condition_type, {}).get('show_op', False)
-        label_op = CONDITION_UI_CONFIG.get(condition_type, {}).get('label_op', 'Operator')
+        show_op = ('op' in fields)
+        label_op = tr('Operator')
 
-        show_filter = ('filter' in fields) or CONDITION_UI_CONFIG.get(condition_type, {}).get('show_filter', False)
+        show_filter = ('filter' in fields)
 
         self.lbl_type_edit.setVisible(show_type_edit)
         self.type_edit.setVisible(show_type_edit)
@@ -487,24 +367,25 @@ class ConditionEditorWidget(QGroupBox):
 
         # Include other fields if visible or generic
         combo_selection = self.cond_type_combo.currentData()
-        config = cast(dict[str, Any], CONDITION_UI_CONFIG.get(combo_selection, CONDITION_UI_CONFIG["CUSTOM"]))
+        fields = get_condition_form_fields(combo_selection)
+        is_custom = (combo_selection == "CUSTOM")
 
-        if config.get("show_str", False) or combo_selection == "CUSTOM":
+        if ('str_val' in fields) or is_custom:
             str_val = self.cond_str_edit.text()
             if str_val:
                 data['str_val'] = str_val
 
-        if config.get("show_stat_key", False) or combo_selection == "CUSTOM":
+        if ('stat_key' in fields) or is_custom:
             stat_key = self.stat_key_combo.currentText()
             if stat_key:
                 data['stat_key'] = stat_key
 
-        if config.get("show_op", False) or combo_selection == "CUSTOM":
+        if ('op' in fields) or is_custom:
             op = self.op_combo.currentText()
             if op:
                 data['op'] = op
 
-        if (config.get("show_filter", False) or combo_selection == "CUSTOM") and self.cond_filter_area.isVisible():
+        if (('filter' in fields) or is_custom) and self.cond_filter_area.isVisible():
             try:
                 fs = self.cond_filter_widget.get_filter_spec()
                 data['filter'] = filterspec_to_dict(fs)
@@ -565,27 +446,27 @@ class ConditionEditorWidget(QGroupBox):
             data = self.get_data()
 
         ctype = data.get('type', 'NONE')
-        config = CONDITION_UI_CONFIG.get(ctype, CONDITION_UI_CONFIG.get('CUSTOM', {}))
+        fields = get_condition_form_fields(ctype)
 
         errors: list[str] = []
 
-        if config.get('show_val', False):
+        if 'value' in fields:
             # Treat missing key as error; zero is allowed.
             if 'value' not in data or data.get('value') is None:
                 errors.append('missing value')
 
         # `str_val` is often optional (label may state "if applicable"); do not
-        # require it here unless a stricter rule is added to the config.
+        # require it here unless a stricter rule is added to the schema.
 
-        if config.get('show_stat_key', False):
+        if 'stat_key' in fields:
             if 'stat_key' not in data or not data.get('stat_key'):
                 errors.append('missing stat_key')
 
-        if config.get('show_op', False):
+        if 'op' in fields:
             if 'op' not in data or not data.get('op'):
                 errors.append('missing operator')
 
-        if config.get('show_filter', False):
+        if 'filter' in fields:
             if 'filter' not in data or not isinstance(data.get('filter'), dict):
                 errors.append('missing filter')
 

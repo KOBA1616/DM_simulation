@@ -140,6 +140,9 @@ namespace dm::engine::rules {
             else if (key == "OPPONENT_SHIELD_COUNT") left_value = (int)opp.shield_zone.size();
             else if (key == "MY_BATTLE_ZONE_COUNT") left_value = (int)self.battle_zone.size();
             else if (key == "OPPONENT_BATTLE_ZONE_COUNT") left_value = (int)opp.battle_zone.size();
+            else if (key == "SUMMON_COUNT_THIS_TURN") left_value = state.turn_stats.summon_count_this_turn;
+            else if (key == "DESTROY_COUNT_THIS_TURN") left_value = state.turn_stats.creatures_destroyed_this_turn;
+            else if (key == "MANA_SET_THIS_TURN") left_value = state.turn_stats.mana_set_this_turn;
 
             // Operator
             if (condition.op == ">") return left_value > condition.value;

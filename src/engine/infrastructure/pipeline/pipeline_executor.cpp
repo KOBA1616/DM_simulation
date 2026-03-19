@@ -862,14 +862,34 @@ void PipelineExecutor::handle_get_stat(
   } else if (stat_name == "GRAVEYARD_COUNT") {
     result = (int)controller.graveyard.size();
   } else if (stat_name == "SUMMON_COUNT_THIS_TURN") {
-    // 新規: このターンに召喚(出した)クリーチャーの数を返す
-    result = state.turn_stats.creatures_played_this_turn;
+    // このターンに召喚したクリーチャーの数を返す（踏み倒し等は含めない）
+    result = state.turn_stats.summon_count_this_turn;
   } else if (stat_name == "DESTROY_COUNT_THIS_TURN") {
     // 新規: このターンに破壊されたクリーチャーの数を返す
     result = state.turn_stats.creatures_destroyed_this_turn;
   } else if (stat_name == "MANA_SET_THIS_TURN") {
     // 新規: このターンにマナに置かれたカードの数を返す
     result = state.turn_stats.mana_set_this_turn;
+  } else if (stat_name == "SHIELD_BREAK_ATTEMPT_THIS_TURN") {
+    // 新規: このターンにシールド割りが試行された回数を返す
+    result = state.turn_stats.shield_break_attempt_count_this_turn;
+  } else if (stat_name == "SHIELD_BREAK_RESOLVED_THIS_TURN") {
+    // 新規: このターンに実際にシールドが割れた回数を返す
+    result = state.turn_stats.shield_break_resolved_count_this_turn;
+  } else if (stat_name.rfind("MY_", 0) == 0) {
+    // Support MY_* aliases used by the editor (map to controller stats)
+    std::string my_stat = stat_name.substr(3); // strip 'MY_'
+    if (my_stat == "MANA_COUNT") {
+      result = (int)controller.mana_zone.size();
+    } else if (my_stat == "CREATURE_COUNT" || my_stat == "BATTLE_ZONE_COUNT") {
+      result = (int)controller.battle_zone.size();
+    } else if (my_stat == "SHIELD_COUNT") {
+      result = (int)controller.shield_zone.size();
+    } else if (my_stat == "HAND_COUNT") {
+      result = (int)controller.hand.size();
+    } else if (my_stat == "GRAVEYARD_COUNT") {
+      result = (int)controller.graveyard.size();
+    }
   } else if (stat_name.rfind("OPPONENT_", 0) == 0) {
     // 再発防止: OPPONENT_* は相手プレイヤーの統計を返す。
     //   PlayerID は 0/1 の 2 値前提で相手を (1 - controller_id) で求める。
@@ -1357,6 +1377,8 @@ void PipelineExecutor::handle_modify(const Instruction &inst,
       s_type = StatCommand::StatType::CARDS_DISCARDED;
     else if (stat_name == "CREATURES_PLAYED")
       s_type = StatCommand::StatType::CREATURES_PLAYED;
+    else if (stat_name == "SUMMONS")
+      s_type = StatCommand::StatType::SUMMONS;
     else if (stat_name == "CREATURES_DESTROYED")
       s_type = StatCommand::StatType::CREATURES_DESTROYED;
     else if (stat_name == "SPELLS_CAST")

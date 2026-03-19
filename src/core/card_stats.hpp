@@ -70,6 +70,9 @@ namespace dm::core {
         int cards_drawn_this_turn = 0;
         int cards_discarded_this_turn = 0;
         int creatures_played_this_turn = 0;
+        // 召喚 (サモン) のカウント: 正規の召喚行為のみをカウントする。
+        // 踏み倒しや特殊な配置は別扱いとするため、このフィールドを分離します。
+        int summon_count_this_turn = 0;
         int creatures_destroyed_this_turn = 0;
         int spells_cast_this_turn = 0;
         int current_chain_depth = 0;

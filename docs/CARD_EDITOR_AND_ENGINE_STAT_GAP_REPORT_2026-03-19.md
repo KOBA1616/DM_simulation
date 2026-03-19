@@ -218,31 +218,34 @@ REDで保証する項目:
 
 -### P0
 
-- [ ] `TurnStats` に `STAT_SUMMON_COUNT_T` を追加
+- [x] `TurnStats` に `STAT_SUMMON_COUNT_T` を追加（2026-03-19: `summon_count_this_turn` を追加、パイプライン/StatCommand に対応）
 - [x] `TurnStats` に `STAT_MANA_SET_T` を追加（2026-03-19: `mana_set_this_turn` を追加、パイプライン/StatCommand に対応）
 - [x] `TurnStats` に `STAT_SHIELD_BREAK_*` を追加（2026-03-19: `shield_break_attempt_count_this_turn` と `shield_break_resolved_count_this_turn` を追加）
 - [x] `TurnStats` に `STAT_CREATURE_DESTROYED_T` を追加（2026-03-19: `creatures_destroyed_this_turn` を追加し、破壊遷移での加算を実装）
 - [x] 置換効果適用後のみ統計更新する共通関数を導入（2026-03-19: `stat_update.hpp` を追加し `add_turn_destroyed_count` をエクスポート）
   - [x] 基本契約検証: 置換処理（`g_neo_activated`）が破壊カウント加算より前に実行されることを `tests/test_replacement_stat_semantics.py` で検証（2026-03-19）
-- [ ] `tests/test_replacement_stat_semantics.py` を追加し、破壊置換/ブレイク置換ケースを固定
-- [ ] `COMPARE_STAT` の対応キーをレジストリ駆動に変更
+- [x] `tests/test_replacement_stat_semantics.py` を追加し、破壊置換/ブレイク置換ケースを固定（2026-03-19）
+- [x] `COMPARE_STAT` の対応キーをレジストリ駆動に変更（2026-03-19: `SUMMON_COUNT_THIS_TURN` / `DESTROY_COUNT_THIS_TURN` / `MANA_SET_THIS_TURN` を `CompareStatEvaluator` で評価するよう追加）
 
 
 ### P1
 
-- [ ] エディタの条件/統計キー定義を単一ファイルへ統合
+  - [x] エディタの条件/統計キー定義を単一ファイルへ統合（2026-03-19: `tests/test_condition_editor_single_source.py` を追加し `ConditionEditorWidget` が `CardTextResources` を参照することを契約テストで検証）
 - [x] エディタの条件/統計キー定義を単一ファイルへ統合（2026-03-19: `COMPARE_STAT` 候補とエディタのクイック統計を `CardTextResources` に集約）
 - [x] `STAT_KEY_MAP` を実装キーと完全同期（2026-03-19: `COMPARE_STAT` 候補キーを共通定義化し、`MY_*` ラベル欠落を解消）
-- [ ] `QUERY(GET_STAT)` の対応統計を拡張
-- [x] `QUERY(GET_STAT)` の対応統計を拡張（2026-03-19: `SUMMON_COUNT_THIS_TURN` を追加、エディタ/エンジン双方の契約テストを追加）
+  - [x] `QUERY(GET_STAT)` の対応統計を拡張（2026-03-19: `SUMMON_COUNT_THIS_TURN` を追加、エディタ/エンジン双方の契約テストを追加）
+  - [x] `QUERY(GET_STAT)` の `MY_*` エイリアス対応を追加（2026-03-19: `pipeline_executor` に `MY_` プレフィックスのマッピングを追加し、`tests/test_query_get_stat_my_keys.py` を追加）
 - [x] `DESTROY_COUNT_THIS_TURN` を追加（2026-03-19: エディタ/エンジン双方の契約テスト `tests/test_query_get_stat_destroyed.py` を追加）
 - [x] `tests/test_condition_stat_key_registry.py` を追加（2026-03-19: キー同期/ラベル定義の契約テストを追加）
 
 ### P2
 
-- [ ] `data/cards.json` に対する「未知統計キー監査」スクリプト追加
-- [ ] cardsデータ移行手順書（差分検証手順付き）を docs 化
-- [ ] CIに統計契約テストジョブを追加
+ - [x] `data/cards.json` に対する「未知統計キー監査」スクリプト追加（2026-03-19: `tools/stat_key_audit.py` を追加）
+ - [x] cardsデータ移行手順書（差分検証手順付き）を docs 化（2026-03-19: `docs/cards_data_migration.md` を追加）
+- [x] CIに統計契約テストジョブを追加（2026-03-19: GitHub Actionsワークフロー `stat-contract-tests` を追加）
+  - [x] CIで `tools/stat_key_audit.py` を実行するステップを追加（2026-03-19）
+
+追記（2026-03-19）: TurnStats への直接書き込み監査を実施しました。契約テスト `tests/test_turnstats_write_audit.py` を追加し、現在のコードベースでは未承認の直接書き込みは検出されませんでした。引き続き新規実装時にはこのテストを通すことを必須としてください。
 
 ---
 
