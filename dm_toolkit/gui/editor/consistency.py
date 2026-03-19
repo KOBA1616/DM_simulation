@@ -6,6 +6,7 @@ Detects common duplication or conflicting settings when saving GUI forms
 to effect dictionaries used by text generation.
 """
 from typing import Any, Dict, List, Union
+from dm_toolkit.gui.editor.text_resources import CardTextResources
 
 
 def format_integrity_warnings(warnings: List[str]) -> str:
@@ -230,6 +231,17 @@ def validate_command_list(
                             f"不一致: {loc} 旧形式選択肢テキスト数 ({len(label_lines)}) と"
                             f" ブランチ数 ({branch_count}) が一致しません"
                         )
+
+        # 7) STAT コマンド: str_param に指定された統計キーがエディタ側の翻訳/定義に存在するか検査
+        if cmd_type == "STAT":
+            stat_key = (params.get("str_param") or "").strip()
+            if not stat_key:
+                warnings.append(f"未設定: {loc} に Stat Key (str_param) が設定されていません")
+            else:
+                if stat_key not in CardTextResources.STAT_KEY_MAP:
+                    warnings.append(
+                        f"未定義: {loc} の Stat Key '{stat_key}' は CardTextResources.STAT_KEY_MAP に未定義です"
+                    )
 
         # 4) MOVE 系チェック: 移動元ゾーンとフィルターゾーンの矛盾
         if cmd_type == "TRANSITION":

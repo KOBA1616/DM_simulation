@@ -679,6 +679,12 @@ void FlowCommand::execute(core::GameState &state) {
       evt.context["instance_id"] = new_value;
       state.event_dispatcher(evt);
     }
+    // Update attacked_this_turn counter for the active player
+    // Preserve prior turn stats for undo and restore
+    previous_turn_stats = state.turn_stats;
+    // インクリメント: スカラー互換とプレイヤー別配列の両方を更新
+    state.turn_stats.attacked_this_turn += 1;
+    state.turn_stats.attacked_this_turn_by_player[state.active_player_id] += 1;
     break;
   case FlowType::SET_ATTACK_TARGET:
     previous_value = state.current_attack.target_instance_id;
@@ -778,6 +784,8 @@ void FlowCommand::invert(core::GameState &state) {
     break;
   case FlowType::SET_ATTACK_SOURCE:
     state.current_attack.source_instance_id = previous_value;
+    // Restore turn stats modified during execute (if any)
+    state.turn_stats = previous_turn_stats;
     break;
   case FlowType::SET_ATTACK_TARGET:
     state.current_attack.target_instance_id = previous_value;

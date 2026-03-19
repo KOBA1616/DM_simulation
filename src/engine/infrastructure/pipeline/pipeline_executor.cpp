@@ -870,6 +870,9 @@ void PipelineExecutor::handle_get_stat(
   } else if (stat_name == "MANA_SET_THIS_TURN") {
     // 新規: このターンにマナに置かれたカードの数を返す
     result = state.turn_stats.mana_set_this_turn;
+  } else if (stat_name == "ATTACKED_THIS_TURN") {
+    // このターンに攻撃した回数/フラグを返す
+    result = state.turn_stats.attacked_this_turn;
   } else if (stat_name == "SHIELD_BREAK_ATTEMPT_THIS_TURN") {
     // 新規: このターンにシールド割りが試行された回数を返す
     result = state.turn_stats.shield_break_attempt_count_this_turn;
@@ -889,6 +892,9 @@ void PipelineExecutor::handle_get_stat(
       result = (int)controller.hand.size();
     } else if (my_stat == "GRAVEYARD_COUNT") {
       result = (int)controller.graveyard.size();
+    } else if (my_stat == "ATTACKED_THIS_TURN") {
+      // プレイヤー別攻撃回数を返す
+      result = state.turn_stats.attacked_this_turn_by_player[controller_id];
     }
   } else if (stat_name.rfind("OPPONENT_", 0) == 0) {
     // 再発防止: OPPONENT_* は相手プレイヤーの統計を返す。
@@ -906,6 +912,9 @@ void PipelineExecutor::handle_get_stat(
       result = (int)opp.hand.size();
     } else if (opp_stat == "GRAVEYARD_COUNT") {
       result = (int)opp.graveyard.size();
+    } else if (opp_stat == "ATTACKED_THIS_TURN") {
+      // 相手側のプレイヤー別攻撃回数を返す
+      result = state.turn_stats.attacked_this_turn_by_player[opp_id];
     }
   }
 

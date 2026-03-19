@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from dm_toolkit.gui.editor.schema_def import CommandSchema, FieldSchema, FieldType, register_schema
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.consts import (
     QUERY_MODES, TargetScope, DURATION_TYPES, TARGET_SCOPES,
     MUTATION_TYPES, EFFECT_IDS, APPLY_MODIFIER_OPTIONS, MUTATION_KINDS_FOR_MUTATE,
@@ -485,8 +486,10 @@ def register_all_schemas():
     ]))
 
     # STAT
+    # STAT: use SELECT options driven from CardTextResources to prevent unknown keys
+    stat_options = sorted(list(CardTextResources.STAT_KEY_MAP.keys()))
     register_schema(CommandSchema("STAT", [
-        FieldSchema("str_param", tr("Stat Key"), FieldType.STRING),
+        FieldSchema("str_param", tr("Stat Key"), FieldType.SELECT, options=stat_options),
         FieldSchema("amount", tr("Value to Add"), FieldType.INT, default=1)
     ]))
 

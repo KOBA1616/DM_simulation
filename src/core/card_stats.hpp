@@ -84,6 +84,11 @@ namespace dm::core {
         int shield_break_resolved_count_this_turn = 0; // 実際にシールドが割れた回数（解決済み）
         // マナセット統計: このターンにマナゾーンへ置かれたカードの総数（効果で置かれた分も含む）
         int mana_set_this_turn = 0;
+        // このターンに攻撃を行った回数（またはフラグとして 0/1 を扱う）
+        // 互換性維持のため従来のスカラーを残しつつ、プレイヤー別カウントを追加
+        int attacked_this_turn = 0;
+        // プレイヤー別に攻撃回数を追跡する配列 (player_id 0/1)
+        int attacked_this_turn_by_player[2] = {0, 0};
     };
 
 }

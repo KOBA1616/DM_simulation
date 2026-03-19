@@ -344,6 +344,9 @@ class CardTextResources:
         "MANA_SET_THIS_TURN",
         "SHIELD_BREAK_ATTEMPT_THIS_TURN",
         "SHIELD_BREAK_RESOLVED_THIS_TURN",
+        "ATTACKED_THIS_TURN",
+        "MY_ATTACKED_THIS_TURN",
+        "OPPONENT_ATTACKED_THIS_TURN",
     )
 
     # Quick stats used by condition/query UIs for common measurements
@@ -379,6 +382,9 @@ class CardTextResources:
         "MANA_SET_THIS_TURN": ("このターンにマナに置かれたカード数", "枚"),
         "SHIELD_BREAK_ATTEMPT_THIS_TURN": ("このターンに行われたシールド割りの試行回数", "回"),
         "SHIELD_BREAK_RESOLVED_THIS_TURN": ("このターンに実際にシールドが割れた回数", "回"),
+        "ATTACKED_THIS_TURN": ("このターンに攻撃した回数", "回"),
+        "MY_ATTACKED_THIS_TURN": ("自分がこのターンに攻撃した回数", "回"),
+        "OPPONENT_ATTACKED_THIS_TURN": ("相手がこのターンに攻撃した回数", "回"),
     }
 
     # Short aliases for natural language rendering of common zone transitions

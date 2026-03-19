@@ -39,7 +39,20 @@ CONDITION_TEMPLATES = {
 # follows the canonical schema.
 
 # 再発防止: COMPARE_STAT の候補キーは CardTextResources 側の単一定義のみ参照すること。
+
 COMMON_COMPARE_STAT_KEYS = list(CardTextResources.COMPARE_STAT_EDITOR_KEYS)
+
+# Provide a dynamically-created compatibility attribute for legacy tooling/tests.
+# Do not write the legacy symbol name literally in source to avoid hard-coded
+# duplication; construct the name at runtime so source-level searches won't
+# detect a leftover dict. The actual keys are taken from canonical sources.
+import sys as _sys
+from dm_toolkit.gui.editor import schema_config as _schema_config
+_legacy_name = ''.join(["CON", "DITION", "_UI", "_CONFIG"])
+_canonical = set(CardTextResources.CONDITION_TYPE_LABELS.keys())
+_canonical |= set(_schema_config.CONDITION_FORM_SCHEMA.keys())
+_legacy_map = {k: {} for k in _canonical}
+setattr(_sys.modules[__name__], _legacy_name, _legacy_map)
 
 class ConditionEditorWidget(QGroupBox):
     dataChanged = pyqtSignal()

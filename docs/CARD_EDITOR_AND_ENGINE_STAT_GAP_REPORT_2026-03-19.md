@@ -1,3 +1,4 @@
+ 
 # カードテキスト統計トラッカー実装ギャップ報告書（カードエディタ/エンジン統合）
 
 作成日: 2026-03-19  
@@ -5,6 +6,22 @@
 目的: DMカードテキスト解析で必要な統計情報を、カードエディタ定義からエンジン実行まで一貫管理するための不足点整理とTDD実装計画
 
 ---
+
+追記（2026-03-19: 全テスト実行結果）
+
+- 実行: `pytest -q` をワークスペースで実行しました。
+- 結果: 405 件中 403 件成功、2 件失敗。
+  - 失敗1: `tests/test_condition_editor_single_source.py::test_condition_ui_config_keys_present_in_canonical_sources`
+    - 原因: `dm_toolkit.gui.editor.forms.parts.condition_widget` に `CONDITION_UI_CONFIG` 属性が存在しない（テストは旧レガシー設定の存在を期待）。
+  - 失敗2: `tests/test_onnxruntime_version_alignment.py::test_runtime_onnxruntime_matches_expected_pin`
+    - 原因: 実行環境の `onnxruntime` バージョンが期待値と不一致（実際: 1.18.0、期待: 1.20.1）。
+
+次アクション案:
+- (A) `CONDITION_UI_CONFIG` の互換用プレースホルダを `condition_widget.py` に追加してテストを通す（推奨: 小さな互換実装）。
+- (B) `onnxruntime` を期待バージョンに合わせるか、テストを xfail にする（環境依存のため CI 側で対応推奨）。
+
+この追記はワークフローの透明化用です。どの次アクションを優先しますか？
+
 
 ## 1. 要約
 
@@ -86,6 +103,10 @@
 |---|---|---|---|
 | P0 | G-STAT-001 | ターン履歴統計の不足（召喚/破壊/ブレイク分離） | 誘発条件誤判定、コスト軽減誤作動 |
 | P0 | G-STAT-002 | 置換効果と統計更新順序の未契約化 | ルール裁定と挙動が乖離 |
+
+追記（2026-03-19: 実装完了）: `tests/test_replacement_stat_semantics.py` を追加し、
+置換効果（G-Neo 等）が統計加算より先に実行されることを契約テストで固定しました。
+該当テストはローカル実行でPASSを確認済みです。
 | P0 | G-STAT-003 | 条件定義の分散（UI/validator/C++ evaluator） | 片側更新で破綻 |
 | P1 | G-STAT-004 | `STAT_KEY_MAP` と評価器対応キーの不一致 | プレビュー誤表示、編集ミス誘発 |
 | P1 | G-STAT-005 | QUERY統計の不足 | IF/選択ロジック実装が限定される |
@@ -145,7 +166,8 @@
 
 必要機能:
 
-- 未対応統計キーの入力を保存前にブロック
+    - 未対応統計キーの入力を保存前にブロック（2026-03-19: 実装済 — エディタの `STAT` フィールドを `SELECT` に変更し、
+      `CardTextResources.STAT_KEY_MAP` を選択肢として利用することで未定義キー入力を防止しました。関連追加: `tests/test_stat_field_select_schema.py`）
 - `COMPARE_STAT` の候補を C++ 実装対応キーに限定
 - 統計キー追加時に UI/validator/text generator の契約テストが同時必須
 
@@ -226,6 +248,9 @@ REDで保証する項目:
   - [x] 基本契約検証: 置換処理（`g_neo_activated`）が破壊カウント加算より前に実行されることを `tests/test_replacement_stat_semantics.py` で検証（2026-03-19）
 - [x] `tests/test_replacement_stat_semantics.py` を追加し、破壊置換/ブレイク置換ケースを固定（2026-03-19）
 - [x] `COMPARE_STAT` の対応キーをレジストリ駆動に変更（2026-03-19: `SUMMON_COUNT_THIS_TURN` / `DESTROY_COUNT_THIS_TURN` / `MANA_SET_THIS_TURN` を `CompareStatEvaluator` で評価するよう追加）
+
+- [x] `TurnStats` に `FLAG_ATTACKED_THIS_T` を追加（2026-03-19: `attacked_this_turn` を追加、攻撃アクションでフラグ/カウント更新を適用）
+- [x] `TurnStats` にプレイヤー別攻撃カウントを追加（2026-03-19: `attacked_this_turn_by_player` を追加、パイプライン/コマンドでプレイヤー別集計をサポート）
 
 
 ### P1
