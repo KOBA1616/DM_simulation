@@ -79,6 +79,8 @@ namespace dm::core {
         // シールドブレイク統計: 試行と解決を分離して追跡
         int shield_break_attempt_count_this_turn = 0;  // ブレイク試行回数（試行された回数）
         int shield_break_resolved_count_this_turn = 0; // 実際にシールドが割れた回数（解決済み）
+        // マナセット統計: このターンにマナゾーンへ置かれたカードの総数（効果で置かれた分も含む）
+        int mana_set_this_turn = 0;
     };
 
 }

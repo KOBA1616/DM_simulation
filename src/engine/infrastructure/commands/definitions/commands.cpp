@@ -927,6 +927,10 @@ void StatCommand::execute(core::GameState &state) {
     previous_value = state.turn_stats.spells_cast_this_turn;
     state.turn_stats.spells_cast_this_turn += amount;
     break;
+  case StatType::MANA_SET:
+    previous_value = state.turn_stats.mana_set_this_turn;
+    state.turn_stats.mana_set_this_turn += amount;
+    break;
   }
 }
 
@@ -947,6 +951,9 @@ void StatCommand::invert(core::GameState &state) {
     break;
   case StatType::SPELLS_CAST:
     state.turn_stats.spells_cast_this_turn = previous_value;
+    break;
+  case StatType::MANA_SET:
+    state.turn_stats.mana_set_this_turn = previous_value;
     break;
   }
 }

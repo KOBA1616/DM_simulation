@@ -867,6 +867,9 @@ void PipelineExecutor::handle_get_stat(
   } else if (stat_name == "DESTROY_COUNT_THIS_TURN") {
     // 新規: このターンに破壊されたクリーチャーの数を返す
     result = state.turn_stats.creatures_destroyed_this_turn;
+  } else if (stat_name == "MANA_SET_THIS_TURN") {
+    // 新規: このターンにマナに置かれたカードの数を返す
+    result = state.turn_stats.mana_set_this_turn;
   } else if (stat_name.rfind("OPPONENT_", 0) == 0) {
     // 再発防止: OPPONENT_* は相手プレイヤーの統計を返す。
     //   PlayerID は 0/1 の 2 値前提で相手を (1 - controller_id) で求める。

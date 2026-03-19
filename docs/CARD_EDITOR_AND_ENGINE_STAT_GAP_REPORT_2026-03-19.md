@@ -218,7 +218,8 @@ REDで保証する項目:
 
 -### P0
 
-- [ ] `TurnStats` に `STAT_SUMMON_COUNT_T` / `STAT_MANA_SET_T` を追加
+- [ ] `TurnStats` に `STAT_SUMMON_COUNT_T` を追加
+- [x] `TurnStats` に `STAT_MANA_SET_T` を追加（2026-03-19: `mana_set_this_turn` を追加、パイプライン/StatCommand に対応）
 - [x] `TurnStats` に `STAT_SHIELD_BREAK_*` を追加（2026-03-19: `shield_break_attempt_count_this_turn` と `shield_break_resolved_count_this_turn` を追加）
 - [x] `TurnStats` に `STAT_CREATURE_DESTROYED_T` を追加（2026-03-19: `creatures_destroyed_this_turn` を追加し、破壊遷移での加算を実装）
 - [x] 置換効果適用後のみ統計更新する共通関数を導入（2026-03-19: `stat_update.hpp` を追加し `add_turn_destroyed_count` をエクスポート）

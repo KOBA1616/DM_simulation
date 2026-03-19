@@ -341,6 +341,7 @@ class CardTextResources:
         "OPPONENT_BATTLE_ZONE_COUNT",
         "SUMMON_COUNT_THIS_TURN",
         "DESTROY_COUNT_THIS_TURN",
+        "MANA_SET_THIS_TURN",
     )
 
     # Quick stats used by condition/query UIs for common measurements
@@ -373,6 +374,7 @@ class CardTextResources:
         "OPPONENT_BATTLE_ZONE_COUNT": ("相手のバトルゾーンのカード", "枚"),
         "CARDS_DRAWN_THIS_TURN": ("このターンに引いたカード", "枚"),
         "MANA_CIVILIZATION_COUNT": ("マナゾーンの文明数", ""),
+        "MANA_SET_THIS_TURN": ("このターンにマナに置かれたカード数", "枚"),
     }
 
     # Short aliases for natural language rendering of common zone transitions
