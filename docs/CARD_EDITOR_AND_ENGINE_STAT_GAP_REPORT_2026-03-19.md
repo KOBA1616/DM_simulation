@@ -1,38 +1,24 @@
- 
 # カードテキスト統計トラッカー実装ギャップ報告書（カードエディタ/エンジン統合）
 
 作成日: 2026-03-19  
+更新日: 2026-03-20  
 対象: `dm_toolkit/gui/editor`, `src/engine`, `data/cards.json`  
 目的: DMカードテキスト解析で必要な統計情報を、カードエディタ定義からエンジン実行まで一貫管理するための不足点整理とTDD実装計画
 
 ---
 
-追記（2026-03-19: 全テスト実行結果）
-
-- 実行: `pytest -q` をワークスペースで実行しました。
-- 結果: 405 件中 403 件成功、2 件失敗。
-  - 失敗1: `tests/test_condition_editor_single_source.py::test_condition_ui_config_keys_present_in_canonical_sources`
-    - 原因: `dm_toolkit.gui.editor.forms.parts.condition_widget` に `CONDITION_UI_CONFIG` 属性が存在しない（テストは旧レガシー設定の存在を期待）。
-  - 失敗2: `tests/test_onnxruntime_version_alignment.py::test_runtime_onnxruntime_matches_expected_pin`
-    - 原因: 実行環境の `onnxruntime` バージョンが期待値と不一致（実際: 1.18.0、期待: 1.20.1）。
-
-次アクション案:
-- (A) `CONDITION_UI_CONFIG` の互換用プレースホルダを `condition_widget.py` に追加してテストを通す（推奨: 小さな互換実装）。
-- (B) `onnxruntime` を期待バージョンに合わせるか、テストを xfail にする（環境依存のため CI 側で対応推奨）。
-
-この追記はワークフローの透明化用です。どの次アクションを優先しますか？
-
-
 ## 1. 要約
 
-現状は「一部の統計条件（例: `OPPONENT_DRAW_COUNT`）」は実装済みですが、20,000枚規模を想定した統計網羅性・命名統一・置換効果との整合性が未達です。
+現状は「統計条件の評価（`COMPARE_STAT`）」と「コスト軽減（`COST_MODIFIER` / `PASSIVE`）」が別軸で実装されており、
+**常在コスト軽減をゲーム統計値に応じて動的に変化させる仕様**が未定義です。
 
-特に問題なのは以下です。
+特に以下が不足しています。
 
-- 条件種別/統計キーの定義源が分散し、エディタ表示・バリデーション・C++評価器の同期保証がない
-- `TurnStats` が限定的で、報告書で必要な履歴統計（召喚回数、シールドブレイク実績、破壊実績など）が不足
-- 置換効果適用時の「統計加算の抑止/振替」の仕様が明文化・テスト化されていない
-- TDDが点在テスト中心で、統計トラッカー拡張に対する「契約テスト」が不足
+- 静的能力コンテキストでの `COMPARE_STAT` 利用がバリデーション上で制限されている
+- `COST_MODIFIER.value` が固定整数前提で、統計値比例の軽減式を持てない
+- エディタ・Python評価・C++評価で同一ルールを保証する契約テストが不足
+- `cost_reductions(PASSIVE)` と `static_abilities(COST_MODIFIER)` の優先/合成仕様が明文化されていない
+- 「存在判定」（例: 自分バトルゾーンに特定種族が存在）を汎用表現する共通仕様がない
 
 本書では、上記を解消するための要件定義・段階実装・TODOを提示します。
 
@@ -40,60 +26,35 @@
 
 ## 2. 現状観測（根拠）
 
-### 2.1 条件/統計キーの定義が限定的かつ分散
+### 2.1 コスト軽減実装の分断
 
-- `ConditionValidator` のトリガー条件は実質 `OPPONENT_DRAW_COUNT` 重点で、静的条件はさらに限定的  
-  参照: `dm_toolkit/gui/editor/validators_shared.py`
-- 条件フォーム定義 (`CONDITION_FORM_SCHEMA`) は少数条件のみ  
-  参照: `dm_toolkit/gui/editor/schema_config.py`
-- 条件UI候補 (`ConditionEditorWidget`) とスキーマ定義が二重管理  
-  参照: `dm_toolkit/gui/editor/forms/parts/condition_widget.py`
+- Python側の試算ロジックは `dm_toolkit/payment.py` にあり、`PASSIVE` と `ACTIVE_PAYMENT` を評価
+- C++側の実運用は `ManaSystem::get_adjusted_cost` / `PaymentPlan::evaluate_cost` / `ContinuousEffectSystem` で分担
+- `COST_MODIFIER` は `active_modifiers` として反映されるが、軽減量は固定値（`mod_def.value`）
 
-### 2.2 `TurnStats` の網羅不足
+### 2.2 静的条件で統計利用しづらい
 
-`TurnStats` は現状、以下中心です。
+- `ConditionValidator.VALID_STATIC_CONDITIONS` は `NONE`, `DURING_YOUR_TURN`, `DURING_OPPONENT_TURN` のみ
+- そのため、カード設計上は自然な
+  「このターンX回以上攻撃していたらコスト軽減」のような常在条件を定義しにくい
 
-- `played_without_mana`
-- `cards_drawn_this_turn`
-- `cards_discarded_this_turn`
-- `creatures_played_this_turn`
-- `spells_cast_this_turn`
-- `mana_charged_by_player[2]`
-- `player_draw_count[2]`
+### 2.3 統計キー定義と評価の接続不足
 
-参照: `src/core/card_stats.hpp`
+- `COMPARE_STAT` の評価器は C++ 側で実装されているが、
+  常在コスト軽減へ接続する設計（閾値型/比例型）が定義されていない
+- 統計キー追加時の影響面（エディタ候補、バリデーション、エンジン計算）を同時に守る契約が不足
 
-不足している代表例（本報告対象）:
+### 2.4 二重適用リスク
 
-- `summon_count_this_turn`（召喚のみ。踏み倒し/出すを分離）
-- `mana_placed_this_turn`（手札チャージ + 効果加速の総量）
-- `creatures_destroyed_this_turn`（置換で破壊不成立の場合は0加算）
-- `shield_break_attempt_count_this_turn` と `shield_break_resolved_count_this_turn` の分離
+- `validators_shared.detect_passive_static_conflicts` は警告を出すが、
+  仕様としての優先順・合成規則が明文化されていない
 
-### 2.3 `COMPARE_STAT` が参照可能なキーが少ない
+### 2.5 存在確認系の表現が専用化されやすい
 
-`CompareStatEvaluator` は `MY/OPPONENT_*` のゾーン枚数系中心で、ターン履歴系・文明別統計・破壊/ブレイク系が未対応です。  
-参照: `src/engine/systems/rules/condition_system.cpp`
-
-### 2.4 `QUERY` 統計取得の範囲が限定的
-
-`handle_get_stat` は `MANA_CIVILIZATION_COUNT`, `SHIELD_COUNT`, `HAND_COUNT`, `CARDS_DRAWN_THIS_TURN` などは対応済みですが、必要な履歴統計の多くは未対応です。  
-参照: `src/engine/infrastructure/pipeline/pipeline_executor.cpp`
-
-### 2.5 テキスト生成用統計マップが実装実態と乖離
-
-`STAT_KEY_MAP` は `MANA_COUNT` 系を持つ一方で、`ConditionEditorWidget` の既定候補（`MY_MANA_COUNT` など）と完全一致していません。結果としてラベル化や自然文生成で未翻訳フォールバックが起こり得ます。  
-参照: `dm_toolkit/gui/editor/text_resources.py`, `dm_toolkit/gui/editor/forms/parts/condition_widget.py`
-
-### 2.6 置換効果連動の統計仕様が不足
-
-置換効果コマンド (`REPLACE_CARD_MOVE`) 自体は存在しますが、
-
-- ブレイク試行と実解決の統計分離
-- 破壊置換時に `destroyed` 統計を加算しない規約
-
-の統計契約が未定義です。  
-参照: `data/cards.json`, `tests/test_effect_and_text_integrity.py`
+- 要件「自分のバトルゾーンに[種族]があればコストを[3]軽減」は実運用上頻出だが、
+  現状はカードごとの専用条件として実装されやすく、再利用性が低い
+- 既存の `CARDS_MATCHING_FILTER` 評価器は「件数比較」を持っているため、
+  `count >= 1` で存在確認を共通化できる余地がある
 
 ---
 
@@ -101,82 +62,95 @@
 
 | 優先度 | ギャップID | 不足点 | 影響 |
 |---|---|---|---|
-| P0 | G-STAT-001 | ターン履歴統計の不足（召喚/破壊/ブレイク分離） | 誘発条件誤判定、コスト軽減誤作動 |
-| P0 | G-STAT-002 | 置換効果と統計更新順序の未契約化 | ルール裁定と挙動が乖離 |
-
-追記（2026-03-19: 実装完了）: `tests/test_replacement_stat_semantics.py` を追加し、
-置換効果（G-Neo 等）が統計加算より先に実行されることを契約テストで固定しました。
-該当テストはローカル実行でPASSを確認済みです。
-| P0 | G-STAT-003 | 条件定義の分散（UI/validator/C++ evaluator） | 片側更新で破綻 |
-| P1 | G-STAT-004 | `STAT_KEY_MAP` と評価器対応キーの不一致 | プレビュー誤表示、編集ミス誘発 |
-| P1 | G-STAT-005 | QUERY統計の不足 | IF/選択ロジック実装が限定される |
-| P1 | G-STAT-006 | 統計トラッカー契約テスト不足 | 回帰検知が遅い |
-| P2 | G-STAT-007 | cards.json 側の未知コマンド/統計キー監査不足 | データ投入時の事故 |
+| P0 | G-COST-STAT-001 | 静的能力で `COMPARE_STAT` を使えない（validator制約） | 統計連動の常在軽減を定義不可 |
+| P0 | G-COST-STAT-002 | `COST_MODIFIER` が固定値前提で比例軽減を持てない | カードテキストの表現力不足 |
+| P0 | G-COST-STAT-003 | 合成順序（PASSIVE / STATIC / ACTIVE）の契約未定義 | 二重適用・過小適用の回帰 |
+| P0 | G-COST-STAT-007 | 存在確認系の条件が専用化されやすい | カードごと実装差分が増え保守性低下 |
+| P1 | G-COST-STAT-004 | エディタ候補キーとエンジン評価キーの同期契約不足 | 保存は通るが実行時不整合 |
+| P1 | G-COST-STAT-005 | 統計連動軽減の契約テスト不足 | 将来変更での回帰検知遅延 |
+| P2 | G-COST-STAT-006 | cards.json 側の新フィールド監査ルール不足 | データ投入時の品質低下 |
 
 ---
 
 ## 4. 要件定義（To-Be）
 
-### 4.1 統計トラッカーの正準仕様
+### 4.1 対応する軽減モード
 
-`TurnStats` と `ZoneStats` を分離し、次のInternal IDを正準化する。
+`COST_MODIFIER` の軽減を以下2モードで扱う。
 
-#### ターン履歴統計（毎ターンリセット）
+1. `FIXED`（閾値型）
+   - 既存互換。条件が真なら `value` を適用
+   - 例: 「このターン自分が2回以上攻撃していればコスト-1」
 
-- `STAT_DRAW_COUNT_T`
-- `STAT_SUMMON_COUNT_T`
-- `STAT_SPELL_CAST_T`
-- `STAT_MANA_SET_T`
-- `STAT_SHIELD_BREAK_ATTEMPT_T`
-- `STAT_SHIELD_BREAK_RESOLVED_T`
-- `STAT_CREATURE_DESTROYED_T`
-- `FLAG_ATTACKED_THIS_T`
+2. `STAT_SCALED`（比例型）
+   - 統計値に応じて軽減量を算出
+   - 例: 「このターンの召喚回数ぶん軽減（最大3）」
 
-#### ゾーン/状態統計（イベント駆動更新）
+推奨式:
 
-- `STAT_GY_SIZE`
-- `STAT_RACE_COUNT:<race_id>`
-- `STAT_CIV_COUNT_MANA:<civ>`
-- `STAT_MAX_POWER_B`
-- `STAT_EVO_STACK:<instance_id>`
-- `STAT_SEAL_COUNT:<instance_id>`
+`reduction = min(max_reduction, max(0, stat_value - min_stat + 1) * per_value)`
 
-### 4.2 置換効果との整合契約
+### 4.2 仕様フィールド（後方互換あり）
 
-統計更新順序を以下で固定する。
+`static_abilities` の `COST_MODIFIER` で以下を許可:
 
-1. 原イベント生成
-2. 置換候補評価
-3. 採用置換の確定
-4. 実イベント適用
-5. 実イベントベースで統計更新
+- `value_mode`: `FIXED` | `STAT_SCALED`（未指定は `FIXED`）
+- `value`: 固定軽減量（`FIXED` 時必須）
+- `stat_key`: 参照統計キー（`STAT_SCALED` 時必須）
+- `per_value`: 単位軽減量（`STAT_SCALED` 時必須）
+- `min_stat`: 発動下限統計（任意、既定1）
+- `max_reduction`: 軽減上限（任意、未指定なら上限なし）
+
+### 4.3 合成順序契約
+
+コスト計算の合成順を以下で固定する。
+
+1. 基本コスト
+2. `cost_reductions` の `PASSIVE`
+3. `static_abilities` の `COST_MODIFIER`（`FIXED` / `STAT_SCALED`）
+4. `ACTIVE_PAYMENT`
+5. `min_mana_cost` フロア適用
 
 再発防止コメントの必須追加箇所:
 
-- 置換適用後のみ統計を加算する関数
-- ブレイク試行/解決の分岐関数
+- 合成順を実装する関数（`ManaSystem` / `PaymentPlan`）
+- `STAT_SCALED` 算出関数（負値防止、上限クランプ）
 
-### 4.3 エディタ要件
+### 4.4 エディタ要件
 
-単一ソース化:
+- `STATIC` 条件で `COMPARE_STAT` を選択可能にする
+- `stat_key` 候補は `CardTextResources` の単一定義から供給
+- `STAT_SCALED` 時の必須フィールド不足を保存前にブロック
+- `value_mode=FIXED` と `STAT_SCALED` の相互排他バリデーションを実施
 
-- 条件タイプ定義
-- 統計キー定義
-- キーごとの入力仕様（`value/op/stat_key/filter`）
+### 4.5 存在確認ベースの汎用条件要件
 
-必要機能:
+以下を専用コマンドではなく、汎用条件として定義する。
 
-    - 未対応統計キーの入力を保存前にブロック（2026-03-19: 実装済 — エディタの `STAT` フィールドを `SELECT` に変更し、
-      `CardTextResources.STAT_KEY_MAP` を選択肢として利用することで未定義キー入力を防止しました。関連追加: `tests/test_stat_field_select_schema.py`）
-- `COMPARE_STAT` の候補を C++ 実装対応キーに限定
-- 統計キー追加時に UI/validator/text generator の契約テストが同時必須
+- 要件例: 「自分のバトルゾーンに[種族]があればコストを[3]軽減する」
 
-### 4.4 低スペックAI開発要件
+標準表現:
 
-- 1タスク1責務（1 PR = 1統計カテゴリ）
-- 1サイクルの変更上限: 原則3ファイルまで
-- すべての仕様追加は「先に契約テスト」を書いてから実装
-- 失敗時は差分最小で戻す（大規模リファクタ禁止）
+- `condition.type = CARDS_MATCHING_FILTER`
+- `condition.op = ">="`
+- `condition.value = 1`
+- `condition.filter.owner = SELF`
+- `condition.filter.zones = ["BATTLE_ZONE"]`
+- `condition.filter.races = [<種族>]`
+
+この形式により、以下を同一ルールで表現可能とする。
+
+- 存在する: `>= 1`
+- 存在しない: `== 0`
+- N体以上: `>= N`
+- ちょうどN体: `== N`
+
+### 4.6 低スペックAI開発要件
+
+- 1PR 1段階（Validatorのみ / Engineのみ / Editorのみを分割）
+- 1サイクル変更上限: 原則3ファイルまで
+- すべての仕様追加は RED テスト先行
+- 失敗時は機能旗（feature flag）で段階ロールバック可能にする
 
 ---
 
@@ -184,93 +158,152 @@
 
 ### Phase 0: 契約固定（RED）
 
-- 追加: `tests/test_stat_tracker_contract.py`
-- 追加: `tests/test_replacement_stat_semantics.py`
-- 追加: `tests/test_condition_stat_key_registry.py`
+追加テスト:
+
+- `tests/test_static_cost_modifier_compare_stat_allowed.py`
+- `tests/test_cost_modifier_stat_scaled.py`
+- `tests/test_cost_modifier_composition_order.py`
+- `tests/test_editor_cost_modifier_stat_scaled_fields.py`
+- `tests/test_static_cost_modifier_cards_matching_filter.py`
 
 REDで保証する項目:
 
-- 未実装統計キーは明示失敗
-- 置換時に `destroyed` / `shield_break_resolved` が誤加算されない
-- エディタ候補キーと評価器キーが一致していなければ失敗
+- `STATIC` 条件で `COMPARE_STAT` が拒否される現状を失敗で可視化
+- `STAT_SCALED` フィールド未設定時に保存が失敗
+- 合成順序が変わると失敗
+- `CARDS_MATCHING_FILTER` による存在確認（`>= 1`）で軽減が有効化される
 
-### Phase 1: C++最小実装（GREEN）
-
-対象:
-
-- `src/core/card_stats.hpp`
-- `src/engine/systems/rules/condition_system.cpp`
-- `src/engine/infrastructure/pipeline/pipeline_executor.cpp`
-
-作業:
-
-- `TurnStats` にP0統計を追加
-- `COMPARE_STAT` / `QUERY` 参照を拡張
-- 置換後イベント準拠の統計更新
-
-### Phase 2: エディタ同期（GREEN）
+### Phase 1: エディタ/バリデータ最小解放（GREEN）
 
 対象:
 
-- `dm_toolkit/gui/editor/schema_config.py`
-- `dm_toolkit/gui/editor/forms/parts/condition_widget.py`
 - `dm_toolkit/gui/editor/validators_shared.py`
+- `dm_toolkit/gui/editor/schema_config.py`
 - `dm_toolkit/gui/editor/text_resources.py`
 
 作業:
 
-- 統計キー定義を単一レジストリ化
-- UI候補・バリデーション・ラベルの同一参照化
+- `VALID_STATIC_CONDITIONS` に `COMPARE_STAT` を追加
+- `VALID_STATIC_CONDITIONS` に `CARDS_MATCHING_FILTER` を追加
+- `COST_MODIFIER` へ `value_mode` / `stat_key` / `per_value` / `min_stat` / `max_reduction` の編集項目を追加
+- 必須/型バリデーション追加
+- `CARDS_MATCHING_FILTER` 用の `filter + op + value` 入力を静的能力で許可
 
-### Phase 3: リファクタ（REFACTOR）
+### Phase 2: Python試算系の拡張（GREEN）
 
-- 旧キーエイリアスを `compat map` に隔離
-- `ConditionEditorWidget` の `CONDITION_UI_CONFIG` 二重定義を削減
-- 監査テストをCI必須化
+対象:
 
-### Phase 4: カードデータ移行
+- `dm_toolkit/payment.py`
+- `tests/test_payment_*` 系
 
-- `data/cards.json` の条件キー監査
-- 必要時 `.migrated` 出力と差分レビュー
-- 未知キーを fail-fast
+作業:
+
+- `STAT_SCALED` の軽減算出ヘルパを追加
+- `FIXED` と `STAT_SCALED` を統一計算
+- 合成順（PASSIVE → STATIC → ACTIVE）を契約化
+
+### Phase 3: C++本実装拡張（GREEN）
+
+対象:
+
+- `src/core/card_json_types.hpp`
+- `src/engine/systems/effects/continuous_effect_system.cpp`
+- `src/engine/systems/mechanics/mana_system.cpp`
+- `src/engine/systems/mechanics/payment_plan.cpp`
+
+作業:
+
+- JSON定義へ新フィールドを追加（後方互換デフォルトあり）
+- `STAT_SCALED` 軽減を `ManaSystem` 側で都度評価
+- 合成順とフロア処理を統一
+
+### Phase 4: リファクタ（REFACTOR）
+
+- Python/C++で重複する計算式をドキュメント化し一致保証
+- 旧 `value` 単独定義カードを自動移行可能な互換レイヤを追加
+- `stat_key` 不明時 fail-fast + 明確なエラーメッセージ
+
+### Phase 5: データ移行・監査
+
+- `data/cards.json` の `COST_MODIFIER` エントリ監査
+- `STAT_SCALED` で必須フィールド不足カードを検出
+- CIに監査ステップを追加
 
 ---
 
 ## 6. TODOリスト（実行順）
 
--### P0
+### P0
 
-- [x] `TurnStats` に `STAT_SUMMON_COUNT_T` を追加（2026-03-19: `summon_count_this_turn` を追加、パイプライン/StatCommand に対応）
-- [x] `TurnStats` に `STAT_MANA_SET_T` を追加（2026-03-19: `mana_set_this_turn` を追加、パイプライン/StatCommand に対応）
-- [x] `TurnStats` に `STAT_SHIELD_BREAK_*` を追加（2026-03-19: `shield_break_attempt_count_this_turn` と `shield_break_resolved_count_this_turn` を追加）
-- [x] `TurnStats` に `STAT_CREATURE_DESTROYED_T` を追加（2026-03-19: `creatures_destroyed_this_turn` を追加し、破壊遷移での加算を実装）
-- [x] 置換効果適用後のみ統計更新する共通関数を導入（2026-03-19: `stat_update.hpp` を追加し `add_turn_destroyed_count` をエクスポート）
-  - [x] 基本契約検証: 置換処理（`g_neo_activated`）が破壊カウント加算より前に実行されることを `tests/test_replacement_stat_semantics.py` で検証（2026-03-19）
-- [x] `tests/test_replacement_stat_semantics.py` を追加し、破壊置換/ブレイク置換ケースを固定（2026-03-19）
-- [x] `COMPARE_STAT` の対応キーをレジストリ駆動に変更（2026-03-19: `SUMMON_COUNT_THIS_TURN` / `DESTROY_COUNT_THIS_TURN` / `MANA_SET_THIS_TURN` を `CompareStatEvaluator` で評価するよう追加）
+ - [x] `STATIC` 条件に `COMPARE_STAT` を許可（validator）
+ - [x] `STATIC` 条件に `CARDS_MATCHING_FILTER` を許可（validator）
+- [ ] `COST_MODIFIER` へ `value_mode` を導入（既定 `FIXED`）
+- [ ] `STAT_SCALED` 必須項目 (`stat_key`, `per_value`) をバリデーション
+- [x] 合成順（PASSIVE → STATIC → ACTIVE）の契約テスト追加
+ - [x] `STAT_SCALED` の最小計算実装（Python試算） — C++本計算は未実施
+- [ ] 存在確認（`CARDS_MATCHING_FILTER` + `>=1`）の契約テスト追加
 
-- [x] `TurnStats` に `FLAG_ATTACKED_THIS_T` を追加（2026-03-19: `attacked_this_turn` を追加、攻撃アクションでフラグ/カウント更新を適用）
-- [x] `TurnStats` にプレイヤー別攻撃カウントを追加（2026-03-19: `attacked_this_turn_by_player` を追加、パイプライン/コマンドでプレイヤー別集計をサポート）
+#### 実施記録（追記）
 
+- `2026-03-20`: `ModifierValidator` を更新し `COST_MODIFIER.value_mode` を許可（`FIXED` | `STAT_SCALED`）、`STAT_SCALED` の必須項目 `stat_key`/`per_value` とオプション `min_stat`/`max_reduction` のバリデーションを追加しました。対応テスト `tests/test_cost_modifier_stat_scaled.py` を追加しGREEN化済み。
+
+- `2026-03-21`: Python側で `STAT_SCALED` の最小計算を実装し、統合テストを追加しました（`tests/test_payment_stat_scaled_integration.py`）。C++側の本実装は未着手です。
+ - `2026-03-21`: 初手実装バッチを実行 — `validators_shared.py` の静的条件拡張は既に適用済みで、`tests/test_static_cost_modifier_cards_matching_filter.py` を含む関連REDテストを実行してGREENを確認しました。
+ - `2026-03-21`: C++ 側への最小反映を実施：
+   - `ModifierDef` に `value_mode`/`stat_key`/`per_value`/`min_stat`/`max_reduction` を追加し、JSON (de)シリアライズを拡張しました。
+   - `ContinuousEffectSystem::recalculate` を拡張し、`COST_MODIFIER.value_mode == STAT_SCALED` を評価して `active_modifiers` に比例軽減を反映する処理を追加しました。
+   - 注意: ローカルでのビルドを試行しましたが、開発環境のC++標準ライブラリヘッダが見つからずコンパイル検証できませんでした（MSVC include path の問題）。CI / ローカル環境でのビルド確認を推奨します。
+
+ - `2026-03-21 (追記)`: テスト実行結果のまとめ
+   - `pytest` を実行しました: 結果 `411 passed, 1 failed`。
+   - 失敗は `tests/test_onnxruntime_version_alignment.py` による `onnxruntime` ランタイムバージョン不一致（実行環境: 1.18.0, 期待: 1.20.1）で、環境依存の不一致です。
+   - STAT_SCALED 関連の Python テスト（`tests/test_cost_modifier_stat_scaled.py`, `tests/test_payment_stat_scaled_integration.py` 等）は GREEN です。
+
+- [x] `max_reduction` / `min_stat` のクランプ検証テスト追加
+
+#### 実施記録（2026-03-21 追記）
+
+- `2026-03-21`: `STAT_SCALED` のクランプ動作を検証する単体テスト `tests/test_cost_modifier_stat_scaled_clamp.py` を追加しました。`min_stat` デフォルト（1）での非発動ケースと、`max_reduction` 未指定時に期待通りの大きな軽減が適用されるケースを検証し、テストは GREEN です。
+
+- `2026-03-21`: `dm_toolkit/payment.py` の変換ルーチン `_merged_passive_definitions` における `STAT_SCALED` 算出（`min_stat` デフォルト処理と `max_reduction` クランプ）を確認・検証しました。単体テストが通過しており、エディタ→ツールキット経路で期待挙動が担保されていることを確認しています。
+
+### 残タスクと現状トリアージ
+
+- フルテスト実行で以下の失敗を確認しました:
+  - `tests/test_cpp_stat_scaled_integration.py` の2テスト: ネイティブ側（`dm_ai_module`/C++）が `static_abilities` を読み込まず `active_modifiers` が生成されないため失敗。
+  - `tests/test_onnxruntime_version_alignment.py`: ローカルの `onnxruntime` ランタイムバージョンが期待値と不一致（実行環境: 1.18.0, 期待: 1.20.1）。環境差分による失敗。
+
+- 対応方針（推奨）:
+  1. C++ 実装のビルド確認と `JsonLoader` / `ModifierDef` のシリアライズ周りの差分を修正して再ビルド（CIでの確認を推奨）。
+  2. `onnxruntime` バージョン不一致は環境設定で合わせるか、テストを `xfail` にする（CI ポリシーに応じて選択）。
+
+これらはエンジンのネイティブビルドとランタイム環境に依存するため、次フェーズでの作業を推奨します。
+   - 次工程: C++ 側の契約テスト（Pythonラッパー経由で engine の STAT_SCALED 動作を検証する RED→GREEN サイクル）を追加する予定。現在これが未完了の主要タスクです。
+
+#### 実施記録
+
+- `2026-03-20`: `dm_toolkit/gui/editor/validators_shared.py` を更新し、静的条件で `COMPARE_STAT` と `CARDS_MATCHING_FILTER` を許可するバリデーションを追加しました。関連テスト `tests/test_static_cost_modifier_cards_matching_filter.py` を追加しGREEN化済み。
 
 ### P1
 
-  - [x] エディタの条件/統計キー定義を単一ファイルへ統合（2026-03-19: `tests/test_condition_editor_single_source.py` を追加し `ConditionEditorWidget` が `CardTextResources` を参照することを契約テストで検証）
-- [x] エディタの条件/統計キー定義を単一ファイルへ統合（2026-03-19: `COMPARE_STAT` 候補とエディタのクイック統計を `CardTextResources` に集約）
-- [x] `STAT_KEY_MAP` を実装キーと完全同期（2026-03-19: `COMPARE_STAT` 候補キーを共通定義化し、`MY_*` ラベル欠落を解消）
-  - [x] `QUERY(GET_STAT)` の対応統計を拡張（2026-03-19: `SUMMON_COUNT_THIS_TURN` を追加、エディタ/エンジン双方の契約テストを追加）
-  - [x] `QUERY(GET_STAT)` の `MY_*` エイリアス対応を追加（2026-03-19: `pipeline_executor` に `MY_` プレフィックスのマッピングを追加し、`tests/test_query_get_stat_my_keys.py` を追加）
-- [x] `DESTROY_COUNT_THIS_TURN` を追加（2026-03-19: エディタ/エンジン双方の契約テスト `tests/test_query_get_stat_destroyed.py` を追加）
-- [x] `tests/test_condition_stat_key_registry.py` を追加（2026-03-19: キー同期/ラベル定義の契約テストを追加）
+- [x] エディタフォームに `STAT_SCALED` フィールド群を追加
+- [x] `stat_key` 候補を `CardTextResources` 単一定義から供給
+- [ ] `max_reduction` / `min_stat` のクランプ検証テスト追加
+- [ ] 不正設定カードを保存前にブロックするメッセージ改善
+- [ ] 「SELF+BATTLE_ZONE+RACE存在時に軽減」のサンプルカード定義と回帰テストを追加
 
 ### P2
 
- - [x] `data/cards.json` に対する「未知統計キー監査」スクリプト追加（2026-03-19: `tools/stat_key_audit.py` を追加）
- - [x] cardsデータ移行手順書（差分検証手順付き）を docs 化（2026-03-19: `docs/cards_data_migration.md` を追加）
-- [x] CIに統計契約テストジョブを追加（2026-03-19: GitHub Actionsワークフロー `stat-contract-tests` を追加）
-  - [x] CIで `tools/stat_key_audit.py` を実行するステップを追加（2026-03-19）
+ - [x] cardsデータ監査スクリプトに `COST_MODIFIER` 新仕様チェックを追加
+- [ ] データ移行手順（`FIXED` -> `STAT_SCALED`）を docs 化
+- [ ] CIに「統計連動コスト軽減」契約テストジョブを追加
 
-追記（2026-03-19）: TurnStats への直接書き込み監査を実施しました。契約テスト `tests/test_turnstats_write_audit.py` を追加し、現在のコードベースでは未承認の直接書き込みは検出されませんでした。引き続き新規実装時にはこのテストを通すことを必須としてください。
+#### 実施記録（2026-03-21）
+
+- `tools/cards_audit.py` を追加し、`STAT_SCALED` 指定時に `stat_key`/`per_value` が欠落しているカードを検出する監査関数 `audit_cost_modifier_fields_from_json` を実装しました。
+- 単体テスト `tests/test_cards_audit_cost_modifier.py` を追加し、欠落ケースを検出することをRED→GREENで確認しました。
+ - `2026-03-21`: エディタ側の `ModifierEditForm` を拡張し、`value_mode`（`FIXED`/`STAT_SCALED`）と `stat_key`/`per_value`/`min_stat`/`max_reduction` の入力ウィジェットを追加しました。フォームの読み書き処理を更新し、単体テスト `tests/test_modifier_form_stat_scaled_fields.py` を追加してRED→GREENを確認しました。
+
 
 ---
 
@@ -278,7 +311,7 @@ REDで保証する項目:
 
 ### 7.1 作業単位テンプレ
 
-- 入力: 「統計1種類 + 条件1種類」だけを対象
+- 入力: 「1モード（FIXED/STAT_SCALED）+ 1計算経路（Python/C++）」
 - 出力: 変更ファイル3つ以内
 - 完了条件:
   - REDテスト追加
@@ -287,18 +320,20 @@ REDで保証する項目:
 
 ### 7.2 実装コマンド最小セット
 
-- `pytest tests/test_stat_tracker_contract.py -q`
-- `pytest tests/test_replacement_stat_semantics.py -q`
-- `pytest tests/test_condition_stat_key_registry.py -q`
+- `pytest tests/test_static_cost_modifier_compare_stat_allowed.py -q`
+- `pytest tests/test_cost_modifier_stat_scaled.py -q`
+- `pytest tests/test_cost_modifier_composition_order.py -q`
 
 必要時のみ:
 
+- `pytest tests/test_payment_*.py -q`
 - `pytest tests/ -q`
 
 ### 7.3 レビュー観点（必須）
 
-- 統計名がエディタ/C++/テストで一致しているか
-- 置換前イベントで統計を加算していないか
+- 合成順序がコードとテストで一致しているか
+- `stat_key` がエディタ/エンジンで同じレジストリ基準か
+- `max_reduction` の上限クランプ漏れがないか
 - 0始まりプレイヤーID前提を崩していないか
 
 ---
@@ -306,9 +341,9 @@ REDで保証する項目:
 ## 8. Definition of Done
 
 - P0 TODOが完了
-- 置換効果統計テストが全てGREEN
-- 統計キーの単一ソース化が完了
-- cards.json未知キー監査がCIで実行される
+- `STAT_SCALED` 契約テストが全てGREEN
+- エディタとエンジンで `stat_key` 参照定義が一致
+- cards.json監査がCIで実行される
 - 追加/修正コードに再発防止コメントがある
 
 ---
@@ -317,8 +352,208 @@ REDで保証する項目:
 
 最初の1バッチは次を推奨。
 
-1. `STAT_SHIELD_BREAK_ATTEMPT_T` / `STAT_SHIELD_BREAK_RESOLVED_T` を実装
-2. 置換有無で両者が分かれるテストを追加
-3. エディタで `COMPARE_STAT` 候補に2キー追加
+1. `validators_shared.py` で `STATIC` に `COMPARE_STAT` を許可
+2. `validators_shared.py` で `STATIC` に `CARDS_MATCHING_FILTER` を許可
+3. REDテスト `test_static_cost_modifier_cards_matching_filter.py` をGREEN化
 
-このバッチは影響が明確で、低スペックAIでも追跡しやすい。
+このバッチは影響が局所的で、低スペックAIでも追跡しやすい。
+
+---
+
+## 10. 追加で汎用化すべきエディタ項目
+
+本章は「現在のカードエディタで、上記計画に関連して追加で汎用化すべき内容」を整理したもの。
+
+### 10.1 静的能力コンテキストの条件型拡張
+
+課題:
+
+- 現状の静的能力条件は許可型が少なく、カード定義が専用化しやすい
+
+追記要件:
+
+- `VALID_STATIC_CONDITIONS` に以下を段階的追加
+  - `COMPARE_STAT`
+  - `CARDS_MATCHING_FILTER`
+
+期待効果:
+
+- 常在能力の記述を「カード固有処理」から「条件 + 汎用効果」へ寄せられる
+
+### 10.2 `COST_MODIFIER` の入力モデル汎用化
+
+課題:
+
+- 固定値 `value` 中心のため、将来の比例軽減表現で分岐実装が必要になる
+
+追記要件:
+
+- エディタ入力に `value_mode`（`FIXED` / `STAT_SCALED`）を導入
+- `STAT_SCALED` 選択時のみ次項目を必須化
+  - `stat_key`
+  - `per_value`
+  - `min_stat`（任意）
+  - `max_reduction`（任意）
+
+期待効果:
+
+- UI上で意図が明示され、保存前バリデーションで不整合を早期遮断できる
+
+### 10.3 条件/候補定義の完全スキーマ駆動化
+
+課題:
+
+- 条件型や候補がウィジェット側ハードコードに残ると、追加時に漏れやすい
+
+追記要件:
+
+- `schema_config` + `CardTextResources` を唯一の入力定義源にする
+- `condition_widget` では定義を参照するだけの構造に寄せる
+
+期待効果:
+
+- キー追加時の修正点が明確化し、回帰テストも単純化できる
+
+### 10.4 存在判定テンプレートの標準搭載
+
+課題:
+
+- 「自分バトルゾーンに[種族]がいれば軽減」のような記述が毎回手入力になりやすい
+
+追記要件:
+
+- 条件テンプレートに以下を追加
+  - `CARDS_MATCHING_FILTER` + `op >=` + `value = 1`
+  - `owner=SELF`, `zones=[BATTLE_ZONE]`, `races=[...]`
+
+期待効果:
+
+- 記述のゆらぎを減らし、カードデータの一貫性を向上できる
+
+### 10.5 競合警告の強化（PASSIVE / STATIC）
+
+課題:
+
+- 現在は競合警告があるが、作成者に合成順の理解を強制できない
+
+追記要件:
+
+- エディタ警告に「計算順序（PASSIVE → STATIC → ACTIVE）」を明記
+- 同一意図の軽減定義が複数ある場合は保存前に注意喚起
+
+期待効果:
+
+- 二重適用バグの未然防止とレビュー容易化
+
+### 10.6 追加契約テスト（優先）
+
+- `tests/test_static_cost_modifier_cards_matching_filter.py`
+  - 存在判定 (`>=1`) で軽減が有効化されること
+- `tests/test_editor_cost_modifier_stat_scaled_fields.py`
+  - `value_mode` ごとの必須項目検証
+- `tests/test_condition_editor_single_source.py`
+  - 条件候補とスキーマ定義の同一性検証を継続強化
+
+---
+
+## 11. 次優先バッチ（汎用化観点）
+
+1. `validators_shared.py` に `CARDS_MATCHING_FILTER` の静的条件許可を追加
+2. `schema_config.py` に `COST_MODIFIER.value_mode` と条件分岐フィールドを追加
+3. `condition_widget.py` の候補ソースをスキーマ参照に統一
+4. 上記に対応するREDテストをGREEN化
+
+このバッチは「存在判定を含む常在軽減の汎用化」に直結し、カード個別ロジックを減らす効果が高い。
+
+---
+
+## 12. コスト軽減/常在効果の計算・処理タイミング再検討
+
+本章は「いつ計算するか」を再設計し、MCTS検討時・通常対戦時で同じ結論が得られるようにするための方針を定義する。
+
+### 12.1 現状課題（タイミング観点）
+
+- 常在効果再計算（`ContinuousEffectSystem::recalculate`）はイベント駆動で呼ばれるが、
+  統計更新の直後に必ず走る契約にはなっていない
+- MCTSの one-shot 遷移では、通常経路と同じ再計算タイミングを必ずしも踏まない可能性がある
+- その結果、
+  - 行動候補生成時
+  - 実行時
+  - シミュレーション遷移時
+  で有効な軽減値がズレるリスクがある
+
+### 12.2 再設計方針（単一タイミングモデル）
+
+「コストに影響する状態が変わったら、次の可否判定の前に再計算済みである」ことを契約にする。
+
+状態変化イベント（最小集合）:
+
+- ゾーン移動（入場/離脱/破壊/進化元変化）
+- タップ状態変化（条件に使う場合）
+- ターン統計更新（攻撃回数、召喚回数、ドロー等）
+- フェーズ遷移（DURING_* 条件）
+
+契約:
+
+1. 状態更新
+2. 必要なら統計更新
+3. `ContinuousEffectSystem::recalculate`
+4. 次の `generate_legal_commands` / `can_pay_cost` を実行
+
+### 12.3 計算責務の分離
+
+- 反映責務: `ContinuousEffectSystem::recalculate`
+  - 盤面/条件から `active_modifiers` を再構築
+- 計算責務: `ManaSystem::get_adjusted_cost` / `CostPaymentSystem::can_pay_cost`
+  - 現時点の `active_modifiers` を使って最終コストを算出
+
+再発防止:
+
+- `get_adjusted_cost` 内で「不足分を推測して補正」するのではなく、
+  前段で再計算済みであることを前提にする（責務混在を避ける）
+
+### 12.4 MCTS 経路の同一化
+
+MCTSでも通常ゲーム経路と同じ順序を保証する。
+
+- `resolve_command_oneshot` 後に `ContinuousEffectSystem::recalculate` を実行
+- `fast_forward` でフェーズ進行した場合、コスト判定前に再計算済みであることを保証
+
+これにより「探索木上の合法手」と「実対戦の合法手」の乖離を抑制する。
+
+### 12.5 推奨処理シーケンス（擬似仕様）
+
+#### 通常経路
+
+1. コマンド適用
+2. パイプライン実行
+3. 統計更新
+4. `recalculate`
+5. 合法手生成
+
+#### MCTS遷移
+
+1. one-shot コマンド適用
+2. パイプライン実行
+3. 統計更新
+4. `recalculate`
+5. `fast_forward`
+6. 合法手生成
+
+### 12.6 TDDで固定する契約
+
+- `tests/test_cost_reduction_recalc_after_stat_update.py`
+  - 統計更新後に軽減値が反映されること
+- `tests/test_mcts_cost_reduction_timing_parity.py`
+  - 同一状態で MCTS遷移と通常遷移のコスト判定が一致すること
+- `tests/test_continuous_effect_recalc_before_generate_legal.py`
+  - 合法手生成直前に再計算済みであること
+
+### 12.7 導入手順（低リスク）
+
+1. まずテスト追加（RED）
+2. MCTS one-shot 経路に `recalculate` を追加（最小変更）
+3. 通常経路/フェーズ経路の再計算ポイントを監査
+4. 最後に責務混在のコメント整理とドキュメント更新
+
+この順序なら挙動差分を限定しつつ、コスト軽減と常在効果のタイミングを安定化できる。

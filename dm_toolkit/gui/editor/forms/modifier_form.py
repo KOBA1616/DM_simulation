@@ -12,6 +12,7 @@ from dm_toolkit.gui.editor.forms.unified_widgets import make_player_scope_select
 from dm_toolkit.gui.editor.forms.parts.keyword_selector import KeywordSelectorWidget
 from dm_toolkit.gui.editor.unified_filter_handler import UnifiedFilterHandler
 from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
+from dm_toolkit.gui.editor.text_resources import CardTextResources
 
 class ModifierEditForm(BaseEditForm):
     """
@@ -37,7 +38,14 @@ class ModifierEditForm(BaseEditForm):
             traceback.print_exc()
 
     def setup_ui(self):
-        layout = QVBoxLayout(self)
+        # Create layout without passing `self` as parent to avoid mismatches
+        # between dummy QWidget used in tests and real PyQt widgets.
+        layout = QVBoxLayout()
+        try:
+            self.setLayout(layout)
+        except Exception:
+            # Fallback: some dummy widget implementations may ignore setLayout
+            pass
 
         # Top section: Basic Modifier Properties
         self.basic_group = QGroupBox(tr("Modifier Settings"))
@@ -69,6 +77,47 @@ class ModifierEditForm(BaseEditForm):
         self.register_widget(self.value_spin, 'value')
         self.label_value = QLabel(tr("Value"))
         form_layout.addRow(self.label_value, self.value_spin)
+
+        # Value mode (FIXED | STAT_SCALED)
+        self.value_mode_combo = QComboBox()
+        self.value_mode_combo.addItem('FIXED', 'FIXED')
+        self.value_mode_combo.addItem('STAT_SCALED', 'STAT_SCALED')
+        safe_connect(self.value_mode_combo, "currentTextChanged", self.update_data)
+        safe_connect(self.value_mode_combo, "currentTextChanged", self.update_visibility)
+        self.register_widget(self.value_mode_combo, 'value_mode')
+        self.label_value_mode = QLabel(tr("Value Mode"))
+        form_layout.addRow(self.label_value_mode, self.value_mode_combo)
+
+        # STAT_SCALED specific fields
+        self.stat_key_combo = QComboBox()
+        for key in CardTextResources.COMPARE_STAT_EDITOR_KEYS:
+            self.stat_key_combo.addItem(key, key)
+        safe_connect(self.stat_key_combo, "currentTextChanged", self.update_data)
+        self.register_widget(self.stat_key_combo, 'stat_key')
+        self.label_stat_key = QLabel(tr("Stat Key"))
+        form_layout.addRow(self.label_stat_key, self.stat_key_combo)
+
+        self.per_value_spin = QSpinBox()
+        self.per_value_spin.setRange(0, 99999)
+        safe_connect(self.per_value_spin, "valueChanged", self.update_data)
+        self.register_widget(self.per_value_spin, 'per_value')
+        self.label_per_value = QLabel(tr("Per Value"))
+        form_layout.addRow(self.label_per_value, self.per_value_spin)
+
+        self.min_stat_spin = QSpinBox()
+        self.min_stat_spin.setRange(0, 99999)
+        self.min_stat_spin.setValue(1)
+        safe_connect(self.min_stat_spin, "valueChanged", self.update_data)
+        self.register_widget(self.min_stat_spin, 'min_stat')
+        self.label_min_stat = QLabel(tr("Min Stat"))
+        form_layout.addRow(self.label_min_stat, self.min_stat_spin)
+
+        self.max_reduction_spin = QSpinBox()
+        self.max_reduction_spin.setRange(0, 99999)
+        safe_connect(self.max_reduction_spin, "valueChanged", self.update_data)
+        self.register_widget(self.max_reduction_spin, 'max_reduction')
+        self.label_max_reduction = QLabel(tr("Max Reduction"))
+        form_layout.addRow(self.label_max_reduction, self.max_reduction_spin)
 
         # Keyword Selection - Unified Widget
         self.keyword_combo = KeywordSelectorWidget(allow_settable=True)
@@ -110,7 +159,12 @@ class ModifierEditForm(BaseEditForm):
             'type': self.type_combo,
             'value': self.value_spin,
             'condition': self.condition_widget,
-            'filter': self.filter_widget
+            'filter': self.filter_widget,
+            'value_mode': self.value_mode_combo,
+            'stat_key': self.stat_key_combo,
+            'per_value': self.per_value_spin,
+            'min_stat': self.min_stat_spin,
+            'max_reduction': self.max_reduction_spin,
         }
 
         # Initial visibility
@@ -200,10 +254,36 @@ class ModifierEditForm(BaseEditForm):
         self.restriction_combo.setVisible(False)
 
         if mtype == "COST_MODIFIER":
-            self.label_value.setVisible(True)
-            self.value_spin.setVisible(True)
-            self.label_value.setText(tr("軽減量"))
+            # Show value mode selector
+            self.label_value_mode.setVisible(True)
+            self.value_mode_combo.setVisible(True)
             self.filter_widget.setTitle(tr("軽減対象カード"))
+
+            vm = self.value_mode_combo.currentData() or self.value_mode_combo.currentText()
+            if vm == 'STAT_SCALED':
+                # Hide basic fixed value, show stat-scaled fields
+                self.label_value.setVisible(False)
+                self.value_spin.setVisible(False)
+                self.label_stat_key.setVisible(True)
+                self.stat_key_combo.setVisible(True)
+                self.label_per_value.setVisible(True)
+                self.per_value_spin.setVisible(True)
+                self.label_min_stat.setVisible(True)
+                self.min_stat_spin.setVisible(True)
+                self.label_max_reduction.setVisible(True)
+                self.max_reduction_spin.setVisible(True)
+            else:
+                # FIXED mode (default)
+                self.label_value.setVisible(True)
+                self.value_spin.setVisible(True)
+                self.label_stat_key.setVisible(False)
+                self.stat_key_combo.setVisible(False)
+                self.label_per_value.setVisible(False)
+                self.per_value_spin.setVisible(False)
+                self.label_min_stat.setVisible(False)
+                self.min_stat_spin.setVisible(False)
+                self.label_max_reduction.setVisible(False)
+                self.max_reduction_spin.setVisible(False)
 
         elif mtype == "POWER_MODIFIER":
             self.label_value.setVisible(True)
@@ -293,6 +373,34 @@ class ModifierEditForm(BaseEditForm):
             else:
                 self.keyword_combo.setCurrentIndex(0)
 
+        # Load STAT_SCALED related fields if present
+        # Default value_mode to FIXED when absent
+        vm = data.get('value_mode', 'FIXED')
+        idx = self.value_mode_combo.findData(vm)
+        if idx >= 0:
+            self.value_mode_combo.setCurrentIndex(idx)
+        # stat_key
+        if 'stat_key' in data and data.get('stat_key'):
+            sk = data.get('stat_key')
+            idx2 = self.stat_key_combo.findData(sk)
+            if idx2 >= 0:
+                self.stat_key_combo.setCurrentIndex(idx2)
+        if 'per_value' in data:
+            try:
+                self.per_value_spin.setValue(int(data.get('per_value') or 0))
+            except Exception:
+                pass
+        if 'min_stat' in data:
+            try:
+                self.min_stat_spin.setValue(int(data.get('min_stat') or 1))
+            except Exception:
+                pass
+        if 'max_reduction' in data and data.get('max_reduction') is not None:
+            try:
+                self.max_reduction_spin.setValue(int(data.get('max_reduction')))
+            except Exception:
+                pass
+
         # Update visibility based on current modifier type
         self.update_visibility()
 
@@ -335,6 +443,25 @@ class ModifierEditForm(BaseEditForm):
             # Clear both fields for non-keyword types
             data['mutation_kind'] = ''
             data['str_val'] = ''
+
+        # Persist STAT_SCALED fields when selected
+        if data.get('type') == 'COST_MODIFIER':
+            vm = self.value_mode_combo.currentData() or self.value_mode_combo.currentText()
+            data['value_mode'] = vm
+            if vm == 'STAT_SCALED':
+                # Save stat fields
+                data['stat_key'] = self.stat_key_combo.currentData() or self.stat_key_combo.currentText()
+                data['per_value'] = int(self.per_value_spin.value())
+                data['min_stat'] = int(self.min_stat_spin.value())
+                # max_reduction: store None if zero (treat zero as unspecified)
+                mr = int(self.max_reduction_spin.value())
+                data['max_reduction'] = mr if mr > 0 else None
+            else:
+                # FIXED mode: ensure legacy 'value' remains primary
+                data.pop('stat_key', None)
+                data.pop('per_value', None)
+                data.pop('min_stat', None)
+                data.pop('max_reduction', None)
 
     def _get_display_text(self, data):
         """Generate concise display text for tree item."""
