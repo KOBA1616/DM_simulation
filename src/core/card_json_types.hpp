@@ -334,6 +334,12 @@ namespace dm::core {
         std::string str_val;
         ConditionDef condition;
         FilterDef filter;
+        // Extended fields for COST_MODIFIER STAT_SCALED support
+        std::string value_mode; // "FIXED" | "STAT_SCALED" (default empty -> FIXED)
+        std::string stat_key;
+        int per_value = 0;
+        int min_stat = 1;
+        std::optional<int> max_reduction;
     };
 
     // Deprecated legacy structure: ActionDef
@@ -710,7 +716,7 @@ namespace dm::core {
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, exact_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, power_max_ref, cost_ref, and_conditions, type, value, op)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter, extra_fields)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter, value_mode, stat_key, per_value, min_stat, max_reduction)
     // Custom from_json for ActionDef to accept legacy numeric enums and
     // non-standard scope strings (e.g. "SINGLE") produced by older editors.
     inline void from_json(const nlohmann::json& j, ActionDef& a) {

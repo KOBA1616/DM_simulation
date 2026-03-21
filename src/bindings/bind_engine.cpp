@@ -506,7 +506,30 @@ void bind_engine(py::module &m) {
         auto map_val =
             dm::engine::infrastructure::JsonLoader::load_cards(filepath);
         // Move into shared pointer to prevent copy when returning to Python
-        return std::make_shared<CardDatabase>(std::move(map_val));
+        auto db_ptr = std::make_shared<CardDatabase>(std::move(map_val));
+        // Diagnostic: dump basic summary of loaded card definitions (static_abilities counts)
+        try {
+          std::ofstream diag("c:\\temp\\binding_loaded_db.txt", std::ios::app);
+          if (diag) {
+            diag << "JsonLoader.load_cards: " << filepath << " entries=" << db_ptr->size() << "\n";
+            for (const auto &kv : *db_ptr) {
+              const auto &cid = kv.first;
+              const auto &def = kv.second;
+              diag << "  card_id=" << cid << " static_abilities=" << def.static_abilities.size() << "\n";
+              for (size_t i = 0; i < def.static_abilities.size(); ++i) {
+                const auto &m = def.static_abilities[i];
+                diag << "    mod[" << i << "]: type=" << static_cast<int>(m.type)
+                     << " value_mode=" << m.value_mode << " stat_key=" << m.stat_key
+                     << " per_value=" << m.per_value;
+                if (m.max_reduction.has_value()) diag << " max_reduction=" << m.max_reduction.value();
+                diag << "\n";
+              }
+            }
+            diag.close();
+          }
+        } catch (...) {
+        }
+        return db_ptr;
       });
 
   py::class_<DevTools>(m, "DevTools")

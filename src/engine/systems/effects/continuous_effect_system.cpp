@@ -27,6 +27,14 @@ namespace dm::engine::systems {
                 if (!card_db.count(card.card_id)) continue;
                 const auto& def = card_db.at(card.card_id);
 
+                // Diagnostic: report static abilities present on the definition
+                try {
+                    std::cerr << "ContinuousEffectSystem::recalculate player=" << player.id
+                              << " card_instance=" << card.instance_id
+                              << " card_id=" << def.id
+                              << " static_count=" << def.static_abilities.size() << std::endl;
+                } catch (...) {}
+
                 // 再発防止: 「能力を無視する」効果が適用中のカードは静的能力を供給しない。
                 if (PassiveEffectSystem::instance().check_restriction(
                         state, card, PassiveType::IGNORE_ABILITIES, card_db)) {
@@ -34,6 +42,15 @@ namespace dm::engine::systems {
                 }
 
                 for (const auto& mod_def : def.static_abilities) {
+                    try {
+                        std::cerr << "  examine_static_mod: type=" << static_cast<int>(mod_def.type)
+                                  << " value=" << mod_def.value
+                                  << " value_mode='" << mod_def.value_mode << "'"
+                                  << " stat_key='" << mod_def.stat_key << "' per_value=" << mod_def.per_value
+                                  << " min_stat=" << mod_def.min_stat;
+                        if (mod_def.max_reduction.has_value()) std::cerr << " max_reduction=" << mod_def.max_reduction.value();
+                        std::cerr << std::endl;
+                    } catch (...) {}
                     // Check Condition (Source condition, e.g. "If I am tapped")
                     if (mod_def.condition.type != "NONE" && !mod_def.condition.type.empty()) {
                         // dm::engine::rules::ConditionSystem usually requires context.
@@ -47,7 +64,41 @@ namespace dm::engine::systems {
                     // Apply Modifier based on Type
                     if (mod_def.type == ModifierType::COST_MODIFIER) {
                         CostModifier cm;
-                        cm.reduction_amount = mod_def.value;
+                        // Default: legacy FIXED behavior
+                        int reduction_amount = mod_def.value;
+
+                        // STAT_SCALED: compute from game state statistics when configured
+                        if (!mod_def.value_mode.empty() && mod_def.value_mode == "STAT_SCALED") {
+                            int stat_val = 0;
+                            const std::string& key = mod_def.stat_key;
+
+                            // Minimal mapping of known stat keys to GameState fields.
+                            // Extend this switch as more keys are needed.
+                            if (key == "summon_count_this_turn" || key == "SUMMON_COUNT") {
+                                stat_val = state.turn_stats.summon_count_this_turn;
+                            } else if (key == "creatures_played_this_turn" || key == "CREATURES_PLAYED") {
+                                stat_val = state.turn_stats.creatures_played_this_turn;
+                            } else if (key == "attacked_this_turn" || key == "ATTACKED") {
+                                // Use controller-specific counter when available
+                                if (player.id >= 0 && player.id < 2) stat_val = state.turn_stats.attacked_this_turn_by_player[player.id];
+                            } else if (key == "summon_count_by_player") {
+                                if (player.id >= 0 && player.id < 2) stat_val = state.turn_stats.summon_count_this_turn; // fallback
+                            } else {
+                                // Unknown key: try some generic fallbacks
+                                stat_val = 0;
+                            }
+
+                            int per_value = mod_def.per_value;
+                            int min_stat = mod_def.min_stat;
+                            int calculated = std::max(0, stat_val - min_stat + 1) * per_value;
+                            if (mod_def.max_reduction.has_value()) {
+                                calculated = std::min(calculated, mod_def.max_reduction.value());
+                            }
+                            if (calculated > 0) reduction_amount = calculated;
+                            else reduction_amount = 0;
+                        }
+
+                        cm.reduction_amount = reduction_amount;
                         cm.condition_filter = mod_def.filter; // Target filter (e.g. "Fire Birds")
                         cm.turns_remaining = -1; // Indefinite
                         cm.source_instance_id = card.instance_id;
@@ -55,6 +106,13 @@ namespace dm::engine::systems {
                         cm.is_source_static = true;
 
                         state.active_modifiers.push_back(cm);
+                        try {
+                            std::cerr << "    pushed_active_mod: controller=" << cm.controller
+                                      << " source_instance=" << cm.source_instance_id
+                                      << " reduction=" << cm.reduction_amount
+                                      << " active_mods_len=" << state.active_modifiers.size()
+                                      << std::endl;
+                        } catch(...) {}
                     }
                     else {
                         // Passive Effects (Power, Keywords)
@@ -157,6 +215,13 @@ namespace dm::engine::systems {
                             cm.controller = player.id;
                             cm.is_source_static = true;
                             state.active_modifiers.push_back(cm);
+                            try {
+                                std::cerr << "    pushed_active_mod(super_soul): controller=" << cm.controller
+                                          << " source_instance=" << cm.source_instance_id
+                                          << " reduction=" << cm.reduction_amount
+                                          << " active_mods_len=" << state.active_modifiers.size()
+                                          << std::endl;
+                            } catch(...) {}
                         } else {
                             PassiveEffect pe;
                             pe.is_source_static = true;

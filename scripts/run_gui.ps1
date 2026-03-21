@@ -50,6 +50,15 @@ if (-not $pythonExe) {
 
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
+# GUI起動時にビルドを行う理由:
+# - GUI はネイティブの C++ 拡張（dm_ai_module など）やプラットフォーム固有の DLL/.pyd
+#   を読み込んで高速なAI処理や ONNX 推論、ネイティブリソースへのアクセスを行います。
+# - これらのネイティブアーティファクトはビルド工程で生成されるため、開発環境でGUIを
+#   正常に動作させるには事前にビルドしておくことが推奨されます。
+# - ネイティブが無い状態では Python フォールバックが使われますが、機能制限や
+#   AttributeError／不定動作（例: ヒープ破壊）が発生する可能性があるため、自動的な
+#   ビルド実行オプション（-Build）を用意しています。フォールバックが必要なら
+#   -AllowFallback を明示的に指定してください。
 if ($Build) {
     Write-Host "Building project before launching GUI..."
     & "$scriptDir/build.ps1" -Config $Config -Toolchain $Toolchain

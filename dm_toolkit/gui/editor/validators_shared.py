@@ -154,7 +154,9 @@ class ConditionValidator:
     VALID_STATIC_CONDITIONS = {
         "NONE",
         "DURING_YOUR_TURN",
-        "DURING_OPPONENT_TURN"
+        "DURING_OPPONENT_TURN",
+        "COMPARE_STAT",
+        "CARDS_MATCHING_FILTER"
     }
     
     # Valid condition types for trigger effects (supports temporal conditions)
@@ -216,6 +218,35 @@ class ConditionValidator:
                     if (stat_key not in CardTextResources.COMPARE_STAT_EDITOR_KEYS
                             and stat_key not in CardTextResources.STAT_KEY_MAP):
                         errors.append(f"COMPARE_STAT.stat_key '{stat_key}' is not a known stat key")
+
+        # Allow some additional validations for STATIC context as well
+        if context == "STATIC":
+            # STATIC may also use COMPARE_STAT in the new scheme
+            if cond_type == "COMPARE_STAT":
+                stat_key = condition.get('stat_key')
+                if not stat_key or not isinstance(stat_key, str):
+                    errors.append("COMPARE_STAT requires 'stat_key' (string)")
+                else:
+                    if (stat_key not in CardTextResources.COMPARE_STAT_EDITOR_KEYS
+                            and stat_key not in CardTextResources.STAT_KEY_MAP):
+                        errors.append(f"COMPARE_STAT.stat_key '{stat_key}' is not a known stat key")
+
+            # STATIC may allow CARDS_MATCHING_FILTER to express existence checks
+            if cond_type == "CARDS_MATCHING_FILTER":
+                # require op and value and a filter specification
+                if 'op' not in condition or not isinstance(condition.get('op'), str):
+                    errors.append("CARDS_MATCHING_FILTER requires 'op' (string, e.g. '>=')")
+                if 'value' not in condition or not isinstance(condition.get('value'), int):
+                    errors.append("CARDS_MATCHING_FILTER requires 'value' (int)")
+                if 'filter' not in condition:
+                    errors.append("CARDS_MATCHING_FILTER requires 'filter' definition")
+                else:
+                    # Validate filter structure using FilterValidator
+                    try:
+                        filter_errors = FilterValidator.validate(condition.get('filter'))
+                        errors.extend(filter_errors)
+                    except Exception:
+                        errors.append("CARDS_MATCHING_FILTER.filter is invalid or could not be parsed")
         
         return errors
     
@@ -340,10 +371,28 @@ class ModifierValidator:
         
         # Type-specific validation
         if mtype == "COST_MODIFIER":
-            if 'value' not in modifier:
-                errors.append("COST_MODIFIER requires 'value' field (cost reduction amount)")
-            elif not isinstance(modifier.get('value'), (int, type(None))):
-                errors.append(f"COST_MODIFIER 'value' must be int, got {type(modifier.get('value'))}")
+            # Support new value_mode: FIXED (default) or STAT_SCALED
+            value_mode = modifier.get('value_mode', 'FIXED')
+            if value_mode not in ('FIXED', 'STAT_SCALED'):
+                errors.append("COST_MODIFIER 'value_mode' must be 'FIXED' or 'STAT_SCALED'")
+
+            if value_mode == 'FIXED':
+                if 'value' not in modifier:
+                    errors.append("COST_MODIFIER with value_mode=FIXED requires 'value' field (cost reduction amount)")
+                elif not isinstance(modifier.get('value'), (int, type(None))):
+                    errors.append(f"COST_MODIFIER 'value' must be int, got {type(modifier.get('value'))}")
+
+            elif value_mode == 'STAT_SCALED':
+                # require stat_key and per_value
+                if 'stat_key' not in modifier or not isinstance(modifier.get('stat_key'), str):
+                    errors.append("Save blocked: COST_MODIFIER (STAT_SCALED) requires 'stat_key' (string). Example: 'CREATURES_PLAYED'")
+                if 'per_value' not in modifier or not isinstance(modifier.get('per_value'), int):
+                    errors.append("Save blocked: COST_MODIFIER (STAT_SCALED) requires 'per_value' (int). Example: 1")
+                # optional numeric clamps
+                if 'min_stat' in modifier and not isinstance(modifier.get('min_stat'), int):
+                    errors.append("COST_MODIFIER 'min_stat' must be int when present")
+                if 'max_reduction' in modifier and not isinstance(modifier.get('max_reduction'), int):
+                    errors.append("COST_MODIFIER 'max_reduction' must be int when present")
         
         elif mtype == "POWER_MODIFIER":
             if 'value' not in modifier:

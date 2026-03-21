@@ -270,6 +270,28 @@ namespace dm::engine::infrastructure {
 
         def.cost_reductions = data.cost_reductions;
 
+        // Copy static abilities from JSON CardData into engine CardDefinition.
+        // Note: static_abilities were introduced to support editor-side static
+        // modifiers (COST_MODIFIER, POWER_MODIFIER etc.). Ensure they are
+        // propagated so ContinuousEffectSystem can observe and apply them.
+        def.static_abilities = data.static_abilities;
+
+        // Diagnostic: emit count and brief summary for troubleshooting
+        try {
+            std::cerr << "JsonLoader::convert_to_def id=" << def.id
+                      << " static_abilities_count=" << def.static_abilities.size() << std::endl;
+            for (const auto &m : def.static_abilities) {
+                std::cerr << "  static_mod: type=" << static_cast<int>(m.type)
+                          << " value_mode='" << m.value_mode << "'"
+                          << " stat_key='" << m.stat_key << "' per_value=" << m.per_value
+                          << " min_stat=" << m.min_stat;
+                if (m.max_reduction.has_value()) std::cerr << " max_reduction=" << m.max_reduction.value();
+                std::cerr << std::endl;
+            }
+        } catch (...) {
+            // Don't let diagnostics break loading
+        }
+
         // Back-compat: ensure each cost_reduction has a stable `id` (used as canonical identifier).
         // Note: `name` is considered display-only and MUST NOT be relied upon as an identifier
         // by engine logic. Older code paths used `name` as identifier; we preserve `id` and

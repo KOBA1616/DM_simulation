@@ -48,7 +48,7 @@ def _compute_cr_reduction(cr: Dict[str, Any], units: int) -> int:
     return 0
 
 
-def apply_passive_reductions(card: Dict[str, Any], base_cost: int, units: int = 1) -> int:
+def apply_passive_reductions(card: Dict[str, Any], base_cost: int, units: int = 1, stat_values: Optional[Dict[str, int]] = None, zone_state: Optional[Dict[str, Dict[str, Dict[str, int]]]] = None) -> int:
     """Return adjusted cost after applying PASSIVE cost_reductions on the card.
 
     This is a prototype heuristic used for editor/agent-side pre-checks and tests.
@@ -58,7 +58,7 @@ def apply_passive_reductions(card: Dict[str, Any], base_cost: int, units: int = 
         return base_cost
 
     # Merge explicit cost_reductions with static COST_MODIFIERs for conservative evaluation.
-    crs = _merged_passive_definitions(card)
+    crs = _merged_passive_definitions(card, stat_values, zone_state)
     total_reduction = 0
     floor_min = None
     for cr in crs:
@@ -140,7 +140,7 @@ def can_pay_with_mana(card: Dict[str, Any], mana_available: Any, base_cost: int,
     return _has_required_civilization(card, mana_available)
 
 
-def evaluate_cost(card: Dict[str, Any], base_cost: int, units: int = 1, active_reduction_id: Optional[str] = None, active_units: Optional[int] = None) -> PaymentPlan:
+def evaluate_cost(card: Dict[str, Any], base_cost: int, units: int = 1, active_reduction_id: Optional[str] = None, active_units: Optional[int] = None, stat_values: Optional[Dict[str, int]] = None, zone_state: Optional[Dict[str, Dict[str, Dict[str, int]]]] = None) -> PaymentPlan:
     """Produce a PaymentPlan describing passive and optional active reductions.
 
     This is a Python-side prototype to help design the engine `PaymentPlan`.
@@ -159,7 +159,7 @@ def evaluate_cost(card: Dict[str, Any], base_cost: int, units: int = 1, active_r
     # Apply PASSIVE reductions
     # Use merged passive definitions so that static COST_MODIFIER entries are
     # considered alongside explicit PASSIVE cost_reductions in editor/agent evaluation.
-    crs = _merged_passive_definitions(card)
+    crs = _merged_passive_definitions(card, stat_values, zone_state)
     floor_min = None
     total_red = 0
     passive_ids = []
@@ -244,7 +244,7 @@ def _compute_active_reduction(cr: Dict[str, Any], units: int) -> int:
     return 0
 
 
-def _merged_passive_definitions(card: Dict[str, Any]) -> List[Dict[str, Any]]:
+def _merged_passive_definitions(card: Dict[str, Any], stat_values: Optional[Dict[str, int]] = None, zone_state: Optional[Dict[str, Dict[str, Dict[str, int]]]] = None) -> List[Dict[str, Any]]:
     """Return a list of cost_reduction-like dicts including PASSIVE entries and
     converted `static_abilities` entries of type `COST_MODIFIER`.
 
@@ -268,19 +268,111 @@ def _merged_passive_definitions(card: Dict[str, Any]) -> List[Dict[str, Any]]:
         if not isinstance(s, dict):
             continue
         if s.get('type') == 'COST_MODIFIER':
-            # Heuristic conversion: COST_MODIFIER.value -> PASSIVE.amount
-            val = s.get('value')
-            try:
-                val_int = int(val)
-            except Exception:
+            # Support two modes:
+            # - FIXED: existing behavior (value -> PASSIVE.amount)
+            # - STAT_SCALED: compute reduction from provided stat_values and convert to PASSIVE.amount
+            value_mode = s.get('value_mode', 'FIXED')
+            # If a condition is present and it's a CARDS_MATCHING_FILTER, evaluate
+            # against provided zone_state. If zone_state is not provided, skip conversion
+            # for conditional static modifiers (conservative behavior).
+            cond = s.get('condition')
+            cond_ok = True
+            if isinstance(cond, dict) and cond.get('type') == 'CARDS_MATCHING_FILTER':
+                # require zone_state to evaluate existence checks
+                if zone_state is None:
+                    cond_ok = False
+                else:
+                    try:
+                        f = cond.get('filter', {}) or {}
+                        owner = f.get('owner', 'SELF')
+                        zones = f.get('zones', []) or []
+                        races = f.get('races', []) or []
+                        op = cond.get('op', '>=')
+                        value = int(cond.get('value', 1))
+
+                        count = 0
+                        owner_zone = zone_state.get(owner, {})
+                        for z in zones:
+                            zone_races = owner_zone.get(z, {})
+                            if races:
+                                for r in races:
+                                    try:
+                                        count += int(zone_races.get(r, 0))
+                                    except Exception:
+                                        pass
+                            else:
+                                # if no race specified, sum all counts in the zone
+                                for v in zone_races.values():
+                                    try:
+                                        count += int(v)
+                                    except Exception:
+                                        pass
+
+                        if op == '>=':
+                            cond_ok = count >= value
+                        elif op == '==':
+                            cond_ok = count == value
+                        else:
+                            # unsupported op -> conservative skip
+                            cond_ok = False
+                    except Exception:
+                        cond_ok = False
+            # if conditional and not satisfied, skip conversion
+            if not cond_ok:
                 continue
-            if val_int == 0:
-                continue
-            merged.append({
-                'type': 'PASSIVE',
-                'id': f'static-cost-mod-{idx}',
-                'amount': val_int,
-            })
+
+            if value_mode == 'FIXED':
+                val = s.get('value')
+                try:
+                    val_int = int(val)
+                except Exception:
+                    continue
+                if val_int == 0:
+                    continue
+                merged.append({
+                    'type': 'PASSIVE',
+                    'id': f'static-cost-mod-{idx}',
+                    'amount': val_int,
+                })
+            elif value_mode == 'STAT_SCALED':
+                # Require stat_values to compute; if not provided, skip conservative conversion
+                if not stat_values:
+                    # Skip conversion when no runtime stat values provided
+                    continue
+                stat_key = s.get('stat_key')
+                per_value = s.get('per_value')
+                try:
+                    per_value_int = int(per_value)
+                except Exception:
+                    continue
+                min_stat = s.get('min_stat', 1)
+                try:
+                    min_stat_int = int(min_stat)
+                except Exception:
+                    min_stat_int = 1
+                max_reduction = s.get('max_reduction')
+                try:
+                    max_reduction_int = int(max_reduction) if max_reduction is not None else None
+                except Exception:
+                    max_reduction_int = None
+
+                stat_val = 0
+                if stat_key and isinstance(stat_key, str) and stat_key in stat_values:
+                    try:
+                        stat_val = int(stat_values.get(stat_key, 0))
+                    except Exception:
+                        stat_val = 0
+
+                calculated = max(0, stat_val - min_stat_int + 1) * per_value_int
+                if max_reduction_int is not None:
+                    calculated = min(calculated, max_reduction_int)
+                if calculated <= 0:
+                    continue
+                merged.append({
+                    'type': 'PASSIVE',
+                    'id': f'static-cost-mod-{idx}',
+                    'amount': int(calculated),
+                })
 
     return merged
 

@@ -40,6 +40,27 @@ GameInstance::GameInstance(
     dm::engine::infrastructure::CardRegistry::set_definitions(*card_db);
   }
 
+  // Diagnostic: write out static_abilities counts for known test card IDs
+  try {
+    std::ofstream diag2("c:\\temp\\game_instance_constructor.txt", std::ios::app);
+    if (diag2) {
+      diag2 << "GameInstance card_db entries=" << (card_db ? card_db->size() : 0) << "\n";
+      if (card_db) {
+        std::vector<int> probe_ids = {9101, 9102, 9103};
+        for (int pid : probe_ids) {
+          auto it = card_db->find((core::CardID)pid);
+          if (it != card_db->end()) {
+            diag2 << "  probe card_id=" << pid << " static_abilities=" << it->second.static_abilities.size() << "\n";
+          } else {
+            diag2 << "  probe card_id=" << pid << " NOT_FOUND\n";
+          }
+        }
+      }
+      diag2.close();
+    }
+  } catch (...) {
+  }
+
   trigger_manager = std::make_shared<systems::TriggerManager>();
   pipeline = std::make_shared<systems::PipelineExecutor>();
 

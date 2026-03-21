@@ -3,6 +3,7 @@
 #include "engine/systems/rules/condition_system.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 #include "engine/systems/effects/effect_system.hpp"
+#include "engine/systems/effects/continuous_effect_system.hpp"
 #include "engine/systems/effects/trigger_system.hpp"
 #include "engine/systems/effects/passive_effect_system.hpp"
 #include "engine/systems/rules/restriction_system.hpp"
@@ -89,6 +90,11 @@ namespace dm::engine::systems {
                     if (card_db.count(c->card_id)) {
                         const auto& base_def = card_db.at(c->card_id);
                         const auto& def = (is_spell_side && base_def.spell_side) ? *base_def.spell_side : base_def;
+
+                        // Ensure continuous/static effects are up-to-date before computing payments
+                        try {
+                            dm::engine::systems::ContinuousEffectSystem::recalculate(state, card_db);
+                        } catch(...) {}
 
                         // 再発防止: テスト失敗時にカード定義へ cost_reductions が載っているかを
                         // 実行時に必ず可視化して、JSONロード/レジストリ経路の切り分けを容易にする。
