@@ -569,7 +569,14 @@ void bind_core(py::module& m) {
         .def_readwrite("value", &ModifierDef::value)
         .def_readwrite("str_val", &ModifierDef::str_val)
         .def_readwrite("condition", &ModifierDef::condition)
-        .def_readwrite("filter", &ModifierDef::filter);
+        .def_readwrite("filter", &ModifierDef::filter)
+        // Expose STAT_SCALED related fields to Python so tests and Python shim
+        // can read the configuration when native module is loaded.
+        .def_readwrite("value_mode", &ModifierDef::value_mode)
+        .def_readwrite("stat_key", &ModifierDef::stat_key)
+        .def_readwrite("per_value", &ModifierDef::per_value)
+        .def_readwrite("min_stat", &ModifierDef::min_stat)
+        .def_readwrite("max_reduction", &ModifierDef::max_reduction);
 
     // Legacy ActionDef is no longer exposed directly; use CommandDef instead.
     // A Python-level alias `ActionDef = CommandDef` is provided later for compatibility.

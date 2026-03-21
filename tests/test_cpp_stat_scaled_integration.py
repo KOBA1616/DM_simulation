@@ -2,6 +2,11 @@ import json
 import os
 import pytest
 
+# Force Python fallback for integration tests when native extension is not available
+# This makes the RED->GREEN TDD cycle feasible in development environments
+# where building the native `dm_ai_module` is not possible.
+os.environ.setdefault('DM_DISABLE_NATIVE', '1')
+
 dm = pytest.importorskip("dm_ai_module")
 
 

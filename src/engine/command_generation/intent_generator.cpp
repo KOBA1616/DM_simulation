@@ -1,6 +1,7 @@
 #include "intent_generator.hpp"
 #include "core/constants.hpp"
 #include "engine/systems/effects/reaction_window.hpp"
+#include "engine/systems/effects/continuous_effect_system.hpp"
 #include <fstream>
 #include <sstream>
 #include <filesystem>
@@ -9,8 +10,14 @@ namespace dm::engine {
 
     using namespace dm::core;
 
-    std::vector<CommandDef> IntentGenerator::generate_legal_commands(const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+    std::vector<CommandDef> IntentGenerator::generate_legal_commands(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         try {
+            // Ensure continuous effects (PASSIVE/STATIC) are up-to-date before
+            // generating legal commands. This enforces the contract that any
+            // state change which could affect costs or targets has had
+            // ContinuousEffectSystem::recalculate run.
+            dm::engine::systems::ContinuousEffectSystem::recalculate(game_state, card_db);
+
             std::filesystem::create_directories("logs");
             std::ofstream diag("logs/crash_diag.txt", std::ios::app);
             if (diag) {
