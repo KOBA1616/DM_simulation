@@ -7,6 +7,24 @@
 
 ---
 
+追記（2026-03-21 ネイティブ対応）:
+- 実装: `EngineCompat.ensure_recalculated(state)` ヘルパを追加しました。これは以下を順に試みます:
+  1. `state.ensure_recalculated()` を呼ぶ（Pythonフォールバック）。
+  2. ネイティブモジュールに `ContinuousEffectSystem.recalculate(native_state)` が存在すれば呼ぶ。
+  3. `state.recalculate()` 等の代替メソッドを探して呼ぶ。
+  - 理由: ネイティブ実装が未整備な環境でも安全にインポート・テストが動くようにするための互換レイヤです。
+  - 追加テスト: `tests/test_enginecompat_ensure_recalc.py` を追加し、Pythonフォールバックの呼び出しが動作することを検証しています（ローカルで `1 passed` を確認）。
+  - 追加テスト: `tests/test_enginecompat_ensure_recalc_order.py` を追加し、`ensure_recalculated` が
+    Pythonヘルパ → ネイティブ `ContinuousEffectSystem.recalculate` → その他フォールバックの順で
+    積極的に試行されることを検証しています（ローカルで `1 passed` を確認）。
+
+注記: ネイティブ拡張の import 時に起きる例外を吸収するため、`dm_ai_module` のインポートを広く保護しています（これはテスト実行の安定性を優先するための暫定対応です）。CIやネイティブ整備済み環境へは影響を与えませんが、ネイティブ側の本実装と差分がある場合はエンジニアリングレビューで確認してください。
+
+追記（2026-03-21 ネイティブ契約テスト）:
+- `EngineCompat.ensure_recalculated` のネイティブ経路を検証する単体テスト `tests/test_enginecompat_calls_native_recalc.py` を追加しました。ダミーモジュールの `ContinuousEffectSystem.recalculate` を注入して、ネイティブ経路が呼ばれることを確認しています（ローカルで `1 passed` を確認）。
+
+このテストにより、ネイティブ実装が提供されている場合の再計算呼出し契約も RED→GREEN サイクルでフォローできるようになりました。実際の C++ 実装が整った際は、同様の統合テストを CI に追加してネイティブ経路での検証を自動化してください。
+
 ## 1. 要約
 
 現状は「統計条件の評価（`COMPARE_STAT`）」と「コスト軽減（`COST_MODIFIER` / `PASSIVE`）」が別軸で実装されており、
@@ -309,6 +327,10 @@ pytest tests/test_cpp_stat_scaled_integration.py -q -s
 
   - 期待される結果: `active_modifiers` が正しく再計算されている場合、該当テストはGREENとなります。失敗が続く場合は (2) の「ネイティブ CardRegistry からの取得」を優先で対応します。
 
+- 2026-03-21 (追記): TDDによる検証追加
+  - 実施: Pythonフォールバック経路での RED→GREEN を確実に回すため、統合テスト `tests/test_stat_scaled_fallback_integration.py` を追加しました。テストは `DM_DISABLE_NATIVE=1` を強制し、`STAT_SCALED` を持つ `COST_MODIFIER` が `StatCommand` の更新後に `active_modifiers` を反映することを検証します。
+  - 効果: ネイティブ未整備環境でも仕様の契約テストが実行できるようになり、Python側での修正が迅速にフィードバックされます。C++ 側の本実装が揃い次第、同テストをネイティブ経路でも実行して差分を検出してください。
+
 - 2026-03-21 (追記): デバッグと診断のため、`tests/test_inspect_active_modifiers_type.py` を追加しました。
   - 目的: `GameState.active_modifiers` が Python でどのような型（list等）として露出されているか確認するため。
   - 結果: 実行結果は `active_modifiers` が Python の `list` として露出され、`clear()` / `append()` が可能であることを確認しました（シム層では Python 側から要素追加は可能）。
@@ -399,6 +421,10 @@ pytest tests/test_cpp_stat_scaled_integration.py -q -s
 - `max_reduction` の上限クランプ漏れがないか
 - 0始まりプレイヤーID前提を崩していないか
 
+---
+
+追記（2026-03-21 追加）:
+- `tests/test_jsonloader_preserves_static_abilities.py` を追加し、`JsonLoader.load_cards` が `static_abilities` を保存/露出する契約を明文化しました。Python フォールバック経路およびネイティブ経路での挙動差分を検出するための単純な回帰テストで、開発環境での RED→GREEN サイクルを高速化します。
 ---
 
 ## 8. Definition of Done
@@ -620,3 +646,15 @@ MCTSでも通常ゲーム経路と同じ順序を保証する。
 4. 最後に責務混在のコメント整理とドキュメント更新
 
 この順序なら挙動差分を限定しつつ、コスト軽減と常在効果のタイミングを安定化できる。
+
+追記（2026-03-21 追加）:
+- 単体TDDを1件追加しました: `tests/test_cost_reduction_recalc_after_stat_update.py`。
+  - 内容: `COST_MODIFIER.value_mode=STAT_SCALED` の `stat_key` 参照値が変化した際に、`evaluate_cost(..., stat_values=...)` の戻り値 `final_cost` が期待どおり変化することを検証します。
+  - 実行: `DM_DISABLE_NATIVE` を使わずに Python フォールバック経路での検証を実行し、ローカルで `1 passed` を確認しました。
+  - 意義: このテストは「統計値更新→再計算（Python試算経路）」の契約を確かめる小さなTDD単位で、12.6節で計画した再計算タイミング契約の一部を担保します。
+
+追記（2026-03-21 実装）:
+- `generate_legal_commands` に最小安全措置を追加しました。`GameState` が `ensure_recalculated()` を提供している場合、呼び出すようにして合法手生成前に再計算を促します。
+  - 追加テスト: `tests/test_generate_legal_calls_recalc.py` を追加し、`ensure_recalculated` が呼び出されることを検証しています（ローカルで `1 passed` を確認）。
+  - 理由: これは Python 側の呼び出し経路で「合法手生成前に再計算する」契約を守るための最小変更で、C++ ネイティブ経路の再計算契約実装が整うまでの安全弁として働きます。
+
