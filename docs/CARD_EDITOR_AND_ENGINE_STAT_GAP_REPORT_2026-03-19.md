@@ -264,6 +264,7 @@ CI:
 
 - [x] `stat_key` の候補定義（エディタ）と評価定義（Python/C++）の同期契約テストを追加しました（tests/test_stat_key_editor_engine_sync.py）。
 - [ ] `onnxruntime` バージョン差分に依存しない CI ポリシー（固定 or xfail 方針）を明文化する
+ - [x] `onnxruntime` バージョン差分に依存しない CI ポリシー（固定 or xfail 方針）を明文化しました（docs/ONNXRUNTIME_CI_POLICY.md）。
 
 ### P2
 
@@ -394,6 +395,7 @@ MCTSでも通常ゲーム経路と同じ順序を保証する。
 
 - `tests/test_cost_reduction_recalc_after_stat_update.py`
   - 統計更新後に軽減値が反映されること
+  - 追加: Python側の `evaluate_cost` を対象にしたテストを追加し、統計値変更時の軽減再計算を検証（tests/test_cost_reduction_recalc_after_stat_update.py）。
 - `tests/test_mcts_cost_reduction_timing_parity.py`
   - 同一状態で MCTS遷移と通常遷移のコスト判定が一致すること
 - `tests/test_continuous_effect_recalc_before_generate_legal.py`
