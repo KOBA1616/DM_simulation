@@ -386,13 +386,26 @@ class ModifierValidator:
                 # require stat_key and per_value
                 if 'stat_key' not in modifier or not isinstance(modifier.get('stat_key'), str):
                     errors.append("Save blocked: COST_MODIFIER (STAT_SCALED) requires 'stat_key' (string). Example: 'CREATURES_PLAYED'")
+                else:
+                    # Fail-fast: ensure stat_key is one of the canonical editor/engine keys
+                    sk = modifier.get('stat_key')
+                    if (sk not in CardTextResources.COMPARE_STAT_EDITOR_KEYS
+                            and sk not in CardTextResources.STAT_KEY_MAP):
+                        errors.append(f"COST_MODIFIER.stat_key '{sk}' is not a known stat key")
                 if 'per_value' not in modifier or not isinstance(modifier.get('per_value'), int):
                     errors.append("Save blocked: COST_MODIFIER (STAT_SCALED) requires 'per_value' (int). Example: 1")
+                else:
+                    # Ensure per_value is a positive integer (no negative or zero unit reductions)
+                    if modifier.get('per_value') <= 0:
+                        errors.append("COST_MODIFIER 'per_value' must be integer > 0")
                 # optional numeric clamps
                 if 'min_stat' in modifier and not isinstance(modifier.get('min_stat'), int):
                     errors.append("COST_MODIFIER 'min_stat' must be int when present")
                 if 'max_reduction' in modifier and not isinstance(modifier.get('max_reduction'), int):
                     errors.append("COST_MODIFIER 'max_reduction' must be int when present")
+                # Mutual exclusivity: STAT_SCALED should not include legacy 'value'
+                if 'value' in modifier:
+                    errors.append("COST_MODIFIER with value_mode=STAT_SCALED must not set 'value' (use 'per_value' instead)")
         
         elif mtype == "POWER_MODIFIER":
             if 'value' not in modifier:
