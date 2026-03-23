@@ -140,9 +140,18 @@ namespace dm::engine::rules {
             else if (key == "OPPONENT_SHIELD_COUNT") left_value = (int)opp.shield_zone.size();
             else if (key == "MY_BATTLE_ZONE_COUNT") left_value = (int)self.battle_zone.size();
             else if (key == "OPPONENT_BATTLE_ZONE_COUNT") left_value = (int)opp.battle_zone.size();
+            // 再発防止: CardTextResources 側で COMPARE_STAT キーを追加したら、
+            // ここにも同じキー解決を追加しないと判定が常に 0 になりうる。
             else if (key == "SUMMON_COUNT_THIS_TURN") left_value = state.turn_stats.summon_count_this_turn;
+            else if (key == "SPELL_CAST_THIS_TURN" || key == "SPELL_CAST_COUNT_THIS_TURN") left_value = state.turn_stats.spells_cast_this_turn;
             else if (key == "DESTROY_COUNT_THIS_TURN") left_value = state.turn_stats.creatures_destroyed_this_turn;
             else if (key == "MANA_SET_THIS_TURN") left_value = state.turn_stats.mana_set_this_turn;
+            else if (key == "CARDS_DRAWN_THIS_TURN") left_value = state.turn_stats.cards_drawn_this_turn;
+            else if (key == "SHIELD_BREAK_ATTEMPT_THIS_TURN") left_value = state.turn_stats.shield_break_attempt_count_this_turn;
+            else if (key == "SHIELD_BREAK_RESOLVED_THIS_TURN") left_value = state.turn_stats.shield_break_resolved_count_this_turn;
+            else if (key == "ATTACKED_THIS_TURN") left_value = state.turn_stats.attacked_this_turn;
+            else if (key == "MY_ATTACKED_THIS_TURN") left_value = state.turn_stats.attacked_this_turn_by_player[self_id];
+            else if (key == "OPPONENT_ATTACKED_THIS_TURN") left_value = state.turn_stats.attacked_this_turn_by_player[opp_id];
 
             // Operator
             if (condition.op == ">") return left_value > condition.value;

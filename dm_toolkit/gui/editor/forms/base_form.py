@@ -293,10 +293,18 @@ class BaseEditForm(QWidget):
                 except Exception:
                     conflicts = []
                 if conflicts:
+                    # 再発防止: validators_shared の severity 契約（ERROR/WARNING）に合わせ、
+                    # ERROR を含む場合は保存をブロックして二重適用定義の混入を防ぐ。
+                    has_error = any(isinstance(c, str) and c.startswith('ERROR:') for c in conflicts)
                     # Display warnings on bound widgets but allow save to continue
                     msg = format_integrity_warnings(conflicts) if 'format_integrity_warnings' in globals() else '\n'.join(conflicts)
                     for widget in list(self.bindings.values()):
                         w = widget[0] if isinstance(widget, tuple) else widget
+                        if has_error and hasattr(w, 'setStyleSheet'):
+                            try:
+                                w.setStyleSheet("border: 1px solid red;")
+                            except Exception:
+                                pass
                         if hasattr(w, 'setToolTip'):
                             try:
                                 existing = getattr(w, 'toolTip', None)
@@ -309,6 +317,8 @@ class BaseEditForm(QWidget):
                             data.setdefault('_editor_warnings', []).extend(conflicts)
                     except Exception:
                         pass
+                    if has_error:
+                        return
         except Exception:
             pass
 

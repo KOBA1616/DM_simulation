@@ -1,3 +1,4 @@
+import os
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 
@@ -14,6 +15,11 @@ class PaymentPlan:
     final_cost: int = 0
 
 
+
+
+def _is_stat_scaled_enabled() -> bool:
+    """Feature flag gate for staged rollout/rollback of STAT_SCALED."""
+    return os.environ.get('STAT_SCALED_ENABLED', '1') != '0'
 
 
 def _compute_cr_reduction(cr: Dict[str, Any], units: int) -> int:
@@ -57,11 +63,12 @@ def apply_passive_reductions(card: Dict[str, Any], base_cost: int, units: int = 
     if not isinstance(card, dict):
         return base_cost
 
-    # Merge explicit cost_reductions with static COST_MODIFIERs for conservative evaluation.
-    crs = _merged_passive_definitions(card, stat_values, zone_state)
+    # Only apply explicit PASSIVE cost_reductions here. Static COST_MODIFIERs
+    # are handled separately by evaluate_cost in the STATIC phase.
+    explicit_crs = card.get('cost_reductions') or []
     total_reduction = 0
     floor_min = None
-    for cr in crs:
+    for cr in explicit_crs:
         if not isinstance(cr, dict):
             continue
         if cr.get('type') != 'PASSIVE':
@@ -156,14 +163,13 @@ def evaluate_cost(card: Dict[str, Any], base_cost: int, units: int = 1, active_r
         final_cost=base_cost,
     )
 
-    # Apply PASSIVE reductions
-    # Use merged passive definitions so that static COST_MODIFIER entries are
-    # considered alongside explicit PASSIVE cost_reductions in editor/agent evaluation.
-    crs = _merged_passive_definitions(card, stat_values, zone_state)
+    # Composition order: 1) explicit PASSIVE cost_reductions 2) static COST_MODIFIERs (FIXED/STAT_SCALED) 3) ACTIVE_PAYMENT
+    # First, evaluate explicit PASSIVE reductions only.
+    explicit_crs = card.get('cost_reductions') or []
     floor_min = None
     total_red = 0
     passive_ids = []
-    for cr in crs:
+    for cr in explicit_crs:
         if not isinstance(cr, dict):
             continue
         if cr.get('type') != 'PASSIVE':
@@ -187,21 +193,36 @@ def evaluate_cost(card: Dict[str, Any], base_cost: int, units: int = 1, active_r
     plan.total_passive_reduction = total_red
     plan.passive_ids = passive_ids
 
+    # Next, apply static COST_MODIFIER reductions (converted to PASSIVE-like amounts).
+    static_crs = _convert_static_cost_modifiers(card, stat_values, zone_state)
+    static_total_red = 0
+    for cr in static_crs:
+        if not isinstance(cr, dict):
+            continue
+        # these converted entries are always of type PASSIVE for arithmetic
+        static_total_red += _compute_cr_reduction(cr, units)
+
+    # Apply static reductions on top of adjusted_after_passive
+    adjusted_after_static = max(plan.adjusted_after_passive - static_total_red, 0)
+    plan.final_cost = adjusted_after_static
+
     # Optionally apply ACTIVE_PAYMENT
     if active_reduction_id:
         red_amt = 0
-        for cr in crs:
+        # active reductions should be looked up from explicit cost_reductions list
+        for cr in explicit_crs:
             if isinstance(cr, dict) and cr.get('id') == active_reduction_id and cr.get('type') == 'ACTIVE_PAYMENT':
                 red_amt = _compute_active_reduction(cr, active_units or units)
                 # respect min_mana_cost on the target active reduction
                 floor = cr.get('min_mana_cost') if isinstance(cr.get('min_mana_cost'), int) else None
                 break
         plan.active_reduction_amount = red_amt
-        plan.final_cost = max(plan.adjusted_after_passive - red_amt, 0)
+        plan.final_cost = max(plan.final_cost - red_amt, 0)
         if 'floor' in locals() and floor is not None:
             plan.final_cost = max(plan.final_cost, floor)
     else:
-        plan.final_cost = plan.adjusted_after_passive
+        # plan.final_cost already set to adjusted_after_static
+        pass
 
     return plan
 
@@ -335,6 +356,9 @@ def _merged_passive_definitions(card: Dict[str, Any], stat_values: Optional[Dict
                     'amount': val_int,
                 })
             elif value_mode == 'STAT_SCALED':
+                # 再発防止: ロールバック時は STAT_SCALED を完全に無効化する。
+                if not _is_stat_scaled_enabled():
+                    continue
                 # Require stat_values to compute; if not provided, skip conservative conversion
                 if not stat_values:
                     # Skip conversion when no runtime stat values provided
@@ -375,6 +399,124 @@ def _merged_passive_definitions(card: Dict[str, Any], stat_values: Optional[Dict
                 })
 
     return merged
+
+
+def _convert_static_cost_modifiers(card: Dict[str, Any], stat_values: Optional[Dict[str, int]] = None, zone_state: Optional[Dict[str, Dict[str, Dict[str, int]]]] = None) -> List[Dict[str, Any]]:
+    """Convert `static_abilities` COST_MODIFIER entries into PASSIVE-like dicts.
+
+    This mirrors the conversion logic used by _merged_passive_definitions but
+    isolates static->passive conversion so evaluate_cost can apply explicit
+    PASSIVE entries first and static modifiers second (composition order).
+    """
+    converted: List[Dict[str, Any]] = []
+    if not isinstance(card, dict):
+        return converted
+
+    statics = card.get('static_abilities') or []
+    for idx, s in enumerate(statics):
+        if not isinstance(s, dict):
+            continue
+        if s.get('type') != 'COST_MODIFIER':
+            continue
+
+        value_mode = s.get('value_mode', 'FIXED')
+        cond = s.get('condition')
+        cond_ok = True
+        if isinstance(cond, dict) and cond.get('type') == 'CARDS_MATCHING_FILTER':
+            if zone_state is None:
+                cond_ok = False
+            else:
+                try:
+                    f = cond.get('filter', {}) or {}
+                    owner = f.get('owner', 'SELF')
+                    zones = f.get('zones', []) or []
+                    races = f.get('races', []) or []
+                    op = cond.get('op', '>=')
+                    value = int(cond.get('value', 1))
+
+                    count = 0
+                    owner_zone = zone_state.get(owner, {})
+                    for z in zones:
+                        zone_races = owner_zone.get(z, {})
+                        if races:
+                            for r in races:
+                                try:
+                                    count += int(zone_races.get(r, 0))
+                                except Exception:
+                                    pass
+                        else:
+                            for v in zone_races.values():
+                                try:
+                                    count += int(v)
+                                except Exception:
+                                    pass
+
+                    if op == '>=':
+                        cond_ok = count >= value
+                    elif op == '==':
+                        cond_ok = count == value
+                    else:
+                        cond_ok = False
+                except Exception:
+                    cond_ok = False
+        if not cond_ok:
+            continue
+
+        if value_mode == 'FIXED':
+            val = s.get('value')
+            try:
+                val_int = int(val)
+            except Exception:
+                continue
+            if val_int == 0:
+                continue
+            converted.append({
+                'type': 'PASSIVE',
+                'id': f'static-cost-mod-{idx}',
+                'amount': val_int,
+            })
+        elif value_mode == 'STAT_SCALED':
+            # 再発防止: ロールバック時は STAT_SCALED を完全に無効化する。
+            if not _is_stat_scaled_enabled():
+                continue
+            if not stat_values:
+                continue
+            stat_key = s.get('stat_key')
+            per_value = s.get('per_value')
+            try:
+                per_value_int = int(per_value)
+            except Exception:
+                continue
+            min_stat = s.get('min_stat', 1)
+            try:
+                min_stat_int = int(min_stat)
+            except Exception:
+                min_stat_int = 1
+            max_reduction = s.get('max_reduction')
+            try:
+                max_reduction_int = int(max_reduction) if max_reduction is not None else None
+            except Exception:
+                max_reduction_int = None
+
+            stat_val = 0
+            if stat_key and isinstance(stat_key, str) and stat_key in stat_values:
+                try:
+                    stat_val = int(stat_values.get(stat_key, 0))
+                except Exception:
+                    stat_val = 0
+
+            calculated = max(0, stat_val - min_stat_int + 1) * per_value_int
+            if max_reduction_int is not None:
+                calculated = min(calculated, max_reduction_int)
+            if calculated <= 0:
+                continue
+            converted.append({
+                'type': 'PASSIVE',
+                'id': f'static-cost-mod-{idx}',
+                'amount': int(calculated),
+            })
+
+    return converted
 
 
 def apply_active_payment(card: Dict[str, Any], base_cost: int, reduction_id: str, units: int = 1) -> int:

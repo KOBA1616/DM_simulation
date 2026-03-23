@@ -652,6 +652,22 @@ void CommandSystem::generate_macro_instructions(
     move.args["to"] = "HAND";
     out.push_back(move);
 
+    // Ensure turn-stat tracking for draws: emit a STAT modify so that
+    // CARDS_DRAWN is incremented in a central, undoable way. Use a
+    // context reference when the draw amount comes from a $-variable.
+    {
+      Instruction stat_mod(InstructionOp::MODIFY);
+      stat_mod.args["type"] = "STAT";
+      stat_mod.args["stat"] = "CARDS_DRAWN";
+      if (!count_val_key.empty()) {
+        // count chosen by player (SELECT_NUMBER) stored in count_val_key
+        stat_mod.args["value"] = std::string("$") + count_val_key;
+      } else {
+        stat_mod.args["value"] = count;
+      }
+      out.push_back(stat_mod);
+    }
+
     if (!cmd.output_value_key.empty() && count_val_key.empty()) {
       Instruction calc(InstructionOp::MATH);
       calc.args["lhs"] = count;

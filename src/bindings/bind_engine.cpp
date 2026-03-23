@@ -446,7 +446,10 @@ void bind_engine(py::module &m) {
       }
     } catch (...) {
     }
-    return IntentGenerator::generate_legal_commands(gs, db);
+    // 再発防止: IntentGenerator は non-const GameState& を受け取るため、
+    // バインディング層では const 参照を直接渡さずクローンを介して呼び出す。
+    GameState gs_for_intent = gs.clone();
+    return IntentGenerator::generate_legal_commands(gs_for_intent, db);
   };
 
   py::class_<IntentGenerator>(m, "IntentGenerator")

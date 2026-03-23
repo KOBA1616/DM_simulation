@@ -325,6 +325,13 @@ void PhaseSystem::on_draw_phase(
     }
     move_card_cmd(game_state, player.deck, Zone::DECK, Zone::HAND, player.id);
 
+    // Track cards drawn this turn (undoable via StatCommand).
+    {
+      auto stat_cmd = std::make_unique<dm::engine::game_command::StatCommand>(
+          dm::engine::game_command::StatCommand::StatType::CARDS_DRAWN, 1);
+      game_state.execute_command(std::move(stat_cmd));
+    }
+
     // 再発防止: ドロー数トラッキングと ON_OPPONENT_DRAW トリガー発火。
     //   player_draw_count を更新しないと OPPONENT_DRAW_COUNT 条件が常に 0 のまま。
     //   draw 後に相手バトルゾーンを走査し ON_OPPONENT_DRAW 持ちカードを発火する。

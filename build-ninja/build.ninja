@@ -51,9 +51,8 @@ build cmake_object_order_depends_target_dm_core: phony || .
 
 build CMakeFiles\dm_core.dir\src\core\game_state.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\core\game_state.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\core
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -62,9 +61,8 @@ build CMakeFiles\dm_core.dir\src\core\game_state.cpp.obj: CXX_COMPILER__dm_core_
 
 build CMakeFiles\dm_core.dir\src\core\game_state_stats.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\core\game_state_stats.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\core
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -73,9 +71,8 @@ build CMakeFiles\dm_core.dir\src\core\game_state_stats.cpp.obj: CXX_COMPILER__dm
 
 build CMakeFiles\dm_core.dir\src\core\game_state_tracking.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\core\game_state_tracking.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\core
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -84,9 +81,8 @@ build CMakeFiles\dm_core.dir\src\core\game_state_tracking.cpp.obj: CXX_COMPILER_
 
 build CMakeFiles\dm_core.dir\src\core\game_state_hash.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\core\game_state_hash.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\core
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -95,9 +91,8 @@ build CMakeFiles\dm_core.dir\src\core\game_state_hash.cpp.obj: CXX_COMPILER__dm_
 
 build CMakeFiles\dm_core.dir\src\core\game_state_loop.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\core\game_state_loop.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\core
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -106,9 +101,8 @@ build CMakeFiles\dm_core.dir\src\core\game_state_loop.cpp.obj: CXX_COMPILER__dm_
 
 build CMakeFiles\dm_core.dir\src\core\game_state_observer.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\core\game_state_observer.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\core
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -117,9 +111,8 @@ build CMakeFiles\dm_core.dir\src\core\game_state_observer.cpp.obj: CXX_COMPILER_
 
 build CMakeFiles\dm_core.dir\src\engine\command_generation\intent_generator.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\command_generation\intent_generator.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\command_generation
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -128,9 +121,8 @@ build CMakeFiles\dm_core.dir\src\engine\command_generation\intent_generator.cpp.
 
 build CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\pending_strategy.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\command_generation\strategies\pending_strategy.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\command_generation\strategies
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -139,9 +131,8 @@ build CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\pending_st
 
 build CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\stack_strategy.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\command_generation\strategies\stack_strategy.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\command_generation\strategies
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -150,9 +141,8 @@ build CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\stack_stra
 
 build CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\phase_strategies.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\command_generation\strategies\phase_strategies.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\command_generation\strategies
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -161,9 +151,8 @@ build CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\phase_stra
 
 build CMakeFiles\dm_core.dir\src\engine\ai\simple_ai.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\ai\simple_ai.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\ai
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -172,9 +161,8 @@ build CMakeFiles\dm_core.dir\src\engine\ai\simple_ai.cpp.obj: CXX_COMPILER__dm_c
 
 build CMakeFiles\dm_core.dir\src\engine\systems\flow\phase_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\flow\phase_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\flow
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -183,9 +171,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\flow\phase_system.cpp.obj: CXX_C
 
 build CMakeFiles\dm_core.dir\src\engine\systems\mechanics\battle_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\mechanics\battle_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\mechanics
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -194,9 +181,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\mechanics\battle_system.cpp.obj:
 
 build CMakeFiles\dm_core.dir\src\engine\systems\mechanics\shield_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\mechanics\shield_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\mechanics
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -205,9 +191,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\mechanics\shield_system.cpp.obj:
 
 build CMakeFiles\dm_core.dir\src\engine\systems\mechanics\play_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\mechanics\play_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\mechanics
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -216,9 +201,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\mechanics\play_system.cpp.obj: C
 
 build CMakeFiles\dm_core.dir\src\engine\systems\mechanics\mana_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\mechanics\mana_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\mechanics
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -227,9 +211,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\mechanics\mana_system.cpp.obj: C
 
 build CMakeFiles\dm_core.dir\src\engine\systems\mechanics\payment_plan.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\mechanics\payment_plan.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\mechanics
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -238,9 +221,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\mechanics\payment_plan.cpp.obj: 
 
 build CMakeFiles\dm_core.dir\src\engine\systems\breaker\breaker_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\breaker\breaker_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\breaker
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -249,9 +231,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\breaker\breaker_system.cpp.obj: 
 
 build CMakeFiles\dm_core.dir\src\engine\utils\determinizer.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\utils\determinizer.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\utils
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -260,9 +241,8 @@ build CMakeFiles\dm_core.dir\src\engine\utils\determinizer.cpp.obj: CXX_COMPILER
 
 build CMakeFiles\dm_core.dir\src\engine\utils\dev_tools.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\utils\dev_tools.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\utils
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -271,9 +251,8 @@ build CMakeFiles\dm_core.dir\src\engine\utils\dev_tools.cpp.obj: CXX_COMPILER__d
 
 build CMakeFiles\dm_core.dir\src\engine\infrastructure\data\card_registry.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\infrastructure\data\card_registry.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\infrastructure\data
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -282,9 +261,8 @@ build CMakeFiles\dm_core.dir\src\engine\infrastructure\data\card_registry.cpp.ob
 
 build CMakeFiles\dm_core.dir\src\engine\systems\effects\effect_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\effects\effect_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\effects
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -293,9 +271,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\effects\effect_system.cpp.obj: C
 
 build CMakeFiles\dm_core.dir\src\engine\systems\mechanics\selection_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\mechanics\selection_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\mechanics
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -304,9 +281,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\mechanics\selection_system.cpp.o
 
 build CMakeFiles\dm_core.dir\src\engine\systems\rules\condition_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\rules\condition_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\rules
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -315,9 +291,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\rules\condition_system.cpp.obj: 
 
 build CMakeFiles\dm_core.dir\src\engine\infrastructure\data\json_loader.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\infrastructure\data\json_loader.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\infrastructure\data
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -326,9 +301,8 @@ build CMakeFiles\dm_core.dir\src\engine\infrastructure\data\json_loader.cpp.obj:
 
 build CMakeFiles\dm_core.dir\src\engine\infrastructure\data\keyword_expander.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\infrastructure\data\keyword_expander.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\infrastructure\data
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -337,9 +311,8 @@ build CMakeFiles\dm_core.dir\src\engine\infrastructure\data\keyword_expander.cpp
 
 build CMakeFiles\dm_core.dir\src\engine\game_instance.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\game_instance.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -348,9 +321,8 @@ build CMakeFiles\dm_core.dir\src\engine\game_instance.cpp.obj: CXX_COMPILER__dm_
 
 build CMakeFiles\dm_core.dir\src\engine\diag_win32.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\diag_win32.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -359,9 +331,8 @@ build CMakeFiles\dm_core.dir\src\engine\diag_win32.cpp.obj: CXX_COMPILER__dm_cor
 
 build CMakeFiles\dm_core.dir\src\engine\systems\mechanics\cost_payment_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\mechanics\cost_payment_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\mechanics
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -370,9 +341,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\mechanics\cost_payment_system.cp
 
 build CMakeFiles\dm_core.dir\src\engine\systems\effects\trigger_manager.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\effects\trigger_manager.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\effects
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -381,9 +351,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\effects\trigger_manager.cpp.obj:
 
 build CMakeFiles\dm_core.dir\src\engine\systems\effects\trigger_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\effects\trigger_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\effects
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -392,9 +361,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\effects\trigger_system.cpp.obj: 
 
 build CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\definitions\commands.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\infrastructure\commands\definitions\commands.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\definitions
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -403,9 +371,8 @@ build CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\definitions\comm
 
 build CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\definitions\action_commands.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\infrastructure\commands\definitions\action_commands.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\definitions
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -414,9 +381,8 @@ build CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\definitions\acti
 
 build CMakeFiles\dm_core.dir\src\engine\infrastructure\pipeline\pipeline_executor.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\infrastructure\pipeline\pipeline_executor.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\infrastructure\pipeline
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -425,9 +391,8 @@ build CMakeFiles\dm_core.dir\src\engine\infrastructure\pipeline\pipeline_executo
 
 build CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\command_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\infrastructure\commands\command_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\infrastructure\commands
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -436,9 +401,8 @@ build CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\command_system.c
 
 build CMakeFiles\dm_core.dir\src\engine\systems\director\game_logic_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\director\game_logic_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\director
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -447,9 +411,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\director\game_logic_system.cpp.o
 
 build CMakeFiles\dm_core.dir\src\engine\systems\rules\restriction_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\rules\restriction_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\rules
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -458,9 +421,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\rules\restriction_system.cpp.obj
 
 build CMakeFiles\dm_core.dir\src\engine\systems\effects\continuous_effect_system.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\engine\systems\effects\continuous_effect_system.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\engine\systems\effects
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -469,9 +431,8 @@ build CMakeFiles\dm_core.dir\src\engine\systems\effects\continuous_effect_system
 
 build CMakeFiles\dm_core.dir\src\ai\encoders\tensor_converter.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\encoders\tensor_converter.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\encoders
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -480,9 +441,8 @@ build CMakeFiles\dm_core.dir\src\ai\encoders\tensor_converter.cpp.obj: CXX_COMPI
 
 build CMakeFiles\dm_core.dir\src\ai\encoders\token_converter.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\encoders\token_converter.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\encoders
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -491,9 +451,8 @@ build CMakeFiles\dm_core.dir\src\ai\encoders\token_converter.cpp.obj: CXX_COMPIL
 
 build CMakeFiles\dm_core.dir\src\ai\encoders\command_encoder.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\encoders\command_encoder.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\encoders
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -502,9 +461,8 @@ build CMakeFiles\dm_core.dir\src\ai\encoders\command_encoder.cpp.obj: CXX_COMPIL
 
 build CMakeFiles\dm_core.dir\src\ai\batch_evaluator.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\batch_evaluator.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -513,9 +471,8 @@ build CMakeFiles\dm_core.dir\src\ai\batch_evaluator.cpp.obj: CXX_COMPILER__dm_co
 
 build CMakeFiles\dm_core.dir\src\ai\mcts\mcts.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\mcts\mcts.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\mcts
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -524,9 +481,8 @@ build CMakeFiles\dm_core.dir\src\ai\mcts\mcts.cpp.obj: CXX_COMPILER__dm_core_uns
 
 build CMakeFiles\dm_core.dir\src\ai\mcts\mcts_evaluator.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\mcts\mcts_evaluator.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\mcts
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -535,9 +491,8 @@ build CMakeFiles\dm_core.dir\src\ai\mcts\mcts_evaluator.cpp.obj: CXX_COMPILER__d
 
 build CMakeFiles\dm_core.dir\src\ai\evaluator\heuristic_evaluator.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\evaluator\heuristic_evaluator.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\evaluator
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -546,9 +501,8 @@ build CMakeFiles\dm_core.dir\src\ai\evaluator\heuristic_evaluator.cpp.obj: CXX_C
 
 build CMakeFiles\dm_core.dir\src\ai\evaluator\beam_search_evaluator.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\evaluator\beam_search_evaluator.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\evaluator
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -557,9 +511,8 @@ build CMakeFiles\dm_core.dir\src\ai\evaluator\beam_search_evaluator.cpp.obj: CXX
 
 build CMakeFiles\dm_core.dir\src\ai\self_play\self_play.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\self_play\self_play.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\self_play
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -568,9 +521,8 @@ build CMakeFiles\dm_core.dir\src\ai\self_play\self_play.cpp.obj: CXX_COMPILER__d
 
 build CMakeFiles\dm_core.dir\src\ai\self_play\parallel_runner.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\self_play\parallel_runner.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\self_play
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -579,9 +531,8 @@ build CMakeFiles\dm_core.dir\src\ai\self_play\parallel_runner.cpp.obj: CXX_COMPI
 
 build CMakeFiles\dm_core.dir\src\ai\agents\heuristic_agent.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\agents\heuristic_agent.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\agents
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -590,9 +541,8 @@ build CMakeFiles\dm_core.dir\src\ai\agents\heuristic_agent.cpp.obj: CXX_COMPILER
 
 build CMakeFiles\dm_core.dir\src\ai\data_collection\data_collector.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\data_collection\data_collector.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\data_collection
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -601,9 +551,8 @@ build CMakeFiles\dm_core.dir\src\ai\data_collection\data_collector.cpp.obj: CXX_
 
 build CMakeFiles\dm_core.dir\src\ai\scenario\scenario_executor.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\scenario\scenario_executor.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\scenario
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -612,9 +561,8 @@ build CMakeFiles\dm_core.dir\src\ai\scenario\scenario_executor.cpp.obj: CXX_COMP
 
 build CMakeFiles\dm_core.dir\src\ai\solver\lethal_solver.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\solver\lethal_solver.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\solver
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -623,9 +571,8 @@ build CMakeFiles\dm_core.dir\src\ai\solver\lethal_solver.cpp.obj: CXX_COMPILER__
 
 build CMakeFiles\dm_core.dir\src\ai\evolution\deck_evolution.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\evolution\deck_evolution.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\evolution
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -634,9 +581,8 @@ build CMakeFiles\dm_core.dir\src\ai\evolution\deck_evolution.cpp.obj: CXX_COMPIL
 
 build CMakeFiles\dm_core.dir\src\ai\evolution\meta_environment.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\evolution\meta_environment.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\evolution
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -645,9 +591,8 @@ build CMakeFiles\dm_core.dir\src\ai\evolution\meta_environment.cpp.obj: CXX_COMP
 
 build CMakeFiles\dm_core.dir\src\bindings\python_batch_inference.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\bindings\python_batch_inference.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\bindings
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -656,9 +601,8 @@ build CMakeFiles\dm_core.dir\src\bindings\python_batch_inference.cpp.obj: CXX_CO
 
 build CMakeFiles\dm_core.dir\src\ai\inference\pimc_generator.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\inference\pimc_generator.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\inference
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -667,9 +611,8 @@ build CMakeFiles\dm_core.dir\src\ai\inference\pimc_generator.cpp.obj: CXX_COMPIL
 
 build CMakeFiles\dm_core.dir\src\ai\inference\deck_inference.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\inference\deck_inference.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\inference
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -678,9 +621,8 @@ build CMakeFiles\dm_core.dir\src\ai\inference\deck_inference.cpp.obj: CXX_COMPIL
 
 build CMakeFiles\dm_core.dir\src\ai\inference\native_inference.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\inference\native_inference.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\inference
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -689,9 +631,8 @@ build CMakeFiles\dm_core.dir\src\ai\inference\native_inference.cpp.obj: CXX_COMP
 
 build CMakeFiles\dm_core.dir\src\ai\pomdp\pomdp.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\pomdp\pomdp.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\pomdp
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
@@ -700,33 +641,10 @@ build CMakeFiles\dm_core.dir\src\ai\pomdp\pomdp.cpp.obj: CXX_COMPILER__dm_core_u
 
 build CMakeFiles\dm_core.dir\src\ai\neural_net\self_attention.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\neural_net\self_attention.cpp || cmake_object_order_depends_target_dm_core
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
+  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
   OBJECT_DIR = CMakeFiles\dm_core.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\neural_net
-  TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
-  TARGET_PDB = ""
-  TARGET_SUPPORT_DIR = CMakeFiles\dm_core.dir
-
-build CMakeFiles\dm_core.dir\src\ai\evaluator\neural_evaluator.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\evaluator\neural_evaluator.cpp || cmake_object_order_depends_target_dm_core
-  CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
-  FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
-  OBJECT_DIR = CMakeFiles\dm_core.dir
-  OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\evaluator
-  TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
-  TARGET_PDB = ""
-  TARGET_SUPPORT_DIR = CMakeFiles\dm_core.dir
-
-build CMakeFiles\dm_core.dir\src\ai\inference\onnx_model.cpp.obj: CXX_COMPILER__dm_core_unscanned_Release C$:\Users\ichirou\DM_simulation\src\ai\inference\onnx_model.cpp || cmake_object_order_depends_target_dm_core
-  CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME
-  FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8
-  INCLUDES = -IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party
-  OBJECT_DIR = CMakeFiles\dm_core.dir
-  OBJECT_FILE_DIR = CMakeFiles\dm_core.dir\src\ai\inference
   TARGET_COMPILE_PDB = CMakeFiles\dm_core.dir\
   TARGET_PDB = ""
   TARGET_SUPPORT_DIR = CMakeFiles\dm_core.dir
@@ -736,7 +654,7 @@ build CMakeFiles\dm_core.dir\src\ai\inference\onnx_model.cpp.obj: CXX_COMPILER__
 #############################################
 # Object library dm_core
 
-build dm_core: phony CMakeFiles\dm_core.dir\src\core\game_state.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_stats.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_tracking.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_hash.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_loop.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_observer.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\intent_generator.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\pending_strategy.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\stack_strategy.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\phase_strategies.cpp.obj CMakeFiles\dm_core.dir\src\engine\ai\simple_ai.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\flow\phase_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\battle_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\shield_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\play_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\mana_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\payment_plan.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\breaker\breaker_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\utils\determinizer.cpp.obj CMakeFiles\dm_core.dir\src\engine\utils\dev_tools.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\data\card_registry.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\effect_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\selection_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\rules\condition_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\data\json_loader.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\data\keyword_expander.cpp.obj CMakeFiles\dm_core.dir\src\engine\game_instance.cpp.obj CMakeFiles\dm_core.dir\src\engine\diag_win32.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\cost_payment_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\trigger_manager.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\trigger_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\definitions\commands.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\definitions\action_commands.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\pipeline\pipeline_executor.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\command_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\director\game_logic_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\rules\restriction_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\continuous_effect_system.cpp.obj CMakeFiles\dm_core.dir\src\ai\encoders\tensor_converter.cpp.obj CMakeFiles\dm_core.dir\src\ai\encoders\token_converter.cpp.obj CMakeFiles\dm_core.dir\src\ai\encoders\command_encoder.cpp.obj CMakeFiles\dm_core.dir\src\ai\batch_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\mcts\mcts.cpp.obj CMakeFiles\dm_core.dir\src\ai\mcts\mcts_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\evaluator\heuristic_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\evaluator\beam_search_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\self_play\self_play.cpp.obj CMakeFiles\dm_core.dir\src\ai\self_play\parallel_runner.cpp.obj CMakeFiles\dm_core.dir\src\ai\agents\heuristic_agent.cpp.obj CMakeFiles\dm_core.dir\src\ai\data_collection\data_collector.cpp.obj CMakeFiles\dm_core.dir\src\ai\scenario\scenario_executor.cpp.obj CMakeFiles\dm_core.dir\src\ai\solver\lethal_solver.cpp.obj CMakeFiles\dm_core.dir\src\ai\evolution\deck_evolution.cpp.obj CMakeFiles\dm_core.dir\src\ai\evolution\meta_environment.cpp.obj CMakeFiles\dm_core.dir\src\bindings\python_batch_inference.cpp.obj CMakeFiles\dm_core.dir\src\ai\inference\pimc_generator.cpp.obj CMakeFiles\dm_core.dir\src\ai\inference\deck_inference.cpp.obj CMakeFiles\dm_core.dir\src\ai\inference\native_inference.cpp.obj CMakeFiles\dm_core.dir\src\ai\pomdp\pomdp.cpp.obj CMakeFiles\dm_core.dir\src\ai\neural_net\self_attention.cpp.obj CMakeFiles\dm_core.dir\src\ai\evaluator\neural_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\inference\onnx_model.cpp.obj
+build dm_core: phony CMakeFiles\dm_core.dir\src\core\game_state.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_stats.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_tracking.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_hash.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_loop.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_observer.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\intent_generator.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\pending_strategy.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\stack_strategy.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\phase_strategies.cpp.obj CMakeFiles\dm_core.dir\src\engine\ai\simple_ai.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\flow\phase_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\battle_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\shield_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\play_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\mana_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\payment_plan.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\breaker\breaker_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\utils\determinizer.cpp.obj CMakeFiles\dm_core.dir\src\engine\utils\dev_tools.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\data\card_registry.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\effect_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\selection_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\rules\condition_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\data\json_loader.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\data\keyword_expander.cpp.obj CMakeFiles\dm_core.dir\src\engine\game_instance.cpp.obj CMakeFiles\dm_core.dir\src\engine\diag_win32.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\cost_payment_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\trigger_manager.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\trigger_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\definitions\commands.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\definitions\action_commands.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\pipeline\pipeline_executor.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\command_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\director\game_logic_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\rules\restriction_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\continuous_effect_system.cpp.obj CMakeFiles\dm_core.dir\src\ai\encoders\tensor_converter.cpp.obj CMakeFiles\dm_core.dir\src\ai\encoders\token_converter.cpp.obj CMakeFiles\dm_core.dir\src\ai\encoders\command_encoder.cpp.obj CMakeFiles\dm_core.dir\src\ai\batch_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\mcts\mcts.cpp.obj CMakeFiles\dm_core.dir\src\ai\mcts\mcts_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\evaluator\heuristic_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\evaluator\beam_search_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\self_play\self_play.cpp.obj CMakeFiles\dm_core.dir\src\ai\self_play\parallel_runner.cpp.obj CMakeFiles\dm_core.dir\src\ai\agents\heuristic_agent.cpp.obj CMakeFiles\dm_core.dir\src\ai\data_collection\data_collector.cpp.obj CMakeFiles\dm_core.dir\src\ai\scenario\scenario_executor.cpp.obj CMakeFiles\dm_core.dir\src\ai\solver\lethal_solver.cpp.obj CMakeFiles\dm_core.dir\src\ai\evolution\deck_evolution.cpp.obj CMakeFiles\dm_core.dir\src\ai\evolution\meta_environment.cpp.obj CMakeFiles\dm_core.dir\src\bindings\python_batch_inference.cpp.obj CMakeFiles\dm_core.dir\src\ai\inference\pimc_generator.cpp.obj CMakeFiles\dm_core.dir\src\ai\inference\deck_inference.cpp.obj CMakeFiles\dm_core.dir\src\ai\inference\native_inference.cpp.obj CMakeFiles\dm_core.dir\src\ai\pomdp\pomdp.cpp.obj CMakeFiles\dm_core.dir\src\ai\neural_net\self_attention.cpp.obj
 
 # =============================================================================
 # Object build statements for MODULE_LIBRARY target dm_ai_module
@@ -748,20 +666,20 @@ build dm_core: phony CMakeFiles\dm_core.dir\src\core\game_state.cpp.obj CMakeFil
 build cmake_object_order_depends_target_dm_ai_module: phony || cmake_object_order_depends_target_dm_core
 
 build CMakeFiles\dm_ai_module.dir\src\bindings\bindings.cpp.obj.ddi: CXX_SCAN__dm_ai_module_Release C$:\Users\ichirou\DM_simulation\src\bindings\bindings.cpp || cmake_object_order_depends_target_dm_ai_module
-  DEFINES = -DUSE_ONNXRUNTIME -Ddm_ai_module_EXPORTS
+  DEFINES = -Ddm_ai_module_EXPORTS
   DEP_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bindings.cpp.obj.ddi.d
   DYNDEP_INTERMEDIATE_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bindings.cpp.obj.ddi
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8 /GL /bigobj /MP
-  INCLUDES = -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
+  INCLUDES = -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
   OBJ_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bindings.cpp.obj
   PREPROCESSED_OUTPUT_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bindings.cpp.obj.ddi.i
 
 build CMakeFiles\dm_ai_module.dir\src\bindings\bindings.cpp.obj: CXX_COMPILER__dm_ai_module_scanned_Release C$:\Users\ichirou\DM_simulation\src\bindings\bindings.cpp | CMakeFiles\dm_ai_module.dir\src\bindings\bindings.cpp.obj.modmap || cmake_object_order_depends_target_dm_ai_module CMakeFiles\dm_ai_module.dir\CXX.dd
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME -Ddm_ai_module_EXPORTS
+  DEFINES = -Ddm_ai_module_EXPORTS
   DYNDEP_MODULE_MAP_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bindings.cpp.obj.modmap
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8 /GL /bigobj /MP
-  INCLUDES = -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
+  INCLUDES = -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
   OBJECT_DIR = CMakeFiles\dm_ai_module.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_ai_module.dir\src\bindings
   TARGET_COMPILE_PDB = CMakeFiles\dm_ai_module.dir\
@@ -770,20 +688,20 @@ build CMakeFiles\dm_ai_module.dir\src\bindings\bindings.cpp.obj: CXX_COMPILER__d
   dyndep = CMakeFiles/dm_ai_module.dir/CXX.dd
 
 build CMakeFiles\dm_ai_module.dir\src\bindings\bind_core.cpp.obj.ddi: CXX_SCAN__dm_ai_module_Release C$:\Users\ichirou\DM_simulation\src\bindings\bind_core.cpp || cmake_object_order_depends_target_dm_ai_module
-  DEFINES = -DUSE_ONNXRUNTIME -Ddm_ai_module_EXPORTS
+  DEFINES = -Ddm_ai_module_EXPORTS
   DEP_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_core.cpp.obj.ddi.d
   DYNDEP_INTERMEDIATE_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_core.cpp.obj.ddi
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8 /GL /bigobj /MP
-  INCLUDES = -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
+  INCLUDES = -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
   OBJ_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_core.cpp.obj
   PREPROCESSED_OUTPUT_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_core.cpp.obj.ddi.i
 
 build CMakeFiles\dm_ai_module.dir\src\bindings\bind_core.cpp.obj: CXX_COMPILER__dm_ai_module_scanned_Release C$:\Users\ichirou\DM_simulation\src\bindings\bind_core.cpp | CMakeFiles\dm_ai_module.dir\src\bindings\bind_core.cpp.obj.modmap || cmake_object_order_depends_target_dm_ai_module CMakeFiles\dm_ai_module.dir\CXX.dd
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME -Ddm_ai_module_EXPORTS
+  DEFINES = -Ddm_ai_module_EXPORTS
   DYNDEP_MODULE_MAP_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_core.cpp.obj.modmap
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8 /GL /bigobj /MP
-  INCLUDES = -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
+  INCLUDES = -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
   OBJECT_DIR = CMakeFiles\dm_ai_module.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_ai_module.dir\src\bindings
   TARGET_COMPILE_PDB = CMakeFiles\dm_ai_module.dir\
@@ -792,20 +710,20 @@ build CMakeFiles\dm_ai_module.dir\src\bindings\bind_core.cpp.obj: CXX_COMPILER__
   dyndep = CMakeFiles/dm_ai_module.dir/CXX.dd
 
 build CMakeFiles\dm_ai_module.dir\src\bindings\bind_engine.cpp.obj.ddi: CXX_SCAN__dm_ai_module_Release C$:\Users\ichirou\DM_simulation\src\bindings\bind_engine.cpp || cmake_object_order_depends_target_dm_ai_module
-  DEFINES = -DUSE_ONNXRUNTIME -Ddm_ai_module_EXPORTS
+  DEFINES = -Ddm_ai_module_EXPORTS
   DEP_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_engine.cpp.obj.ddi.d
   DYNDEP_INTERMEDIATE_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_engine.cpp.obj.ddi
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8 /GL /bigobj /MP
-  INCLUDES = -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
+  INCLUDES = -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
   OBJ_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_engine.cpp.obj
   PREPROCESSED_OUTPUT_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_engine.cpp.obj.ddi.i
 
 build CMakeFiles\dm_ai_module.dir\src\bindings\bind_engine.cpp.obj: CXX_COMPILER__dm_ai_module_scanned_Release C$:\Users\ichirou\DM_simulation\src\bindings\bind_engine.cpp | CMakeFiles\dm_ai_module.dir\src\bindings\bind_engine.cpp.obj.modmap || cmake_object_order_depends_target_dm_ai_module CMakeFiles\dm_ai_module.dir\CXX.dd
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME -Ddm_ai_module_EXPORTS
+  DEFINES = -Ddm_ai_module_EXPORTS
   DYNDEP_MODULE_MAP_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_engine.cpp.obj.modmap
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8 /GL /bigobj /MP
-  INCLUDES = -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
+  INCLUDES = -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
   OBJECT_DIR = CMakeFiles\dm_ai_module.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_ai_module.dir\src\bindings
   TARGET_COMPILE_PDB = CMakeFiles\dm_ai_module.dir\
@@ -814,20 +732,20 @@ build CMakeFiles\dm_ai_module.dir\src\bindings\bind_engine.cpp.obj: CXX_COMPILER
   dyndep = CMakeFiles/dm_ai_module.dir/CXX.dd
 
 build CMakeFiles\dm_ai_module.dir\src\bindings\bind_ai.cpp.obj.ddi: CXX_SCAN__dm_ai_module_Release C$:\Users\ichirou\DM_simulation\src\bindings\bind_ai.cpp || cmake_object_order_depends_target_dm_ai_module
-  DEFINES = -DUSE_ONNXRUNTIME -Ddm_ai_module_EXPORTS
+  DEFINES = -Ddm_ai_module_EXPORTS
   DEP_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_ai.cpp.obj.ddi.d
   DYNDEP_INTERMEDIATE_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_ai.cpp.obj.ddi
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8 /GL /bigobj /MP
-  INCLUDES = -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
+  INCLUDES = -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
   OBJ_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_ai.cpp.obj
   PREPROCESSED_OUTPUT_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_ai.cpp.obj.ddi.i
 
 build CMakeFiles\dm_ai_module.dir\src\bindings\bind_ai.cpp.obj: CXX_COMPILER__dm_ai_module_scanned_Release C$:\Users\ichirou\DM_simulation\src\bindings\bind_ai.cpp | CMakeFiles\dm_ai_module.dir\src\bindings\bind_ai.cpp.obj.modmap || cmake_object_order_depends_target_dm_ai_module CMakeFiles\dm_ai_module.dir\CXX.dd
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME -Ddm_ai_module_EXPORTS
+  DEFINES = -Ddm_ai_module_EXPORTS
   DYNDEP_MODULE_MAP_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\bind_ai.cpp.obj.modmap
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8 /GL /bigobj /MP
-  INCLUDES = -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
+  INCLUDES = -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
   OBJECT_DIR = CMakeFiles\dm_ai_module.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_ai_module.dir\src\bindings
   TARGET_COMPILE_PDB = CMakeFiles\dm_ai_module.dir\
@@ -836,20 +754,20 @@ build CMakeFiles\dm_ai_module.dir\src\bindings\bind_ai.cpp.obj: CXX_COMPILER__dm
   dyndep = CMakeFiles/dm_ai_module.dir/CXX.dd
 
 build CMakeFiles\dm_ai_module.dir\src\bindings\inference_bindings.cpp.obj.ddi: CXX_SCAN__dm_ai_module_Release C$:\Users\ichirou\DM_simulation\src\bindings\inference_bindings.cpp || cmake_object_order_depends_target_dm_ai_module
-  DEFINES = -DUSE_ONNXRUNTIME -Ddm_ai_module_EXPORTS
+  DEFINES = -Ddm_ai_module_EXPORTS
   DEP_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\inference_bindings.cpp.obj.ddi.d
   DYNDEP_INTERMEDIATE_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\inference_bindings.cpp.obj.ddi
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8 /GL /bigobj /MP
-  INCLUDES = -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
+  INCLUDES = -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
   OBJ_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\inference_bindings.cpp.obj
   PREPROCESSED_OUTPUT_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\inference_bindings.cpp.obj.ddi.i
 
 build CMakeFiles\dm_ai_module.dir\src\bindings\inference_bindings.cpp.obj: CXX_COMPILER__dm_ai_module_scanned_Release C$:\Users\ichirou\DM_simulation\src\bindings\inference_bindings.cpp | CMakeFiles\dm_ai_module.dir\src\bindings\inference_bindings.cpp.obj.modmap || cmake_object_order_depends_target_dm_ai_module CMakeFiles\dm_ai_module.dir\CXX.dd
   CONFIG = Release
-  DEFINES = -DUSE_ONNXRUNTIME -Ddm_ai_module_EXPORTS
+  DEFINES = -Ddm_ai_module_EXPORTS
   DYNDEP_MODULE_MAP_FILE = CMakeFiles\dm_ai_module.dir\src\bindings\inference_bindings.cpp.obj.modmap
   FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG -std:c++20 /W4 /utf-8 /GL /bigobj /MP
-  INCLUDES = -IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\include -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
+  INCLUDES = -IC:\Users\ichirou\DM_simulation\src -IC:\Users\ichirou\DM_simulation\third_party -external:IC:\Users\ichirou\AppData\Local\Programs\Python\Python312\Include -external:IC:\Users\ichirou\DM_simulation\.cmake_deps_cache\pybind11-src\include -external:W0
   OBJECT_DIR = CMakeFiles\dm_ai_module.dir
   OBJECT_FILE_DIR = CMakeFiles\dm_ai_module.dir\src\bindings
   TARGET_COMPILE_PDB = CMakeFiles\dm_ai_module.dir\
@@ -867,12 +785,11 @@ build CMakeFiles\dm_ai_module.dir\CXX.dd | CMakeFiles\dm_ai_module.dir\CXXModule
 #############################################
 # Link the shared module C:\Users\ichirou\DM_simulation\bin\dm_ai_module.cp312-win_amd64.pyd
 
-build C$:\Users\ichirou\DM_simulation\bin\dm_ai_module.cp312-win_amd64.pyd: CXX_MODULE_LIBRARY_LINKER__dm_ai_module_Release CMakeFiles\dm_core.dir\src\core\game_state.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_stats.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_tracking.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_hash.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_loop.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_observer.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\intent_generator.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\pending_strategy.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\stack_strategy.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\phase_strategies.cpp.obj CMakeFiles\dm_core.dir\src\engine\ai\simple_ai.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\flow\phase_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\battle_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\shield_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\play_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\mana_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\payment_plan.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\breaker\breaker_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\utils\determinizer.cpp.obj CMakeFiles\dm_core.dir\src\engine\utils\dev_tools.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\data\card_registry.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\effect_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\selection_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\rules\condition_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\data\json_loader.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\data\keyword_expander.cpp.obj CMakeFiles\dm_core.dir\src\engine\game_instance.cpp.obj CMakeFiles\dm_core.dir\src\engine\diag_win32.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\cost_payment_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\trigger_manager.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\trigger_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\definitions\commands.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\definitions\action_commands.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\pipeline\pipeline_executor.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\command_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\director\game_logic_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\rules\restriction_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\continuous_effect_system.cpp.obj CMakeFiles\dm_core.dir\src\ai\encoders\tensor_converter.cpp.obj CMakeFiles\dm_core.dir\src\ai\encoders\token_converter.cpp.obj CMakeFiles\dm_core.dir\src\ai\encoders\command_encoder.cpp.obj CMakeFiles\dm_core.dir\src\ai\batch_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\mcts\mcts.cpp.obj CMakeFiles\dm_core.dir\src\ai\mcts\mcts_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\evaluator\heuristic_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\evaluator\beam_search_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\self_play\self_play.cpp.obj CMakeFiles\dm_core.dir\src\ai\self_play\parallel_runner.cpp.obj CMakeFiles\dm_core.dir\src\ai\agents\heuristic_agent.cpp.obj CMakeFiles\dm_core.dir\src\ai\data_collection\data_collector.cpp.obj CMakeFiles\dm_core.dir\src\ai\scenario\scenario_executor.cpp.obj CMakeFiles\dm_core.dir\src\ai\solver\lethal_solver.cpp.obj CMakeFiles\dm_core.dir\src\ai\evolution\deck_evolution.cpp.obj CMakeFiles\dm_core.dir\src\ai\evolution\meta_environment.cpp.obj CMakeFiles\dm_core.dir\src\bindings\python_batch_inference.cpp.obj CMakeFiles\dm_core.dir\src\ai\inference\pimc_generator.cpp.obj CMakeFiles\dm_core.dir\src\ai\inference\deck_inference.cpp.obj CMakeFiles\dm_core.dir\src\ai\inference\native_inference.cpp.obj CMakeFiles\dm_core.dir\src\ai\pomdp\pomdp.cpp.obj CMakeFiles\dm_core.dir\src\ai\neural_net\self_attention.cpp.obj CMakeFiles\dm_core.dir\src\ai\evaluator\neural_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\inference\onnx_model.cpp.obj CMakeFiles\dm_ai_module.dir\src\bindings\bindings.cpp.obj CMakeFiles\dm_ai_module.dir\src\bindings\bind_core.cpp.obj CMakeFiles\dm_ai_module.dir\src\bindings\bind_engine.cpp.obj CMakeFiles\dm_ai_module.dir\src\bindings\bind_ai.cpp.obj CMakeFiles\dm_ai_module.dir\src\bindings\inference_bindings.cpp.obj | C$:\Users\ichirou\AppData\Local\Programs\Python\Python312\libs\python312.lib || dm_core
+build C$:\Users\ichirou\DM_simulation\bin\dm_ai_module.cp312-win_amd64.pyd: CXX_MODULE_LIBRARY_LINKER__dm_ai_module_Release CMakeFiles\dm_core.dir\src\core\game_state.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_stats.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_tracking.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_hash.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_loop.cpp.obj CMakeFiles\dm_core.dir\src\core\game_state_observer.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\intent_generator.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\pending_strategy.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\stack_strategy.cpp.obj CMakeFiles\dm_core.dir\src\engine\command_generation\strategies\phase_strategies.cpp.obj CMakeFiles\dm_core.dir\src\engine\ai\simple_ai.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\flow\phase_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\battle_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\shield_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\play_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\mana_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\payment_plan.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\breaker\breaker_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\utils\determinizer.cpp.obj CMakeFiles\dm_core.dir\src\engine\utils\dev_tools.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\data\card_registry.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\effect_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\selection_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\rules\condition_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\data\json_loader.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\data\keyword_expander.cpp.obj CMakeFiles\dm_core.dir\src\engine\game_instance.cpp.obj CMakeFiles\dm_core.dir\src\engine\diag_win32.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\mechanics\cost_payment_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\trigger_manager.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\trigger_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\definitions\commands.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\definitions\action_commands.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\pipeline\pipeline_executor.cpp.obj CMakeFiles\dm_core.dir\src\engine\infrastructure\commands\command_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\director\game_logic_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\rules\restriction_system.cpp.obj CMakeFiles\dm_core.dir\src\engine\systems\effects\continuous_effect_system.cpp.obj CMakeFiles\dm_core.dir\src\ai\encoders\tensor_converter.cpp.obj CMakeFiles\dm_core.dir\src\ai\encoders\token_converter.cpp.obj CMakeFiles\dm_core.dir\src\ai\encoders\command_encoder.cpp.obj CMakeFiles\dm_core.dir\src\ai\batch_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\mcts\mcts.cpp.obj CMakeFiles\dm_core.dir\src\ai\mcts\mcts_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\evaluator\heuristic_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\evaluator\beam_search_evaluator.cpp.obj CMakeFiles\dm_core.dir\src\ai\self_play\self_play.cpp.obj CMakeFiles\dm_core.dir\src\ai\self_play\parallel_runner.cpp.obj CMakeFiles\dm_core.dir\src\ai\agents\heuristic_agent.cpp.obj CMakeFiles\dm_core.dir\src\ai\data_collection\data_collector.cpp.obj CMakeFiles\dm_core.dir\src\ai\scenario\scenario_executor.cpp.obj CMakeFiles\dm_core.dir\src\ai\solver\lethal_solver.cpp.obj CMakeFiles\dm_core.dir\src\ai\evolution\deck_evolution.cpp.obj CMakeFiles\dm_core.dir\src\ai\evolution\meta_environment.cpp.obj CMakeFiles\dm_core.dir\src\bindings\python_batch_inference.cpp.obj CMakeFiles\dm_core.dir\src\ai\inference\pimc_generator.cpp.obj CMakeFiles\dm_core.dir\src\ai\inference\deck_inference.cpp.obj CMakeFiles\dm_core.dir\src\ai\inference\native_inference.cpp.obj CMakeFiles\dm_core.dir\src\ai\pomdp\pomdp.cpp.obj CMakeFiles\dm_core.dir\src\ai\neural_net\self_attention.cpp.obj CMakeFiles\dm_ai_module.dir\src\bindings\bindings.cpp.obj CMakeFiles\dm_ai_module.dir\src\bindings\bind_core.cpp.obj CMakeFiles\dm_ai_module.dir\src\bindings\bind_engine.cpp.obj CMakeFiles\dm_ai_module.dir\src\bindings\bind_ai.cpp.obj CMakeFiles\dm_ai_module.dir\src\bindings\inference_bindings.cpp.obj | C$:\Users\ichirou\AppData\Local\Programs\Python\Python312\libs\python312.lib || dm_core
   CONFIG = Release
   LANGUAGE_COMPILE_FLAGS = /DWIN32 /D_WINDOWS /W3 /GR /EHsc /MD /O2 /Ob2 /DNDEBUG
   LINK_FLAGS = /machine:x64 /INCREMENTAL:NO -LTCG
-  LINK_LIBRARIES = onnxruntime.lib  C:\Users\ichirou\AppData\Local\Programs\Python\Python312\libs\python312.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
-  LINK_PATH = -LIBPATH:C:\Users\ichirou\DM_simulation\.cmake_deps_cache\onnxruntime_pkg-src\lib
+  LINK_LIBRARIES = C:\Users\ichirou\AppData\Local\Programs\Python\Python312\libs\python312.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
   OBJECT_DIR = CMakeFiles\dm_ai_module.dir
   POST_BUILD = cd .
   PRE_LINK = cd .

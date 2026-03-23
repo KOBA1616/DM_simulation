@@ -1,6 +1,37 @@
 from dm_toolkit.payment import evaluate_cost
 
 
+def test_stat_scaled_recalc_reflects_updated_stats():
+    # Card with a static COST_MODIFIER in STAT_SCALED mode
+    card = {
+        "static_abilities": [
+            {
+                "type": "COST_MODIFIER",
+                "value_mode": "STAT_SCALED",
+                "stat_key": "CREATURES_PLAYED",
+                "per_value": 1,
+                "min_stat": 1,
+                "max_reduction": 5,
+            }
+        ]
+    }
+
+    base_cost = 5
+
+    # With 1 creature played -> reduction = (1 - 1 + 1) * 1 = 1
+    plan1 = evaluate_cost(card, base_cost, stat_values={"CREATURES_PLAYED": 1})
+    assert plan1.final_cost == 4
+
+    # With 3 creatures played -> reduction = (3 - 1 + 1) * 1 = 3
+    plan2 = evaluate_cost(card, base_cost, stat_values={"CREATURES_PLAYED": 3})
+    assert plan2.final_cost == 2
+
+    # With 0 creatures played -> below min_stat, no reduction
+    plan0 = evaluate_cost(card, base_cost, stat_values={"CREATURES_PLAYED": 0})
+    assert plan0.final_cost == 5
+from dm_toolkit.payment import evaluate_cost
+
+
 def make_stat_scaled_modifier(stat_key: str, per_value: int = 1, min_stat: int = 1, max_reduction: int | None = None):
     m = {
         "type": "COST_MODIFIER",

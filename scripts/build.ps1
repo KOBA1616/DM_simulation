@@ -6,6 +6,7 @@
     [switch]$Clean,
     [switch]$EnableCppTests,
     [switch]$UseLibTorch = $false,
+    [switch]$UseOnnxRuntime = $false,
     [switch]$SkipAutoCleanup
 )
 
@@ -161,6 +162,15 @@ if ($UseLibTorch) {
     $cmakeArgs += "-DUSE_LIBTORCH=OFF"
 }
 
+# 再発防止: 環境にある古い onnxruntime.dll を掴むと native import が API mismatch で失敗し、
+# GUI 側で「Outdated C++ Module」誤表示につながるため、既定は ONNX Runtime を無効化する。
+# 必要な場合のみ -UseOnnxRuntime を明示して有効化する。
+if ($UseOnnxRuntime) {
+    $cmakeArgs += "-DUSE_ONNXRUNTIME=ON"
+} else {
+    $cmakeArgs += "-DUSE_ONNXRUNTIME=OFF"
+}
+
 # Googletest integration removed: project no longer fetches or builds googletest.
 
 Write-Host "Configuring (Generator=$Generator, Config=$Config)..."
@@ -170,5 +180,30 @@ cmake @cmakeArgs
 $cpuCount = [Environment]::ProcessorCount
 Write-Host "Building (parallel=$cpuCount)..."
 cmake --build $buildDir --config $Config --parallel $cpuCount
+$buildExitCode = $LASTEXITCODE
+
+# 再発防止: Windows + Ninja のリンク時に既存 dm_ai_module.pyd がロックされると
+# LNK1104（出力ファイルを開けない）で失敗することがある。
+# 失敗時は既存 .pyd を退避してビルドを一度だけ再試行する。
+$nativePydPath = Join-Path $projectRoot 'bin\dm_ai_module.cp312-win_amd64.pyd'
+$canRetryNativeLink = $IsWindows -and ($Generator -eq 'Ninja') -and (Test-Path -LiteralPath $nativePydPath)
+if ($buildExitCode -ne 0 -and $canRetryNativeLink) {
+    $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+    $backupPath = "$nativePydPath.$timestamp.bak"
+    try {
+        Move-Item -LiteralPath $nativePydPath -Destination $backupPath -Force
+        Write-Warning "Build failed once. Backed up locked native module to: $backupPath"
+        Write-Host "Retrying build after native module backup..."
+        cmake --build $buildDir --config $Config --parallel $cpuCount
+        $buildExitCode = $LASTEXITCODE
+    }
+    catch {
+        Write-Warning "Retry preparation failed while backing up native module: $($_.Exception.Message)"
+    }
+}
+
+if ($buildExitCode -ne 0) {
+    throw "Build failed with exit code $buildExitCode"
+}
 
 Write-Host "Build complete. (Generator=$Generator, BuildDir=$buildDirName)"

@@ -1,45 +1,66 @@
 # Cost Reduction（常在・能動）仕様
 
-目的: `PASSIVE`（常在）と `ACTIVE_PAYMENT`（能動）の軽減を統一的に扱うための優先順位と合成ルールを明文化する。
+目的: 常在・能動のコスト軽減を、エディタ定義と Python/C++ 実行系で同一契約として扱う。
 
-適用対象フィールド（データモデル）
-- `cost_reductions[]` エントリ: `id`, `name`, `unit_cost`, `filter`, `min_mana_cost`, `max_units`, `priority`(任意)
-- コマンド側: `payment_mode`, `reduction_id`, `payment_units`
+## 1. 適用対象
 
-基本原則
-1. 決定順序
-   - Passive（常在） → Active（能動） の順で適用する。
-   - Passive 同士は `priority`（数値が小さいほど高優先）でソートして順次適用。`priority` がない場合は定義ファイル中の出現順で適用する。
+- `cost_reductions[]`（`PASSIVE`, `ACTIVE_PAYMENT`）
+- `static_abilities[]` の `COST_MODIFIER`（`FIXED`, `STAT_SCALED`）
+- コマンド入力（`reduction_id`, `payment_units`）
 
-2. 合成ルール
-   - Passive 合成は“累積減算”方式を採用する。
-     - 各 `PASSIVE` エントリはその `filter` にマッチするカード/操作に対して、最大 `max_units` まで `unit_cost` を単位として減算する。
-     - Passive の適用はベースコスト（カードの `cost` または参照コスト）に対して行い、どの Passive も `min_mana_cost` を下回ることは許容されない（各エントリごとではなく、最終的なコストに対して全体の `min_mana_cost` をチェックする）。
-   - Active はプレイヤー選択であり、`payment_units` を使って追加減算を行う。Active 適用時も `min_mana_cost` を下回らないようにクランプする。
+## 2. 合成順序契約
 
-3. フィルタ適用と選択性
-   - `filter` が指定された Passive は、そのフィルタに一致するカード/操作のみを対象とする。
-   - 複数の Passive が同一カードに適用される場合、合成ルール（上記累積減算）に従う。
+再発防止: 計算順序は **PASSIVE -> STATIC -> ACTIVE** を固定する。
 
-4. 非負保証と下限
-   - 最終的な支払いコストは常に 0 未満にならない。実運用ではさらに `min_mana_cost` による下限を強制する。
+1. 基本コスト
+2. `cost_reductions` の `PASSIVE`
+3. `static_abilities` の `COST_MODIFIER`（`FIXED` / `STAT_SCALED`）
+4. `ACTIVE_PAYMENT`
+5. `min_mana_cost` と 0 下限を適用
 
-5. 後方互換性
-   - 既存の `str_val`/`name` ベースの参照は引き続きサポートするが、実行路は `reduction_id`（一意識別子）を最優先で使用する。
-   - `reduction_id` が欠落している既存データはロード時に `generate_missing_ids` で補完する。
+## 3. STAT_SCALED 契約
 
-6. 優先度の衝突検出
-   - 同一 `reduction_id` の重複や、複数エントリが競合して不整合を生む場合、保存時バリデーションでエラーまたは警告を出す（設定によりブロッキング/非ブロッキングを選択可能）。
+- `value_mode=STAT_SCALED` のとき `stat_key`, `per_value` を必須とする。
+- 計算式は Python/C++ で共通とする。
 
-7. テスト行列（簡易）
-   - Passive 単体: 1エントリで期待通りにコストが減るか。
-   - Passive 複数: 優先度・出現順での合成結果が安定しているか。
-   - Passive + Active: 受動減算後に能動減算を行って妥当な結果になるか。
-   - Filter 適用: フィルタが機能しているか。
-   - min_mana_cost/下限: 適切にクランプされるか。
+`reduction = min(max_reduction, max(0, stat_value - min_stat + 1) * per_value)`
 
-実装ノート
-- エンジン実装は `evaluate_cost(...) -> PaymentPlan` を返す設計とする。`PaymentPlan` は passive_total, active_choice, effective_cost を含む。
-- UI/エディタは `payment_preview(units)` API を提供し、即時に試算結果を表示する。
+- `max_reduction` 未指定時は上限制限なし。
+- 計算結果が 0 以下の場合は軽減を適用しない。
 
-ドキュメント: このファイルは `CARD_EDITOR_REFACTOR_TDD_PLAN.md` の「常在コスト軽減のデータソースを統合する」項と連携します。
+## 4. 段階ロールアウト / ロールバック
+
+再発防止: 緊急ロールバック可能性を常に維持する。
+
+- feature flag: `STAT_SCALED_ENABLED=1|0`
+- 既定値: `1`（有効）
+- `0` の場合、STAT_SCALED 軽減を Python/C++ の双方で無効化する。
+
+## 5. 競合検出契約（エディタ）
+
+- `detect_passive_static_conflicts` で `PASSIVE` と `COST_MODIFIER` の重畳を検査する。
+- severity は以下の二段階:
+  - `ERROR`: 無条件 PASSIVE と無条件 COST_MODIFIER の重畳
+  - `WARNING`: 条件付き重畳で潜在競合の可能性がある場合
+- `ERROR` を含む場合は保存をブロックする。
+
+## 6. 実装参照
+
+- Python: `dm_toolkit/payment.py`
+- C++: `src/engine/systems/effects/continuous_effect_system.cpp`
+- C++ 合成順: `src/engine/systems/mechanics/payment_plan.cpp`
+- 競合検出: `dm_toolkit/gui/editor/validators_shared.py`
+- 保存ブロック: `dm_toolkit/gui/editor/forms/base_form.py`
+
+## 7. 契約テスト
+
+- `tests/test_cost_modifier_stat_scaled.py`
+- `tests/test_cpp_stat_scaled_formula_contract.py`
+- `tests/test_stat_scaled_feature_flag.py`
+- `tests/test_cpp_stat_scaled_feature_flag_contract.py`
+- `tests/test_cpp_payment_plan_composition_contract.py`
+- `tests/test_passive_static_conflict_validation.py`
+
+## 8. 補足
+
+この仕様は `docs/CARD_EDITOR_AND_ENGINE_STAT_GAP_REPORT_2026-03-19.md` の最終状態と同期して維持する。

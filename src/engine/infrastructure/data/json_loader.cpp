@@ -509,6 +509,36 @@ namespace dm::engine::infrastructure {
                 };
 
                 sanitize_all_nulls(copy);
+                // Back-compat migration: convert legacy `value` on COST_MODIFIER
+                // into STAT_SCALED representation to match Python-side migration.
+                std::function<void(nlohmann::json&)> migrate_legacy_value_modifiers = [&](nlohmann::json& node) {
+                    auto process_list = [&](nlohmann::json& arr) {
+                        if (!arr.is_array()) return;
+                        for (auto& m : arr) {
+                            if (!m.is_object()) continue;
+                            if (!m.contains("type")) continue;
+                            if (m.at("type").is_string() && m.at("type").get<std::string>() == "COST_MODIFIER") {
+                                std::string vm = "FIXED";
+                                if (m.contains("value_mode") && m.at("value_mode").is_string()) vm = m.at("value_mode").get<std::string>();
+                                if ((vm.empty() || vm == "FIXED") && m.contains("value") && m.at("value").is_number_integer()) {
+                                    int v = m.at("value").get<int>();
+                                    if (v > 0) {
+                                        m["value_mode"] = "STAT_SCALED";
+                                        m["stat_key"] = "legacy_value";
+                                        m["per_value"] = v;
+                                        m["min_stat"] = 1;
+                                        m["max_reduction"] = v;
+                                        m.erase("value");
+                                    }
+                                }
+                            }
+                        }
+                    };
+                    if (node.contains("static_abilities")) process_list(node["static_abilities"]);
+                    if (node.contains("cost_reductions")) process_list(node["cost_reductions"]);
+                };
+
+                migrate_legacy_value_modifiers(copy);
 
                 dm::core::CardData data;
                 // Manual or automated deserialization from JSON to CardData

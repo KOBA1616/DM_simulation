@@ -80,8 +80,8 @@ class ModifierEditForm(BaseEditForm):
 
         # Value mode (FIXED | STAT_SCALED)
         self.value_mode_combo = QComboBox()
-        self.value_mode_combo.addItem('FIXED', 'FIXED')
-        self.value_mode_combo.addItem('STAT_SCALED', 'STAT_SCALED')
+        self.value_mode_combo.addItem(tr('FIXED'), 'FIXED')
+        self.value_mode_combo.addItem(tr('STAT_SCALED'), 'STAT_SCALED')
         safe_connect(self.value_mode_combo, "currentTextChanged", self.update_data)
         safe_connect(self.value_mode_combo, "currentTextChanged", self.update_visibility)
         self.register_widget(self.value_mode_combo, 'value_mode')
@@ -91,7 +91,9 @@ class ModifierEditForm(BaseEditForm):
         # STAT_SCALED specific fields
         self.stat_key_combo = QComboBox()
         for key in CardTextResources.COMPARE_STAT_EDITOR_KEYS:
-            self.stat_key_combo.addItem(key, key)
+            # 再発防止: 生キー翻訳(ja.json)依存ではなく STAT_KEY_MAP の正規ラベルを表示する。
+            # data は統計キー本体を保持するため保存形式は従来互換。
+            self.stat_key_combo.addItem(CardTextResources.get_stat_key_label(key), key)
         safe_connect(self.stat_key_combo, "currentTextChanged", self.update_data)
         self.register_widget(self.stat_key_combo, 'stat_key')
         self.label_stat_key = QLabel(tr("Stat Key"))

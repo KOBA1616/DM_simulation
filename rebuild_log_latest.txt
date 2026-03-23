@@ -1,0 +1,24 @@
+Ninja が見つかりました。高速ビルドを使用します (Generator=Ninja)
+The input line is too long.
+The syntax of the command is incorrect.
+Configuring (Generator=Ninja, Config=Release)...
+-- pybind11 not found via find_package; fetching via FetchContent
+CMake Deprecation Warning at .cmake_deps_cache/pybind11-src/CMakeLists.txt:13 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+
+
+-- pybind11 v2.13.6 
+-- LibTorch disabled (USE_LIBTORCH=OFF)
+-- ONNX Runtime enabled
+-- Configuring done (1.5s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/Users/ichirou/DM_simulation/build-ninja
+Building (parallel=8)...
+[1/7] Generating CXX dyndep file CMakeFiles\dm_ai_module.dir\CXX.dd
+[2/2] Linking CXX shared module C:\Users\ichirou\DM_simulation\bin\dm_ai_module.cp312-win_amd64.pyd
+Build complete. (Generator=Ninja, BuildDir=build-ninja)

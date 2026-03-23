@@ -103,36 +103,65 @@ def generate_missing_ids(cost_reductions: List[Dict[str, Any]]) -> None:
             seen.add(new_id)
 
 
+def _is_empty_filter(filter_def: Any) -> bool:
+    if not isinstance(filter_def, dict):
+        return True
+    return not any(filter_def.get(k) for k in (
+        'owner', 'zones', 'races', 'civilizations', 'types',
+        'min_cost', 'max_cost', 'min_power', 'max_power',
+        'is_tapped', 'is_blocker', 'is_evolution', 'and_conditions'
+    ))
+
+
 def detect_passive_static_conflicts(card: Dict[str, Any]) -> List[str]:
     """Detect potential conflicts between PASSIVE cost_reductions and static COST_MODIFIERs.
 
-    Returns a list of warning messages. The rule implemented here is conservative:
-    - If the card defines any `cost_reductions` of type PASSIVE and also has any
-      `static_abilities` with type `COST_MODIFIER`, emit a warning because the
-      effective composition and priority is implementation-defined and may lead
-      to surprising behavior at runtime.
+    Severity policy (contract):
+    - ERROR: both sources exist and at least one PASSIVE + one COST_MODIFIER are unconditional
+      (no condition/filter constraints). This configuration is highly likely to double-apply.
+    - WARNING: both sources exist but overlap cannot be proven (conditional/filtered definitions).
 
-    This function intentionally avoids deep semantic overlap analysis; it is
-    intended as an early-warning for card authors and editors.
+    Returns list[str] with explicit severity prefix: "ERROR:" or "WARNING:".
     """
-    warnings: List[str] = []
+    messages: List[str] = []
     if not isinstance(card, dict):
-        return warnings
+        return messages
 
     crs = card.get('cost_reductions') or []
     statics = card.get('static_abilities') or []
 
-    has_passive = any(isinstance(cr, dict) and cr.get('type') == 'PASSIVE' for cr in crs)
-    has_cost_mod = any(isinstance(m, dict) and m.get('type') == 'COST_MODIFIER' for m in statics)
+    passives = [cr for cr in crs if isinstance(cr, dict) and cr.get('type') == 'PASSIVE']
+    cost_mods = [m for m in statics if isinstance(m, dict) and m.get('type') == 'COST_MODIFIER']
 
-    if has_passive and has_cost_mod:
-        warnings.append(
-            "Card defines both PASSIVE cost_reductions and static_abilities of type COST_MODIFIER; "
-            "these may overlap or double-apply. Consider consolidating into static_abilities or documenting "
-            "priority rules."
+    if not passives or not cost_mods:
+        return messages
+
+    def is_unconditional_passive(cr: Dict[str, Any]) -> bool:
+        return _is_empty_filter(cr.get('filter'))
+
+    def is_unconditional_cost_mod(mod: Dict[str, Any]) -> bool:
+        cond = mod.get('condition')
+        cond_is_none = cond is None or (isinstance(cond, dict) and cond.get('type', 'NONE') in ('NONE', ''))
+        return cond_is_none and _is_empty_filter(mod.get('filter'))
+
+    has_unconditional_overlap = any(is_unconditional_passive(cr) for cr in passives) and any(
+        is_unconditional_cost_mod(mod) for mod in cost_mods
+    )
+
+    # 再発防止: 無条件同士の重畳は将来的に仕様差分を生みやすいため ERROR として明示する。
+    if has_unconditional_overlap:
+        messages.append(
+            "ERROR: Card defines unconditional PASSIVE cost_reductions and unconditional "
+            "COST_MODIFIER static_abilities; high-risk double-application. Consolidate one source "
+            "or add explicit filter/condition."
+        )
+    else:
+        messages.append(
+            "WARNING: Card defines both PASSIVE cost_reductions and COST_MODIFIER static_abilities; "
+            "overlap is possible. Document priority rules or consolidate definitions."
         )
 
-    return warnings
+    return messages
 # -*- coding: utf-8 -*-
 """
 Shared validators for Static Abilities and Trigger Effects.

@@ -1,4 +1,100 @@
 name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: [3.10, 3.11, 3.12]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies (Unix)
+      if: runner.os != 'Windows'
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+      shell: bash
+
+    - name: Install dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        python -m pip install --upgrade pip
+        if (Test-Path requirements-dev.txt) { pip install -r requirements-dev.txt }
+      shell: pwsh
+
+    - name: Run tests (pytest)
+      env:
+        DM_DISABLE_NATIVE: '1'
+        PYTHONUTF8: '1'
+      run: |
+        pytest -q
+      shell: bash
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test-linux:
+    name: Test (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+      - name: Run tests
+        env:
+          DM_DISABLE_NATIVE: '1'
+        run: |
+          pytest -q
+
+  test-windows:
+    name: Test (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if (Test-Path requirements-dev.txt) { pip install -r requirements-dev.txt }
+        shell: pwsh
+
+      - name: Run tests
+        env:
+          DM_DISABLE_NATIVE: '1'
+        run: pytest -q
+        shell: pwsh
+name: CI
 # 再発防止: ジョブ①(headless) は PyQt6 なしで動作することを保証する。
 #           ジョブ②(gui) は PyQt6 ありで GUI テストを実行する。
 #           旧 headless-smoke・full-tests・mypy-nightly は廃止し、2ジョブ構成に統一済み。
@@ -42,6 +138,16 @@ jobs:
 
       - name: Install core deps (no PyQt6)
         run: pip install -e .
+
+      - name: Run STAT_SCALED contract tests
+        env:
+          DM_DISABLE_NATIVE: '1'
+          PYTHONPATH: ${{ github.workspace }}
+          PYTHONUTF8: '1'
+        run: |
+          python -m pytest tests/test_cost_reduction_recalc_after_stat_update.py \
+            tests/test_game_integration_stat_scaled.py \
+            tests/test_cards_stat_scaled_audit.py -q
 
       - name: Verify ONNX Runtime version alignment
         run: python -m pytest tests/test_onnxruntime_version_alignment.py -q

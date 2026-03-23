@@ -7,6 +7,8 @@ import importlib.machinery
 import sys
 from pathlib import Path
 import os
+from enum import IntEnum
+from typing import Any
 
 ROOT = Path(__file__).parent
 
@@ -18,8 +20,44 @@ so tests can run while native loader issues are being fixed.
 
 # Allow opting out of native extension for debugging
 disable_native = os.environ.get('DM_DISABLE_NATIVE', '0') == '1'
+# Strict native contract mode: disables Python-side fallback wrappers when native is loaded.
+# 再発防止: C++ 契約テストでは shim 補正を無効化し、ネイティブ実装の実力を直接検証する。
+strict_native = os.environ.get('DM_STRICT_NATIVE', '0') == '1'
+__strict_native_mode__ = strict_native
 
-if disable_native:
+# Try to load native extension (dm_ai_module.pyd from bin/)
+# 再発防止: ネイティブロードの失敗時はPythonフォールバックで自動フェイルオーバーする
+_native = None
+if not disable_native:
+    try:
+        # Prefer bin/ output (from CMake build)
+        pyd_candidates = []
+        native_override = os.environ.get('DM_AI_MODULE_NATIVE', '').strip()
+        # 再発防止: run_gui.ps1 が検出したネイティブ .pyd を確実に使えるよう、
+        # DM_AI_MODULE_NATIVE が有効なら最優先候補として評価する。
+        if native_override:
+            pyd_candidates.append(Path(native_override))
+        pyd_candidates.extend([
+            ROOT / 'bin' / 'dm_ai_module.cp312-win_amd64.pyd',
+            ROOT / 'dm_ai_module.cp312-win_amd64.pyd',
+            ROOT / 'build-ninja' / 'dm_ai_module.cp312-win_amd64.pyd',
+        ])
+        for pyd_path in pyd_candidates:
+            if pyd_path.exists():
+                try:
+                    # 再発防止: pybind11 拡張の初期化関数は `PyInit_dm_ai_module` なので、
+                    # spec 名を別名にすると ImportError で必ずロード失敗する。
+                    spec = importlib.util.spec_from_file_location('dm_ai_module', str(pyd_path))
+                    if spec and spec.loader:
+                        _native = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(_native)
+                        break
+                except Exception:
+                    continue
+    except Exception:
+        pass
+
+if disable_native or _native is None:
     # find candidate pyd files
     # 再発防止: ルート直下の古い .pyd を先に拾うと、bin の最新ビルドが反映されない。
     # 常にビルド出力先(bin)を優先してロードする。
@@ -39,6 +77,23 @@ if disable_native:
     class CommandType:
         PLAY_FROM_ZONE = 33
         ACTIVE_PAYMENT = 'ACTIVE_PAYMENT'
+
+    class PlayerMode(IntEnum):
+        AI = 0
+        HUMAN = 1
+
+    # 再発防止: native ロード失敗時でも Zone 契約を維持し、GUI の Zone 参照クラッシュを防ぐ。
+    class Zone(IntEnum):
+        DECK = 0
+        HAND = 1
+        MANA = 2
+        BATTLE = 3
+        GRAVEYARD = 4
+        SHIELD = 5
+        HYPER_SPATIAL = 6
+        GR_DECK = 7
+        STACK = 8
+        BUFFER = 9
 
     class StatType:
         CREATURES_PLAYED = 1
@@ -95,6 +150,9 @@ if disable_native:
             self.hand = []
             self.battle_zone = []
             self.mana_zone = []
+            self.shield_zone = []
+            self.graveyard = []
+            self.deck = []
 
 
     class GameInstance:
@@ -289,6 +347,7 @@ if disable_native:
         def __init__(self, *args, **kwargs):
             # capture provided DB
             self._card_db = None
+            self._next_instance_id = 1
             if len(args) >= 2:
                 self._card_db = args[1]
             elif 'db' in kwargs:
@@ -303,6 +362,10 @@ if disable_native:
             self._state.players = [_FallbackPlayer(0), _FallbackPlayer(1)]
             self._state.active_modifiers = []
             self._state._py_stats = {}
+            self._state.active_player = 0
+            self._state.active_player_id = 0
+            self._state.game_over = False
+            self._state.player_modes = [PlayerMode.AI, PlayerMode.AI]
 
             # expose control methods on the state object so tests calling
             # `gs.add_test_card_to_battle(...)` / `gs.execute_command(...)`
@@ -322,11 +385,44 @@ if disable_native:
             def _s_apply_move(cmd):
                 return self.apply_move(cmd)
 
+            def _s_setup_test_duel():
+                # 再発防止: native ロード失敗時も GUI の reset_game 経路が要求する
+                # setup_test_duel()/set_deck()/is_human_player 契約を満たす。
+                for p in self._state.players:
+                    p.hand.clear()
+                    p.mana_zone.clear()
+                    p.battle_zone.clear()
+                    p.shield_zone.clear()
+                    p.graveyard.clear()
+                self._state.active_player = 0
+                self._state.active_player_id = 0
+                self._state.game_over = False
+
+            def _s_set_deck(player_id, deck_ids):
+                p = self._state.players[player_id]
+                p.deck = []
+                for cid in list(deck_ids or []):
+                    c = SimpleNamespace()
+                    c.card_id = int(cid)
+                    c.instance_id = int(self._next_instance_id)
+                    c.is_tapped = False
+                    self._next_instance_id += 1
+                    p.deck.append(c)
+
+            def _s_is_human_player(player_id):
+                try:
+                    return self._state.player_modes[int(player_id)] == PlayerMode.HUMAN
+                except Exception:
+                    return False
+
             setattr(self._state, 'add_test_card_to_battle', _s_add_test_card_to_battle)
             setattr(self._state, 'add_card_to_hand', _s_add_card_to_hand)
             setattr(self._state, 'add_card_to_mana', _s_add_card_to_mana)
             setattr(self._state, 'execute_command', _s_execute_command)
             setattr(self._state, 'apply_move', _s_apply_move)
+            setattr(self._state, 'setup_test_duel', _s_setup_test_duel)
+            setattr(self._state, 'set_deck', _s_set_deck)
+            setattr(self._state, 'is_human_player', _s_is_human_player)
 
         @property
         def state(self):
@@ -561,12 +657,47 @@ else:
         globals()['CommandType'] = getattr(_native, 'CommandType')
     # expose any other native symbols that tests may rely on
     # (we already copied many symbols earlier; ensure JsonLoader/CommandType are native)
+    if not hasattr(_native, 'Zone') and 'Zone' not in globals():
+        # 再発防止: 古い native build が Zone を公開しない場合でも GUI 側の Zone 参照を維持する。
+        class Zone(IntEnum):
+            DECK = 0
+            HAND = 1
+            MANA = 2
+            BATTLE = 3
+            GRAVEYARD = 4
+            SHIELD = 5
+            HYPER_SPATIAL = 6
+            GR_DECK = 7
+            STACK = 8
+            BUFFER = 9
+
+        globals()['Zone'] = Zone
+
+
+# 再発防止: shim が native シンボルを透過公開しないと GUI が dm_ai_module.Zone 参照で起動失敗する。
+def __getattr__(name: str) -> Any:
+    if name in globals():
+        return globals()[name]
+    native = globals().get('_native')
+    if native is not None and hasattr(native, name):
+        value = getattr(native, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
+
+def __dir__() -> list[str]:
+    names = set(globals().keys())
+    native = globals().get('_native')
+    if native is not None:
+        names.update(dir(native))
+    return sorted(names)
 
 # --- Python-side fallback wrapper for GameState.apply_move ---
 # If native apply_move ran but did not complete a PLAY_FROM_ZONE resolution
 # (observed in integration test), fall back to a conservative Python-side
 # resolver so tests can proceed without rebuilding native module.
-if 'GameState' in globals() and 'GameInstance' in globals():
+if (not strict_native) and 'GameState' in globals() and 'GameInstance' in globals():
     import types
 
     _NativeGameInstance = globals().get('GameInstance')

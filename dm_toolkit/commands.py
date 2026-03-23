@@ -138,6 +138,17 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
         skip_wrapper: True の場合、生の CommandDef を返す。
     """
     try:
+        # Ensure continuous effects / active modifiers are up-to-date before
+        # delegating to the native intent generator. Use EngineCompat to
+        # attempt recalc in both Python-fallback and native-backed GameState.
+        try:
+            from dm_toolkit.engine.compat import EngineCompat
+            try:
+                EngineCompat.ensure_recalculated(state)
+            except Exception:
+                pass
+        except Exception:
+            pass
         import dm_ai_module
     except Exception:
         if strict:

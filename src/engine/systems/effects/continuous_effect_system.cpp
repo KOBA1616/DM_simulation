@@ -4,11 +4,20 @@
 #include "engine/utils/target_utils.hpp"
 #include "core/modifiers.hpp"
 #include <algorithm>
+#include <cstdlib>
 #include <iostream>
 
 namespace dm::engine::systems {
 
     using namespace core;
+
+    namespace {
+        bool is_stat_scaled_enabled() {
+            const char* env = std::getenv("STAT_SCALED_ENABLED");
+            if (env == nullptr) return true;
+            return std::string(env) != "0";
+        }
+    }
 
     void ContinuousEffectSystem::recalculate(core::GameState& state, const std::map<core::CardID, core::CardDefinition>& card_db) {
         // 1. Remove existing static-sourced modifiers
@@ -67,14 +76,16 @@ namespace dm::engine::systems {
                         // Default: legacy FIXED behavior
                         int reduction_amount = mod_def.value;
 
-                        // STAT_SCALED: compute from game state statistics when configured
-                        if (!mod_def.value_mode.empty() && mod_def.value_mode == "STAT_SCALED") {
+                        // 再発防止: STAT_SCALED 軽減は常在効果の契約仕様を満たす。
+                        // 公式: reduction = min(max_reduction, max(0, stat_value - min_stat + 1) * per_value)
+                        // エディタ定義、Python実装、C++実装で同一の計算式を使用。
+                        if (!mod_def.value_mode.empty() && mod_def.value_mode == "STAT_SCALED" && is_stat_scaled_enabled()) {
                             int stat_val = 0;
                             const std::string& key = mod_def.stat_key;
 
                             // Minimal mapping of known stat keys to GameState fields.
                             // Extend this switch as more keys are needed.
-                            if (key == "summon_count_this_turn" || key == "SUMMON_COUNT") {
+                            if (key == "summon_count_this_turn" || key == "SUMMON_COUNT_THIS_TURN" || key == "SUMMON_COUNT" || key == "summon_count") {
                                 stat_val = state.turn_stats.summon_count_this_turn;
                             } else if (key == "creatures_played_this_turn" || key == "CREATURES_PLAYED") {
                                 stat_val = state.turn_stats.creatures_played_this_turn;
@@ -90,6 +101,7 @@ namespace dm::engine::systems {
 
                             int per_value = mod_def.per_value;
                             int min_stat = mod_def.min_stat;
+                            // 再発防止: 最小値下限（0）と上限（max_reduction）を厳密に適用する
                             int calculated = std::max(0, stat_val - min_stat + 1) * per_value;
                             if (mod_def.max_reduction.has_value()) {
                                 calculated = std::min(calculated, mod_def.max_reduction.value());

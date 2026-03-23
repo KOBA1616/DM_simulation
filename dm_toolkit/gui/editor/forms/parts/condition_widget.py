@@ -102,7 +102,7 @@ class ConditionEditorWidget(QGroupBox):
         self.lbl_stat_key = QLabel(tr("Stat Key"))
         self.stat_key_combo = QComboBox()
         self.stat_key_combo.setEditable(True)
-        self.populate_combo(self.stat_key_combo, COMMON_COMPARE_STAT_KEYS)
+        self.populate_combo(self.stat_key_combo, COMMON_COMPARE_STAT_KEYS, CardTextResources.get_stat_key_label)
         safe_connect(self.stat_key_combo, "editTextChanged", self.dataChanged.emit)
         safe_connect(self.stat_key_combo, "currentIndexChanged", self.dataChanged.emit)
         layout.addWidget(self.lbl_stat_key, 2, 0)
@@ -226,11 +226,15 @@ class ConditionEditorWidget(QGroupBox):
         self.dataChanged.emit()
         return True
 
-    def populate_combo(self, combo, items):
+    def populate_combo(self, combo, items, label_func=None):
         combo.clear()
         for item in items:
-            # Use CardTextResources for condition type labels
-            label = CardTextResources.get_condition_type_label(str(item))
+            # 再発防止: stat_key は Condition type ラベルではなく専用ラベルを使う。
+            # label_func が無い場合のみ従来の condition type ラベルへフォールバックする。
+            if label_func is not None:
+                label = label_func(str(item))
+            else:
+                label = CardTextResources.get_condition_type_label(str(item))
             combo.addItem(label, str(item))
 
     def on_cond_type_changed(self):
@@ -304,7 +308,7 @@ class ConditionEditorWidget(QGroupBox):
 
         stat_key = data.get('stat_key', '')
         try:
-            idx_stat = self.stat_key_combo.findText(stat_key)
+            idx_stat = self.stat_key_combo.findData(stat_key)
             if idx_stat >= 0:
                 try:
                     self.stat_key_combo.setCurrentIndex(idx_stat)

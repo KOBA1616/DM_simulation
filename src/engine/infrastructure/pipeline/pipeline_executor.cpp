@@ -852,6 +852,10 @@ void PipelineExecutor::handle_get_stat(
     result = (int)controller.hand.size();
   } else if (stat_name == "CARDS_DRAWN_THIS_TURN") {
     result = state.turn_stats.cards_drawn_this_turn;
+  } else if (stat_name == "SPELL_CAST_THIS_TURN" ||
+             stat_name == "SPELL_CAST_COUNT_THIS_TURN") {
+    // 再発防止: 呪文詠唱回数参照は 2 つのキー表記を同じ実データに正規化する。
+    result = state.turn_stats.spells_cast_this_turn;
   } else if (stat_name == "MANA_COUNT") {
     result = (int)controller.mana_zone.size();
   } else if (stat_name == "BATTLE_ZONE_COUNT") {

@@ -14,6 +14,7 @@ def test_detects_conflict_when_both_present():
     }
     warns = v.detect_passive_static_conflicts(card)
     assert len(warns) == 1
+    assert warns[0].startswith('ERROR:')
     assert 'PASSIVE' in warns[0] and 'COST_MODIFIER' in warns[0]
 
 
