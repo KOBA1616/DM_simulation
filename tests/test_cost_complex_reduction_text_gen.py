@@ -67,5 +67,5 @@ def test_complex_reduction_with_stat_scaled():
         ]
     }
     text = CardTextGenerator.generate_body_text(data)
-    assert "光の文明が1枚以上あるなら、自分のバトルゾーンの合計パワーが大きいほど、このカードの召喚コストを軽減する" in text
-    assert "（1ごと1削減、最大4削減）" in text
+    assert "光の文明が1枚以上あるなら、このカードの召喚コストを、自分のバトルゾーンの合計パワーの値に応じて1ごとに1軽減する" in text
+    assert "（最大4軽減）" in text

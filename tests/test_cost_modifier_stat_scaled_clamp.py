@@ -35,4 +35,4 @@ def test_stat_scaled_applies_without_max_reduction():
 
     # stat value 4 -> (4 - 1 + 1) * 2 = 8 reduction
     plan = evaluate_cost(card, base_cost=12, units=1, stat_values={"MY_STAT": 4})
-    assert plan.adjusted_after_passive == 4
+    assert plan.final_cost == 4
