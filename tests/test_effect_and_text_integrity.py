@@ -64,6 +64,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 # ── インポート ─────────────────────────────────────────────────────────────────
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.consistency import validate_trigger_scope_filter
 from dm_toolkit.consts import TRIGGER_TYPES
@@ -109,7 +110,7 @@ def _make_effect(trigger: str, commands: List[Dict[str, Any]], **kwargs: Any) ->
 def _cmd_text(cmd_type: str, **kwargs: Any) -> str:
     """コマンドテキスト生成のショートカット。"""
     cmd = _make_command(cmd_type, **kwargs)
-    return CardTextGenerator._format_command(cmd)
+    return CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
 
 
 # ===========================================================================
@@ -177,7 +178,7 @@ class TestCommandTextIntegrity:
             str_param="MANA_CIVILIZATION_COUNT",
             output_value_key="var_test",
         )
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
 
     def test_select_target_does_not_crash(self) -> None:
@@ -193,7 +194,7 @@ class TestCommandTextIntegrity:
             },
             amount=1,
         )
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
 
     def test_apply_modifier_required_fields(self) -> None:
@@ -210,13 +211,13 @@ class TestCommandTextIntegrity:
             target_filter={"types": ["CREATURE"], "zones": ["BATTLE_ZONE"], "civilizations": [], "races": [], "flags": []},
             target_group="PLAYER_SELF",
         )
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
 
         # 必須フィールドが欠けていてもクラッシュしない（警告ログのみが正しい動作）
         incomplete_cmd = _make_command("APPLY_MODIFIER")
         try:
-            text2 = CardTextGenerator._format_command(incomplete_cmd)
+            text2 = CardTextGenerator._format_command(incomplete_cmd, TextGenerationContext(card_data={}))
             assert isinstance(text2, str)
         except Exception as e:
             pytest.fail(
@@ -227,13 +228,13 @@ class TestCommandTextIntegrity:
     def test_select_number_does_not_crash(self) -> None:
         """SELECT_NUMBER コマンドがクラッシュしないことを確認する。"""
         cmd = _make_command("SELECT_NUMBER", amount=6, output_value_key="var_num")
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
 
     def test_summon_token_does_not_crash(self) -> None:
         """SUMMON_TOKEN コマンドがクラッシュしないことを確認する。"""
         cmd = _make_command("SUMMON_TOKEN", str_param="TEST_TOKEN")
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
 
     def test_play_from_zone_does_not_crash(self) -> None:
@@ -243,7 +244,7 @@ class TestCommandTextIntegrity:
             from_zone="HAND",
             target_filter={"types": ["CREATURE"], "max_cost": 5, "zones": [], "civilizations": [], "races": [], "flags": []},
         )
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
 
     def test_cast_spell_does_not_crash(self) -> None:
@@ -252,7 +253,7 @@ class TestCommandTextIntegrity:
             "CAST_SPELL",
             target_filter={"types": ["SPELL"], "max_cost": 3, "zones": ["HAND"], "civilizations": [], "races": [], "flags": []},
         )
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
 
     def test_if_command_does_not_crash(self) -> None:
@@ -263,7 +264,7 @@ class TestCommandTextIntegrity:
             "if_true": [_make_command("DRAW_CARD", amount=2)],
             "if_false": [_make_command("DRAW_CARD", amount=1)],
         }
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
 
 
@@ -344,7 +345,7 @@ class TestTriggerAndScopeIntegrity:
             trigger_filter={"types": ["SPELL"], "civilizations": [], "races": [], "flags": []},
         )
         try:
-            text = CardTextGenerator._format_effect(effect, is_spell=False)
+            text = CardTextGenerator._format_effect(effect, TextGenerationContext(card_data={}))
             assert isinstance(text, str)
         except Exception as e:
             pytest.fail(
@@ -375,7 +376,7 @@ class TestTriggerAndScopeIntegrity:
             mode="REPLACEMENT",
             timing_mode="PRE",
         )
-        text = CardTextGenerator._format_effect(effect, is_spell=False)
+        text = CardTextGenerator._format_effect(effect, TextGenerationContext(card_data={}))
         assert "相手のクリーチャーが出る時" in text, f"置換時制が未適用: {text}"
         assert "相手のクリーチャーが出た時" not in text, f"置換時制が過去形のまま: {text}"
 
@@ -462,7 +463,7 @@ class TestAllCardsTextGeneration:
                     cmd_type = cmd.get("type", "")
                     if not cmd_type or cmd_type == "NONE":
                         continue
-                    text = CardTextGenerator._format_command(cmd)
+                    text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
                     if text == "" and cmd_type not in (
                         "QUERY",      # クエリ単独は空で良い
                         "OUTPUT",     # 出力用プリミティブ
@@ -752,7 +753,7 @@ class TestTextQuality:
                     cmd_type = cmd.get("type", "")
                     if not cmd_type:
                         continue
-                    text = CardTextGenerator._format_command(cmd)
+                    text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
                     if text and all_cap_re.match(text.strip()):
                         problematic.append(
                             f"card_id={card.get('id')} cmd_type={cmd_type}: 「{text}」"
@@ -981,7 +982,7 @@ class TestCppTextConsistency:
             "if_true": [_make_command("DRAW_CARD", amount=2)],
             "if_false": [],
         }
-        text = CardTextGenerator._format_command(if_cmd)
+        text = CardTextGenerator._format_command(if_cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
         # 条件テキストまたは if_true の内容が含まれること
         assert len(text) > 0, (
@@ -1004,7 +1005,7 @@ class TestCppTextConsistency:
             "if_true": [_make_command("DRAW_CARD", amount=2)],
             "if_false": [_make_command("DRAW_CARD", amount=1)],
         }
-        text = CardTextGenerator._format_command(if_else_cmd)
+        text = CardTextGenerator._format_command(if_else_cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
         assert len(text) > 0, (
             "IF_ELSE コマンドのテキストが空。\n"
@@ -1029,7 +1030,7 @@ class TestCppTextConsistency:
                 "races": [],
             },
         )
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
         assert "スピードアタッカー" in text or "speed" in text.lower(), (
             f"APPLY_MODIFIER SPEED_ATTACKER でキーワードテキストが含まれない: 「{text}」\n"
@@ -1045,7 +1046,7 @@ class TestCppTextConsistency:
             target_group="PLAYER_SELF",
             target_filter={"types": ["CREATURE"], "zones": ["BATTLE_ZONE"]},
         )
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
         assert "ブロッカー" in text or len(text) > 0, (
             f"APPLY_MODIFIER BLOCKER テキストが不正: 「{text}」"
@@ -1069,7 +1070,7 @@ class TestCppTextConsistency:
             ],
         }
         try:
-            text = CardTextGenerator._format_command(cmd)
+            text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
             assert isinstance(text, str)
         except Exception as e:
             pytest.fail(
@@ -1084,7 +1085,7 @@ class TestCppTextConsistency:
                   実装し WAIT_INPUT 命令を生成する必要がある。現在は no-op。
         """
         cmd = _make_command("SELECT_NUMBER", amount=6, output_value_key="chosen_number")
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
         # 数値選択を示すテキストが含まれること
         assert len(text) > 0, (
@@ -1110,7 +1111,7 @@ class TestCppTextConsistency:
                 "races": [],
             },
         )
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
         assert len(text) > 0, (
             "CAST_SPELL のテキストが空。\n"
@@ -1133,7 +1134,7 @@ class TestCppTextConsistency:
             "str_param": "END_OF_TURN_DESTROY",
             "target_group": "PLAYER_SELF",
         }
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
         assert isinstance(text, str)
         assert len(text) > 0, "REGISTER_DELAYED_EFFECT のテキストが空"
 
@@ -1181,7 +1182,7 @@ class TestCppTextConsistency:
                 t = cmd.get("type", "")
                 if not t or t == "NONE" or t in structural_types:
                     continue
-                text = CardTextGenerator._format_command(cmd)
+                text = CardTextGenerator._format_command(cmd, TextGenerationContext(card_data={}))
                 if not text.strip():
                     empty_non_structural.append(
                         f"trigger={effect.get('trigger')} cmd_type={t}"
