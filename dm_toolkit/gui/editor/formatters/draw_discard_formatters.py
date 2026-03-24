@@ -2,11 +2,13 @@ from typing import Dict, Any, List, Optional
 from dm_toolkit.gui.editor.formatters.command_formatter_base import CommandFormatterBase
 from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
 from dm_toolkit.gui.editor.text_resources import CardTextResources
+from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
+from dm_toolkit.gui.editor.formatters.utils import get_command_amount
 
 @register_formatter("DRAW_CARD")
 class DrawCardFormatter(CommandFormatterBase):
     @classmethod
-    def format(cls, command: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
+    def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         up_to = bool(command.get('up_to', False))
         optional = bool(command.get("optional", False))
 
@@ -20,7 +22,7 @@ class DrawCardFormatter(CommandFormatterBase):
                 template = "最大{value1}枚まで引く。"
 
         # Map 'amount' to 'value1' since command dictionary uses 'amount' typically
-        val1 = command.get("amount") if command.get("amount") is not None else command.get("value1", 0)
+        val1 = get_command_amount(command, default=0)
 
         # Check input_value_key
         input_key = command.get("input_value_key") or command.get("input_link") or ""
@@ -41,16 +43,16 @@ class DrawCardFormatter(CommandFormatterBase):
 @register_formatter("DISCARD")
 class DiscardFormatter(CommandFormatterBase):
     @classmethod
-    def format(cls, command: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
+    def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         scope = command.get("target_group") or command.get("scope", "NONE")
         if scope in ["PLAYER_SELF", "SELF"]:
             scope = "NONE"
             command["scope"] = scope
 
         up_to = bool(command.get('up_to', False))
-        val1 = command.get("amount") if command.get("amount") is not None else command.get("value1", 0)
+        val1 = get_command_amount(command, default=0)
 
-        target_str, unit = cls._resolve_target(command, is_spell)
+        target_str, unit = cls._resolve_target(command, ctx.is_spell)
         cnt = val1
         tgt = target_str
 

@@ -1,6 +1,7 @@
 from typing import Dict, Any, List, Optional
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_resources import CardTextResources
+from dm_toolkit.gui.editor.formatters.utils import is_input_linked
 from dm_toolkit import consts
 
 class FilterTextFormatter:
@@ -18,8 +19,8 @@ class FilterTextFormatter:
         if max_val is None:
             max_val = 999 if unit == "コスト" else 999999
 
-        is_min_linked = isinstance(min_val, dict) and min_val.get("input_value_usage") == min_usage
-        is_max_linked = isinstance(max_val, dict) and max_val.get("input_value_usage") == max_usage
+        is_min_linked = is_input_linked(min_val, usage=min_usage)
+        is_max_linked = is_input_linked(max_val, usage=max_usage)
 
         if is_min_linked:
             return f"{unit}{linked_token}以上"

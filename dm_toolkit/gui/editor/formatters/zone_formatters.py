@@ -2,14 +2,16 @@ from typing import Dict, Any, List
 from dm_toolkit.gui.editor.formatters.command_formatter_base import CommandFormatterBase
 from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
 from dm_toolkit.gui.editor.text_resources import CardTextResources
+from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
+from dm_toolkit.gui.editor.formatters.utils import get_command_amount
 from dm_toolkit.gui.i18n import tr
 
 @register_formatter("REVEAL_TO_BUFFER")
 class RevealToBufferFormatter(CommandFormatterBase):
     @classmethod
-    def format(cls, command: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
+    def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         src_zone = tr(command.get("from_zone", "DECK"))
-        val1 = command.get("amount") if command.get("amount") is not None else command.get("value1", 0)
+        val1 = get_command_amount(command, default=0)
         amt = val1 if val1 > 0 else 1
         optional = bool(command.get("optional", False))
         verb = "置いてもよい。" if optional else "置く。"
@@ -18,7 +20,7 @@ class RevealToBufferFormatter(CommandFormatterBase):
 @register_formatter("MOVE_BUFFER_TO_ZONE")
 class MoveBufferToZoneFormatter(CommandFormatterBase):
     @classmethod
-    def format(cls, command: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
+    def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         to_zone = tr(command.get("to_zone", "HAND"))
         filter_def = command.get("filter") or command.get("target_filter") or {}
         civs = filter_def.get("civilizations", []) if filter_def else []
@@ -26,7 +28,7 @@ class MoveBufferToZoneFormatter(CommandFormatterBase):
         races = filter_def.get("races", []) if filter_def else []
 
         has_filter = bool(civs or types or races)
-        val1 = command.get("amount") if command.get("amount") is not None else command.get("value1", 0)
+        val1 = get_command_amount(command, default=0)
         up_to = bool(command.get('up_to', False))
 
         if has_filter:
@@ -63,7 +65,7 @@ class MoveBufferToZoneFormatter(CommandFormatterBase):
 @register_formatter("REPLACE_CARD_MOVE")
 class ReplaceCardMoveFormatter(CommandFormatterBase):
     @classmethod
-    def format(cls, command: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
+    def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         dest_zone = command.get("destination_zone", "")
         if not dest_zone:
             dest_zone = command.get("to_zone", "DECK_BOTTOM")
@@ -95,10 +97,10 @@ class ReplaceCardMoveFormatter(CommandFormatterBase):
 
             return f"その後、{linked_target}を{orig_zone_str}に置くかわりに{zone_str}に置く。"
 
-        val1 = command.get("amount") if command.get("amount") is not None else command.get("value1", 0)
+        val1 = get_command_amount(command, default=0)
 
         # Build target text explicitly instead of using template.
-        target_str, unit = cls._resolve_target(command, is_spell)
+        target_str, unit = cls._resolve_target(command, ctx.is_spell)
 
         if is_self_ref:
              t = f"このカードを{orig_zone_str}に置くかわりに{zone_str}に置く。"
