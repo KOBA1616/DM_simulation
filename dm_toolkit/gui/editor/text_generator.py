@@ -7,6 +7,7 @@ from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.utils import is_input_linked, get_command_amount
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from dm_toolkit.gui.editor.formatters.keyword_registry import SpecialKeywordRegistry
+from dm_toolkit.gui.editor.formatters.target_scope_resolver import TargetScopeResolver
 import dm_toolkit.gui.editor.formatters.special_keywords # Ensure special keywords are registered
 from dm_toolkit import consts
 from dm_toolkit.consts import MAX_COST_VALUE, MAX_POWER_VALUE
@@ -707,8 +708,8 @@ class CardTextGenerator:
     
     @classmethod
     def _get_scope_prefix(cls, scope: str) -> str:
-        """Get Japanese prefix for scope. Uses CardTextResources."""
-        return CardTextResources.get_scope_text(scope)
+        """Get Japanese prefix for scope. Uses TargetScopeResolver."""
+        return TargetScopeResolver.resolve_prefix(scope)
     
     @classmethod
     def _format_cost_modifier(cls, cond: str, target: str, value: int, modifier: Dict[str, Any] = None) -> str:
@@ -1030,12 +1031,9 @@ class CardTextGenerator:
         if not scope or scope == "NONE" or scope == "ALL":
             return trigger_text
 
-        scope_text = CardTextResources.get_scope_text(scope)
+        scope_text = TargetScopeResolver.resolve_noun(scope)
         if not scope_text:
             return trigger_text
-
-        # Strip trailing "の" for consistent composition
-        scope_text = scope_text.rstrip("の")
 
         # Uses FilterTextFormatter to avoid scope prefix duplication
         # if the trigger text already has "相手が" or "自分が", etc.
@@ -2163,13 +2161,10 @@ class CardTextGenerator:
         ACTION_HANDLER_MAP["COUNT_CARDS"] = _handle_count_cards
         # LOCK / restriction / stat handlers
         def _resolve_player_scope_text() -> str:
-            # 再発防止: target_group 優先で対象プレイヤー文言を解決し、LOCK/制限系で表記ゆれを防ぐ。
-            if scope in ["PLAYER_OPPONENT", "OPPONENT"]:
-                return "相手"
-            if scope in ["PLAYER_SELF", "SELF"]:
-                return "自分"
-            if scope == "ALL_PLAYERS":
-                return "すべてのプレイヤー"
+            # 再発防止: TargetScopeResolver 優先で対象プレイヤー文言を解決し、LOCK/制限系で表記ゆれを防ぐ。
+            noun = TargetScopeResolver.resolve_noun(scope)
+            if noun:
+                return noun
             resolved, _ = cls._resolve_target(action, is_spell)
             return resolved
 
@@ -2427,14 +2422,9 @@ class CardTextGenerator:
              return base
 
         elif atype == "IGNORE_ABILITY":
-             scope = action.get("target_group") or action.get("scope", "NONE")
-             if scope in ["PLAYER_OPPONENT", "OPPONENT"]:
-                 target_str_lock = "相手"
-             elif scope in ["PLAYER_SELF", "SELF"]:
-                 target_str_lock = "自分"
-             elif scope == "ALL_PLAYERS":
-                 target_str_lock = "すべてのプレイヤー"
-             else:
+             scope = TargetScopeResolver.resolve_action_scope(action)
+             target_str_lock = TargetScopeResolver.resolve_noun(scope)
+             if not target_str_lock:
                  target_str_lock, _ = cls._resolve_target(action, is_spell)
 
              duration_key = action.get("duration", "") or ""
