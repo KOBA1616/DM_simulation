@@ -40,11 +40,11 @@ def make_scope_combo(parent=None, include_zones=False):
     return combo
 
 
-def make_player_scope_selector(parent=None):
+def make_player_scope_selector(parent=None, include_card_scope=False):
     """文明選択のような形式で、自分/相手のみ選択できるスコープUI。
 
-    - UIはチェックボックス2つ（排他）
-    - 値は TargetScope に対応（SELF / OPPONENT）
+    - UIはチェックボックス2つ（または3つ）（排他）
+    - 値は TargetScope に対応（SELF / OPPONENT / NONE）
     
     Note: Now uses TargetScope.SELF/OPPONENT (unified constants).
     """
@@ -59,6 +59,25 @@ def make_player_scope_selector(parent=None):
 
     layout.addWidget(self_cb, 0, 0)
     layout.addWidget(opp_cb, 0, 1)
+
+    card_cb = None
+    if include_card_scope:
+        card_cb = QCheckBox(tr("自分自身"), w)
+        layout.addWidget(card_cb, 0, 2)
+
+        # When "自身" is checked, uncheck others. When others are checked, uncheck "自身".
+        def on_card_toggled(checked):
+            if checked:
+                self_cb.setChecked(False)
+                opp_cb.setChecked(False)
+        def on_player_toggled(checked):
+            if checked:
+                card_cb.setChecked(False)
+        card_cb.toggled.connect(on_card_toggled)
+        self_cb.toggled.connect(on_player_toggled)
+        opp_cb.toggled.connect(on_player_toggled)
+
+        return w, self_cb, opp_cb, card_cb
 
     return w, self_cb, opp_cb
 

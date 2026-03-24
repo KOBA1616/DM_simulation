@@ -29,6 +29,7 @@ class ModifierEditForm(BaseEditForm):
         self.scope_widget = getattr(self, 'scope_widget', None)
         self.scope_self_check = getattr(self, 'scope_self_check', None)
         self.scope_opp_check = getattr(self, 'scope_opp_check', None)
+        self.scope_card_check = getattr(self, 'scope_card_check', None)
         self.bindings = getattr(self, 'bindings', {})
         try:
             self.setup_ui()
@@ -135,11 +136,13 @@ class ModifierEditForm(BaseEditForm):
         # Scope Section
         scope_group = QGroupBox(tr("Scope (Owner)"))
         scope_layout = QFormLayout(scope_group)
-        self.scope_widget, self.scope_self_check, self.scope_opp_check = make_player_scope_selector()
+        self.scope_widget, self.scope_self_check, self.scope_opp_check, self.scope_card_check = make_player_scope_selector(include_card_scope=True)
         safe_connect(self.scope_self_check, "toggled", self.update_data)
         safe_connect(self.scope_opp_check, "toggled", self.update_data)
+        safe_connect(self.scope_card_check, "toggled", self.update_data)
         self.register_widget(self.scope_self_check)
         self.register_widget(self.scope_opp_check)
+        self.register_widget(self.scope_card_check)
         scope_layout.addRow(tr("Owner"), self.scope_widget)
         layout.addWidget(scope_group)
 
@@ -334,15 +337,22 @@ class ModifierEditForm(BaseEditForm):
         scope = data.get('scope', 'ALL')
         
         # Set checkboxes based on scope
-        if scope == 'SELF':
+        if scope == 'NONE':
+            self.scope_self_check.setChecked(False)
+            self.scope_opp_check.setChecked(False)
+            self.scope_card_check.setChecked(True)
+        elif scope == 'SELF':
             self.scope_self_check.setChecked(True)
             self.scope_opp_check.setChecked(False)
+            self.scope_card_check.setChecked(False)
         elif scope == 'OPPONENT':
             self.scope_self_check.setChecked(False)
             self.scope_opp_check.setChecked(True)
-        else:  # 'ALL' or default - both checked
+            self.scope_card_check.setChecked(False)
+        else:  # 'ALL' or default - both checked (ALL)
             self.scope_self_check.setChecked(True)
             self.scope_opp_check.setChecked(True)
+            self.scope_card_check.setChecked(False)
         
         # Manually set keyword combo (mutation_kind or str_val)
         # Note: Signals are already blocked by load_data(), no need to block here
@@ -416,14 +426,17 @@ class ModifierEditForm(BaseEditForm):
         from dm_toolkit.consts import TargetScope
         self_checked = self.scope_self_check.isChecked()
         opp_checked = self.scope_opp_check.isChecked()
+        card_checked = self.scope_card_check.isChecked()
         
-        if self_checked and opp_checked:
+        if card_checked and not self_checked and not opp_checked:
+            scope_value = 'NONE' # TargetScope.NONE
+        elif self_checked and opp_checked:
             scope_value = TargetScope.ALL
         elif self_checked and not opp_checked:
             scope_value = TargetScope.SELF
         elif not self_checked and opp_checked:
             scope_value = TargetScope.OPPONENT
-        else:  # Neither checked
+        else:  # Neither checked and card not checked
             scope_value = TargetScope.ALL  # Default
         
         data['scope'] = scope_value
@@ -488,7 +501,9 @@ class ModifierEditForm(BaseEditForm):
         parts = []
         
         # Add scope prefix if not ALL
-        if scope == TargetScope.SELF or scope == 'SELF':
+        if scope == 'NONE':
+            parts.append('自分自身の')
+        elif scope == TargetScope.SELF or scope == 'SELF':
             parts.append('自分の')
         elif scope == TargetScope.OPPONENT or scope == 'OPPONENT':
             parts.append('相手の')

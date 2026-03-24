@@ -56,6 +56,7 @@ class CardTextResources:
         TargetScope.SELF: "自分の",
         TargetScope.OPPONENT: "相手の",
         TargetScope.ALL: "",
+        "NONE": "自身の",
         # Legacy support
         "SELF": "自分の",
         "OPPONENT": "相手の",
