@@ -118,7 +118,7 @@ class SolitaireRunner:
         best_cmd = cmds[0] if cmds else None
 
         # Prefer executing command when available
-        from dm_toolkit.unified_execution import ensure_executable_command
+        # 再発防止: unified_execution / compat_wrappers は削除済み。直接 EngineCompat を使用する。
         from dm_toolkit.engine.compat import EngineCompat
         if best_cmd is not None:
             try:
@@ -139,20 +139,9 @@ class SolitaireRunner:
                     dm_ai_module.PhaseManager.next_phase(state, self.card_db)
                 else:
                     try:
-                        cmd = ensure_executable_command(best_action)
-                        EngineCompat.ExecuteCommand(state, cmd, self.card_db)
+                        EngineCompat.ExecuteCommand(state, best_action, self.card_db)
                     except Exception:
-                        try:
-                            from dm_toolkit.compat_wrappers import execute_action_compat
-                            execute_action_compat(state, best_action, self.card_db)
-                        except Exception:
-                            try:
-                                dm.GameLogicSystem.resolve_action(state, best_action, self.card_db)
-                            except Exception:
-                                try:
-                                    dm_ai_module.EffectResolver.resolve_action(state, best_action, self.card_db)
-                                except Exception:
-                                    pass
+                        pass  # 再発防止: GameLogicSystem/EffectResolver.resolve_action は未バインドのため削除済み。
 
     def _choose_action(self, actions: List[Any], state: Any) -> Any:
         # Prioritize:

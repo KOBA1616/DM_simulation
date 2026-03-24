@@ -1,50 +1,54 @@
 # -*- coding: utf-8 -*-
 from dm_toolkit.gui.editor.schema_def import CommandSchema, FieldSchema, FieldType, register_schema
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.text_resources import CardTextResources
+from dm_toolkit.consts import (
+    QUERY_MODES, TargetScope, DURATION_TYPES, TARGET_SCOPES,
+    MUTATION_TYPES, EFFECT_IDS, APPLY_MODIFIER_OPTIONS, MUTATION_KINDS_FOR_MUTATE,
+    DELAYED_EFFECT_IDS
+)
+
+# Declarative schema for condition editor fields.
+# Maps a condition `type` to the list of field keys that the condition editor
+# should expose. This enables the UI builder to generate inputs declaratively
+# instead of scattering `if/elif` across form code.
+CONDITION_FORM_SCHEMA = {
+    "NONE": [],
+    "OPPONENT_DRAW_COUNT": ["value"],
+    "COMPARE_STAT": ["stat_key", "op", "value"],
+    "COMPARE_INPUT": ["input_value_key", "op", "value"],
+    "MANA_CIVILIZATION_COUNT": ["op", "value"],
+    "HAS_TARGET": ["target"],
+    # Generic fallback for string-based condition parameters
+    "CUSTOM": ["str_val"]
+}
+
+
+def get_condition_form_fields(cond_type: str):
+    """Return ordered list of field keys for the given condition type.
+
+    Falls back to an empty list for unknown types.
+    """
+    return CONDITION_FORM_SCHEMA.get(cond_type, [])
+
 
 # Define constants for selection lists
-MUTATION_TYPES = [
-    "SPEED_ATTACKER", "BLOCKER", "SLAYER", "DOUBLE_BREAKER", "TRIPLE_BREAKER",
-    "POWER_ATTACKER", "S_TRIGGER", "MACH_FIGHTER", "UNBLOCKABLE",
-    "CANNOT_BE_BLOCKED", "ALWAYS_WIN_BATTLE", "INFINITE_POWER_ATTACKER",
-    "JUST_DIVER", "G_STRIKE", "HYPER_ENERGY", "SHIELD_BURN", "EX_LIFE"
-]
+# TODO (C-3): These constant lists are duplicated in other modules (consts, schema_def,
+# and possibly data/configs). Plan: consolidate into a single source (e.g.,
+# dm_toolkit/consts.py or data/configs/command_ui.json) and import from there.
+# Add TODO markers where similar definitions exist to phase out duplicates.
+# Local lists minimized: canonical lists are provided by dm_toolkit.consts
 
-DELAYED_EFFECT_IDS = [
-    "AT_END_OF_TURN_DESTROY",
-    "AT_END_OF_TURN_RETURN_TO_HAND",
-    "AT_END_OF_TURN_UNTAP",
-    "AT_START_OF_TURN_DRAW",
-    "AT_ATTACK_END_UNTAP"
-]
+# NOTE: EFFECT_IDS, APPLY_MODIFIER_OPTIONS, MUTATION_KINDS_FOR_MUTATE and
+# MUTATION_TYPES are defined in `dm_toolkit.consts` and imported above to
+# avoid duplicate definitions.
 
-# Effect IDs for APPLY_MODIFIER (not keywords)
-EFFECT_IDS = [
-    "CANNOT_ATTACK",
-    "CANNOT_BLOCK",
-    "CANNOT_ATTACK_OR_BLOCK",
-    "CANNOT_ATTACK_AND_BLOCK",
-]
+# Reuse canonical definitions from dm_toolkit.consts to avoid duplication.
+# `TargetScope` provides unified values and legacy PLAYER_* aliases.
+TARGET_SCOPES = TARGET_SCOPES
 
-APPLY_MODIFIER_OPTIONS = EFFECT_IDS + ["COST"]
-
-MUTATION_KINDS_FOR_MUTATE = [
-    "POWER_MOD", "ADD_KEYWORD"
-]
-
-TARGET_SCOPES = [
-    "PLAYER_SELF", "PLAYER_OPPONENT", "ALL"
-]
-
-DURATION_OPTIONS = [
-    "PERMANENT",
-    "THIS_TURN",
-    "UNTIL_END_OF_OPPONENT_TURN",
-    "UNTIL_START_OF_OPPONENT_TURN",
-    "UNTIL_END_OF_YOUR_TURN",
-    "UNTIL_START_OF_YOUR_TURN",
-    "DURING_OPPONENT_TURN"
-]
+# Use `DURATION_TYPES` from consts as the canonical duration options.
+DURATION_OPTIONS = DURATION_TYPES
 
 def register_all_schemas():
     """
@@ -63,7 +67,7 @@ def register_all_schemas():
     # DRAW_CARD
     register_schema(CommandSchema("DRAW_CARD", [
         f_target,
-        FieldSchema("amount", tr("Cards to Draw"), FieldType.INT, default=1, min_value=1),
+        FieldSchema("amount", tr("Cards to Draw"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
         f_optional,
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_links_out # Handles both input (amount) and output (cards drawn)
@@ -74,7 +78,7 @@ def register_all_schemas():
     register_schema(CommandSchema("DISCARD", [
         f_target,
         f_filter,
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=1),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
         f_links_out  # Enables output_value_key for discarded count and input linking
@@ -86,7 +90,7 @@ def register_all_schemas():
         register_schema(CommandSchema(cmd, [
             f_target,
             f_filter,
-            FieldSchema("amount", tr("Count (if selecting)"), FieldType.INT, default=1),
+            FieldSchema("amount", tr("Count (if selecting)"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
             f_links_out  # Enables output_value_key for card movement tracking and input linking
         ]))
 
@@ -113,7 +117,7 @@ def register_all_schemas():
         f_filter,
         FieldSchema("from_zone", tr("Source Zone"), FieldType.ZONE, default="NONE"),
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
         f_links_out  # Enables output_value_key for card movement tracking and input linking
@@ -124,7 +128,7 @@ def register_all_schemas():
         f_target,
         f_filter,
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="GRAVEYARD"),
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
         f_links_out
@@ -145,7 +149,7 @@ def register_all_schemas():
     # SEARCH_DECK
     register_schema(CommandSchema("SEARCH_DECK", [
         f_filter,
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
         f_links_out
     ]))
@@ -178,12 +182,22 @@ def register_all_schemas():
     ]))
 
     # QUERY
+    # 再発防止: query_mode のオプションは consts.py の QUERY_MODES と C++ 対応モードで統一すること。
+    # "COUNT_CARDS", "GET_GAME_STAT", "HAS_TARGET" は無効な値だったため修正済み。
+    # str_param に C++ QueryCommand の query_type が格納される (schema key = "str_param")。
+    # SELECT_OPTION: プレイヤーにカード選択を求めるモード。
+    #   target_filter で候補を絞り込み、amount/input link で選択枚数を指定し、
+    #   output_value_key に選択結果（カードID列）を保存する。
+    #   str_val はレガシー互換のため保持（旧: 文字列選択肢）。
+    # SELECT_TARGET: プレイヤーにカード選択を求めるモード (target_filter で対象を絞り込む)
+    _QUERY_OPTION_MODES = QUERY_MODES + ["SELECT_TARGET", "SELECT_OPTION"]
     register_schema(CommandSchema("QUERY", [
         f_target,
         f_filter,
-        FieldSchema("query_mode", tr("Query Mode"), FieldType.SELECT, options=[
-            "COUNT_CARDS", "GET_GAME_STAT", "HAS_TARGET"
-        ]),
+        FieldSchema("str_param", tr("Query Mode"), FieldType.SELECT, options=_QUERY_OPTION_MODES),
+        FieldSchema("amount", tr("Selection Count"), FieldType.INT, default=1, min_value=1),
+        FieldSchema("str_val", tr("Options Text (Legacy SELECT_OPTION Labels)"), FieldType.STRING),
+        f_links_in,
         f_links_out
     ]))
 
@@ -206,8 +220,8 @@ def register_all_schemas():
         # Keyword stored in str_val for text generation compatibility
         FieldSchema("str_val", tr("Keyword"), FieldType.SELECT, options=MUTATION_TYPES, default=None),
         FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS, default=None),
-        # Hidden amount (default 0) to satisfy INT requirement
-        FieldSchema("amount", tr("Amount"), FieldType.INT, default=0, widget_hint="hidden"),
+        # 再発防止: amount=0 は「すべて」，amount>0 は「N体選び」。widget_hint="hidden" は削除して UI から設定可能にする。
+        FieldSchema("amount", tr("Count (0 = all)"), FieldType.INT, default=0, min_value=0),
         f_links_in
     ]))
 
@@ -222,19 +236,24 @@ def register_all_schemas():
     ]))
 
     # PLAY_FROM_ZONE
+    # 再発防止: target_filter フィールドを追加して UI からフィルタ条件を設定できるようにする
     register_schema(CommandSchema("PLAY_FROM_ZONE", [
         FieldSchema("from_zone", tr("Source Zone"), FieldType.ZONE, default="HAND"),
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="BATTLE_ZONE"),
         FieldSchema("amount", tr("Max Cost"), FieldType.INT, default=99),
+        FieldSchema("target_filter", tr("Card Filter"), FieldType.FILTER),
         FieldSchema("str_param", tr("Hint"), FieldType.STRING),
-        FieldSchema("play_flags", tr("Play for Free"), FieldType.BOOL, default=False), # Mapped to checkbox
+        FieldSchema("play_flags", tr("Play for Free"), FieldType.BOOL, default=False),
         f_links_out
     ]))
 
     # CAST_SPELL
+    # 再発防止: play_flags フィールドを追加し「コストを支払わずに唯える」を UI から設定できるようにする
     register_schema(CommandSchema("CAST_SPELL", [
         f_target,
         FieldSchema("target_filter", tr("Spell Filter"), FieldType.FILTER),
+        FieldSchema("play_flags", tr("Play for Free"), FieldType.BOOL, default=False),
+        f_optional,
         f_links_out
     ]))
 
@@ -338,48 +357,75 @@ def register_all_schemas():
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         f_links_in
     ]))
+    # 再発防止: SELECT_FROM_BUFFER の amount は「すべて」(-1) をサポートするため
+    # min_value=-1, widget_hint="amount_all" を指定する。
     register_schema(CommandSchema("SELECT_FROM_BUFFER", [
         f_filter,
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
         f_links_out
     ]))
     register_schema(CommandSchema("PLAY_FROM_BUFFER", [
         f_filter,
         f_links_in
     ]))
+    # 再発防止: MOVE_BUFFER_TO_ZONE に target_filter を追加してフィルター有り暗黙的選択に対応。
+    #   フィルターがある場合は AUTO_SELECT_BUFFER GAME_ACTION により自動的に
+    #   バッファの一致カードを $buffer_select に登録してから移動する。
+    #   フィルターなしの場合は SELECT_FROM_BUFFER で設定済みの $buffer_select を使う。
     register_schema(CommandSchema("MOVE_BUFFER_TO_ZONE", [
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_filter,  # 暗黙的選択フィルター（設定すると SELECT_FROM_BUFFER 不要）
+        f_links_in
+    ]))
+    # 再発防止: MOVE_BUFFER_REMAIN_TO_ZONE はバッファ残余（選択されなかったカード）を
+    #   すべて to_zone に移動する。BUFFER_REMAIN 仮想ターゲットを使用する。
+    register_schema(CommandSchema("MOVE_BUFFER_REMAIN_TO_ZONE", [
+        FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="DECK_BOTTOM"),
         f_links_in
     ]))
 
     # Others
+    # 再発防止: 制限コマンドの持続期間は APPLY_MODIFIER と同様 SELECT 式 (DURATION_OPTIONS) で統一する。
+    #   amount (INT) は引数の混入を招くため廃止。duration フィールド単一に統一。
+    #   SPELL_RESTRICTION のコスト制限は f_filter の Stats Filter 内の exact_cost デ 指定する。
     register_schema(CommandSchema("LOCK_SPELL", [
         f_target, # Target player
         f_filter,
-        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
     ]))
 
     # Player Restrictions
     register_schema(CommandSchema("SPELL_RESTRICTION", [
         f_target,
-        f_filter,
-        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+        f_filter,  # Stats Filter 内の exact_cost / min_cost / max_cost で射程コストを指定可能
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
+        f_links_in
     ]))
     register_schema(CommandSchema("CANNOT_PUT_CREATURE", [
         f_target,
         f_filter,
-        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
     ]))
     register_schema(CommandSchema("CANNOT_SUMMON_CREATURE", [
         f_target,
         f_filter,
-        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
     ]))
     register_schema(CommandSchema("PLAYER_CANNOT_ATTACK", [
         f_target,
         f_filter,
-        FieldSchema("amount", tr("Duration"), FieldType.INT, default=1)
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
+    ]))
+
+    # Ability Ignore
+    # 再発防止: 入力リンクで受け取ったコスト値 (input_value_key) を cost_ref として扱い、
+    #   target_filter.types と組み合わせて「指定コスト・指定タイプの能力を無視」を表現する。
+    register_schema(CommandSchema("IGNORE_ABILITY", [
+        f_target,
+        f_filter,
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
+        f_links_in
     ]))
 
     register_schema(CommandSchema("RESET_INSTANCE", [
@@ -409,15 +455,20 @@ def register_all_schemas():
     ]))
 
     # CHOICE
+    # 再発防止: CHOICE には条件フィルタ (target_filter) を持てるように FieldType.FILTER を追加。
     register_schema(CommandSchema("CHOICE", [
         f_amount,  # e.g. "Choose 1"
+        FieldSchema("target_filter", tr("Condition Filter"), FieldType.FILTER),
     ]))
 
     # SELECT_OPTION
+    # 再発防止: SELECT_OPTION の amount (選択数) は直入力のほか、前のコマンド出力値を参照できる。
+    # input_value_key が設定されない場合は通常度の amount を使用する。
     register_schema(CommandSchema("SELECT_OPTION", [
         FieldSchema("amount", tr("Selections Count"), FieldType.INT, default=1, min_value=1),
         FieldSchema("option_count", tr("Options Count"), FieldType.OPTIONS_CONTROL, default=1, min_value=1),
-        FieldSchema("optional", tr("Allow Duplicates"), FieldType.BOOL, default=False)
+        FieldSchema("optional", tr("Allow Duplicates"), FieldType.BOOL, default=False),
+        f_links_in  # input_value_key に前『コマンド出力値』をセット → C++ resolve_amount が自動利用
     ]))
 
     # IF / IF_ELSE (Use filter as condition)
@@ -435,8 +486,10 @@ def register_all_schemas():
     ]))
 
     # STAT
+    # STAT: use SELECT options driven from CardTextResources to prevent unknown keys
+    stat_options = sorted(list(CardTextResources.STAT_KEY_MAP.keys()))
     register_schema(CommandSchema("STAT", [
-        FieldSchema("str_param", tr("Stat Key"), FieldType.STRING),
+        FieldSchema("str_param", tr("Stat Key"), FieldType.SELECT, options=stat_options),
         FieldSchema("amount", tr("Value to Add"), FieldType.INT, default=1)
     ]))
 

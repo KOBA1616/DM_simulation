@@ -56,9 +56,12 @@ float BeamSearchEvaluator::run_beam_search(const GameState &root_state,
   std::vector<BeamNode> current_beam;
 
   // Generate actions from root to initialize first step policy
-  // Dereference shared_ptr
+    // 再発防止: IntentGenerator は non-const GameState& を要求するため、
+    // const root_state を直接渡さず必ず mutable clone 経由で合法手を生成する。
+    GameState root_state_for_intent = root_state.clone();
+    // Dereference shared_ptr
   auto root_actions =
-      IntentGenerator::generate_legal_commands(root_state, *card_db_);
+      IntentGenerator::generate_legal_commands(root_state_for_intent, *card_db_);
   if (root_actions.empty()) {
     return -1.0f; // Loss (No moves)
   }

@@ -3,6 +3,8 @@
 #include "core/card_def.hpp"
 #include "engine/utils/target_utils.hpp"
 #include "engine/systems/rules/condition_system.hpp"
+#include <filesystem>
+#include <fstream>
 
 namespace dm::engine {
     class PassiveEffectSystem {
@@ -99,6 +101,55 @@ namespace dm::engine {
                             }
                         }
                      }
+                }
+            }
+            return false;
+        }
+
+        // Returns true if there exists a PassiveEffect of type ALLOW_ATTACK_UNTAPPED
+        // that applies to the given attacker card (i.e., attacker is permitted to
+        // attack untapped creatures).
+        bool allows_attack_untapped(const dm::core::GameState& game_state, const dm::core::CardInstance& attacker, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db) {
+            dm::core::GameState& state_ref = const_cast<dm::core::GameState&>(game_state);
+            for (const auto& eff : game_state.passive_effects) {
+                if (eff.type != dm::core::PassiveType::ALLOW_ATTACK_UNTAPPED) continue;
+
+                // Condition check
+                if (!eff.condition.type.empty() && eff.condition.type != "NONE") {
+                    if (!dm::engine::rules::ConditionSystem::instance().evaluate_def(state_ref, eff.condition, eff.source_instance_id, card_db, {})) {
+                        continue;
+                    }
+                }
+
+                // If specific_targets is set and contains attacker.instance_id -> allowed
+                if (eff.specific_targets.has_value() && !eff.specific_targets->empty()) {
+                    for (int id : *eff.specific_targets) {
+                        if (id == attacker.instance_id) return true;
+                    }
+                    continue;
+                }
+
+                // Otherwise check target_filter applicability to the attacker
+                if (card_db.count(attacker.card_id)) {
+                    const auto& def = card_db.at(attacker.card_id);
+                    dm::core::PlayerID controller = 0;
+                    if (attacker.instance_id < (int)game_state.card_owner_map.size()) {
+                        controller = game_state.get_card_owner(attacker.instance_id);
+                    }
+                    bool match = dm::engine::utils::TargetUtils::is_valid_target(attacker, def, eff.target_filter, game_state, eff.controller, controller);
+                    try {
+                        std::filesystem::create_directories("logs");
+                        std::ofstream ofs("logs/passive_effects_debug.txt", std::ios::app);
+                        if (ofs) {
+                            ofs << "[PassiveAllowAttack] attacker=" << attacker.instance_id
+                                << " eff_src=" << eff.source_instance_id
+                                << " eff_ctrl=" << eff.controller
+                                << " match_filter=" << (match?1:0) << "\n";
+                        }
+                    } catch(...) {}
+                    if (match) {
+                        return true;
+                    }
                 }
             }
             return false;

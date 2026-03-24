@@ -21,6 +21,12 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
     - Does NOT import any PyQt modules.
     - Returns a ready-to-use `GameSession` where `initialize_game` or
       `reset_game` has been called and player modes set according to flags.
+
+    再発防止: スタブ注入（CommandType/Command/CommandGenerator）は削除済み。
+              native (IS_NATIVE=True) では IntentGenerator が常に利用可能。
+              スタブは dm_ai_module グローバル汚染・print 出力汚染を招くため廃止。
+    再発防止: _MockCard デッキ注入・手札注入フォールバックは削除済み。
+              native の reset_game() がデッキ・手札を正しく初期化する。
     """
     sess = GameSession()
     # Set human/AI modes
@@ -51,148 +57,11 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
                 card_db = {}
 
     # Initialize game state using provided DB and optional decks
+    # 再発防止: CommandType/Command/CommandGenerator スタブ注入は削除済み。
+    #           native (IS_NATIVE=True) では IntentGenerator が常に利用可能であり、
+    #           スタブ注入は dm_ai_module グローバル状態汚染・print 出力汚染を招くため不要。
     try:
         sess.card_db = card_db
-
-        # If native dm_ai_module is present but missing ActionGenerator/ActionType,
-        # inject lightweight Python stubs so generate_legal_commands fallback works
-        try:
-            import dm_ai_module as _native
-            need_stub = False
-            if not hasattr(_native, 'ActionGenerator') or not hasattr(_native, 'Action') or not hasattr(_native, 'ActionType'):
-                need_stub = True
-            if need_stub:
-                # Minimal Action/ActionType/ActionGenerator stubs
-                class _ActionType:
-                    PASS = 'PASS'
-                    MANA_CHARGE = 'MANA_CHARGE'
-                    PLAY_CARD = 'PLAY_CARD'
-
-                class _Action:
-                    def __init__(self):
-                        self.type = None
-                        self.card_id = None
-                        self.source_instance_id = None
-                    def __repr__(self):
-                        return f"<StubAction type={self.type} card_id={self.card_id} src={self.source_instance_id}>"
-
-                class _ActionGenerator:
-                    @staticmethod
-                    def generate_legal_commands(state, card_db):
-                        out = []
-                        try:
-                            pid = getattr(state, 'active_player_id', 0)
-                            player = state.players[pid]
-                            # Always allow PASS
-                            a = _Action(); a.type = _ActionType.PASS; out.append(a)
-                            # Mana-charge candidates for each card in hand
-                            try:
-                                for c in list(getattr(player, 'hand', []) or []):
-                                    ac = _Action(); ac.type = _ActionType.MANA_CHARGE
-                                    ac.card_id = getattr(c, 'card_id', c)
-                                    ac.source_instance_id = getattr(c, 'instance_id', -1)
-                                    out.append(ac)
-                            except Exception:
-                                pass
-                            # Heuristic: propose PLAY_CARD for any hand card if mana_zone non-empty
-                            try:
-                                usable = sum(1 for m in getattr(player, 'mana_zone', []) if not getattr(m, 'is_tapped', False))
-                                if usable > 0:
-                                    for c in list(getattr(player, 'hand', []) or []):
-                                        ac = _Action(); ac.type = _ActionType.PLAY_CARD
-                                        ac.card_id = getattr(c, 'card_id', c)
-                                        ac.source_instance_id = getattr(c, 'instance_id', -1)
-                                        out.append(ac)
-                            except Exception:
-                                pass
-                        except Exception:
-                            pass
-                        return out
-
-                # Attach stubs into native module so existing fallbacks can import them
-                try:
-                    _native.ActionType = _ActionType
-                    _native.Action = _Action
-                    _native.ActionGenerator = _ActionGenerator
-                    # Also provide minimal Command-based stubs so command-first codepaths
-                    # (generate_legal_commands / Command.to_dict) can fall back safely.
-                    class _CommandType:
-                        PASS = 'PASS'
-                        MANA_CHARGE = 'MANA_CHARGE'
-                        PLAY_CARD = 'PLAY_CARD'
-
-                    class _Command:
-                        def __init__(self, type_, instance_id=None, source_instance_id=None, card_id=None):
-                            self.type = type_
-                            self.instance_id = instance_id
-                            self.source_instance_id = source_instance_id
-                            self.card_id = card_id
-
-                        def to_dict(self):
-                            out = {'type': self.type}
-                            if self.instance_id is not None:
-                                out['instance_id'] = self.instance_id
-                            if self.source_instance_id is not None:
-                                out['source_instance_id'] = self.source_instance_id
-                            if self.card_id is not None:
-                                out['card_id'] = self.card_id
-                            return out
-
-                        def __repr__(self):
-                            return f"<_StubCommand type={self.type} card_id={self.card_id} src={self.source_instance_id}>"
-
-                    class _CommandGenerator:
-                        @staticmethod
-                        def generate_legal_commands(state, card_db):
-                            out = []
-                            try:
-                                # Prefer command-first generator when possible, else adapt from ActionGenerator
-                                acts = []
-                                try:
-                                    try:
-                                        from dm_toolkit import commands as _commands
-                                        acts = _commands.generate_legal_commands(state, card_db) or []
-                                    except Exception:
-                                        acts = []
-                                except Exception:
-                                    acts = []
-                                if not acts:
-                                    try:
-                                        # Centralized native fallback helper
-                                        from dm_toolkit import commands as _commands
-                                        acts = _commands._call_native_action_generator(state, card_db) or []
-                                    except Exception:
-                                        try:
-                                            if hasattr(_native, 'ActionGenerator'):
-                                                acts = _native.ActionGenerator.generate_legal_commands(state, card_db)
-                                        except Exception:
-                                            acts = []
-
-                                if acts:
-                                    for a in acts:
-                                        try:
-                                            t = getattr(a, 'type', None)
-                                            iid = getattr(a, 'instance_id', None) or getattr(a, 'source_instance_id', None)
-                                            cid = getattr(a, 'card_id', None)
-                                            out.append(_Command(t, instance_id=iid, source_instance_id=getattr(a, 'source_instance_id', None), card_id=cid))
-                                        except Exception:
-                                            continue
-                                else:
-                                    # Fallback: build a PASS command
-                                    out.append(_Command(_CommandType.PASS))
-                            except Exception:
-                                pass
-                            return out
-
-                    _native.CommandType = _CommandType
-                    _native.Command = _Command
-                    _native.CommandGenerator = _CommandGenerator
-                    print("headless: injected dm_ai_module stubs for Action/Command and generators")
-                except Exception:
-                    pass
-        except Exception:
-            # Import failure of dm_ai_module is acceptable; fallbacks will handle it
-            pass
 
         # If no decks provided, try to construct simple decks from card_db
         if p0_deck is None and p1_deck is None:
@@ -226,81 +95,9 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
         # fallback: still return a session; tests can manipulate sess.gs directly
         pass
 
-    # Ensure minimal deck/hand content for headless tests when engine/setup left them empty
-    try:
-        if sess.gs and hasattr(sess.gs, 'players'):
-            p0 = sess.gs.players[0]
-            p1 = sess.gs.players[1]
-            def zone_len(p, name):
-                try:
-                    return len(getattr(p, name, []))
-                except Exception:
-                    return 0
-
-            # If both players have empty decks, synthesize simple mock card objects
-            if zone_len(p0, 'deck') == 0 and zone_len(p1, 'deck') == 0:
-                # derive ids to use
-                ids = []
-                try:
-                    if isinstance(sess.card_db, dict):
-                        ids = [int(k) for k in sess.card_db.keys()]
-                    elif isinstance(sess.card_db, list):
-                        ids = [int(c.get('id')) for c in sess.card_db if isinstance(c, dict) and 'id' in c]
-                except Exception:
-                    ids = []
-
-                if not ids:
-                    # fallback to a small numeric range
-                    ids = list(range(1, 6))
-
-                class _MockCard:
-                    _iid = 1000
-                    def __init__(self, card_id):
-                        type(self)._iid += 1
-                        self.card_id = int(card_id)
-                        self.instance_id = type(self)._iid
-                    def __repr__(self):
-                        return f"<MockCard id={self.card_id} iid={self.instance_id}>"
-
-                # populate decks with repeated ids up to 20
-                def fill_deck(pid, cnt=20):
-                    out = []
-                    i = 0
-                    while len(out) < cnt:
-                        out.append(_MockCard(ids[i % len(ids)]))
-                        i += 1
-                    return out
-
-                try:
-                    p0.deck.extend(fill_deck(0, 20))
-                    p1.deck.extend(fill_deck(1, 20))
-                except Exception:
-                    pass
-
-            # If hand is empty, draw up to 5 from deck
-            try:
-                if zone_len(p0, 'hand') == 0:
-                    for _ in range(5):
-                        if not getattr(p0, 'deck'):
-                            break
-                        try:
-                            card = p0.deck.pop()
-                            p0.hand.append(card)
-                        except Exception:
-                            break
-                if zone_len(p1, 'hand') == 0:
-                    for _ in range(5):
-                        if not getattr(p1, 'deck'):
-                            break
-                        try:
-                            card = p1.deck.pop()
-                            p1.hand.append(card)
-                        except Exception:
-                            break
-            except Exception:
-                pass
-    except Exception:
-        pass
+    # 再発防止: _MockCard デッキ注入・手札注入フォールバックは削除済み。
+    #           native (IS_NATIVE=True) では reset_game() がデッキ・手札を正しく設定するため不要。
+    #           非 native 環境のテストは pytestmark skipif で除外済み。
 
     # Route session callback_log to the module logger so GameSession diagnostics
     # (Execute PRE/POST dumps) appear in the centralized logs when running
@@ -314,18 +111,19 @@ def create_session(card_db: Optional[Dict[int, Any]] = None,
 
 
 def find_legal_commands_for_instance(sess: GameSession, instance_id: int) -> List[Any]:
-    """Return legal command objects that reference the given instance id."""
+    """Return legal command objects that reference the given instance id.
+
+    再発防止: import 文を return 文の後に置いてはならない（デッドコード＋NameError の原因）。
+              from dm_toolkit import commands は早期 return の前に配置すること。
+    """
+    # 再発防止: import は早期 return より前に書くこと。後に書くと NameError になる。
+    from dm_toolkit import commands
+
     if not sess.gs:
         return []
-        from dm_toolkit import commands
     try:
-        cmds = []
-        try:
-            cmds = commands.generate_legal_commands(sess.gs, sess.card_db, strict=False, skip_wrapper=True)
-        except TypeError:
-            cmds = commands.generate_legal_commands(sess.gs, sess.card_db)
-        except Exception:
-            cmds = []
+        # commands.generate_legal_commands は strict/skip_wrapper を受け付ける
+        cmds = commands.generate_legal_commands(sess.gs, sess.card_db, skip_wrapper=True)
     except Exception:
         return []
     out = []
@@ -363,7 +161,7 @@ def play_instance(sess: GameSession, instance_id: int) -> bool:
         play_cmd = cmds[0]
 
     try:
-        sess.execute_action(play_cmd)
+        sess.execute_command(play_cmd)
         return True
     except Exception:
         return False

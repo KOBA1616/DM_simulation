@@ -13,6 +13,8 @@
 #include "engine/systems/effects/trigger_manager.hpp"
 #include "engine/systems/flow/phase_system.hpp"
 #include "engine/utils/dev_tools.hpp"
+#include "engine/systems/effects/passive_effect_system.hpp"
+#include "engine/systems/rules/restriction_system.hpp"
 #include <fstream>
 #include <pybind11/stl.h>
 #include <pybind11/stl_bind.h>
@@ -23,6 +25,7 @@ using namespace dm::core;
 using namespace dm::engine;
 
 void bind_engine(py::module &m) {
+  // Debug helpers binding - ensure this file rebuilds when edited
   // GameCommand bindings
   py::class_<dm::engine::game_command::GameCommand,
              std::shared_ptr<dm::engine::game_command::GameCommand>>(
@@ -218,6 +221,8 @@ void bind_engine(py::module &m) {
              dm::engine::game_command::StatCommand::StatType::CARDS_DISCARDED)
       .value("CREATURES_PLAYED",
              dm::engine::game_command::StatCommand::StatType::CREATURES_PLAYED)
+            .value("CREATURES_DESTROYED",
+              dm::engine::game_command::StatCommand::StatType::CREATURES_DESTROYED)
       .value("SPELLS_CAST",
              dm::engine::game_command::StatCommand::StatType::SPELLS_CAST)
       .export_values();
@@ -427,23 +432,57 @@ void bind_engine(py::module &m) {
       .def("clear", &dm::engine::systems::TriggerManager::clear);
 
   // Systems
+  // Binding: generate_legal_commands (コマンド方式統一名)
+  // 再発防止: generate_legal_actions は旧名。Python 側は必ず generate_legal_commands を使用する。
+  auto intent_impl = [](const GameState &gs, const std::map<CardID, CardDefinition> &db) {
+    try {
+      std::filesystem::create_directories("logs");
+      std::ofstream diag("logs/crash_diag.txt", std::ios::app);
+      if (diag) {
+        diag << "BINDING generate_legal_commands entry player="
+             << static_cast<int>(gs.active_player_id)
+             << " phase=" << static_cast<int>(gs.current_phase) << "\n";
+        diag.close();
+      }
+    } catch (...) {
+    }
+    // 再発防止: IntentGenerator は non-const GameState& を受け取るため、
+    // バインディング層では const 参照を直接渡さずクローンを介して呼び出す。
+    GameState gs_for_intent = gs.clone();
+    return IntentGenerator::generate_legal_commands(gs_for_intent, db);
+  };
+
   py::class_<IntentGenerator>(m, "IntentGenerator")
-      .def_static(
-          "generate_legal_actions",
-          [](const GameState &gs, const std::map<CardID, CardDefinition> &db) {
-            try {
-              std::filesystem::create_directories("logs");
-              std::ofstream diag("logs/crash_diag.txt", std::ios::app);
-              if (diag) {
-                diag << "BINDING generate_legal_actions entry player="
-                     << static_cast<int>(gs.active_player_id)
-                     << " phase=" << static_cast<int>(gs.current_phase) << "\n";
-                diag.close();
-              }
-            } catch (...) {
-            }
-            return IntentGenerator::generate_legal_commands(gs, db);
-          });
+      .def_static("generate_legal_commands", intent_impl)
+      // 後方互換エイリアス（deprecated: 新規コードでは generate_legal_commands を使用する）
+      .def_static("generate_legal_actions", intent_impl);
+
+  // Debug helpers: expose native checks to Python for unit-test inspection
+  m.def("debug_allows_attack_untapped",
+        [](const core::GameState &gs, int attacker_instance_id,
+           const std::map<core::CardID, core::CardDefinition> &db) {
+          const core::CardInstance *ci = gs.get_card_instance(attacker_instance_id);
+          if (!ci) {
+            throw std::runtime_error("Invalid attacker instance id");
+          }
+          bool allowed = dm::engine::PassiveEffectSystem::instance().allows_attack_untapped(gs, *ci, db);
+          return allowed;
+        });
+
+  m.def("debug_is_attack_forbidden",
+        [](const core::GameState &gs, int attacker_instance_id, int target_id,
+           const std::map<core::CardID, core::CardDefinition> &db) {
+          const core::CardInstance *att = gs.get_card_instance(attacker_instance_id);
+          if (!att) {
+            throw std::runtime_error("Invalid attacker instance id");
+          }
+          if (!db.count(att->card_id)) {
+            throw std::runtime_error("Card definition not found for attacker");
+          }
+          const auto &def = db.at(att->card_id);
+          bool forbidden = dm::engine::systems::RestrictionSystem::instance().is_attack_forbidden(gs, *att, def, target_id, db);
+          return forbidden;
+        });
 
   auto effect_resolver =
       py::class_<dm::engine::systems::GameLogicSystem>(m, "EffectResolver");
@@ -470,7 +509,30 @@ void bind_engine(py::module &m) {
         auto map_val =
             dm::engine::infrastructure::JsonLoader::load_cards(filepath);
         // Move into shared pointer to prevent copy when returning to Python
-        return std::make_shared<CardDatabase>(std::move(map_val));
+        auto db_ptr = std::make_shared<CardDatabase>(std::move(map_val));
+        // Diagnostic: dump basic summary of loaded card definitions (static_abilities counts)
+        try {
+          std::ofstream diag("c:\\temp\\binding_loaded_db.txt", std::ios::app);
+          if (diag) {
+            diag << "JsonLoader.load_cards: " << filepath << " entries=" << db_ptr->size() << "\n";
+            for (const auto &kv : *db_ptr) {
+              const auto &cid = kv.first;
+              const auto &def = kv.second;
+              diag << "  card_id=" << cid << " static_abilities=" << def.static_abilities.size() << "\n";
+              for (size_t i = 0; i < def.static_abilities.size(); ++i) {
+                const auto &m = def.static_abilities[i];
+                diag << "    mod[" << i << "]: type=" << static_cast<int>(m.type)
+                     << " value_mode=" << m.value_mode << " stat_key=" << m.stat_key
+                     << " per_value=" << m.per_value;
+                if (m.max_reduction.has_value()) diag << " max_reduction=" << m.max_reduction.value();
+                diag << "\n";
+              }
+            }
+            diag.close();
+          }
+        } catch (...) {
+        }
+        return db_ptr;
       });
 
   py::class_<DevTools>(m, "DevTools")

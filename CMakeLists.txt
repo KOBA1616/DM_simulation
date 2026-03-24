@@ -29,6 +29,14 @@ else()
 endif()
 
 # --- Dependencies ---
+# 再発防止: FetchContent の _deps をビルドディレクトリ内に閉じ込めると build-msvc / build-ninja
+# 両方で同一アーカイブを重複ダウンロード・展開してしまいディスクを浪費する。
+# プロジェクトルート直下の .cmake_deps_cache を共有キャッシュとすることで重複を排除する。
+if(NOT DEFINED CACHE{FETCHCONTENT_BASE_DIR})
+    set(FETCHCONTENT_BASE_DIR "${CMAKE_SOURCE_DIR}/.cmake_deps_cache" CACHE PATH
+        "Shared FetchContent cache shared across all build trees" FORCE)
+endif()
+
 # Pybind11 is required for Python bindings (Phase 3)
 # Try to find an installed pybind11 first; if not present, fetch it via FetchContent
 include(FetchContent)
@@ -178,6 +186,7 @@ set(SRC_ENGINE
     src/engine/systems/mechanics/shield_system.cpp # Added
     src/engine/systems/mechanics/play_system.cpp # Added
     src/engine/systems/mechanics/mana_system.cpp
+    src/engine/systems/mechanics/payment_plan.cpp
     src/engine/systems/breaker/breaker_system.cpp # Added
     src/engine/utils/determinizer.cpp
     src/engine/utils/dev_tools.cpp
@@ -250,6 +259,17 @@ add_library(dm_core OBJECT
 # We set properties directly.
 set_target_properties(dm_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+# Optionally build C++ unit tests (disabled by default to avoid long CI builds)
+option(ENABLE_CPP_TESTS "Build C++ unit tests" OFF)
+# Control fetching/building googletest. Default OFF to allow offline/no-gtest builds.
+if(ENABLE_CPP_TESTS)
+    # Googletest integration has been removed from this repository.
+    # If you need to run C++ unit tests, add your preferred test framework
+    # to the tree (e.g. add googletest under third_party/) and wire it into
+    # the build. For now, we skip adding C++ test targets.
+    message(STATUS "C++ tests requested (ENABLE_CPP_TESTS=ON) but no test framework is configured; skipping C++ test build.")
+endif()
+
 
 # Python Module (Phase 3)
 pybind11_add_module(dm_ai_module
@@ -262,8 +282,12 @@ pybind11_add_module(dm_ai_module
 target_link_libraries(dm_ai_module PRIVATE dm_core)
 
 # Output the extension module to the bin/ directory
+# 再発防止: pybind11_add_module は MODULE ターゲットを生成する。
+#   Windows では MODULE (.pyd) は DLL として扱われ RUNTIME_OUTPUT_DIRECTORY に配置される。
+#   LIBRARY_OUTPUT_DIRECTORY だけでは bin/Release/ に配置されないため両方設定すること。
 set_target_properties(dm_ai_module PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
 )
 
 # --- Testing (CTest) ---

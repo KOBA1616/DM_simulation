@@ -4,6 +4,10 @@ if os.path.isdir('python'):
     sys.path.insert(0, os.path.abspath('python'))
 import dm_ai_module
 from dm_toolkit import commands as commands
+try:
+    from dm_toolkit.engine.compat import EngineCompat as _EngineCompat
+except Exception:
+    _EngineCompat = None
 
 card_db = dm_ai_module.JsonLoader.load_cards('data/cards.json')
 valid_ids = list(card_db.keys())
@@ -83,15 +87,14 @@ def replay(seed, deck=None, max_steps=200):
             action = ag1.get_action(gs, legal) if ag1 else None
         print('  Chosen action type:', getattr(action, 'type', None))
 
+        # 再発防止: GameLogicSystem は Python 未公開（EffectResolver として公開）のため削除済み。EngineCompat.ExecuteCommand を使用。
         try:
-            from dm_toolkit.compat_wrappers import execute_action_compat
-            execute_action_compat(inst.state, action, card_db)
+            if _EngineCompat is not None:
+                _EngineCompat.ExecuteCommand(gs, action, card_db)
+            else:
+                raise RuntimeError('EngineCompat not available')
         except Exception as e:
-            print('  resolve_action exception:', e)
-            try:
-                dm_ai_module.GameLogicSystem.resolve_action_oneshot(gs, action, card_db)
-            except Exception as e2:
-                print('  fallback resolve exception:', e2)
+            print('  execute_command exception:', e)
         # after action
         # after action
     print('Replay finished')

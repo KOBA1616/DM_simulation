@@ -44,7 +44,10 @@ from dm_toolkit.gui.widgets.log_viewer import LogViewer
 from dm_toolkit.gui.game_session import GameSession
 from dm_toolkit.gui.input_handler import GameInputHandler
 from dm_toolkit.gui.layout_builder import LayoutBuilder
-from dm_toolkit import commands
+# 再発防止: dm_toolkit.commands.generate_legal_commands はレガシー経路。
+#           コマンド生成は必ず python.dm_env._native 経由を使用する。
+from python.dm_env._native import get_module as _get_dm
+from python.dm_env import builders as _builders
 
 class GameWindow(QMainWindow):
     def __init__(self) -> None:
@@ -106,6 +109,7 @@ class GameWindow(QMainWindow):
             # Initialize Layout using Builder
             self.layout_builder = LayoutBuilder(self)
             self.layout_builder.build()
+            self._fc_connected = False  # 方針D: floating_confirm_btn の接続フラグ
             # Training status toolbar
             try:
                 self._init_training_toolbar()
@@ -201,6 +205,10 @@ class GameWindow(QMainWindow):
         try:
             # Initialize Game (may call into native C++ and perform I/O)
             self.session.initialize_game(self.card_db)
+
+            # 再発防止: initialize_game() は player_modes を AI/AI で初期化する。
+            # control_panel の設定を反映してから auto-start タイマーを判定する。
+            self._apply_player_modes()
 
             # Auto-start timer for AI vs AI games (check after session initialized)
             try:
@@ -459,17 +467,43 @@ class GameWindow(QMainWindow):
             self.control_panel.set_pass_button_visible(False)
             self.control_panel.set_start_button_text(tr("Start Sim"))
         self.log_viewer.clear_logs()
+        # 方針A/C/D: ハイライト・バナー・フローティングボタンをリセット
+        try:
+            if hasattr(self, 'game_board'):
+                self.game_board.clear_highlights()
+                self.game_board.set_action_hint("")
+                self.game_board.set_floating_confirm(False)
+                self.control_panel.clear_action_commands()
+        except Exception:
+            pass
 
         self.session.reset_game(self.p0_deck_ids, self.p1_deck_ids)
+
+        # 再発防止: reset_game() は新規 gs を生成するため player_modes が AI/AI に戻る。
+        # control_panel の Human/AI 設定を再適用する。
+        self._apply_player_modes()
 
         if hasattr(self, 'scenario_tools'):
             self.scenario_tools.set_game_state(self.gs, self.card_db)
         self.last_command_index = 0
         self.update_ui()
 
+    def _apply_player_modes(self) -> None:
+        """control_panel の Human/AI 設定を C++ GameState.player_modes に反映する。
+        再発防止: reset_game()/initialize_game() 後は player_modes が AI/AI にリセットされるため
+        必ずこのメソッドを呼んで再設定すること。
+        """
+        if not (hasattr(self, 'control_panel') and self.session.gs is not None):
+            return
+        try:
+            self.session.set_player_mode(0, 'Human' if self.control_panel.is_p0_human() else 'AI')
+            self.session.set_player_mode(1, 'Human' if self.control_panel.is_p1_human() else 'AI')
+        except Exception:
+            pass
+
     def pass_turn(self) -> None:
         if hasattr(self, 'current_pass_action') and self.current_pass_action:
-            self.session.execute_action(self.current_pass_action)
+            self.session.execute_command(self.current_pass_action)  # 再発防止: execute_action は削除済み
 
     def confirm_selection(self) -> None:
         self.input_handler.confirm_selection()
@@ -563,42 +597,113 @@ class GameWindow(QMainWindow):
         # lightweight and avoids edge cases where PASS exists but the
         # per-player filtered list is empty.
         # 再発防止: skip_wrapper=True はレガシー raw CommandDef を渡す経路のため使用しない。
-        # wrap_action 済みの _ActionWrapper を返すことで execute_action が
+        # wrap_command 済みの _CommandWrapper を返すことで execute_action が
         # game_instance.resolve_command() を使う C++ 経路に乗る。
         # EngineCompat.ActionGenerator_generate_legal_commands() はレガシー経路のため削除。
-        all_legal_actions = []
+        all_legal_commands = []
         try:
-            all_legal_actions = commands.generate_legal_commands(self.gs, self.card_db, strict=False) or []
+            # 再発防止: generate_legal_actions（旧名）ではなく generate_legal_commands を使用。
+            # bind_engine.cpp で両名ともバインド済み（旧名はエイリアス）。
+            dm = _get_dm()
+            all_legal_commands = dm.IntentGenerator.generate_legal_commands(self.gs, self.card_db) or []
         except Exception:
-            all_legal_actions = []
+            all_legal_commands = []
 
-        legal_actions = []
+        legal_commands = []
         is_human = False
         if hasattr(self, 'control_panel'):
             is_human = self.control_panel.is_p0_human()
 
         if active_pid == 0 and is_human and not self.gs.game_over:
-             legal_actions = all_legal_actions
+             legal_commands = all_legal_commands
 
-        # Determine if a PASS action exists in the full engine-provided set
-        # (not only the filtered per-player list). This prevents missing a
-        # pass action when view/filtering logic hides other commands.
+        # Determine if a PASS command exists in the full engine-provided set
+        # 再発防止: to_dict()の'type'フィールドはenum オブジェクト(dm_ai_module.CommandType.PASS)
+        #           として返るため、文字列'PASS'との==比較は常にFalseになる。
+        #           必ず cmd.type 属性を直接 enum と比較すること。
         self.current_pass_action = None
-        for cmd in all_legal_actions:
-            try: d = cmd.to_dict()
-            except: d = {}
-            if d.get('type') == 'PASS' or d.get('legacy_original_type') == 'PASS':
-                self.current_pass_action = cmd
-                break
+        for cmd in all_legal_commands:
+            try:
+                cmd_type = getattr(cmd, 'type', None)
+                if dm_ai_module and cmd_type is not None and cmd_type == dm_ai_module.CommandType.PASS:
+                    self.current_pass_action = cmd
+                    break
+                # フォールバック: str変換で末尾が'PASS'かを確認（PASS_TURNと区別）
+                type_str = str(cmd_type) if cmd_type is not None else ''
+                if type_str.endswith('.PASS') or type_str == 'PASS':
+                    self.current_pass_action = cmd
+                    break
+            except Exception:
+                pass
 
         god_view = False
         if hasattr(self, 'control_panel'):
             god_view = self.control_panel.is_god_view()
 
         if hasattr(self, 'game_board'):
-            self.game_board.update_state(p0, p1, self.card_db, legal_actions, god_view)
+            self.game_board.update_state(p0, p1, self.card_db, legal_commands, god_view)
             if EngineCompat.is_waiting_for_user_input(self.gs):
                  self.game_board.set_selection_mode(self.input_handler.selected_targets)
+
+            # 方針A: 合法コマンドのハイライト / 対象選択ハイライト
+            try:
+                if EngineCompat.is_waiting_for_user_input(self.gs):
+                    pending = EngineCompat.get_pending_query(self.gs)
+                    if getattr(pending, 'query_type', '') == 'SELECT_TARGET':
+                        self.game_board.highlight_valid_targets(
+                            list(getattr(pending, 'valid_targets', []))
+                        )
+                    else:
+                        self.game_board.clear_highlights()
+                elif active_pid == 0 and is_human and not self.gs.game_over:
+                    self.game_board.highlight_legal_commands(legal_commands)
+                else:
+                    self.game_board.clear_highlights()
+            except Exception:
+                pass
+
+            # 方針C: 状態バナー更新
+            try:
+                if self.gs.game_over:
+                    self.game_board.set_action_hint(tr("Game Over"))
+                elif EngineCompat.is_waiting_for_user_input(self.gs):
+                    pass  # handle_user_input_request が設定済み
+                elif active_pid == 0 and is_human and not self.gs.game_over:
+                    try:
+                        phase = str(EngineCompat.get_current_phase(self.gs) or "")
+                    except Exception:
+                        phase = ""
+                    phase_label = tr(phase) if phase else ""
+                    hint = tr("Your turn: {phase}").format(phase=phase_label) if phase_label else tr("Your turn")
+                    self.game_board.set_action_hint(hint)
+                elif active_pid == 1 and not self.gs.game_over:
+                    self.game_board.set_action_hint(tr("Waiting for opponent..."))
+                else:
+                    self.game_board.set_action_hint("")
+            except Exception:
+                pass
+
+            # 方針D: フローティング確定ボタン更新
+            try:
+                pending2 = EngineCompat.get_pending_query(self.gs)
+                if (EngineCompat.is_waiting_for_user_input(self.gs)
+                        and getattr(pending2, 'query_type', '') == 'SELECT_TARGET'):
+                    params = getattr(pending2, 'params', {})
+                    min_t = params.get('min', 1) if hasattr(params, 'get') else 1
+                    sel = len(self.input_handler.selected_targets)
+                    btn_text = tr("Confirm ({sel}/{min})").format(sel=sel, min=min_t)
+                    self.game_board.set_floating_confirm(True, btn_text)
+                    # フローティングボタンを confirm_selection に接続（初回のみ）
+                    if not self._fc_connected:
+                        try:
+                            self.game_board.floating_confirm_btn.clicked.connect(self.confirm_selection)
+                            self._fc_connected = True
+                        except Exception:
+                            pass
+                else:
+                    self.game_board.set_floating_confirm(False)
+            except Exception:
+                pass
 
         # 5. Update Control Panel
         if hasattr(self, 'control_panel'):

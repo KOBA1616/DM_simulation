@@ -24,7 +24,7 @@ class MCTSView(QWidget):
         # Tab 1: Tree Table
         self.tree = QTreeWidget()
         self.tree.setHeaderLabels([
-            tr("アクション"),
+            tr("コマンド"),
             tr("訪問回数"),
             tr("評価値 (Q)"),
             tr("優先度 (P)"),

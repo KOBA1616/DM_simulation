@@ -19,3 +19,25 @@ CIV_COLORS_BACKGROUND = {
     "NATURE": "#90EE90",    # LightGreen
     "ZERO": "#F5F5F5"       # WhiteSmoke
 }
+
+# Mana orb colors (vivid, for mana zone civilization display)
+CIV_ORB_COLORS = {
+    "LIGHT":    ("#FFD700", "#B8860B"),  # (fill, border)  gold
+    "WATER":    ("#1E90FF", "#00008B"),  # blue
+    "DARKNESS": ("#9370DB", "#4B0082"),  # purple
+    "FIRE":     ("#FF4500", "#8B0000"),  # red
+    "NATURE":   ("#32CD32", "#006400"),  # green
+    "ZERO":     ("#A9A9A9", "#505050"),  # gray
+    "COLORLESS":("#D3D3D3", "#808080"),  # light gray
+}
+
+# Civilization display names (Japanese)
+CIV_NAMES_JA = {
+    "LIGHT":     "光",
+    "WATER":     "水",
+    "DARKNESS":  "闇",
+    "FIRE":      "火",
+    "NATURE":    "自然",
+    "ZERO":      "ゼロ",
+    "COLORLESS": "無色",
+}

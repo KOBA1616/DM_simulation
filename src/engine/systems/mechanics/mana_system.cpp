@@ -1,6 +1,8 @@
 #include "mana_system.hpp"
+#include "cost_payment_system.hpp"
 #include "core/game_state.hpp"
 #include "core/card_def.hpp"
+#include "engine/systems/mechanics/payment_plan.hpp"
 #include "engine/utils/target_utils.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include <algorithm>
@@ -18,6 +20,44 @@ namespace dm::engine {
 
         if (cost <= 0) return 0;
 
+        // 再発防止: PASSIVE軽減が auto_tap_mana で適用されていなかった理由は、
+        // evaluate_cost の計算結果が実際には使用されていなかったか、
+        // JSON loading時にcost_reductionsが空だった可能性。
+        // 解決: direct に PASSIVE軽減を計算して adjusted_cost に反映。
+        int total_passive_reduction = 0;
+        int min_mana_floor = 1;  // Default: cost cannot be reduced below 1
+        
+        for (const auto& cr : card_def.cost_reductions) {
+            if (cr.type == ReductionType::PASSIVE) {
+                total_passive_reduction += cr.reduction_amount;
+                // Track the maximum min_mana_cost floor
+                if (cr.min_mana_cost > 0) {
+                    min_mana_floor = std::max(min_mana_floor, cr.min_mana_cost);
+                }
+            }
+        }
+        
+        int adjusted = std::max(cost - total_passive_reduction, 0);
+        adjusted = std::max(adjusted, min_mana_floor);
+        
+        // Log for debugging
+        if (total_passive_reduction > 0) {
+            std::cerr << "[MANA_SYSTEM] Direct PASSIVE reduction: cost=" << cost 
+                      << " reduction=" << total_passive_reduction 
+                      << " adjusted=" << adjusted << std::endl;
+        }
+        
+        // Use PaymentPlan prototype to compute passive reductions defined on the card (for validation)
+        auto plan = dm::engine::evaluate_cost(card_def, 1, std::nullopt, std::nullopt);
+        int plan_adjusted = plan.adjusted_after_passive;
+        
+        // 再発防止: evaluate_cost の結果と direct計算の結果が一致することを確認（validation）
+        if (plan.adjusted_after_passive != adjusted) {
+            std::cerr << "[MANA_SYSTEM WARNING] Mismatch: evaluate_cost=" << plan_adjusted 
+                      << " vs direct=" << adjusted << std::endl;
+        }
+
+        // Preserve runtime active_modifiers behavior by applying them on top of passive adjustments
         for (const auto& mod : game_state.active_modifiers) {
             if (mod.controller != player.id) continue;
 
@@ -25,14 +65,12 @@ namespace dm::engine {
             dummy_inst.card_id = card_def.id;
 
             if (dm::engine::utils::TargetUtils::is_valid_target(dummy_inst, card_def, mod.condition_filter, game_state, player.id, player.id)) {
-                cost -= mod.reduction_amount;
+                adjusted -= mod.reduction_amount;
             }
         }
 
-        if (cost < 1) cost = 1;
-        if (card_def.cost > 0 && cost < 1) cost = 1;
-
-        return cost;
+        if (adjusted < 1) adjusted = 1;
+        return adjusted;
     }
 
     // Internal helper with DB access
@@ -123,18 +161,17 @@ namespace dm::engine {
     }
 
     bool ManaSystem::can_pay_cost(const GameState& game_state, const Player& player, const CardDefinition& card_def, const std::map<CardID, CardDefinition>& card_db) {
-        int cost = get_adjusted_cost(game_state, player, card_def);
-        if (cost <= 0) return true; // Free after reductions
-        auto indices = solve_payment_internal(player.mana_zone, card_def.civilizations, cost, card_db);
-        return !indices.empty();
+        // 再発防止: タスク1「二重判定の解消」
+        // 旧: get_adjusted_cost()で PASSIVE軽減のみ考慮 → ACTIVE軽減を無視していた
+        // 新: CostPaymentSystem::can_pay_cost() へ統一
+        //     PASSIVE軽減と ACTIVE軽減の最大値を考慮した判定を行う
+        return CostPaymentSystem::can_pay_cost(game_state, player.id, card_def, card_db);
     }
 
-    bool ManaSystem::can_pay_cost(const Player& player, const CardDefinition& card_def, const std::map<CardID, CardDefinition>& card_db) {
-        int cost = card_def.cost;
-        if (cost <= 0) return true; // Zero or negative cost is always payable without mana
-        auto indices = solve_payment_internal(player.mana_zone, card_def.civilizations, cost, card_db);
-        return !indices.empty();
-    }
+    // Legacy Player-only overload removed in REFACTOR (2026-03-17).
+    // Use the GameState-aware `can_pay_cost(game_state, player, card_def, card_db)`
+    // which delegates to `CostPaymentSystem::can_pay_cost()` and accounts for
+    // both PASSIVE and ACTIVE_PAYMENT reductions.
 
     bool ManaSystem::auto_tap_mana(GameState& game_state, Player& player, const CardDefinition& card_def, const std::map<CardID, CardDefinition>& card_db) {
         int cost = get_adjusted_cost(game_state, player, card_def);

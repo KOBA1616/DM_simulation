@@ -33,6 +33,12 @@ CONDITION_UI_CONFIG = {
         "label_val": "Value",
         "label_str": "String"
     },
+    "PLAYED_WITHOUT_MANA_TARGET": {
+        "show_val": False,
+        "show_str": False,
+        "label_val": "Value",
+        "label_str": "String"
+    },
     "OPPONENT_DRAW_COUNT": {
         "show_val": True,
         "show_str": False,

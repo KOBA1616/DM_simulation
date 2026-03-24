@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
-from PyQt6.QtWidgets import QInputDialog, QMessageBox
+from PyQt6.QtWidgets import QMessageBox
 
 from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.gui.i18n import tr
@@ -22,6 +22,14 @@ class GameInputHandler:
         self.window = window
         self.session = session
         self.selected_targets: List[int] = []
+
+        # 再発防止: ActionPanel は control_panel に移行済み
+        try:
+            self.window.control_panel.action_command_selected.connect(
+                self._on_panel_command_selected
+            )
+        except Exception:
+            pass
 
     @property
     def gs(self) -> 'GameState':
@@ -66,22 +74,22 @@ class GameInputHandler:
                 relevant_cmds.append(c)
 
         if not relevant_cmds:
+            # 関連コマンドがない場合はパネルをクリア
+            try:
+                self.window.control_panel.clear_action_commands()
+            except Exception:
+                pass
             return
 
-        if len(relevant_cmds) > 1:
-            items = []
-            for cmd in relevant_cmds:
-                desc = describe_command(cmd, self.gs, self.card_db)
-                items.append({'description': desc, 'command': cmd})
-
-            options = [item['description'] for item in items]
-            item, ok = QInputDialog.getItem(self.window, tr("Select Action"), tr("Choose action to perform:"), options, 0, False)
-            if ok and item:
-                idx = options.index(item)
-                self.session.execute_action(items[idx]['command'])
-            return
-
-        self.session.execute_action(relevant_cmds[0])
+        # 再発防止: シングルクリックは常に P0 操作パネルに表示して確認させる（誤操作防止）。
+        try:
+            self.window.control_panel.set_action_commands(
+                relevant_cmds, self.gs, self.card_db
+            )
+        except Exception:
+            # フォールバック: control_panel が利用不可の場合のみ即実行
+            if len(relevant_cmds) == 1:
+                self.session.execute_command(relevant_cmds[0])
 
     def on_card_double_clicked(self, card_id: int, instance_id: int) -> None:
         """Handle double-click to quickly play the most common action (Play or Mana Charge)."""
@@ -121,13 +129,13 @@ class GameInputHandler:
                 other_cmd = cmd
 
         if play_cmd:
-            self.session.execute_action(play_cmd)
+            self.session.execute_command(play_cmd)
         elif attack_cmd:
-            self.session.execute_action(attack_cmd)
+            self.session.execute_command(attack_cmd)
         elif other_cmd:
-            self.session.execute_action(other_cmd)
+            self.session.execute_command(other_cmd)
         elif mana_cmd:
-            self.session.execute_action(mana_cmd)
+            self.session.execute_command(mana_cmd)
 
     def handle_user_input_request(self) -> None:
         """Called by GameSession when input is needed."""
@@ -139,6 +147,7 @@ class GameInputHandler:
 
         query = EngineCompat.get_pending_query(self.gs)
         if query.query_type == "SELECT_OPTION":
+            from PyQt6.QtWidgets import QInputDialog
             options = query.options
             item, ok = QInputDialog.getItem(self.window, tr("Select Option"), tr("Choose an option:"), options, 0, False)
             if ok and item:
@@ -148,6 +157,25 @@ class GameInputHandler:
             valid_targets = query.valid_targets
             if not valid_targets:
                 return
+
+            # 方針A: 有効対象を黄枠ハイライト
+            try:
+                self.window.game_board.highlight_valid_targets(list(valid_targets))
+            except Exception:
+                pass
+
+            # 方針B/C: SELECT_TARGET 時はパネルを待機モードにし、バナーでガイド
+            params = getattr(query, 'params', {})
+            min_sel = params.get('min', 1) if hasattr(params, 'get') else 1
+            max_sel = params.get('max', 99) if hasattr(params, 'get') else 99
+            hint_msg = tr("Select target ({min}-{max})").format(min=min_sel, max=max_sel)
+            try:
+                self.window.game_board.set_action_hint(hint_msg)
+                self.window.control_panel.set_action_waiting_mode(
+                    True, tr("Click targets on the board,\nthen press Confirm")
+                )
+            except Exception:
+                pass
 
             # Check if targets are in buffer (temp zone)
             first_target_id = valid_targets[0]
@@ -173,7 +201,7 @@ class GameInputHandler:
                     self.session.resume_from_input(cast(Any, selected_instance_ids))
                 return
             else:
-                # Targets are on board/hand/mana, highlight them
+                # Targets are on board/hand/mana, highlight them (update_ui also calls highlight_valid_targets)
                 self.window.update_ui()
 
     def confirm_selection(self) -> None:
@@ -188,7 +216,23 @@ class GameInputHandler:
         targets = list(self.selected_targets)
         self.selected_targets = []
         self.window.control_panel.set_confirm_button_visible(False)
+        # 方針C+D: バナーとフローティングボタンをリセット
+        try:
+            self.window.game_board.set_action_hint("")
+            self.window.game_board.set_floating_confirm(False)
+            self.window.control_panel.set_action_waiting_mode(False)
+        except Exception:
+            pass
         self.session.resume_from_input(targets)
+
+    def _on_panel_command_selected(self, cmd: Any) -> None:
+        """ActionPanel から選択されたコマンドを実行する（方針B）。"""
+        # 再発防止: パネル選択後はコマンドを即実行。ハイライトクリアは update_ui が担当。
+        try:
+            self.window.game_board.clear_highlights()
+        except Exception:
+            pass
+        self.session.execute_command(cmd)
 
     def on_resolve_effect_from_stack(self, index: int) -> None:
         """Resolve a pending effect by its vector index.
@@ -220,9 +264,9 @@ class GameInputHandler:
                 break
         if target_cmd:
             logger.debug(f"[InputHandler] Executing RESOLVE_EFFECT command")
-            self.session.execute_action(target_cmd)
+            self.session.execute_command(target_cmd)
         elif len(resolve_cmds) == 1:
             logger.debug(f"[InputHandler] Only one RESOLVE_EFFECT, executing it")
-            self.session.execute_action(resolve_cmds[0][0])
+            self.session.execute_command(resolve_cmds[0][0])
         else:
             logger.warning(f"[InputHandler] No matching RESOLVE_EFFECT command found for index {index}")

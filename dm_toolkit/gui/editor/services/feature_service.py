@@ -5,7 +5,7 @@ from dm_toolkit.gui.editor.models import CardModel, EffectModel, CommandModel, R
 from dm_toolkit.gui.editor.templates import LogicTemplateManager
 from dm_toolkit.editor.core.abstraction import IEditorModel, IEditorItem
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
 if TYPE_CHECKING:
     from dm_toolkit.gui.editor.models.serializer import ModelSerializer
 
@@ -98,7 +98,7 @@ class EditorFeatureService:
         parent_item.append_row(item)
         return item
 
-    def apply_template_by_key(self, card_item: IEditorItem, template_key, display_label=None):
+    def apply_template_by_key(self, card_item: IEditorItem, template_key, display_label=None, extra_context=None):
         if display_label is None:
              display_label = tr(template_key)
 
@@ -108,7 +108,8 @@ class EditorFeatureService:
             'races': card_data.get('races', [])
         }
 
-        data, keywords_update, meta = self.template_manager.apply_template(template_key, context)
+        # 再発防止: extra_context (例: fb_races, rc_races) をテンプレート置換に渡す。
+        data, keywords_update, meta = self.template_manager.apply_template(template_key, context, extra_context=extra_context)
 
         if not data:
             print(f"Error: Template '{template_key}' not found or empty.")
@@ -191,7 +192,21 @@ class EditorFeatureService:
 
     @staticmethod
     def inject_keyword_logic(card_data):
-        keywords = card_data.get('keywords', {})
+        raw_keywords = card_data.get('keywords', {})
+        # 再発防止: keywords は dict だけでなく KeywordsModel（Pydantic）でも渡される。
+        # dict 前提で代入すると TypeError になるため、ここで必ず plain dict に正規化する。
+        keywords: Dict[str, Any]
+        if isinstance(raw_keywords, dict):
+            keywords = dict(raw_keywords)
+        elif hasattr(raw_keywords, 'model_dump'):
+            try:
+                dumped = raw_keywords.model_dump()  # type: ignore[attr-defined]
+                keywords = dumped if isinstance(dumped, dict) else {}
+            except Exception:
+                keywords = {}
+        else:
+            keywords = {}
+
         effects = card_data.get('effects', [])
 
         for eff in effects:

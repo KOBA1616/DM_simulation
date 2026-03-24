@@ -64,12 +64,31 @@ namespace dm::core {
 
     struct TurnStats {
         int played_without_mana = 0;
+        // 再発防止: 「コストを支払わずに出たカード」を IF 条件で個別判定するため、
+        // そのターンに踏み倒しで出た instance_id を保持する。
+        std::vector<int> played_without_mana_instance_ids;
         int cards_drawn_this_turn = 0;
         int cards_discarded_this_turn = 0;
         int creatures_played_this_turn = 0;
+        // 召喚 (サモン) のカウント: 正規の召喚行為のみをカウントする。
+        // 踏み倒しや特殊な配置は別扱いとするため、このフィールドを分離します。
+        int summon_count_this_turn = 0;
+        int creatures_destroyed_this_turn = 0;
         int spells_cast_this_turn = 0;
         int current_chain_depth = 0;
         bool mana_charged_by_player[2] = {false, false};  // DM Rule: max 1 mana charge per turn per player
+        // 再発防止: OPPONENT_DRAW_COUNT 条件評価のために相手のドロー数をプレイヤー別に追跡する
+        int player_draw_count[2] = {0, 0};  // プレイヤー別ドロー数 (player_draw_count[player_id])
+        // シールドブレイク統計: 試行と解決を分離して追跡
+        int shield_break_attempt_count_this_turn = 0;  // ブレイク試行回数（試行された回数）
+        int shield_break_resolved_count_this_turn = 0; // 実際にシールドが割れた回数（解決済み）
+        // マナセット統計: このターンにマナゾーンへ置かれたカードの総数（効果で置かれた分も含む）
+        int mana_set_this_turn = 0;
+        // このターンに攻撃を行った回数（またはフラグとして 0/1 を扱う）
+        // 互換性維持のため従来のスカラーを残しつつ、プレイヤー別カウントを追加
+        int attacked_this_turn = 0;
+        // プレイヤー別に攻撃回数を追跡する配列 (player_id 0/1)
+        int attacked_this_turn_by_player[2] = {0, 0};
     };
 
 }

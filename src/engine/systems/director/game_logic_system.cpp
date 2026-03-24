@@ -3,6 +3,7 @@
 #include "engine/systems/rules/condition_system.hpp"
 #include "engine/infrastructure/pipeline/pipeline_executor.hpp"
 #include "engine/systems/effects/effect_system.hpp"
+#include "engine/systems/effects/continuous_effect_system.hpp"
 #include "engine/systems/effects/trigger_system.hpp"
 #include "engine/systems/effects/passive_effect_system.hpp"
 #include "engine/systems/rules/restriction_system.hpp"
@@ -11,14 +12,17 @@
 #include "engine/infrastructure/commands/command_system.hpp"
 #include "engine/systems/flow/phase_system.hpp"
 #include "engine/systems/mechanics/mana_system.hpp"
+#include "engine/systems/mechanics/payment_plan.hpp"
 #include "engine/systems/breaker/breaker_system.hpp"
 #include "engine/systems/mechanics/battle_system.hpp"
 #include "engine/systems/mechanics/shield_system.hpp"
 #include "engine/systems/mechanics/play_system.hpp"
+#include "engine/systems/mechanics/cost_payment_system.hpp"
 #include "engine/utils/action_primitive_utils.hpp"
 #include <iostream>
 #include <algorithm>
 #include <fstream>
+#include <optional>
 
 namespace dm::engine::systems {
 
@@ -31,9 +35,9 @@ namespace dm::engine::systems {
 
     // Private helper implementation
     std::pair<core::Zone, core::PlayerID> GameLogicSystem::get_card_location(const core::GameState& state, int instance_id) {
-        if (instance_id < 0 || (size_t)instance_id >= state.card_owner_map.size()) return {Zone::GRAVEYARD, 0};
+        if (instance_id < 0 || (size_t)instance_id >= state.card_owner_map.size()) return {Zone::GRAVEYARD, PlayerID{0}};
         PlayerID owner = state.get_card_owner(instance_id);
-        if (owner >= state.players.size()) return {Zone::GRAVEYARD, 0};
+        if (owner >= state.players.size()) return {Zone::GRAVEYARD, PlayerID{0}};
         const Player& p = state.players[owner];
 
         auto has = [&](const std::vector<CardInstance>& v) {
@@ -57,6 +61,13 @@ namespace dm::engine::systems {
     void GameLogicSystem::dispatch_command(PipelineExecutor& pipeline, core::GameState& state, const core::CommandDef& cmd, const std::map<core::CardID, core::CardDefinition>& card_db) {
         std::cerr << "\n=== dispatch_command called ===" << std::endl;
         std::cerr << "Command type: " << static_cast<int>(cmd.type) << std::endl;
+        std::cerr << "PLAY_FROM_ZONE value: " << static_cast<int>(core::CommandType::PLAY_FROM_ZONE) << std::endl;
+
+        // NOTE: dispatch_command は外部からのユーザー/AI 入力をパイプラインに反映する
+        // 唯一の責務ポイントとして扱われるべきです。
+        // - waiting_for_user_input / pipeline.execution_paused の両方のケースで
+        //   入力を受け取り、context 変数へ保存し、パイプライン実行を再開します。
+        // - 他箇所でコンテキストを直接書き換えないでください。
 
         switch (cmd.type) {
             case core::CommandType::PLAY_FROM_ZONE:
@@ -67,6 +78,10 @@ namespace dm::engine::systems {
 
                 // Step 1: DECLARE_PLAY - Move to Stack
                 auto loc = get_card_location(state, iid);
+                std::cerr << "[PLAY TRACE] instance_id=" << iid
+                          << " from_zone=" << static_cast<int>(loc.first)
+                          << " owner=" << static_cast<int>(loc.second)
+                          << std::endl;
                 auto declare_cmd = std::make_unique<game_command::TransitionCommand>(iid, loc.first, Zone::STACK, loc.second);
                 state.execute_command(std::move(declare_cmd));
                 
@@ -75,9 +90,108 @@ namespace dm::engine::systems {
                     if (card_db.count(c->card_id)) {
                         const auto& base_def = card_db.at(c->card_id);
                         const auto& def = (is_spell_side && base_def.spell_side) ? *base_def.spell_side : base_def;
-                        
-                        bool payment_success = ManaSystem::auto_tap_mana(state, state.players[state.active_player_id], def, card_db);
-                        
+
+                        // Ensure continuous/static effects are up-to-date before computing payments
+                        try {
+                            dm::engine::systems::ContinuousEffectSystem::recalculate(state, card_db);
+                        } catch(...) {}
+
+                        // 再発防止: テスト失敗時にカード定義へ cost_reductions が載っているかを
+                        // 実行時に必ず可視化して、JSONロード/レジストリ経路の切り分けを容易にする。
+                        std::cerr << "[PAYMENT TRACE] card_id=" << def.id
+                                  << " base_cost=" << def.cost
+                                  << " cost_reductions.size=" << def.cost_reductions.size()
+                                  << std::endl;
+
+                        bool payment_success = false;
+                            std::cerr << "[PAYMENT TRACE] cmd.payment_mode='" << cmd.payment_mode
+                                      << "' cmd.str_param='" << cmd.str_param << "' cmd.str_val='" << cmd.str_val
+                                      << "' reduction_id='" << cmd.reduction_id << "' payment_units=" << cmd.payment_units << std::endl;
+                        if (cmd.payment_mode == "ACTIVE_PAYMENT" || cmd.str_param == "ACTIVE_PAYMENT") {
+                            // Determine requested units: prefer explicit `payment_units` when present
+                            int requested_units = 0;
+                            if (cmd.payment_units > 0) requested_units = cmd.payment_units;
+                            else if (cmd.target_instance > 0) requested_units = cmd.target_instance;
+                            else if (cmd.target_slot_index > 0) requested_units = cmd.target_slot_index;
+                            // If no explicit units were provided but an ACTIVE_PAYMENT exists,
+                            // default to 1 unit to avoid ambiguous zero-selection cases.
+                            if (requested_units == 0) requested_units = 1;
+
+                            const CostReductionDef* selected_reduction = nullptr;
+                            // Prefer explicit reduction_id (stable identifier) when available
+                            if (!cmd.reduction_id.empty()) {
+                                for (const auto& reduction : def.cost_reductions) {
+                                    if (reduction.type != ReductionType::ACTIVE_PAYMENT) continue;
+                                    if (reduction.id == cmd.reduction_id) {
+                                        selected_reduction = &reduction;
+                                        break;
+                                    }
+                                }
+                            }
+                            // Fallback: legacy name-based selection (str_val)
+                            if (!selected_reduction && !cmd.str_val.empty()) {
+                                for (const auto& reduction : def.cost_reductions) {
+                                    if (reduction.type != ReductionType::ACTIVE_PAYMENT) continue;
+                                    if (reduction.name == cmd.str_val) {
+                                        selected_reduction = &reduction;
+                                        break;
+                                    }
+                                }
+                            }
+                            // Final fallback: pick first ACTIVE_PAYMENT entry
+                            if (!selected_reduction) {
+                                for (const auto& reduction : def.cost_reductions) {
+                                    if (reduction.type == ReductionType::ACTIVE_PAYMENT) {
+                                        selected_reduction = &reduction;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (selected_reduction && requested_units > 0) {
+                                const int max_units = CostPaymentSystem::calculate_max_units(
+                                    state, state.active_player_id, *selected_reduction,
+                                    card_db);
+                                // Trace: report selection and capacity
+                                std::cerr << "[PAYMENT TRACE] requested_units=" << requested_units
+                                          << " max_units=" << max_units << std::endl;
+                                if (requested_units <= max_units) {
+                                    const int actual_reduction =
+                                        CostPaymentSystem::execute_payment(
+                                            state, state.active_player_id,
+                                            *selected_reduction, requested_units,
+                                            card_db);
+
+                                    std::optional<std::string> active_name;
+                                    if (!selected_reduction->id.empty()) active_name = selected_reduction->id;
+                                    else if (!selected_reduction->name.empty()) active_name = selected_reduction->name;
+
+                                    auto plan = dm::engine::evaluate_cost(def, requested_units, active_name, requested_units);
+                                    int effective_cost = plan.final_cost;
+
+                                    std::cerr << "[PAYMENT TRACE] selected_reduction.id='" << (selected_reduction->id.empty() ? "(empty)" : selected_reduction->id)
+                                              << "' name='" << (selected_reduction->name.empty() ? "(empty)" : selected_reduction->name)
+                                              << "' reduction_amount=" << selected_reduction->reduction_amount
+                                              << " actual_reduction=" << actual_reduction
+                                              << " plan.final_cost=" << effective_cost << std::endl;
+
+                                    // Ensure the payment calculation affects final mana tapping.
+                                    payment_success = ManaSystem::auto_tap_mana(
+                                        state, state.players[state.active_player_id],
+                                        def, effective_cost, card_db);
+
+                                    std::cerr << "[PAYMENT TRACE] mana_auto_tap_result=" << (payment_success ? "OK" : "FAIL") << std::endl;
+                                } else {
+                                    std::cerr << "[PAYMENT TRACE] requested_units > max_units, cannot execute payment" << std::endl;
+                                }
+                            }
+                        } else {
+                            // Fallback: standard auto-tap when no ACTIVE_PAYMENT requested
+                            payment_success = ManaSystem::auto_tap_mana(
+                                state, state.players[state.active_player_id], def,
+                                card_db);
+                        }
+
                         if (payment_success) {
                             // Mark as paid (tap the stack card)
                             auto tap_cmd = std::make_unique<game_command::MutateCommand>(iid, game_command::MutateCommand::MutationType::TAP);
@@ -96,6 +210,8 @@ namespace dm::engine::systems {
                             state.execute_command(std::move(return_cmd));
                         }
                     }
+                } else {
+                    std::cerr << "[PLAY TRACE] get_card_instance failed for instance_id=" << iid << std::endl;
                 }
                 break;
             }
@@ -233,31 +349,63 @@ namespace dm::engine::systems {
                 auto block = std::make_shared<std::vector<Instruction>>();
                 block->push_back(inst);
 
-                bool duplicate = false;
-                // (Duplicate check omitted for brevity/safety in new path unless critical,
-                // dispatch_action had it but handle_resolve_play handles recursion via pipeline logic anyway?
-                // Actually dispatch_action's duplicate check was to prevent infinite enqueue loops in the SAME frame logic.
-                // Here we just push. If needed, we can port it.)
+                // NOTE: 再発防止 — duplicate チェックは現経路では不要（pipeline での再帰防止は pipeline 自体が担う）
+                // bool duplicate = false; は削除済み。ここで local 変数を残すと C4189 でビルドが停止する。
 
                 pipeline.call_stack.push_back({std::static_pointer_cast<const std::vector<Instruction>>(block), 0, LoopContext{}});
                 break;
             }
             case core::CommandType::SELECT_TARGET:
             {
-                if (pipeline.execution_paused) {
-                    // Assuming instance_id is the selected target
-                    std::vector<int> selection = {cmd.instance_id};
-                    pipeline.set_context_var(pipeline.waiting_for_key, selection);
-                    pipeline.execution_paused = false;
+                // 再発防止: SELECT_TARGET はユーザー入力コマンドなので、
+                //   paused フラグ状態に依存せず常に context へ反映する。
+                std::vector<int> selection = {cmd.instance_id};
+                std::string ctx_key = pipeline.waiting_for_key;
+                if (ctx_key.empty()) ctx_key = "$selection";
+                if (ctx_key.rfind("$", 0) != 0) ctx_key = std::string("$") + ctx_key;
+                try {
+                    std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+                    if (lout) {
+                        lout << "DISPATCH_SET_CONTEXT key=" << ctx_key
+                             << " value=[";
+                        for (size_t i = 0; i < selection.size(); ++i) {
+                            if (i) lout << ",";
+                            lout << selection[i];
+                        }
+                        lout << "]\n";
+                        lout.close();
+                    }
+                } catch (...) {}
+                std::cerr << "DISPATCH_SET_CONTEXT key=" << ctx_key
+                          << " value=[";
+                for (size_t i = 0; i < selection.size(); ++i) {
+                    if (i) std::cerr << ",";
+                    std::cerr << selection[i];
                 }
+                std::cerr << "]\n";
+                pipeline.set_context_var(ctx_key, selection);
+                pipeline.execution_paused = false;
+                state.waiting_for_user_input = false;
                 break;
             }
             case core::CommandType::SELECT_NUMBER:
             {
-                if (pipeline.execution_paused) {
-                    pipeline.set_context_var(pipeline.waiting_for_key, cmd.target_instance);
-                    pipeline.execution_paused = false;
-                }
+                std::string ctx_key = pipeline.waiting_for_key;
+                if (ctx_key.empty()) ctx_key = "$input";
+                if (ctx_key.rfind("$", 0) != 0) ctx_key = std::string("$") + ctx_key;
+                try {
+                    std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+                    if (lout) {
+                        lout << "DISPATCH_SET_CONTEXT key=" << ctx_key
+                             << " value=" << cmd.target_instance << "\n";
+                        lout.close();
+                    }
+                } catch (...) {}
+                std::cerr << "DISPATCH_SET_CONTEXT key=" << ctx_key
+                          << " value=" << cmd.target_instance << "\n";
+                pipeline.set_context_var(ctx_key, cmd.target_instance);
+                pipeline.execution_paused = false;
+                state.waiting_for_user_input = false;
                 break;
             }
             case core::CommandType::CHOICE:
@@ -266,6 +414,47 @@ namespace dm::engine::systems {
                     pipeline.set_context_var(pipeline.waiting_for_key, cmd.target_instance);
                     pipeline.execution_paused = false;
                 }
+                break;
+            }
+            case core::CommandType::SELECT_FROM_BUFFER:
+            {
+                // 再発防止: SELECT_FROM_BUFFER の dispatch を実装しないとパイプラインが
+                //   再開されず、ゲームがフリーズする。選択されたカード ID をコンテキスト
+                //   変数（vector<int>）に追記してパイプライン実行を再開する。
+                std::string ctx_key = pipeline.waiting_for_key;
+                if (ctx_key.empty()) ctx_key = "$buffer_select";
+                if (ctx_key.rfind("$", 0) != 0) ctx_key = std::string("$") + ctx_key;
+                auto v = pipeline.get_context_var(ctx_key);
+                std::vector<int> selection;
+                if (std::holds_alternative<std::vector<int>>(v)) {
+                    selection = std::get<std::vector<int>>(v);
+                }
+                if (cmd.instance_id > 0) {
+                    selection.push_back(cmd.instance_id);
+                }
+                try {
+                    std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+                    if (lout) {
+                        lout << "DISPATCH_SET_CONTEXT key=" << ctx_key
+                             << " value=[";
+                        for (size_t i = 0; i < selection.size(); ++i) {
+                            if (i) lout << ",";
+                            lout << selection[i];
+                        }
+                        lout << "]\n";
+                        lout.close();
+                    }
+                } catch (...) {}
+                std::cerr << "DISPATCH_SET_CONTEXT key=" << ctx_key
+                          << " value=[";
+                for (size_t i = 0; i < selection.size(); ++i) {
+                    if (i) std::cerr << ",";
+                    std::cerr << selection[i];
+                }
+                std::cerr << "]\n";
+                pipeline.set_context_var(ctx_key, selection);
+                pipeline.execution_paused = false;
+                state.waiting_for_user_input = false;
                 break;
             }
             case core::CommandType::SHIELD_TRIGGER:
@@ -298,13 +487,23 @@ namespace dm::engine::systems {
         PipelineExecutor pipeline;
         dispatch_command(pipeline, state, cmd, card_db);
         pipeline.execute(nullptr, state, card_db);
+        // Ensure continuous effects are recalculated after a one-shot resolution
+        // This guarantees MCTS one-shot paths and other callers observe
+        // up-to-date `active_modifiers` before further cost/payment checks.
+        try {
+            dm::engine::systems::ContinuousEffectSystem::recalculate(state, card_db);
+        } catch(...) {
+            // Swallow exceptions to avoid breaking callers in production paths;
+            // errors should be surfaced via logs during development.
+        }
     }
 
-    void GameLogicSystem::resolve_play_from_stack(core::GameState& game_state, int stack_instance_id, int cost_reduction, core::SpawnSource spawn_source, core::PlayerID controller, const std::map<core::CardID, core::CardDefinition>& card_db, int evo_source_id, core::ZoneDestination dest_override) {
+    void GameLogicSystem::resolve_play_from_stack(core::GameState& game_state, int stack_instance_id, int cost_reduction, core::SpawnSource spawn_source, core::PlayerID /*controller*/, const std::map<core::CardID, core::CardDefinition>& card_db, int evo_source_id, core::ZoneDestination dest_override) {
         // Resolve a play that is currently on the stack: invoke resolution logic
         // by constructing a PipelineExecutor, delegating to handle_resolve_play and
         // running the pipeline so compiled effects (and final MOVE to GRAVE) execute.
         (void)cost_reduction; (void)spawn_source; (void)evo_source_id; (void)dest_override;
+        // NOTE: 再発防止 — controller 引数は将来の使用に備えて残す。C4100 を抑制するため /*controller*/ とする。
 
         // Create pipeline and push resolve-play block
         dm::engine::systems::PipelineExecutor pipeline;
@@ -328,6 +527,9 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_apply_buffer_move(PipelineExecutor& exec, GameState& state, const Instruction& inst,
                                                   const std::map<core::CardID, core::CardDefinition>& card_db) {
+        // NOTE: 再発防止 — card_db は将来のトリガー効果参照用に保持するが現時点では未使用。
+        // C4100 を抑制するために (void) キャストを追加。
+        (void)card_db;
         // Expect inst.args["shields"] = [id...]
         std::vector<int> shield_ids;
         if (inst.args.find("shields") != inst.args.end()) {
@@ -418,29 +620,66 @@ namespace dm::engine::systems {
             return;
         }
         
-        // Get the pending effect
-        auto& pending_effect = state.pending_effects[effect_idx];
+        // Get the pending effect (copy before erasing, so we can erase safely)
+        auto pending_effect = state.pending_effects[effect_idx];
         
         std::cerr << "Source instance: " << pending_effect.source_instance_id << std::endl;
         std::cerr << "Has effect_def: " << (pending_effect.effect_def.has_value() ? "YES" : "NO") << std::endl;
         
-        // If effect_def is present, resolve the effect
-        if (pending_effect.effect_def.has_value()) {
-            std::cerr << "Resolving effect..." << std::endl;
-            dm::engine::effects::EffectSystem::instance().resolve_effect_with_context(
-                state,
-                pending_effect.effect_def.value(),
-                pending_effect.source_instance_id,
-                pending_effect.execution_context,
-                card_db
-            );
-            
-            std::cerr << "Effect resolved" << std::endl;
-        }
-        
-        // Remove the resolved effect from pending list
+        // 再発防止: エフェクトを pending_effects から先に削除してから命令をコンパイル・推送する。
+        //   これにより WAIT_INPUT でパイプラインが一時停止しても二重解決が起きない。
         state.pending_effects.erase(state.pending_effects.begin() + effect_idx);
         std::cerr << "Removed effect from pending list, new count: " << state.pending_effects.size() << std::endl;
+        
+        // 再発防止: 各コマンドを GAME_ACTION(EXECUTE_COMMAND) としてフレームに積む
+        //   (Lazy Compile パターン)。
+        //   全コマンドを事前コンパイルすると、QUERY の出力変数 (var_DRAW_CARD_0 等) が
+        //   まだ未確定の状態で DRAW_CARD の count が計算され count=0 になる。
+        //   代わりに、各コマンドを実行時にコンパイルすることで、直前の命令の
+        //   exec.context 値 (GET_STAT で設定された var_DRAW_CARD_0 等) を参照できる。
+        if (pending_effect.effect_def.has_value()) {
+            const auto& effect = pending_effect.effect_def.value();
+            
+            // 条件チェック
+            if (!dm::engine::effects::EffectSystem::instance().check_condition(
+                    state, effect.condition,
+                    pending_effect.source_instance_id, card_db,
+                    pending_effect.execution_context)) {
+                std::cerr << "=== condition check failed, skipping ===" << std::endl;
+                return;
+            }
+            
+            core::PlayerID controller =
+                dm::engine::effects::EffectSystem::get_controller(state, pending_effect.source_instance_id);
+            
+            // 実行コンテキストを共有パイプラインに注入
+            for (const auto& kv : pending_effect.execution_context) {
+                exec.set_context_var(kv.first, kv.second);
+            }
+            exec.set_context_var("$controller", (int)controller);
+            exec.set_context_var("$source", pending_effect.source_instance_id);
+            
+            // 各コマンドを EXECUTE_COMMAND ディスパッチャとしてフレームに積む
+            // handle_execute_command が実行時コンテキストでコンパイルしてサブフレームをプッシュする
+            std::vector<core::Instruction> dispatch_frame;
+            for (const auto& cmd : effect.commands) {
+                core::Instruction exec_cmd(core::InstructionOp::GAME_ACTION);
+                exec_cmd.args["type"] = "EXECUTE_COMMAND";
+                // CommandDef を JSON としてシリアライズして命令に埋め込む
+                exec_cmd.args["cmd"] = cmd;  // nlohmann ADL to_json による自動シリアライズ
+                exec_cmd.args["source"] = pending_effect.source_instance_id;
+                exec_cmd.args["controller"] = (int)controller;
+                dispatch_frame.push_back(exec_cmd);
+            }
+            
+            if (!dispatch_frame.empty()) {
+                auto frame_ptr = std::make_shared<const std::vector<core::Instruction>>(std::move(dispatch_frame));
+                exec.call_stack.push_back({frame_ptr, 0, LoopContext{}});
+                std::cerr << "[handle_resolve_effect] Pushed " << frame_ptr->size()
+                          << " EXECUTE_COMMAND dispatchers onto shared pipeline (lazy compile)" << std::endl;
+            }
+        }
+        
         std::cerr << "=== handle_resolve_effect complete ===" << std::endl << std::endl;
     }
 
@@ -581,6 +820,8 @@ namespace dm::engine::systems {
 
         // Otherwise pause execution and create pending query for user input
         exec.waiting_for_key = inst.args.value("out", std::string("$selection"));
+        if (exec.waiting_for_key.rfind("$", 0) != 0)
+            exec.waiting_for_key = std::string("$") + exec.waiting_for_key;
         state.waiting_for_user_input = true;
         state.pending_query = GameState::QueryContext{
             state.pending_query.query_id + 1,
@@ -597,25 +838,30 @@ namespace dm::engine::systems {
          try {
              CommandDef cmd = inst.args["cmd"].get<CommandDef>();
 
-             int source_id = -1;
-             auto v_source = exec.get_context_var("$source");
-             if (std::holds_alternative<int>(v_source)) source_id = std::get<int>(v_source);
+             int source_id = inst.args.value("source", -1);
+             int controller_id = inst.args.value("controller", (int)state.active_player_id);
 
-             int controller_id = state.active_player_id;
-             auto v_ctrl = exec.get_context_var("$controller");
-             if (std::holds_alternative<int>(v_ctrl)) controller_id = std::get<int>(v_ctrl);
-
+             // 再発防止: ランタイムコンパイル時は int コンテキストを渡して
+             //   QUERY結果 (例: var_DRAW_CARD_0) を次命令の count 解決に使えるようにする。
+             //   vector<int> は execution_context に載せられないため、
+             //   TARGETS 系は generate_instructions 側で target="$key" として
+             //   実行時解決させる（count へ潰さない）。
              std::map<std::string, int> temp_ctx;
-             for (const auto& kv : exec.context) {
+             for (const auto &kv : exec.context) {
                  if (std::holds_alternative<int>(kv.second)) {
-                     temp_ctx[kv.first] = std::get<int>(kv.second);
+                     std::string key = kv.first;
+                     if (!key.empty() && key[0] == '$') key = key.substr(1);
+                     temp_ctx[key] = std::get<int>(kv.second);
                  }
              }
+             auto compiled = dm::engine::systems::CommandSystem::generate_instructions(
+                 state, cmd, source_id, (core::PlayerID)controller_id, temp_ctx);
 
-             CommandSystem::execute_command(state, cmd, source_id, controller_id, temp_ctx);
-
-             for (const auto& kv : temp_ctx) {
-                 exec.set_context_var(kv.first, kv.second);
+             // コンパイル結果を新フレームとして共有パイプラインの call_stack に積む
+             // (クリエートローカルパイプラインを作らない)
+             if (!compiled.empty()) {
+                 auto frame_ptr = std::make_shared<const std::vector<core::Instruction>>(std::move(compiled));
+                 exec.call_stack.push_back({frame_ptr, 0, LoopContext{}});
              }
 
          } catch (const std::exception& e) {

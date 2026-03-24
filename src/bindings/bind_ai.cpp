@@ -17,6 +17,7 @@
 #include "ai/encoders/command_encoder.hpp"
 #include "ai/inference/deck_inference.hpp"
 #include "ai/inference/pimc_generator.hpp"
+#include "engine/ai/simple_ai.hpp"
 #include "ai/pomdp/pomdp.hpp"
 #include "ai/pomdp/parametric_belief.hpp"
 #include "ai/data_collection/data_collector.hpp"
@@ -95,6 +96,19 @@ void bind_ai(py::module& m) {
     py::class_<HeuristicAgent>(m, "HeuristicAgent")
         .def(py::init<int, const std::map<CardID, CardDefinition>&>())
         .def("get_command", &HeuristicAgent::get_command);
+
+    // Expose SimpleAI (priority-based selector) to Python. It is a lightweight
+    // static-method only utility in C++, but exposing as a constructible class
+    // with a static `select_action` method keeps compatibility with older
+    // Python tests and scripts that expect `dm_ai_module.SimpleAI()`.
+    py::class_<::dm::engine::ai::SimpleAI>(m, "SimpleAI")
+        .def(py::init<>())
+        .def_static("select_action",
+            [](const std::vector<::dm::core::CommandDef>& actions, const ::dm::core::GameState& state) -> py::object {
+                auto opt = ::dm::engine::ai::SimpleAI::select_action(actions, state);
+                if (opt.has_value()) return py::int_(static_cast<int>(opt.value()));
+                return py::none();
+            }, py::arg("actions"), py::arg("state"));
 
     py::class_<BeamSearchEvaluator>(m, "BeamSearchEvaluator")
         // Primary efficient constructor using dm::engine::infrastructure::CardRegistry

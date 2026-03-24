@@ -9,9 +9,11 @@ from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, to_dict, get_att
 from dm_toolkit.gui.editor.consts import (
     STRUCT_CMD_ADD_CHILD_EFFECT, STRUCT_CMD_ADD_SPELL_SIDE, STRUCT_CMD_REMOVE_SPELL_SIDE
 )
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 from dm_toolkit.gui.editor.configs.card_config import CARD_SCHEMA
 from dm_toolkit.gui.editor.widget_factory import WidgetFactory
 from dm_toolkit.gui.editor.schema_def import FieldSchema
+from dm_toolkit.gui.editor.forms.parts.cost_reduction_editor import CostReductionEditor
 
 class CardEditForm(BaseEditForm):
     # Signal to request structural changes in the Logic Tree
@@ -46,15 +48,20 @@ class CardEditForm(BaseEditForm):
         if self.ai_widgets_created:
             self.form_layout.addRow(self.ai_group)
 
-        # Actions Section
-        actions_group = QGroupBox(tr("Actions"))
+        # Commands Section
+        actions_group = QGroupBox(tr("Commands"))
         actions_layout = QVBoxLayout(actions_group)
 
         self.add_effect_btn = QPushButton(tr("Add Effect"))
-        self.add_effect_btn.clicked.connect(self.on_add_effect_clicked)
+        safe_connect(self.add_effect_btn, "clicked", self.on_add_effect_clicked)
         actions_layout.addWidget(self.add_effect_btn)
 
         self.form_layout.addRow(actions_group)
+
+        # Cost Reductions editor (special case)
+        self.cost_reduction_widget = CostReductionEditor()
+        self.widgets_map['cost_reductions'] = self.cost_reduction_widget
+        self.form_layout.addRow(tr("Cost Reductions"), self.cost_reduction_widget)
 
     def _create_field_widget(self, field: FieldSchema):
         # Determine target layout
@@ -147,19 +154,19 @@ class CardEditForm(BaseEditForm):
 
         kw_act = menu.addAction(tr("Keyword Ability"))
         if kw_act is not None:
-            kw_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "KEYWORDS"}))
+            safe_connect(kw_act, "triggered", lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "KEYWORDS"}))
 
         trig_act = menu.addAction(tr("Triggered Ability"))
         if trig_act is not None:
-            trig_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "TRIGGERED"}))
+            safe_connect(trig_act, "triggered", lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "TRIGGERED"}))
 
         static_act = menu.addAction(tr("Static Ability"))
         if static_act is not None:
-            static_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "STATIC"}))
+            safe_connect(static_act, "triggered", lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "STATIC"}))
 
         react_act = menu.addAction(tr("Reaction Ability"))
         if react_act is not None:
-            react_act.triggered.connect(lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "REACTION"}))
+            safe_connect(react_act, "triggered", lambda: self.structure_update_requested.emit(STRUCT_CMD_ADD_CHILD_EFFECT, {"type": "REACTION"}))
 
         menu.exec(QCursor.pos())
 
@@ -190,26 +197,40 @@ class CardEditForm(BaseEditForm):
         # Set values to widgets
         for key, widget in self.widgets_map.items():
             if hasattr(widget, 'set_value'):
-                val = flat_data.get(key)
+                field = next((f for f in CARD_SCHEMA.fields if f.key == key), None)
+                val = self._resolve_load_value(flat_data, field)
 
-                # Default handling
-                if val is None:
-                    # Look up default in schema
-                    field = next((f for f in CARD_SCHEMA.fields if f.key == key), None)
-                    if field and field.default is not None:
-                         val = field.default
-
-                    # Type-specific empty defaults
-                    if field and field.field_type.name == 'RACES': val = []
-                    if field and field.field_type.name == 'CIVILIZATION': val = []
-
-                if val is not None:
-                    # Block signals during load
-                    old_state = widget.blockSignals(True)
-                    widget.set_value(val)
-                    widget.blockSignals(old_state)
+                # 再発防止: 別カードへ切り替えたとき、未設定項目を明示的に空/既定値へ戻す。
+                # ここを skip すると前カードの値がフォームに残り、編集対象が食い違う。
+                old_state = widget.blockSignals(True)
+                widget.set_value(val)
+                widget.blockSignals(old_state)
 
         self._update_visibility()
+
+    def _resolve_load_value(self, flat_data, field: FieldSchema | None):
+        if field is None:
+            return None
+
+        val = flat_data.get(field.key)
+        if val is not None:
+            return val
+
+        if field.default is not None:
+            return field.default
+
+        if field.field_type.name in ('RACES', 'CIVILIZATION'):
+            return []
+        if field.field_type.name == 'BOOL':
+            return False
+        if field.field_type.name == 'INT':
+            return 0
+        if field.field_type.name == 'TYPE_SELECT':
+            return 'CREATURE'
+        if field.field_type.name == 'STRING':
+            return ''
+
+        return None
 
     def _save_ui_to_data(self, data):
         """

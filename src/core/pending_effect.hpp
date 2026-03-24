@@ -24,14 +24,19 @@ namespace dm::core {
         // Optional: carry the EffectDef (from JSON) for later resolution after target selection
         std::optional<EffectDef> effect_def;
 
-        // For SELECT_OPTION: Store the choices
-        std::vector<std::vector<ActionDef>> options;
+        // For SELECT_OPTION: Store the choices (migrated to CommandDef)
+        std::vector<std::vector<CommandDef>> options;
 
         // Phase 5: Execution Context (Variable Linking)
         std::map<std::string, int> execution_context;
 
         // Step 5.2.2: Loop Prevention
         int chain_depth = 0;
+
+        // フェーズ4: 解決優先度（REPLACEMENT < INTERRUPT < NORMAL）
+        // 再発防止: S・トリガー等の割り込み能力は INTERRUPT を指定すること。
+        //   APNAP 順の適用は NORMAL キュー内のみ。sort は値の小さい方が先。
+        ResolutionPriority resolution_priority = ResolutionPriority::NORMAL;
 
         // Optional context for REACTION_WINDOW
         struct ReactionContext {

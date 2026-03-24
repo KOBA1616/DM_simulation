@@ -11,6 +11,7 @@ import random
 import dm_ai_module
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.widgets.card_action_dialog import CardActionDialog
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class ScenarioToolsDock(QDockWidget):
     def __init__(self, parent=None, game_state=None, card_db=None):
@@ -46,9 +47,9 @@ class ScenarioToolsDock(QDockWidget):
 
         btn_layout = QHBoxLayout()
         self.btn_load = QPushButton(tr("Load Selected"))
-        self.btn_load.clicked.connect(self.on_load_selected_scenario)
+        safe_connect(self.btn_load, 'clicked', self.on_load_selected_scenario)
         self.btn_reload_list = QPushButton(tr("Refresh List"))
-        self.btn_reload_list.clicked.connect(self.load_scenarios)
+        safe_connect(self.btn_reload_list, 'clicked', self.load_scenarios)
 
         btn_layout.addWidget(self.btn_load)
         btn_layout.addWidget(self.btn_reload_list)
@@ -62,11 +63,11 @@ class ScenarioToolsDock(QDockWidget):
         board_layout = QVBoxLayout()
 
         self.btn_clear_board = QPushButton(tr("Clear Board"))
-        self.btn_clear_board.clicked.connect(self.on_clear_board)
+        safe_connect(self.btn_clear_board, 'clicked', self.on_clear_board)
         board_layout.addWidget(self.btn_clear_board)
 
         self.btn_reset_game = QPushButton(tr("Reset Game"))
-        self.btn_reset_game.clicked.connect(self.on_reset_game)
+        safe_connect(self.btn_reset_game, 'clicked', self.on_reset_game)
         board_layout.addWidget(self.btn_reset_game)
 
         board_group.setLayout(board_layout)
@@ -104,15 +105,15 @@ class ScenarioToolsDock(QDockWidget):
         manip_layout = QVBoxLayout()
 
         self.btn_add_card = QPushButton(tr("Add Specific Card..."))
-        self.btn_add_card.clicked.connect(self.on_add_specific_card)
+        safe_connect(self.btn_add_card, 'clicked', self.on_add_specific_card)
         manip_layout.addWidget(self.btn_add_card)
 
         self.btn_add_random = QPushButton(tr("Add Random Card"))
-        self.btn_add_random.clicked.connect(self.on_add_random_card)
+        safe_connect(self.btn_add_random, 'clicked', self.on_add_random_card)
         manip_layout.addWidget(self.btn_add_random)
 
         self.btn_clear_zone = QPushButton(tr("Clear Zone"))
-        self.btn_clear_zone.clicked.connect(self.on_clear_zone)
+        safe_connect(self.btn_clear_zone, 'clicked', self.on_clear_zone)
         manip_layout.addWidget(self.btn_clear_zone)
 
         manip_group.setLayout(manip_layout)
@@ -123,11 +124,11 @@ class ScenarioToolsDock(QDockWidget):
         flow_layout = QVBoxLayout()
 
         self.btn_end_turn = QPushButton(tr("End Turn"))
-        self.btn_end_turn.clicked.connect(self.on_end_turn)
+        safe_connect(self.btn_end_turn, 'clicked', self.on_end_turn)
         flow_layout.addWidget(self.btn_end_turn)
 
         self.btn_draw_card = QPushButton(tr("Draw Card"))
-        self.btn_draw_card.clicked.connect(self.on_draw_card)
+        safe_connect(self.btn_draw_card, 'clicked', self.on_draw_card)
         flow_layout.addWidget(self.btn_draw_card)
 
         flow_group.setLayout(flow_layout)
@@ -141,7 +142,7 @@ class ScenarioToolsDock(QDockWidget):
         self.spin_mana_count.setRange(0, 99)
 
         self.btn_reset_mana = QPushButton(tr("Untap All Mana"))
-        self.btn_reset_mana.clicked.connect(self.on_untap_all_mana)
+        safe_connect(self.btn_reset_mana, 'clicked', self.on_untap_all_mana)
         state_layout.addWidget(self.btn_reset_mana)
 
         state_group.setLayout(state_layout)
@@ -152,7 +153,7 @@ class ScenarioToolsDock(QDockWidget):
         scen_layout = QVBoxLayout()
 
         self.btn_save_scenario = QPushButton(tr("Save Current State"))
-        self.btn_save_scenario.clicked.connect(self.on_save_scenario)
+        safe_connect(self.btn_save_scenario, 'clicked', self.on_save_scenario)
         scen_layout.addWidget(self.btn_save_scenario)
 
         scen_group.setLayout(scen_layout)
@@ -164,7 +165,7 @@ class ScenarioToolsDock(QDockWidget):
 
         self.btn_record = QPushButton(tr("Start Recording"))
         self.btn_record.setCheckable(True)
-        self.btn_record.clicked.connect(self.on_toggle_record)
+        safe_connect(self.btn_record, 'clicked', self.on_toggle_record)
         rec_layout.addWidget(self.btn_record)
 
         self.lbl_record_status = QLabel(tr("Status: Idle"))
@@ -459,7 +460,7 @@ class ScenarioToolsDock(QDockWidget):
                 self.parent_window.update_ui()
             QMessageBox.information(self, tr("Info"), tr("Turn advanced."))
         except Exception as e:
-            QMessageBox.critical(self, tr("Error"), f"Failed to advance turn: {e}")
+            QMessageBox.critical(self, tr("Error"), tr("Failed to advance turn: {e}").format(e=e))
 
     def on_draw_card(self):
         """Draw a card for the selected player."""
@@ -483,7 +484,7 @@ class ScenarioToolsDock(QDockWidget):
                 self.parent_window.update_ui()
             QMessageBox.information(self, tr("Info"), tr("Card drawn."))
         except Exception as e:
-            QMessageBox.critical(self, tr("Error"), f"Failed to draw card: {e}")
+            QMessageBox.critical(self, tr("Error"), tr("Failed to draw card: {e}").format(e=e))
 
     def _execute_add_card_action(self, result):
         """Execute card addition action from dialog result."""

@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import (
     QWidget, QGroupBox, QGridLayout, QLabel, QCheckBox, QComboBox, QSpinBox,
-    QLineEdit, QVBoxLayout
+    QLineEdit, QVBoxLayout, QPushButton, QFrame, QHBoxLayout
 )
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, Qt
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 from typing import Any
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
 from dm_toolkit.consts import ZONES, CARD_TYPES
+from dm_toolkit.gui.editor.models import FilterSpec, dict_to_filterspec, filterspec_to_dict
 
 class FilterEditorWidget(QWidget):
     """
@@ -26,214 +28,349 @@ class FilterEditorWidget(QWidget):
         # Using a vertical layout to stack groups
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(6)
+
+        header_layout = QHBoxLayout()
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(8)
+        self.summary_label = QLabel()
+        self.summary_label.setStyleSheet("color: #666; font-size: 11px;")
+        self.clear_btn = QPushButton(tr("Clear Filter"))
+        self.clear_btn.setToolTip(tr("Reset all filter conditions"))
+        safe_connect(self.clear_btn, "clicked", self.clear_filter)
+        header_layout.addWidget(self.summary_label)
+        header_layout.addStretch()
+        header_layout.addWidget(self.clear_btn)
+        main_layout.addLayout(header_layout)
 
         # 1. Basic Properties (Zones, Types, Civs)
-        self.basic_group = QGroupBox(tr("Basic Filter"))
+        self.basic_group = QGroupBox(tr("基本フィルター"))
         basic_layout = QGridLayout(self.basic_group)
+        basic_layout.setHorizontalSpacing(10)
+        basic_layout.setVerticalSpacing(6)
         main_layout.addWidget(self.basic_group)
 
-        # Zones
-        self.zone_label = QLabel(tr("Zones:"))
-        basic_layout.addWidget(self.zone_label, 0, 0)
+        # Zones – 1つのトグルでまとめて折り畳み
+        # 再発防止: カテゴリ別2分割は UI が煩雑になるため単一 toggle にまとめた。
+        #   zone_group_buttons は後方互換のため維持 (1要素のリスト)。
         self.zone_checks = {}
-        # Use centralized ZONES definition
-        zones = ZONES
-        zone_grid = QGridLayout()
-        for i, z in enumerate(zones):
+        # Use canonical zone list from dm_toolkit.consts to avoid duplicated definitions
+        ALL_ZONES = ZONES
+        zone_section = QWidget()
+        zone_section_layout = QVBoxLayout(zone_section)
+        zone_section_layout.setContentsMargins(0, 0, 0, 0)
+        zone_section_layout.setSpacing(2)
+        _zone_toggle_btn = QPushButton(tr("▶ ゾーン"))
+        _zone_toggle_btn.setCheckable(True)
+        _zone_toggle_btn.setChecked(False)  # 再発防止: デフォルトで閉じた状態。setVisible を明示設定すること。
+        _zone_toggle_btn.setStyleSheet("text-align:left; font-weight:bold; border:none; padding:2px;")
+        _zone_content = QWidget()
+        _zone_content.setVisible(False)  # 初期非表示
+        _zone_grid = QGridLayout(_zone_content)
+        _zone_grid.setContentsMargins(12, 0, 0, 0)
+        _zone_grid.setSpacing(2)
+        for i, z in enumerate(ALL_ZONES):
             cb = QCheckBox(tr(z))
-            cb.setToolTip(tr("Include {zone} in target selection").format(zone=tr(z)))
+            cb.setToolTip(tr("ゾーン{zone}を対象選択に含める").format(zone=tr(z)))
             self.zone_checks[z] = cb
-            zone_grid.addWidget(cb, i//2, i%2)
-            cb.stateChanged.connect(self.filterChanged.emit)
-        basic_layout.addLayout(zone_grid, 0, 1)
+            _zone_grid.addWidget(cb, i // 2, i % 2)
+            safe_connect(cb, "stateChanged", self.filterChanged.emit)
+        # toggle button が押されたとき content を折り畳み / 展開
+        safe_connect(_zone_toggle_btn, "toggled", _zone_content.setVisible)
+        zone_section_layout.addWidget(_zone_toggle_btn)
+        zone_section_layout.addWidget(_zone_content)
+        self.zone_group_buttons: list = [(_zone_toggle_btn, _zone_content)]
+        self.zone_label = QLabel(tr("ゾーン:"))
+        # Use real Qt AlignmentFlag.AlignTop when available, otherwise fallback to 0
+        align_top = getattr(Qt, 'AlignmentFlag', None)
+        alignment_val = align_top.AlignTop if (align_top is not None and hasattr(align_top, 'AlignTop')) else 0
+        basic_layout.addWidget(self.zone_label, 0, 0, alignment=alignment_val)
+        basic_layout.addWidget(zone_section, 0, 1)
 
-        # Types
-        self.type_label = QLabel(tr("Types:"))
-        basic_layout.addWidget(self.type_label, 1, 0)
+        # Types – 単一トグルで折り畳み（デフォルトで閉じた状態）
+        # 再発防止: ゾーンと同様、カードタイプもトグル展開式にして UI をコンパクトに保つ。
+        #   setChecked(False) で初期状態を「閉じた」にする。
         self.type_checks = {}
-        # Use centralized CARD_TYPES definition
+        _type_toggle_btn = QPushButton(tr("▶ カードタイプ"))
+        _type_toggle_btn.setCheckable(True)
+        _type_toggle_btn.setChecked(False)  # デフォルトで閉じた状態
+        _type_toggle_btn.setStyleSheet("text-align:left; font-weight:bold; border:none; padding:2px;")
+        _type_content = QWidget()
+        _type_content.setVisible(False)  # 初期非表示
+        _type_grid = QGridLayout(_type_content)
+        _type_grid.setContentsMargins(12, 0, 0, 0)
+        _type_grid.setSpacing(2)
         types = CARD_TYPES
-        type_grid = QGridLayout()
         for i, t in enumerate(types):
             cb = QCheckBox(tr(t))
             self.type_checks[t] = cb
-            type_grid.addWidget(cb, i//3, i%3) # Adjusted grid to fit more types
-            cb.stateChanged.connect(self.filterChanged.emit)
-        basic_layout.addLayout(type_grid, 1, 1)
+            _type_grid.addWidget(cb, i // 3, i % 3)
+            safe_connect(cb, "stateChanged", self.filterChanged.emit)
+        safe_connect(_type_toggle_btn, "toggled", _type_content.setVisible)
+        _type_section = QWidget()
+        _type_section_layout = QVBoxLayout(_type_section)
+        _type_section_layout.setContentsMargins(0, 0, 0, 0)
+        _type_section_layout.setSpacing(2)
+        _type_section_layout.addWidget(_type_toggle_btn)
+        _type_section_layout.addWidget(_type_content)
+        self.type_label = QLabel(tr("カードタイプ:"))
+        basic_layout.addWidget(self.type_label, 1, 0, alignment=alignment_val)
+        basic_layout.addWidget(_type_section, 1, 1)
 
         # Civilizations
-        self.civ_label = QLabel(tr("Civilizations:"))
+        self.civ_label = QLabel(tr("文明:"))
         basic_layout.addWidget(self.civ_label, 2, 0)
-        self.civ_selector = CivilizationSelector()
-        self.civ_selector.changed.connect(self.filterChanged.emit)
+        self.civ_selector = CivilizationSelector(allow_multicolor=True)
+        safe_connect(self.civ_selector, "changed", self.filterChanged.emit)
         basic_layout.addWidget(self.civ_selector, 2, 1)
 
         # Races
-        self.race_label = QLabel(tr("Races:"))
+        self.race_label = QLabel(tr("種族:"))
         basic_layout.addWidget(self.race_label, 3, 0)
         self.races_edit = QLineEdit()
-        self.races_edit.setPlaceholderText(tr("Comma separated races (e.g. Dragon, Cyber Lord)"))
-        self.races_edit.textChanged.connect(self.filterChanged.emit)
+        self.races_edit.setPlaceholderText(tr("カンマ区切り (例: ドラゴン, サイバーロード)"))
+        safe_connect(self.races_edit, "textChanged", self.filterChanged.emit)
         basic_layout.addWidget(self.races_edit, 3, 1)
 
         # 2. Stats (Cost, Power)
-        self.stats_group = QGroupBox(tr("Stats Filter"))
+        # 再発防止: ラベルはすべて日本語で統一。英語表記を追加しないこと。
+        self.stats_group = QGroupBox(tr("ステータスフィルター"))
         stats_layout = QGridLayout(self.stats_group)
+        stats_layout.setHorizontalSpacing(10)
+        stats_layout.setVerticalSpacing(6)
         main_layout.addWidget(self.stats_group)
 
-        stats_layout.addWidget(QLabel(tr("Cost:")), 0, 0)
+        stats_layout.addWidget(QLabel(tr("コスト:")), 0, 0)
         self.min_cost_spin = QSpinBox()
         self.min_cost_spin.setRange(-1, 99) # -1 means None
         self.min_cost_spin.setValue(-1)
-        self.min_cost_spin.setSpecialValueText(tr("Any"))
+        self.min_cost_spin.setSpecialValueText(tr("問わない"))
 
         self.max_cost_spin = QSpinBox()
         self.max_cost_spin.setRange(-1, 99)
         self.max_cost_spin.setValue(-1)
-        self.max_cost_spin.setSpecialValueText(tr("Any"))
+        self.max_cost_spin.setSpecialValueText(tr("問わない"))
 
         cost_layout = QGridLayout()
-        cost_layout.addWidget(QLabel(tr("Min:")), 0, 0)
+        cost_layout.addWidget(QLabel(tr("最小:")), 0, 0)
         cost_layout.addWidget(self.min_cost_spin, 0, 1)
-        cost_layout.addWidget(QLabel(tr("Max:")), 0, 2)
+        cost_layout.addWidget(QLabel(tr("最大:")), 0, 2)
         cost_layout.addWidget(self.max_cost_spin, 0, 3)
         stats_layout.addLayout(cost_layout, 0, 1)
 
         # Exact cost and cost reference
-        stats_layout.addWidget(QLabel(tr("Exact Cost:")), 1, 0)
+        stats_layout.addWidget(QLabel(tr("コスト(完全一致):")), 1, 0)
         self.exact_cost_spin = QSpinBox()
         self.exact_cost_spin.setRange(-1, 99) # -1 means not set
         self.exact_cost_spin.setValue(-1)
-        self.exact_cost_spin.setSpecialValueText(tr("Not Set"))
-        self.exact_cost_spin.setToolTip(tr("Exact cost value (overrides min/max)"))
+        self.exact_cost_spin.setSpecialValueText(tr("未指定"))
+        self.exact_cost_spin.setToolTip(tr("コストがこの値に完全一致するカードのみ対象(最小/最大より優先)"))
         stats_layout.addWidget(self.exact_cost_spin, 1, 1)
 
-        stats_layout.addWidget(QLabel(tr("Cost Ref:")), 2, 0)
+        stats_layout.addWidget(QLabel(tr("コスト参照:")), 2, 0)
         self.cost_ref_edit = QLineEdit()
-        self.cost_ref_edit.setPlaceholderText(tr("Variable name (e.g., chosen_cost)"))
-        self.cost_ref_edit.setToolTip(tr("Reference to execution_context variable for cost"))
+        self.cost_ref_edit.setPlaceholderText(tr("変数名 (例: chosen_cost)"))
+        self.cost_ref_edit.setToolTip(tr("実行コンテキストのコスト参照変数名"))
         stats_layout.addWidget(self.cost_ref_edit, 2, 1)
 
-        self.exact_cost_spin.valueChanged.connect(self.filterChanged.emit)
-        self.cost_ref_edit.textChanged.connect(self.filterChanged.emit)
+        safe_connect(self.exact_cost_spin, "valueChanged", self.filterChanged.emit)
+        safe_connect(self.cost_ref_edit, "textChanged", self.filterChanged.emit)
 
-        self.min_cost_spin.valueChanged.connect(self.filterChanged.emit)
-        self.max_cost_spin.valueChanged.connect(self.filterChanged.emit)
+        safe_connect(self.min_cost_spin, "valueChanged", self.filterChanged.emit)
+        safe_connect(self.max_cost_spin, "valueChanged", self.filterChanged.emit)
 
-        stats_layout.addWidget(QLabel(tr("Power:")), 3, 0)
+        stats_layout.addWidget(QLabel(tr("パワー:")), 3, 0)
         self.min_power_spin = QSpinBox()
         self.min_power_spin.setRange(-1, 99999)
         self.min_power_spin.setSingleStep(500)
         self.min_power_spin.setValue(-1)
-        self.min_power_spin.setSpecialValueText(tr("Any"))
+        self.min_power_spin.setSpecialValueText(tr("問わない"))
 
         self.max_power_spin = QSpinBox()
         self.max_power_spin.setRange(-1, 99999)
         self.max_power_spin.setSingleStep(500)
         self.max_power_spin.setValue(-1)
-        self.max_power_spin.setSpecialValueText(tr("Any"))
+        self.max_power_spin.setSpecialValueText(tr("問わない"))
 
         power_layout = QGridLayout()
-        power_layout.addWidget(QLabel(tr("Min:")), 0, 0)
+        power_layout.addWidget(QLabel(tr("最小:")), 0, 0)
         power_layout.addWidget(self.min_power_spin, 0, 1)
-        power_layout.addWidget(QLabel(tr("Max:")), 0, 2)
+        power_layout.addWidget(QLabel(tr("最大:")), 0, 2)
         power_layout.addWidget(self.max_power_spin, 0, 3)
         stats_layout.addLayout(power_layout, 3, 1)
 
-        self.min_power_spin.valueChanged.connect(self.filterChanged.emit)
-        self.max_power_spin.valueChanged.connect(self.filterChanged.emit)
+        safe_connect(self.min_power_spin, "valueChanged", self.filterChanged.emit)
+        safe_connect(self.max_power_spin, "valueChanged", self.filterChanged.emit)
 
         # 3. Flags (Tapped, Blocker, Evolution)
-        self.flags_group = QGroupBox(tr("Flags Filter"))
+        # 再発防止: ラベルはすべて日本語で統一。英語表記を追加しないこと。
+        self.flags_group = QGroupBox(tr("フラグフィルター"))
         flags_layout = QGridLayout(self.flags_group)
+        flags_layout.setHorizontalSpacing(10)
+        flags_layout.setVerticalSpacing(6)
         main_layout.addWidget(self.flags_group)
 
         # Helper to create tri-state combos
         def create_tristate(label):
             l = QLabel(tr(label))
             c = QComboBox()
-            c.addItem(tr("Any"), -1)
-            c.addItem(tr("Yes (True)"), 1)
-            c.addItem(tr("No (False)"), 0)
-            c.currentIndexChanged.connect(self.filterChanged.emit)
+            c.addItem(tr("問わない"), -1)
+            c.addItem(tr("はい"), 1)
+            c.addItem(tr("いいえ"), 0)
+            safe_connect(c, "currentIndexChanged", self.filterChanged.emit)
             return l, c
 
-        lbl_tapped, self.tapped_combo = create_tristate("Is Tapped?")
+        lbl_tapped, self.tapped_combo = create_tristate("タップ状態?")
         flags_layout.addWidget(lbl_tapped, 0, 0)
         flags_layout.addWidget(self.tapped_combo, 0, 1)
 
-        lbl_blocker, self.blocker_combo = create_tristate("Is Blocker?")
+        lbl_blocker, self.blocker_combo = create_tristate("ブロッカー?")
         flags_layout.addWidget(lbl_blocker, 1, 0)
         flags_layout.addWidget(self.blocker_combo, 1, 1)
 
-        lbl_evo, self.evolution_combo = create_tristate("Is Evolution?")
+        lbl_evo, self.evolution_combo = create_tristate("進化クリーチャー?")
         flags_layout.addWidget(lbl_evo, 2, 0)
         flags_layout.addWidget(self.evolution_combo, 2, 1)
 
-        lbl_card, self.card_designation_combo = create_tristate("Card Designation")
+        lbl_card, self.card_designation_combo = create_tristate("カード指定")
         flags_layout.addWidget(lbl_card, 3, 0)
         flags_layout.addWidget(self.card_designation_combo, 3, 1)
 
-        self.trigger_source_check = QCheckBox(tr("Match Trigger Source"))
-        self.trigger_source_check.setToolTip(tr("Target the specific card/object that triggered the event."))
-        self.trigger_source_check.stateChanged.connect(self.filterChanged.emit)
+        self.trigger_source_check = QCheckBox(tr("トリガー発生源と一致"))
+        self.trigger_source_check.setToolTip(tr("イベントを発生させた特定のカード/オブジェクトを対象にします。"))
+        safe_connect(self.trigger_source_check, "stateChanged", self.filterChanged.emit)
         flags_layout.addWidget(self.trigger_source_check, 4, 0, 1, 2)
 
         # 4. Count / Selection Mode (Keep at bottom)
-        self.sel_group = QGroupBox(tr("Selection"))
+        # 再発防止: ラベルはすべて日本語で統一。英語表記を追加しないこと。
+        self.sel_group = QGroupBox(tr("選択設定"))
         sel_layout = QGridLayout(self.sel_group)
+        sel_layout.setHorizontalSpacing(10)
+        sel_layout.setVerticalSpacing(6)
         main_layout.addWidget(self.sel_group)
 
-        self.mode_label = QLabel(tr("Count Mode"))
+        self.mode_label = QLabel(tr("選択モード"))
         self.mode_combo = QComboBox()
-        self.mode_combo.addItem(tr("Selection_All"), 0)
-        self.mode_combo.addItem(tr("Selection_Any"), 2)
-        self.mode_combo.addItem(tr("Fixed Number"), 1)
+        self.mode_combo.addItem(tr("全て"), 0)
+        self.mode_combo.addItem(tr("任意"), 2)
+        self.mode_combo.addItem(tr("固定数"), 1)
 
         self.count_spin = QSpinBox()
         self.count_spin.setRange(1, 99)
-        self.count_spin.setToolTip(tr("Number of cards to select/count."))
+        self.count_spin.setToolTip(tr("選択/カウントする枚数。"))
         self.count_spin.setVisible(False) # Default hidden
 
         sel_layout.addWidget(self.mode_label, 0, 0)
         sel_layout.addWidget(self.mode_combo, 0, 1)
         sel_layout.addWidget(self.count_spin, 1, 1)
 
-        self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
-        self.count_spin.valueChanged.connect(self.filterChanged.emit)
+        safe_connect(self.mode_combo, "currentIndexChanged", self.on_mode_changed)
+        safe_connect(self.count_spin, "valueChanged", self.filterChanged.emit)
 
         # External control label (initially hidden)
-        self.external_count_label = QLabel(tr("Defined by Input Variable"))
+        self.external_count_label = QLabel(tr("入力変数で決定"))
         self.external_count_label.setStyleSheet("color: gray; font-style: italic;")
         self.external_count_label.setVisible(False)
         sel_layout.addWidget(self.external_count_label, 0, 1)
 
         # 5. Sort / Auto-Select Logic
-        self.sort_mode_label = QLabel(tr("Selection Method"))
+        self.sort_mode_label = QLabel(tr("選択方法"))
         self.sort_mode_combo = QComboBox()
-        self.sort_mode_combo.addItem(tr("Manual (Default)"), None)
-        self.sort_mode_combo.addItem(tr("Random"), "RANDOM")
-        self.sort_mode_combo.addItem(tr("Lowest (MIN)"), "MIN")
-        self.sort_mode_combo.addItem(tr("Highest (MAX)"), "MAX")
-        self.sort_mode_combo.addItem(tr("All (Override)"), "ALL")
+        self.sort_mode_combo.addItem(tr("手動（デフォルト）"), None)
+        self.sort_mode_combo.addItem(tr("ランダム"), "RANDOM")
+        self.sort_mode_combo.addItem(tr("最小値 (MIN)"), "MIN")
+        self.sort_mode_combo.addItem(tr("最大値 (MAX)"), "MAX")
+        self.sort_mode_combo.addItem(tr("全て（上書き）"), "ALL")
 
-        self.sort_key_label = QLabel(tr("Sort Key"))
+        self.sort_key_label = QLabel(tr("ソートキー"))
         self.sort_key_combo = QComboBox()
-        self.sort_key_combo.addItem(tr("None"), None)
-        self.sort_key_combo.addItem(tr("Cost"), "COST")
-        self.sort_key_combo.addItem(tr("Power"), "POWER")
+        self.sort_key_combo.addItem(tr("なし"), None)
+        self.sort_key_combo.addItem(tr("コスト"), "COST")
+        self.sort_key_combo.addItem(tr("パワー"), "POWER")
 
         sel_layout.addWidget(self.sort_mode_label, 2, 0)
         sel_layout.addWidget(self.sort_mode_combo, 2, 1)
         sel_layout.addWidget(self.sort_key_label, 3, 0)
         sel_layout.addWidget(self.sort_key_combo, 3, 1)
 
-        self.sort_mode_combo.currentIndexChanged.connect(self.on_sort_mode_changed)
-        self.sort_mode_combo.currentIndexChanged.connect(self.filterChanged.emit)
-        self.sort_key_combo.currentIndexChanged.connect(self.filterChanged.emit)
+        safe_connect(self.sort_mode_combo, "currentIndexChanged", self.on_sort_mode_changed)
+        safe_connect(self.sort_mode_combo, "currentIndexChanged", self.filterChanged.emit)
+        safe_connect(self.sort_key_combo, "currentIndexChanged", self.filterChanged.emit)
+
+        safe_connect(self, "filterChanged", self.update_summary_label)
 
         self.on_mode_changed() # Init visibility
         self.on_sort_mode_changed()
+        self.update_summary_label()
+
+    def clear_filter(self):
+        """Reset all filter inputs to their defaults."""
+        self.blockSignals(True)
+        try:
+            for cb in self.zone_checks.values():
+                cb.setChecked(False)
+            for cb in self.type_checks.values():
+                cb.setChecked(False)
+            self.civ_selector.set_selected_civs([])
+            self.races_edit.clear()
+
+            self.min_cost_spin.setValue(-1)
+            self.max_cost_spin.setValue(-1)
+            self.exact_cost_spin.setValue(-1)
+            self.cost_ref_edit.clear()
+            self.min_power_spin.setValue(-1)
+            self.max_power_spin.setValue(-1)
+
+            self.tapped_combo.setCurrentIndex(0)
+            self.blocker_combo.setCurrentIndex(0)
+            self.evolution_combo.setCurrentIndex(0)
+            self.card_designation_combo.setCurrentIndex(0)
+            self.trigger_source_check.setChecked(False)
+
+            self.mode_combo.setCurrentIndex(0)
+            self.count_spin.setValue(1)
+            self.sort_mode_combo.setCurrentIndex(0)
+            self.sort_key_combo.setCurrentIndex(0)
+        finally:
+            self.blockSignals(False)
+
+        # 再発防止: 一括リセット後も要約表示と外部フォーム保存を確実に同期する。
+        self.on_mode_changed()
+        self.on_sort_mode_changed()
+        self.update_summary_label()
+        self.filterChanged.emit()
+
+    def update_summary_label(self):
+        """Show a compact summary of active filter conditions."""
+        filt = self.get_data()
+        parts: list[str] = []
+
+        if filt.get('zones'):
+            parts.append(tr("Zones {count}").format(count=len(filt['zones'])))
+        if filt.get('types'):
+            parts.append(tr("Types {count}").format(count=len(filt['types'])))
+        if filt.get('civilizations'):
+            parts.append(tr("Civilizations {count}").format(count=len(filt['civilizations'])))
+        if filt.get('races'):
+            parts.append(tr("Races {count}").format(count=len(filt['races'])))
+
+        if any(k in filt for k in ('min_cost', 'max_cost', 'exact_cost', 'cost_ref')):
+            parts.append(tr("Cost"))
+        if any(k in filt for k in ('min_power', 'max_power')):
+            parts.append(tr("Power"))
+        if any(k in filt for k in ('is_tapped', 'is_blocker', 'is_evolution', 'is_card_designation', 'is_trigger_source')):
+            parts.append(tr("Flags"))
+        if any(k in filt for k in ('count', 'selection_mode', 'selection_sort_key')):
+            parts.append(tr("Selection"))
+
+        if parts:
+            self.summary_label.setText(
+                tr("Active filters: {count}").format(count=len(parts))
+                + tr(" / ")
+                + tr(" ・ ").join(parts)
+            )
+        else:
+            self.summary_label.setText(tr("No filters set"))
 
     def on_mode_changed(self):
         mode = self.mode_combo.currentData()
@@ -262,9 +399,24 @@ class FilterEditorWidget(QWidget):
 
     def set_data(self, filt_data):
         """
-        Populate UI from dictionary (FilterDef).
+        Populate UI from `FilterSpec` or legacy dictionary.
+
+        New code should prefer `set_filter_spec(FilterSpec(...))` and pass
+        `FilterSpec` instances. Passing a legacy dict is still supported for
+        backward-compatibility but will emit a DeprecationWarning to guide
+        callers toward `FilterSpec` usage.
         """
         self.blockSignals(True)
+        # Accept FilterSpec instance or legacy dict
+        if isinstance(filt_data, FilterSpec):
+            filt_data = filterspec_to_dict(filt_data)
+        elif isinstance(filt_data, dict):
+            import warnings
+            warnings.warn(
+                "Passing legacy dict to FilterEditorWidget.set_data is deprecated; use FilterSpec",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         if not filt_data: filt_data = {}
 
         # Zones
@@ -283,7 +435,7 @@ class FilterEditorWidget(QWidget):
 
         # Races
         races = filt_data.get('races', [])
-        self.races_edit.setText(", ".join(races))
+        self.races_edit.setText(tr(", ").join(races))
 
         # Costs
         self.min_cost_spin.setValue(filt_data.get('min_cost', -1) if filt_data.get('min_cost') is not None else -1)
@@ -339,6 +491,7 @@ class FilterEditorWidget(QWidget):
     def get_data(self):
         """
         Return dictionary (FilterDef) from UI.
+        Note: New API `get_filter_spec()` returns a `FilterSpec` instance.
         """
         filt: dict[str, Any] = {}
 
@@ -399,6 +552,16 @@ class FilterEditorWidget(QWidget):
                 filt['selection_sort_key'] = sort_key
 
         return filt
+
+    def set_filter_spec(self, fs: FilterSpec):
+        """Populate UI from a `FilterSpec` instance."""
+        if not isinstance(fs, FilterSpec):
+            raise TypeError("set_filter_spec expects a FilterSpec instance")
+        self.set_data(filterspec_to_dict(fs))
+
+    def get_filter_spec(self) -> FilterSpec:
+        """Return a `FilterSpec` representing current UI state."""
+        return dict_to_filterspec(self.get_data())
 
     def blockSignals(self, block):
         super().blockSignals(block)

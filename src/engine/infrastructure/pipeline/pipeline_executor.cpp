@@ -1,7 +1,9 @@
 #include "pipeline_executor.hpp"
 #include "engine/diag_win32.h"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
+#include "engine/infrastructure/data/card_registry.hpp"
 #include "engine/systems/director/game_logic_system.hpp"
+#include "engine/systems/effects/passive_effect_system.hpp"
 #include "engine/systems/rules/condition_system.hpp"
 #include "engine/utils/target_utils.hpp"
 #include <algorithm>
@@ -217,7 +219,39 @@ void PipelineExecutor::execute(
     } catch (...) {
     }
 
+    try {
+      std::filesystem::create_directories("logs");
+      std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+      if (lout) {
+        std::string args_dump = "";
+        try { args_dump = inst.args.dump(); } catch (...) { args_dump = "<dump_err>"; }
+        try {
+          lout << "INST_BEFORE pc=" << frame.pc << " op=" << static_cast<int>(inst.op)
+               << " args=" << args_dump << " context=" << dump_context().dump() << "\n";
+        } catch (...) {
+          lout << "INST_BEFORE write_error\n";
+        }
+        lout.close();
+      }
+    } catch (...) {}
+
     execute_instruction(inst, state, card_db);
+
+    try {
+      std::filesystem::create_directories("logs");
+      std::ofstream lout2("logs/pipeline_trace.txt", std::ios::app);
+      if (lout2) {
+        std::string args_dump = "";
+        try { args_dump = inst.args.dump(); } catch (...) { args_dump = "<dump_err>"; }
+        try {
+          lout2 << "INST_AFTER pc=" << frame.pc << " op=" << static_cast<int>(inst.op)
+                << " args=" << args_dump << " context=" << dump_context().dump() << "\n";
+        } catch (...) {
+          lout2 << "INST_AFTER write_error\n";
+        }
+        lout2.close();
+      }
+    } catch (...) {}
 
     // low-level post-exec marker
     try {
@@ -322,13 +356,35 @@ void PipelineExecutor::resume(
 
 void PipelineExecutor::set_context_var(const std::string &key,
                                        ContextValue value) {
+  // Store both $-prefixed and plain forms to avoid lookup mismatches.
   context[key] = value;
+  if (!key.empty() && key[0] == '$') {
+    std::string plain = key.substr(1);
+    context[plain] = value;
+  } else {
+    std::string with_dollar = "$" + key;
+    context[with_dollar] = value;
+  }
 }
 
 ContextValue PipelineExecutor::get_context_var(const std::string &key) const {
   auto it = context.find(key);
   if (it != context.end())
     return it->second;
+  // 再発防止: コンテキスト変数の格納キーと参照キーの $ プレフィックス不一致による取得失敗防止。
+  //   set_context_var は "var_X" で格納するが、参照側は "$var_X" を使う場合がある。
+  //   どちらの形式でも取得できるよう、$ あり/なしの両パターンをフォールバック検索する。
+  if (!key.empty() && key[0] == '$') {
+    // "$var_X" → "var_X" を試す
+    auto it2 = context.find(key.substr(1));
+    if (it2 != context.end())
+      return it2->second;
+  } else {
+    // "var_X" → "$var_X" を試す
+    auto it2 = context.find("$" + key);
+    if (it2 != context.end())
+      return it2->second;
+  }
   return std::monostate{}; // Default
 }
 
@@ -449,6 +505,108 @@ void PipelineExecutor::execute_instruction(
     } else if (type == "CHECK_SPELL_CAST_TRIGGERS") {
       GameLogicSystem::handle_check_spell_cast_triggers(*this, state, inst,
                                                         card_db);
+    } else if (type == "AUTO_SELECT_BUFFER") {
+      // 再発防止: 暗黙的バッファ選択 — フィルターに一致するバッファカードを
+      //   $buffer_select コンテキスト変数に設定する。
+      //   MOVE_BUFFER_TO_ZONE(with filter) が事前にこの命令を生成する。
+      //   SELECT_FROM_BUFFER によるユーザー入力なしで自動選択できる。
+      PlayerID pid = state.active_player_id;
+      std::string out_key = inst.args.contains("out")
+                                ? inst.args["out"].get<std::string>()
+                                : "$buffer_select";
+
+      // フィルター復元: 文明/タイプ/種族を JSON から解析
+      std::vector<core::Civilization> filter_civs;
+      std::vector<std::string> filter_types;
+      std::vector<std::string> filter_races;
+      std::optional<int> filter_min_cost, filter_max_cost, filter_exact_cost;
+
+      if (inst.args.contains("filter") && inst.args["filter"].is_object()) {
+        const auto &fj = inst.args["filter"];
+        if (fj.contains("civilizations") && fj["civilizations"].is_array()) {
+          for (const auto &cv : fj["civilizations"]) {
+            try { filter_civs.push_back(cv.get<core::Civilization>()); } catch (...) {}
+          }
+        }
+        if (fj.contains("types") && fj["types"].is_array()) {
+          for (const auto &tv : fj["types"]) {
+            try { filter_types.push_back(tv.get<std::string>()); } catch (...) {}
+          }
+        }
+        if (fj.contains("races") && fj["races"].is_array()) {
+          for (const auto &rv : fj["races"]) {
+            try { filter_races.push_back(rv.get<std::string>()); } catch (...) {}
+          }
+        }
+        if (fj.contains("min_cost") && fj["min_cost"].is_number())
+          filter_min_cost = fj["min_cost"].get<int>();
+        if (fj.contains("max_cost") && fj["max_cost"].is_number())
+          filter_max_cost = fj["max_cost"].get<int>();
+        if (fj.contains("exact_cost") && fj["exact_cost"].is_number())
+          filter_exact_cost = fj["exact_cost"].get<int>();
+      }
+
+      std::vector<int> selected;
+      for (const auto &card : state.players[pid].effect_buffer) {
+        auto it = card_db.find(card.card_id);
+        const core::CardDefinition *def_ptr = nullptr;
+        core::CardDefinition empty_def;
+        if (it != card_db.end()) def_ptr = &it->second;
+        else def_ptr = &empty_def;
+
+        bool matches = true;
+
+        // 文明フィルター: 1つ以上一致すればOK
+        if (matches && !filter_civs.empty()) {
+          bool civ_ok = false;
+          for (auto fc : filter_civs) {
+            for (auto cc : def_ptr->civilizations) {
+              if (static_cast<uint8_t>(fc) & static_cast<uint8_t>(cc)) {
+                civ_ok = true; break;
+              }
+            }
+            if (civ_ok) break;
+          }
+          if (!civ_ok) matches = false;
+        }
+
+        // タイプフィルター
+        if (matches && !filter_types.empty()) {
+          std::string card_type_str =
+              (def_ptr->type == core::CardType::CREATURE)   ? "CREATURE"
+            : (def_ptr->type == core::CardType::SPELL)      ? "SPELL"
+            : (def_ptr->type == core::CardType::EVOLUTION_CREATURE) ? "EVOLUTION_CREATURE"
+            : "";
+          bool type_ok = false;
+          for (const auto &t : filter_types) {
+            if (card_type_str == t) { type_ok = true; break; }
+          }
+          if (!type_ok) matches = false;
+        }
+
+        // 種族フィルター
+        if (matches && !filter_races.empty()) {
+          bool race_ok = false;
+          for (const auto &fr : filter_races) {
+            for (const auto &cr : def_ptr->races) {
+              if (cr == fr) { race_ok = true; break; }
+            }
+            if (race_ok) break;
+          }
+          if (!race_ok) matches = false;
+        }
+
+        // コストフィルター
+        if (matches && filter_min_cost.has_value() && def_ptr->cost < *filter_min_cost)
+          matches = false;
+        if (matches && filter_max_cost.has_value() && def_ptr->cost > *filter_max_cost)
+          matches = false;
+        if (matches && filter_exact_cost.has_value() && def_ptr->cost != *filter_exact_cost)
+          matches = false;
+
+        if (matches) selected.push_back(card.instance_id);
+      }
+      set_context_var(out_key, selected);
     }
     break;
   }
@@ -558,7 +716,26 @@ void PipelineExecutor::handle_select(
 
   PlayerID player_id = state.active_player_id;
 
-  for (PlayerID pid : {player_id, static_cast<PlayerID>(1 - player_id)}) {
+  std::vector<PlayerID> players_to_check;
+  if (!filter.owner.has_value()) {
+    // デフォルト: 発動プレイヤーのみを対象とする
+    players_to_check.push_back(player_id);
+  } else {
+    const std::string &own = *filter.owner;
+    if (own == "SELF") {
+      players_to_check.push_back(player_id);
+    } else if (own == "OPPONENT") {
+      players_to_check.push_back(static_cast<PlayerID>(1 - player_id));
+    } else if (own == "BOTH") {
+      players_to_check.push_back(player_id);
+      players_to_check.push_back(static_cast<PlayerID>(1 - player_id));
+    } else {
+      // Unknown owner string: fallback to active player only
+      players_to_check.push_back(player_id);
+    }
+  }
+
+  for (PlayerID pid : players_to_check) {
     for (Zone z : zones) {
       std::vector<int> zone_indices;
       if (z == Zone::BUFFER) {
@@ -610,7 +787,14 @@ void PipelineExecutor::handle_select(
     return;
   }
 
-  if (count <= 0 || count >= (int)valid_targets.size()) {
+  // 再発防止: count=0 (ドロー0枚を選択した場合など) のとき valid_targets 全選択は誤り。
+  //   count=0 のときは空ベクターを設定して次の命令へ進む。
+  if (count <= 0) {
+    set_context_var(out_key, std::vector<int>{});
+    return;
+  }
+
+  if (count >= (int)valid_targets.size()) {
     set_context_var(out_key, valid_targets);
     return;
   }
@@ -668,12 +852,74 @@ void PipelineExecutor::handle_get_stat(
     result = (int)controller.hand.size();
   } else if (stat_name == "CARDS_DRAWN_THIS_TURN") {
     result = state.turn_stats.cards_drawn_this_turn;
+  } else if (stat_name == "SPELL_CAST_THIS_TURN" ||
+             stat_name == "SPELL_CAST_COUNT_THIS_TURN") {
+    // 再発防止: 呪文詠唱回数参照は 2 つのキー表記を同じ実データに正規化する。
+    result = state.turn_stats.spells_cast_this_turn;
   } else if (stat_name == "MANA_COUNT") {
     result = (int)controller.mana_zone.size();
   } else if (stat_name == "BATTLE_ZONE_COUNT") {
     result = (int)controller.battle_zone.size();
+  } else if (stat_name == "CREATURE_COUNT") {
+    // 再発防止: CREATURE_COUNT はバトルゾーンのクリーチャー数（DM では常に battle_zone と同一）
+    result = (int)controller.battle_zone.size();
   } else if (stat_name == "GRAVEYARD_COUNT") {
     result = (int)controller.graveyard.size();
+  } else if (stat_name == "SUMMON_COUNT_THIS_TURN") {
+    // このターンに召喚したクリーチャーの数を返す（踏み倒し等は含めない）
+    result = state.turn_stats.summon_count_this_turn;
+  } else if (stat_name == "DESTROY_COUNT_THIS_TURN") {
+    // 新規: このターンに破壊されたクリーチャーの数を返す
+    result = state.turn_stats.creatures_destroyed_this_turn;
+  } else if (stat_name == "MANA_SET_THIS_TURN") {
+    // 新規: このターンにマナに置かれたカードの数を返す
+    result = state.turn_stats.mana_set_this_turn;
+  } else if (stat_name == "ATTACKED_THIS_TURN") {
+    // このターンに攻撃した回数/フラグを返す
+    result = state.turn_stats.attacked_this_turn;
+  } else if (stat_name == "SHIELD_BREAK_ATTEMPT_THIS_TURN") {
+    // 新規: このターンにシールド割りが試行された回数を返す
+    result = state.turn_stats.shield_break_attempt_count_this_turn;
+  } else if (stat_name == "SHIELD_BREAK_RESOLVED_THIS_TURN") {
+    // 新規: このターンに実際にシールドが割れた回数を返す
+    result = state.turn_stats.shield_break_resolved_count_this_turn;
+  } else if (stat_name.rfind("MY_", 0) == 0) {
+    // Support MY_* aliases used by the editor (map to controller stats)
+    std::string my_stat = stat_name.substr(3); // strip 'MY_'
+    if (my_stat == "MANA_COUNT") {
+      result = (int)controller.mana_zone.size();
+    } else if (my_stat == "CREATURE_COUNT" || my_stat == "BATTLE_ZONE_COUNT") {
+      result = (int)controller.battle_zone.size();
+    } else if (my_stat == "SHIELD_COUNT") {
+      result = (int)controller.shield_zone.size();
+    } else if (my_stat == "HAND_COUNT") {
+      result = (int)controller.hand.size();
+    } else if (my_stat == "GRAVEYARD_COUNT") {
+      result = (int)controller.graveyard.size();
+    } else if (my_stat == "ATTACKED_THIS_TURN") {
+      // プレイヤー別攻撃回数を返す
+      result = state.turn_stats.attacked_this_turn_by_player[controller_id];
+    }
+  } else if (stat_name.rfind("OPPONENT_", 0) == 0) {
+    // 再発防止: OPPONENT_* は相手プレイヤーの統計を返す。
+    //   PlayerID は 0/1 の 2 値前提で相手を (1 - controller_id) で求める。
+    PlayerID opp_id = (controller_id == PlayerID(0)) ? PlayerID(1) : PlayerID(0);
+    const Player &opp = state.players[opp_id];
+    std::string opp_stat = stat_name.substr(9); // "OPPONENT_" を除去
+    if (opp_stat == "MANA_COUNT") {
+      result = (int)opp.mana_zone.size();
+    } else if (opp_stat == "CREATURE_COUNT" || opp_stat == "BATTLE_ZONE_COUNT") {
+      result = (int)opp.battle_zone.size();
+    } else if (opp_stat == "SHIELD_COUNT") {
+      result = (int)opp.shield_zone.size();
+    } else if (opp_stat == "HAND_COUNT") {
+      result = (int)opp.hand.size();
+    } else if (opp_stat == "GRAVEYARD_COUNT") {
+      result = (int)opp.graveyard.size();
+    } else if (opp_stat == "ATTACKED_THIS_TURN") {
+      // 相手側のプレイヤー別攻撃回数を返す
+      result = state.turn_stats.attacked_this_turn_by_player[opp_id];
+    }
   }
 
   set_context_var(out_key, result);
@@ -692,6 +938,40 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
     auto target_val = inst.args["target"];
     if (target_val.is_string()) {
       std::string s = target_val.get<std::string>();
+      // If caller provided a count that is actually a context variable
+      // referring to an explicit list of targets (vector<int>), prefer
+      // using that vector directly. Some command-generation paths may
+      // incorrectly place the selected targets into the "count" field
+      // (as a $var) instead of the "target" field; handle that here to
+      // be tolerant and avoid dropping selections.
+      if (inst.args.contains("count") && inst.args["count"].is_string()) {
+        std::string count_ref = inst.args["count"].get<std::string>();
+        if (!count_ref.empty() && count_ref.rfind("$", 0) == 0) {
+          auto cv = get_context_var(count_ref);
+          if (std::holds_alternative<std::vector<int>>(cv)) {
+            targets = std::get<std::vector<int>>(cv);
+            // Log resolved fallback for debugging
+            try {
+              std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+              if (lout) {
+                lout << "RESOLVED_COUNT_AS_TARGETS count_ref=" << count_ref << " -> [";
+                for (size_t _i = 0; _i < targets.size(); ++_i) {
+                  if (_i) lout << ",";
+                  lout << targets[_i];
+                }
+                lout << "]\n";
+                lout.close();
+              }
+            } catch (...) {}
+            std::cerr << "RESOLVED_COUNT_AS_TARGETS count_ref=" << count_ref << " -> [";
+            for (size_t _i = 0; _i < targets.size(); ++_i) {
+              if (_i) std::cerr << ",";
+              std::cerr << targets[_i];
+            }
+            std::cerr << "]\n";
+          }
+        }
+      }
       if (s.rfind("$", 0) == 0) {
         auto v = get_context_var(s);
         if (std::holds_alternative<std::vector<int>>(v)) {
@@ -699,6 +979,25 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
         } else if (std::holds_alternative<int>(v)) {
           targets.push_back(std::get<int>(v));
         }
+        // Debug: log resolved targets from context variable
+        try {
+          std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+          if (lout) {
+            lout << "RESOLVED_TARGETS src=" << s << " -> [";
+            for (size_t _i = 0; _i < targets.size(); ++_i) {
+              if (_i) lout << ",";
+              lout << targets[_i];
+            }
+            lout << "]\n";
+            lout.close();
+          }
+        } catch (...) {}
+        std::cerr << "RESOLVED_TARGETS src=" << s << " -> [";
+        for (size_t _i = 0; _i < targets.size(); ++_i) {
+          if (_i) std::cerr << ",";
+          std::cerr << targets[_i];
+        }
+        std::cerr << "]\n";
       } else if (s == "DECK_TOP") {
         is_virtual_target = true;
         virtual_target_type = "DECK_TOP";
@@ -711,6 +1010,42 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
         auto c_val = inst.args.contains("count") ? inst.args["count"]
                                                  : nlohmann::json(1);
         virtual_count = resolve_int(c_val);
+      // 再発防止: HAND/MANA/BATTLE をバーチャルソースとして処理する。
+      //   TRANSITION(from=HAND, input_value_key=...) が生成する MOVE 命令の
+      //   target="HAND" を正しく解決するために追加。
+      } else if (s == "HAND") {
+        is_virtual_target = true;
+        virtual_target_type = "HAND";
+        // If a $count reference already resolved to an explicit vector of
+        // targets above, avoid interpreting the count as a virtual_count
+        // which would otherwise cause no-op when resolve_int returns 0.
+        if (targets.empty()) {
+          auto c_val = inst.args.contains("count") ? inst.args["count"]
+                                                   : nlohmann::json(1);
+          virtual_count = resolve_int(c_val);
+        }
+      } else if (s == "MANA") {
+        is_virtual_target = true;
+        virtual_target_type = "MANA";
+        if (targets.empty()) {
+          auto c_val = inst.args.contains("count") ? inst.args["count"]
+                                                   : nlohmann::json(1);
+          virtual_count = resolve_int(c_val);
+        }
+      } else if (s == "BATTLE") {
+        is_virtual_target = true;
+        virtual_target_type = "BATTLE";
+        if (targets.empty()) {
+          auto c_val = inst.args.contains("count") ? inst.args["count"]
+                                                   : nlohmann::json(1);
+          virtual_count = resolve_int(c_val);
+        }
+      } else if (s == "BUFFER_REMAIN") {
+        // 再発防止: BUFFER_REMAIN は $buffer_select に含まれないバッファ残余カードをすべて移動する。
+        //   MOVE_BUFFER_TO_ZONE が生成する残余デッキボトム戻し命令で使用。
+        is_virtual_target = true;
+        virtual_target_type = "BUFFER_REMAIN";
+        virtual_count = INT_MAX;
       }
     } else if (target_val.is_number()) {
       targets.push_back(target_val.get<int>());
@@ -731,9 +1066,55 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
           targets = std::get<std::vector<int>>(v);
         else if (std::holds_alternative<int>(v))
           targets.push_back(std::get<int>(v));
+        // Debug: log resolved targets from input_value_key
+        try {
+          std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+          if (lout) {
+            lout << "RESOLVED_INPUT_VALUE_KEY key=" << ctx_key << " -> [";
+            for (size_t _i = 0; _i < targets.size(); ++_i) {
+              if (_i) lout << ",";
+              lout << targets[_i];
+            }
+            lout << "]\n";
+            lout.close();
+          }
+        } catch (...) {}
+        std::cerr << "RESOLVED_INPUT_VALUE_KEY key=" << ctx_key << " -> [";
+        for (size_t _i = 0; _i < targets.size(); ++_i) {
+          if (_i) std::cerr << ",";
+          std::cerr << targets[_i];
+        }
+        std::cerr << "]\n";
       }
     }
   }
+
+  // Diagnostic: if caller passed a count reference that resolves to a vector
+  // (selected instance ids) but targets resolved to empty here, emit a
+  // detailed trace to aid debugging. This helps catch cases where a
+  // $var_selected exists in pipeline.context but was not picked up by the
+  // MOVE resolution logic.
+  try {
+    if (targets.empty() && inst.args.contains("count") && inst.args["count"].is_string()) {
+      std::string count_ref = inst.args["count"].get<std::string>();
+      if (!count_ref.empty() && count_ref.rfind("$", 0) == 0) {
+        auto cv = get_context_var(count_ref);
+        if (std::holds_alternative<std::vector<int>>(cv)) {
+          const auto &vec = std::get<std::vector<int>>(cv);
+          std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+          if (lout) {
+            lout << "DIAG_MOVE_MISS count_ref=" << count_ref << " vec=[";
+            for (size_t i = 0; i < vec.size(); ++i) {
+              if (i) lout << ",";
+              lout << vec[i];
+            }
+            lout << "] inst_args=" << inst.args.dump() << " context=" << dump_context().dump() << "\n";
+            lout.close();
+          }
+        }
+      }
+    }
+  } catch (...) {}
 
   std::string to_zone_str = resolve_string(inst.args.value("to", ""));
   Zone to_zone = Zone::GRAVEYARD;
@@ -778,8 +1159,55 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
       for (int i = 0; i < count; ++i) {
         targets.push_back(deck[i].instance_id);
       }
+    } else if (virtual_target_type == "HAND") {
+      // 再発防止: HAND バーチャルソース — 手札の末尾（最後に追加されたカード）から取る
+      const auto &hand = state.players[pid].hand;
+      int available = (int)hand.size();
+      int count = std::min(virtual_count, available);
+      for (int i = 0; i < count; ++i) {
+        targets.push_back(hand[available - 1 - i].instance_id);
+      }
+    } else if (virtual_target_type == "MANA") {
+      const auto &mana = state.players[pid].mana_zone;
+      int available = (int)mana.size();
+      int count = std::min(virtual_count, available);
+      for (int i = 0; i < count; ++i) {
+        targets.push_back(mana[available - 1 - i].instance_id);
+      }
+    } else if (virtual_target_type == "BATTLE") {
+      const auto &bz = state.players[pid].battle_zone;
+      int available = (int)bz.size();
+      int count = std::min(virtual_count, available);
+      for (int i = 0; i < count; ++i) {
+        targets.push_back(bz[available - 1 - i].instance_id);
+      }
+    } else if (virtual_target_type == "BUFFER_REMAIN") {
+      // 再発防止: $buffer_select に含まれないバッファ残余カードを収集する。
+      //   SELECT_FROM_BUFFER または AUTO_SELECT_BUFFER で選択済みのカードを除外する。
+      std::vector<int> selected;
+      auto sv = get_context_var("$buffer_select");
+      if (std::holds_alternative<std::vector<int>>(sv)) {
+        selected = std::get<std::vector<int>>(sv);
+      } else if (std::holds_alternative<int>(sv) && std::get<int>(sv) > 0) {
+        selected.push_back(std::get<int>(sv));
+      }
+      for (const auto &c : state.players[pid].effect_buffer) {
+        if (std::find(selected.begin(), selected.end(), c.instance_id) == selected.end()) {
+          targets.push_back(c.instance_id);
+        }
+      }
     }
   }
+
+  // Debug: record the MOVE instruction's resolved targets and args
+  try {
+    std::cerr << "MOVE_INSTRUCTION args=" << inst.args.dump() << " resolved_targets=[";
+    for (size_t _i = 0; _i < targets.size(); ++_i) {
+      if (_i) std::cerr << ",";
+      std::cerr << targets[_i];
+    }
+    std::cerr << "] to_zone=" << to_zone_str << " to_bottom=" << to_bottom << "\n";
+  } catch (...) {}
 
   for (int id : targets) {
     const CardInstance *card_ptr = state.get_card_instance(id);
@@ -800,10 +1228,12 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
       continue;
 
     PlayerID owner = card_ptr->owner;
+    // If owner is out-of-band, resolve from state; otherwise keep the
+    // recorded owner. Previously this branch unconditionally overwrote
+    // owner with the active player which caused moves to be applied to the
+    // wrong player's zones. Keep existing owner when valid.
     if (owner > 1) {
       owner = state.get_card_owner(id);
-    } else {
-      owner = state.active_player_id;
     }
 
     Zone from_zone = Zone::GRAVEYARD;
@@ -868,6 +1298,16 @@ void PipelineExecutor::handle_move(const Instruction &inst, GameState &state) {
 
     if (!found)
       continue;
+
+    // 再発防止: CANNOT_LEAVE_BATTLE パッシブが有効な場合、バトルゾーンからの離脱を防ぐ
+    if (from_zone == Zone::BATTLE) {
+      const auto &db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
+      const CardInstance *check_card = state.get_card_instance(id);
+      if (check_card && PassiveEffectSystem::instance().check_restriction(
+                            state, *check_card, PassiveType::CANNOT_LEAVE_BATTLE, db)) {
+        continue;
+      }
+    }
 
     int dest_idx = to_bottom ? 0 : -1;
     auto cmd = std::make_unique<TransitionCommand>(id, from_zone, to_zone,
@@ -950,6 +1390,10 @@ void PipelineExecutor::handle_modify(const Instruction &inst,
       s_type = StatCommand::StatType::CARDS_DISCARDED;
     else if (stat_name == "CREATURES_PLAYED")
       s_type = StatCommand::StatType::CREATURES_PLAYED;
+    else if (stat_name == "SUMMONS")
+      s_type = StatCommand::StatType::SUMMONS;
+    else if (stat_name == "CREATURES_DESTROYED")
+      s_type = StatCommand::StatType::CREATURES_DESTROYED;
     else if (stat_name == "SPELLS_CAST")
       s_type = StatCommand::StatType::SPELLS_CAST;
     else
@@ -967,7 +1411,7 @@ void PipelineExecutor::handle_modify(const Instruction &inst,
   bool is_passive_keyword =
       (type == MutateCommand::MutationType::ADD_KEYWORD &&
        (str_val == "CANNOT_ATTACK" || str_val == "CANNOT_BLOCK" ||
-        str_val == "CANNOT_ATTACK_OR_BLOCK"));
+        str_val == "CANNOT_ATTACK_OR_BLOCK" || str_val == "CANNOT_LEAVE_BATTLE"));
 
   if (is_passive_keyword) {
     // Treat as ADD_PASSIVE flow below but with specific target iteration
@@ -989,6 +1433,10 @@ void PipelineExecutor::handle_modify(const Instruction &inst,
     else if (str_val == "CANNOT_ATTACK_OR_BLOCK") {
       p_types.push_back(PassiveType::CANNOT_ATTACK);
       p_types.push_back(PassiveType::CANNOT_BLOCK);
+    } else if (str_val == "IGNORE_ABILITY") {
+      p_types.push_back(PassiveType::IGNORE_ABILITIES);
+    } else if (str_val == "CANNOT_LEAVE_BATTLE") {
+      p_types.push_back(PassiveType::CANNOT_LEAVE_BATTLE);
     } else {
       // Fallback or unknown
     }
@@ -1066,24 +1514,6 @@ void PipelineExecutor::handle_modify(const Instruction &inst,
     // have an issue. But existing code only handled LOCK_SPELL and POWER. Let's
     // keep the old block logic just in case but integrated. The above block
     // covers LOCK_SPELL and POWER. So we effectively replaced the logic.
-    return;
-  }
-
-  if (type == MutateCommand::MutationType::ADD_COST_MODIFIER) {
-    CostModifier mod;
-    mod.reduction_amount = val;
-    mod.condition_filter = inst.args.value("filter", FilterDef{});
-    mod.turns_remaining = inst.args.value("duration", 1);
-    int source_id = -1;
-    auto v = get_context_var("$source");
-    if (std::holds_alternative<int>(v))
-      source_id = std::get<int>(v);
-    mod.source_instance_id = source_id;
-    mod.controller = state.active_player_id;
-
-    auto cmd = std::make_unique<MutateCommand>(-1, type);
-    cmd->cost_modifier = mod;
-    execute_command(std::move(cmd), state);
     return;
   }
 
@@ -1276,11 +1706,24 @@ void PipelineExecutor::handle_wait_input(const Instruction &inst,
   std::cerr << "[PipelineExecutor::handle_wait_input] out_key=" << out_key
             << std::endl;
 
-  // If we already have the value (via resume), don't pause again
-  if (context.count(out_key)) {
-    std::cerr << "[PipelineExecutor::handle_wait_input] Already have value in "
-                 "context, returning"
-              << std::endl;
+  // If we already have the value (via resume), don't pause again.
+  // Use get_context_var which handles $-prefixed vs non-prefixed keys.
+  auto existing_val = get_context_var(out_key);
+  if (!std::holds_alternative<std::monostate>(existing_val)) {
+    std::cerr << "[PipelineExecutor::handle_wait_input] Already have value in context, returning" << std::endl;
+    // Dump full pipeline context for correlation debugging
+    try {
+      auto j = dump_context();
+      std::cerr << "[PipelineExecutor::handle_wait_input] FULL_CONTEXT=" << j.dump() << std::endl;
+      try {
+        std::filesystem::create_directories("logs");
+        std::ofstream lout("logs/pipeline_trace.txt", std::ios::app);
+        if (lout) {
+          lout << "[PipelineExecutor::handle_wait_input] FULL_CONTEXT=" << j.dump() << "\n";
+          lout.close();
+        }
+      } catch (...) {}
+    } catch (...) {}
     return;
   }
 
@@ -1296,29 +1739,48 @@ void PipelineExecutor::handle_wait_input(const Instruction &inst,
   }
 
   execution_paused = true;
-  waiting_for_key = out_key;
+  // Normalize waiting_for_key to always include leading '$' so resume() and
+  // set_context_var use a consistent key form.
+  waiting_for_key = (out_key.rfind("$", 0) == 0) ? out_key : ("$" + out_key);
   state.waiting_for_user_input = true;
   std::cerr << "[PipelineExecutor::handle_wait_input] Setting "
                "execution_paused=true, waiting_for_user_input=true"
             << std::endl;
 
+  // Dump context at the moment we set pending_query for later correlation
+  try {
+    auto j2 = dump_context();
+    std::cerr << "[PipelineExecutor::handle_wait_input] CONTEXT_AT_PENDING=" << j2.dump() << std::endl;
+    try {
+      std::filesystem::create_directories("logs");
+      std::ofstream lout2("logs/pipeline_trace.txt", std::ios::app);
+      if (lout2) {
+        lout2 << "[PipelineExecutor::handle_wait_input] CONTEXT_AT_PENDING=" << j2.dump() << "\n";
+        lout2.close();
+      }
+    } catch (...) {}
+  } catch (...) {}
+
   // Setup pending query with min/max for SELECT_NUMBER
-  nlohmann::json params;
+  std::map<std::string, int> param_map;
   if (inst.args.contains("min")) {
     int min_val = resolve_int(inst.args["min"]);
-    params["min"] = min_val;
+    param_map["min"] = min_val;
     std::cerr << "[PipelineExecutor::handle_wait_input] min=" << min_val
               << std::endl;
   }
   if (inst.args.contains("max")) {
     int max_val = resolve_int(inst.args["max"]);
-    params["max"] = max_val;
+    param_map["max"] = max_val;
     std::cerr << "[PipelineExecutor::handle_wait_input] max=" << max_val
               << std::endl;
   }
 
-  state.pending_query =
-      GameState::QueryContext{0, query_type, {}, params, options};
+  // Ensure valid_targets is initialized as an empty array (vector<int>), not
+  // an empty JSON object. Construct QueryContext with correctly-typed
+  // parameters to avoid aggregate-initializer type/order mismatches.
+  state.pending_query = GameState::QueryContext{0, query_type, param_map,
+                                                std::vector<int>{}, options};
   std::cerr
       << "[PipelineExecutor::handle_wait_input] pending_query set: query_type="
       << state.pending_query.query_type << std::endl;

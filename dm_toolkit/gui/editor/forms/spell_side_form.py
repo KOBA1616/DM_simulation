@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dict
 from dm_toolkit.gui.editor.forms.parts.civilization_widget import CivilizationSelector
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class SpellSideForm(BaseEditForm):
     def __init__(self, parent=None):
@@ -27,7 +28,7 @@ class SpellSideForm(BaseEditForm):
 
         # Civilization
         self.civ_selector = CivilizationSelector()
-        self.civ_selector.changed.connect(self.update_data)
+        safe_connect(self.civ_selector, 'changed', self.update_data)
         self.register_widget(self.civ_selector)
         self.add_field(tr("Civilization"), self.civ_selector)
 
@@ -36,9 +37,9 @@ class SpellSideForm(BaseEditForm):
         self.cost_spin.setRange(0, 99)
         self.add_field(tr("Cost"), self.cost_spin, 'cost')
 
-        # Connect signals
-        self.name_edit.textChanged.connect(self.update_data)
-        self.cost_spin.valueChanged.connect(self.update_data)
+        # Connect signals (use safe_connect to tolerate headless stubs)
+        safe_connect(self.name_edit, 'textChanged', self.update_data)
+        safe_connect(self.cost_spin, 'valueChanged', self.update_data)
 
         main_layout.addStretch()
 

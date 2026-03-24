@@ -11,29 +11,8 @@ def pytest_configure(config):
         config.option.verbose = max(current_verbose, quiet)
         # disable quiet so pytest doesn't suppress output
         config.option.quiet = 0
-
-        # Force-load the repository dm_ai_module.py wrapper into sys.modules so
-        # tests use the Python stub/wrapper instead of accidentally importing a
-        # partial/native extension that may not expose the expected enums.
-        # For debugging native crashes, allow skipping this behavior by setting
-        # the environment variable `DM_SKIP_FORCE_WRAPPER=1` when running pytest.
-        import os
-        if os.environ.get('DM_SKIP_FORCE_WRAPPER'):
-            return
-        try:
-            import sys, importlib.util
-            root = os.path.dirname(os.path.abspath(__file__))
-            wrapper_path = os.path.join(root, 'dm_ai_module.py')
-            if os.path.exists(wrapper_path):
-                spec = importlib.util.spec_from_file_location('dm_ai_module', wrapper_path)
-                if spec is not None:
-                    module = importlib.util.module_from_spec(spec)
-                    sys.modules['dm_ai_module'] = module
-                    if spec.loader is not None:
-                        spec.loader.exec_module(module)
-        except Exception:
-            # Best-effort only; don't fail test startup on platform-specific issues
-            pass
+        # NOTE: 再発防止 — フォールバック (dm_ai_module.py) は削除済み。
+        # ネイティブ .pyd が利用可能な状態では -q フラグでも native を使う。
 
 class _ProgressPlugin:
     """Simple pytest plugin to print a one-line progress bar and counts."""
@@ -87,3 +66,35 @@ def pytest_cmdline_main(config):
             config.pluginmanager.register(plugin, name='progress-plugin')
     except Exception:
         pass
+
+
+# Ensure a QApplication exists for tests that require Qt widgets. This avoids
+# order-dependent failures where a test tries to construct a QWidget before
+# a QApplication is created (observed during shuffled test runs).
+import sys
+from pytest import fixture
+
+
+@fixture(scope='session', autouse=True)
+def ensure_qt_app():
+    try:
+        from PyQt5.QtWidgets import QApplication
+    except Exception:
+        try:
+            from PySide2.QtWidgets import QApplication
+        except Exception:
+            # Qt not available in this environment; nothing to do.
+            # 再発防止: generator fixture で return すると
+            # "did not yield a value" が発生するため必ず yield する。
+            yield
+            return
+
+    if QApplication.instance() is None:
+        app = QApplication(sys.argv[:])
+        yield
+        try:
+            app.quit()
+        except Exception:
+            pass
+    else:
+        yield

@@ -137,9 +137,7 @@ class EvolutionEcosystem:
                  except Exception:
                      cmds = []
 
-                 legal_actions = []
-                 # Legacy ActionGenerator fallback is handled by commands when available.
-                 if not legal_actions and not cmds:
+                 if not cmds:
                      dm_ai_module.PhaseManager.next_phase(instance.state, self.card_db)
                      continue
 
@@ -155,8 +153,8 @@ class EvolutionEcosystem:
                  # To get meaningful stats, we want somewhat reasonable play.
                  # Let's use a very simple heuristic: prioritized actions.
 
-                 # Prefer an action that can be executed via command when available
-                 best_action = legal_actions[0] if legal_actions else None
+                 # 再発防止: legal_actions（旧レガシー）は常に空 → デッドコードのため削除。
+                 # cmds（CommandDef リスト）から best_cmd を選択する。
                  best_cmd = None
                  if cmds:
                      best_cmd = cmds[0]
@@ -166,41 +164,37 @@ class EvolutionEcosystem:
                  # 2. Play Card
                  # 3. Attack Player
                  # 4. Pass/Other
-
                  found = False
-                 # Check for Mana Charge first
                  current_mana = len(instance.state.get_zone(instance.state.active_player_id, dm_ai_module.Zone.MANA))
                  if current_mana < 7:
-                    # Use getattr guards for ActionType members to satisfy mypy
                     _MANA_CHARGE = getattr(dm_ai_module.CommandType, 'MANA_CHARGE', None)
                     _MOVE_CARD = getattr(dm_ai_module.CommandType, 'MOVE_CARD', None)
-                    for act in legal_actions:
-                        # Check for MANA_CHARGE or MOVE_CARD in Mana Phase
-                        if dm_ai_module.is_action_type(act, _MANA_CHARGE):
-                            best_action = act
+                    for cmd in cmds:
+                        if dm_ai_module.is_action_type(cmd, _MANA_CHARGE):
+                            best_cmd = cmd
                             found = True
                             break
-                        if instance.state.current_phase == dm_ai_module.Phase.MANA and dm_ai_module.is_action_type(act, _MOVE_CARD):
-                            best_action = act
+                        if instance.state.current_phase == dm_ai_module.Phase.MANA and dm_ai_module.is_action_type(cmd, _MOVE_CARD):
+                            best_cmd = cmd
                             found = True
                             break
 
                  if not found:
-                     for act in legal_actions:
-                         if dm_ai_module.is_action_type(act, dm_ai_module.CommandType.PLAY_CARD):
-                             best_action = act
+                     for cmd in cmds:
+                         if dm_ai_module.is_action_type(cmd, dm_ai_module.CommandType.PLAY_CARD):
+                             best_cmd = cmd
                              found = True
                              break
 
                  if not found:
-                     for act in legal_actions:
-                         if dm_ai_module.is_action_type(act, dm_ai_module.CommandType.ATTACK_PLAYER):
-                             best_action = act
+                     for cmd in cmds:
+                         if dm_ai_module.is_action_type(cmd, dm_ai_module.CommandType.ATTACK_PLAYER):
+                             best_cmd = cmd
                              found = True
                              break
 
-                 # Execute via unified command path; convert action if needed
-                 from dm_toolkit.unified_execution import ensure_executable_command
+                 # Execute via unified command path
+                 # 再発防止: unified_execution / compat_wrappers は削除済み。直接 EngineCompat を使用する。
                  from dm_toolkit.engine.compat import EngineCompat
                  if best_cmd is not None:
                     try:
@@ -213,21 +207,6 @@ class EvolutionEcosystem:
                                 EngineCompat.ExecuteCommand(instance.state, best_cmd)
                             except Exception:
                                 pass
-                 else:
-                     if best_action is not None:
-                         try:
-                            cmd = ensure_executable_command(best_action)
-                            EngineCompat.ExecuteCommand(instance.state, cmd)
-                         except Exception:
-                             # Last resort: try central compat wrapper, then fall back to EngineCompat resolver
-                             try:
-                                 from dm_toolkit.compat_wrappers import execute_action_compat
-                                 execute_action_compat(instance.state, best_action, cast(Dict[int, Any], self.card_db))
-                             except Exception:
-                                 try:
-                                     EngineCompat.EffectResolver_resolve_action(instance.state, best_action, cast(Dict[int, Any], self.card_db))
-                                 except Exception:
-                                     pass
                  steps += 1
 
             # Game finished (or max steps), collect stats

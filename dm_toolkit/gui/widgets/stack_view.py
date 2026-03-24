@@ -8,7 +8,9 @@ from PyQt6.QtGui import QDrag
 import dm_ai_module
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.card_helpers import get_card_name
+from dm_toolkit.engine.compat import EngineCompat
 import logging
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 logger = logging.getLogger(__name__)
 
@@ -44,16 +46,16 @@ class StackViewWidget(QWidget):
         self.list_widget.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         model = self.list_widget.model()
         if model is not None:
-            model.rowsMoved.connect(self.on_rows_moved)
+            safe_connect(model, 'rowsMoved', self.on_rows_moved)
         self._layout.addWidget(self.list_widget)
 
         btn_layout = QHBoxLayout()
         self.resolve_btn = QPushButton(tr("Resolve Selected"))
-        self.resolve_btn.clicked.connect(self.on_resolve)
+        safe_connect(self.resolve_btn, 'clicked', self.on_resolve)
         btn_layout.addWidget(self.resolve_btn)
 
         self.refresh_btn = QPushButton(tr("Refresh"))
-        self.refresh_btn.clicked.connect(self.request_refresh) # Should be connected to parent update
+        safe_connect(self.refresh_btn, 'clicked', self.request_refresh) # Should be connected to parent update
         btn_layout.addWidget(self.refresh_btn)
 
         self._layout.addLayout(btn_layout)
@@ -63,23 +65,21 @@ class StackViewWidget(QWidget):
     def update_state(self, game_state, card_db):
         self.list_widget.clear()
         try:
-            self.current_effects = game_state.get_pending_effects_info()
-        except AttributeError:
-            try:
-                # Fallback to module level function if available (legacy support)
-                import dm_ai_module
-                if hasattr(dm_ai_module, 'get_pending_effects_info'):
-                     self.current_effects = dm_ai_module.get_pending_effects_info(game_state)
-                else:
-                     raise AttributeError("No pending effects accessor found")
-            except Exception as e:
-                # Fallback for outdated binary
-                logger.warning(f"Failed to get pending effects: {e}")
-                item = QListWidgetItem("Error: Outdated C++ Module. Please rebuild.")
-                item.setForeground(Qt.GlobalColor.red)
-                self.list_widget.addItem(item)
-                self.current_effects = []
-                return
+            # 再発防止: get_pending_effects_info の提供形態（state method / module function / fallback）
+            # に差があっても誤って「Outdated C++ Module」と断定しないよう互換レイヤを経由する。
+            self.current_effects = list(EngineCompat.get_pending_effects_info(game_state))
+        except Exception as e:
+            logger.warning(f"Failed to get pending effects via EngineCompat: {e}")
+            native_loaded = getattr(dm_ai_module, '__native_module__', None) is not None
+            if native_loaded:
+                msg = tr("Error: Failed to read pending effects from native module.")
+            else:
+                msg = tr("Error: Native C++ module is not loaded. Check runtime dependencies and rebuild.")
+            item = QListWidgetItem(msg)
+            item.setForeground(Qt.GlobalColor.red)
+            self.list_widget.addItem(item)
+            self.current_effects = []
+            return
 
         logger.debug(f"[StackView] Update state: {len(self.current_effects)} pending effects")
         

@@ -20,7 +20,7 @@ import json
 import shutil
 import zipfile
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 import os
 from typing import List, Dict, Any
 
@@ -82,7 +82,7 @@ def archive_files(files: List[Path], archive_dir: Path, zip_when: int = 10, dry_
     if not files:
         return moved
     if len(files) >= zip_when:
-        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        timestamp = datetime.now(UTC).strftime('%Y%m%d_%H%M%S')
         zip_path = archive_dir / f'archive_{timestamp}.zip'
         if not dry_run:
             with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
@@ -136,10 +136,10 @@ def scan_and_manage(
     # prune by age first (archive old than max_age_days)
     to_archive_by_age = []
     if max_age_days > 0:
-        cutoff = datetime.utcnow() - timedelta(days=max_age_days)
+        cutoff = datetime.now(UTC) - timedelta(days=max_age_days)
         for f in files[::-1]:  # oldest first
             try:
-                mtime = datetime.utcfromtimestamp(f.stat().st_mtime)
+            mtime = datetime.fromtimestamp(f.stat().st_mtime, UTC)
                 if mtime < cutoff:
                     to_archive_by_age.append(f)
             except Exception:
@@ -165,27 +165,116 @@ def scan_and_manage(
     return report
 
 
+def scan_and_manage_many(
+    base_dir: Path,
+    patterns: List[str],
+    keep_count: int,
+    max_bytes: int,
+    archive_dir: Path,
+    max_age_days: int,
+    dry_run: bool,
+) -> Dict[str, Any]:
+    files: List[Path] = []
+    for pattern in patterns:
+        files.extend(list_files_sorted(base_dir, pattern))
+
+    unique_files = sorted(
+        {path.resolve(): path for path in files}.values(),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+
+    total_before = dir_total_size(unique_files)
+    report: Dict[str, Any] = {
+        'base_dir': str(base_dir),
+        'patterns': patterns,
+        'count_before': len(unique_files),
+        'size_before': total_before,
+        'removed_by_count': [],
+        'removed_by_size': [],
+        'archived': [],
+    }
+
+    if not unique_files:
+        report['count_after'] = 0
+        report['size_after'] = 0
+        return report
+
+    to_archive_by_age: List[Path] = []
+    if max_age_days > 0:
+        cutoff = datetime.now(UTC) - timedelta(days=max_age_days)
+        for file_path in unique_files[::-1]:
+            try:
+            mtime = datetime.fromtimestamp(file_path.stat().st_mtime, UTC)
+                if mtime < cutoff:
+                    to_archive_by_age.append(file_path)
+            except Exception:
+                continue
+
+    if to_archive_by_age:
+        archived = archive_files(to_archive_by_age, archive_dir, dry_run=dry_run)
+        report['archived'].extend([str(x) for x in archived])
+        unique_files = [path for path in unique_files if path not in to_archive_by_age]
+
+    removed_by_count: List[Path] = []
+    if keep_count >= 0 and len(unique_files) > keep_count:
+        removed_by_count = unique_files[keep_count:]
+        report['removed_by_count'] = [str(x) for x in removed_by_count]
+        if not dry_run:
+            for file_path in removed_by_count:
+                try:
+                    file_path.unlink()
+                except Exception:
+                    pass
+        unique_files = unique_files[:keep_count]
+
+    remaining_files = [path for path in unique_files if path.exists() or dry_run]
+    removed_by_size = prune_by_size(remaining_files, max_bytes, dry_run)
+    report['removed_by_size'] = [str(x) for x in removed_by_size]
+
+    surviving_files: List[Path] = []
+    for file_path in remaining_files:
+        if file_path in removed_by_size:
+            continue
+        if dry_run or file_path.exists():
+            surviving_files.append(file_path)
+
+    report['count_after'] = len(surviving_files)
+    report['size_after'] = dir_total_size(surviving_files)
+    return report
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--models-dir', type=str, default='models')
     parser.add_argument('--data-dir', type=str, default='data')
     parser.add_argument('--archive-dir', type=str, default='archive')
+    parser.add_argument('--logs-dir', type=str, default='logs')
+    parser.add_argument('--reports-dir', type=str, default='reports')
     parser.add_argument('--keep-models', type=int, default=3)
     parser.add_argument('--keep-data', type=int, default=5)
+    parser.add_argument('--keep-logs', type=int, default=20)
+    parser.add_argument('--keep-reports', type=int, default=30)
     parser.add_argument('--max-model-bytes', type=int, default=1 * 1024 * 1024 * 1024)
     parser.add_argument('--max-data-bytes', type=int, default=500 * 1024 * 1024)
+    parser.add_argument('--max-log-bytes', type=int, default=512 * 1024 * 1024)
+    parser.add_argument('--max-report-bytes', type=int, default=256 * 1024 * 1024)
     parser.add_argument('--max-model-age-days', type=int, default=90)
     parser.add_argument('--max-data-age-days', type=int, default=30)
+    parser.add_argument('--max-log-age-days', type=int, default=14)
+    parser.add_argument('--max-report-age-days', type=int, default=30)
     parser.add_argument('--dry-run', action='store_true')
     parser.add_argument('--report-out', type=str, default=None)
     args = parser.parse_args()
 
     models_dir = Path(args.models_dir)
     data_dir = Path(args.data_dir)
+    logs_dir = Path(args.logs_dir)
+    reports_dir = Path(args.reports_dir)
     archive_dir = Path(args.archive_dir)
     ensure_dir(archive_dir)
 
-    overall = {'timestamp': datetime.utcnow().isoformat(), 'actions': []}
+    overall = {'timestamp': datetime.now(UTC).isoformat(), 'actions': []}
 
     # Manage models
     rep_models = scan_and_manage(
@@ -223,13 +312,35 @@ def main():
     )
     overall['actions'].append({'type': 'data', 'report': rep_data})
 
+    rep_logs = scan_and_manage_many(
+        logs_dir,
+        ['*.log', '*.txt', '*.jsonl'],
+        args.keep_logs,
+        args.max_log_bytes,
+        archive_dir / 'logs',
+        args.max_log_age_days,
+        args.dry_run,
+    )
+    overall['actions'].append({'type': 'logs', 'report': rep_logs})
+
+    rep_reports = scan_and_manage_many(
+        reports_dir,
+        ['*.log', '*.txt', '*.json'],
+        args.keep_reports,
+        args.max_report_bytes,
+        archive_dir / 'reports',
+        args.max_report_age_days,
+        args.dry_run,
+    )
+    overall['actions'].append({'type': 'reports', 'report': rep_reports})
+
     # Save report
     if args.report_out:
         out_path = Path(args.report_out)
     else:
         out_dir = Path('reports')
         ensure_dir(out_dir)
-        out_path = out_dir / f'artifact_report_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.json'
+        out_path = out_dir / f'artifact_report_{datetime.now(UTC).strftime("%Y%m%d_%H%M%S")}.json'
 
     if not args.dry_run:
         with open(out_path, 'w', encoding='utf-8') as f:
@@ -249,12 +360,20 @@ def run_artifact_manager(
     models_dir: str = 'models',
     data_dir: str = 'data',
     archive_dir: str = 'archive',
+    logs_dir: str = 'logs',
+    reports_dir: str = 'reports',
     keep_models: int = 3,
     keep_data: int = 5,
+    keep_logs: int = 20,
+    keep_reports: int = 30,
     max_model_bytes: int = 1 * 1024 * 1024 * 1024,
     max_data_bytes: int = 500 * 1024 * 1024,
+    max_log_bytes: int = 512 * 1024 * 1024,
+    max_report_bytes: int = 256 * 1024 * 1024,
     max_model_age_days: int = 90,
     max_data_age_days: int = 30,
+    max_log_age_days: int = 14,
+    max_report_age_days: int = 30,
     dry_run: bool = False,
     report_out: str | None = None,
 ):
@@ -266,22 +385,32 @@ def run_artifact_manager(
     args.models_dir = models_dir
     args.data_dir = data_dir
     args.archive_dir = archive_dir
+    args.logs_dir = logs_dir
+    args.reports_dir = reports_dir
     args.keep_models = keep_models
     args.keep_data = keep_data
+    args.keep_logs = keep_logs
+    args.keep_reports = keep_reports
     args.max_model_bytes = max_model_bytes
     args.max_data_bytes = max_data_bytes
+    args.max_log_bytes = max_log_bytes
+    args.max_report_bytes = max_report_bytes
     args.max_model_age_days = max_model_age_days
     args.max_data_age_days = max_data_age_days
+    args.max_log_age_days = max_log_age_days
+    args.max_report_age_days = max_report_age_days
     args.dry_run = dry_run
     args.report_out = report_out
 
     # reuse main logic by calling scan_and_manage
     models_dir_p = Path(args.models_dir)
     data_dir_p = Path(args.data_dir)
+    logs_dir_p = Path(args.logs_dir)
+    reports_dir_p = Path(args.reports_dir)
     archive_dir_p = Path(args.archive_dir)
     ensure_dir(archive_dir_p)
 
-    overall = {'timestamp': datetime.utcnow().isoformat(), 'actions': []}
+    overall = {'timestamp': datetime.now(UTC).isoformat(), 'actions': []}
 
     rep_models = scan_and_manage(
         models_dir_p,
@@ -316,13 +445,36 @@ def run_artifact_manager(
     )
     overall['actions'].append({'type': 'data', 'report': rep_data})
 
+    # 再発防止: 学習時の debug trace は logs/ と reports/ に蓄積しやすいため、生成フロー側でも上限管理する。
+    rep_logs = scan_and_manage_many(
+        logs_dir_p,
+        ['*.log', '*.txt', '*.jsonl'],
+        args.keep_logs,
+        args.max_log_bytes,
+        archive_dir_p / 'logs',
+        args.max_log_age_days,
+        args.dry_run,
+    )
+    overall['actions'].append({'type': 'logs', 'report': rep_logs})
+
+    rep_reports = scan_and_manage_many(
+        reports_dir_p,
+        ['*.log', '*.txt', '*.json'],
+        args.keep_reports,
+        args.max_report_bytes,
+        archive_dir_p / 'reports',
+        args.max_report_age_days,
+        args.dry_run,
+    )
+    overall['actions'].append({'type': 'reports', 'report': rep_reports})
+
     # write report file if requested
     if args.report_out:
         out_path = Path(args.report_out)
     else:
         out_dir = Path('reports')
         ensure_dir(out_dir)
-        out_path = out_dir / f'artifact_report_{datetime.utcnow().strftime("%Y%m%d_%H%M%S")}.json'
+        out_path = out_dir / f'artifact_report_{datetime.now(UTC).strftime("%Y%m%d_%H%M%S")}.json'
 
     if not args.dry_run:
         with open(out_path, 'w', encoding='utf-8') as f:

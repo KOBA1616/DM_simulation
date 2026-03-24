@@ -17,7 +17,7 @@ namespace dm::engine {
     public:
         // New Command-based generation
         static std::vector<dm::core::CommandDef> generate_legal_commands(
-            const dm::core::GameState& game_state,
+            dm::core::GameState& game_state,
             const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db
         );
     };

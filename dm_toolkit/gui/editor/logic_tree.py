@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtWidgets import QTreeView, QAbstractItemView, QInputDialog, QMessageBox
 from PyQt6.QtGui import QStandardItemModel, QStandardItem
-from PyQt6.QtCore import Qt, QModelIndex
+from PyQt6.QtCore import Qt, QModelIndex, pyqtSignal
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.data_manager import CardDataManager
 from dm_toolkit.gui.editor.context_menus import LogicTreeContextMenuHandler
 from dm_toolkit.gui.editor.consts import ROLE_TYPE, ROLE_DATA
 from dm_toolkit.gui.editor.qt_impl import QtEditorModel, QtEditorItem
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 import uuid
 
 class LogicTreeWidget(QTreeView):
+    tree_changed = pyqtSignal()
     def __init__(self, parent=None):
         super().__init__(parent)
         self.standard_model = QStandardItemModel()
@@ -29,11 +31,11 @@ class LogicTreeWidget(QTreeView):
 
         # Initialize Context Menu Handler
         self.context_menu_handler = LogicTreeContextMenuHandler(self)
-        self.customContextMenuRequested.connect(self.context_menu_handler.show_context_menu)
+        safe_connect(self, 'customContextMenuRequested', self.context_menu_handler.show_context_menu)
 
         sel = self.selectionModel()
         if sel is not None:
-            sel.selectionChanged.connect(self.on_selection_changed)
+            safe_connect(sel, 'selectionChanged', self.on_selection_changed)
 
     def on_selection_changed(self, selected, deselected):
         indexes = selected.indexes()
@@ -65,6 +67,110 @@ class LogicTreeWidget(QTreeView):
 
     def mousePressEvent(self, event):
         super().mousePressEvent(event)
+
+    def keyPressEvent(self, event):
+        """Handle quick reorder shortcuts.
+        再発防止: ドラッグ操作に依存しない並び替え経路を用意して、誤ドロップや操作不能を避ける。"""
+        modifiers = event.modifiers()
+        key = event.key()
+        if modifiers == Qt.KeyboardModifier.AltModifier and key == Qt.Key.Key_Up:
+            if self.move_current_item_up():
+                event.accept()
+                return
+        if modifiers == Qt.KeyboardModifier.AltModifier and key == Qt.Key.Key_Down:
+            if self.move_current_item_down():
+                event.accept()
+                return
+        super().keyPressEvent(event)
+
+    def move_current_item_up(self):
+        return self._move_current_item_by_offset(-1)
+
+    def move_current_item_down(self):
+        return self._move_current_item_by_offset(1)
+
+    def _move_current_item_by_offset(self, offset):
+        idx = self.currentIndex()
+        if not idx.isValid() or offset == 0:
+            return False
+
+        row = idx.row()
+        target_row = row + offset
+        parent_index = idx.parent()
+
+        if parent_index.isValid():
+            parent_item = self.standard_model.itemFromIndex(parent_index)
+            if parent_item is None:
+                return False
+            max_row = parent_item.rowCount() - 1
+            if target_row < 0 or target_row > max_row:
+                return False
+            moved_row = parent_item.takeRow(row)
+            if not moved_row:
+                return False
+            parent_item.insertRow(target_row, moved_row)
+            moved_item = moved_row[0]
+        else:
+            max_row = self.standard_model.rowCount() - 1
+            if target_row < 0 or target_row > max_row:
+                return False
+            moved_row = self.standard_model.takeRow(row)
+            if not moved_row:
+                return False
+            self.standard_model.insertRow(target_row, moved_row)
+            moved_item = moved_row[0]
+
+        # 再発防止: 並び替え後に選択ノードを明示的に更新し、インスペクタが古い行を参照しないようにする。
+        self.setCurrentIndex(moved_item.index())
+        if parent_index.isValid():
+            self.expand(parent_index)
+        try:
+            self.tree_changed.emit()
+        except Exception:
+            pass
+        return True
+
+    def dropEvent(self, event):
+        """ドラッグ&ドロップでのコマンド並び替えを制御する。
+        再発防止: 異なる親への移動を禁止し、同一親内の並び替えのみ許可する。
+        COMMAND/EFFECT/OPTION 型の同一レベル並び替えを許可し、ドロップ後にインスペクタを更新する。"""
+        dragged_index = self.currentIndex()
+        if not dragged_index.isValid():
+            event.ignore()
+            return
+
+        dragged_parent = dragged_index.parent()
+        target_index = self.indexAt(event.position().toPoint())
+
+        if target_index.isValid():
+            target_parent = target_index.parent()
+        else:
+            # ビューの空白部分へのドロップは拒否
+            event.ignore()
+            return
+
+        # 同一親への並び替えのみ許可
+        if dragged_parent != target_parent:
+            event.ignore()
+            return
+
+        # CARD/KEYWORDS への drop は拒否（誤操作防止）
+        target_type = self.data_manager.get_item_type(target_index)
+        if target_type in ("CARD", "KEYWORDS", "SPELL_SIDE"):
+            event.ignore()
+            return
+
+        super().dropEvent(event)
+
+        # ドロップ後にインスペクタ更新のため selectionChanged を再発火
+        sel = self.selectionModel()
+        if sel is not None:
+            current = self.currentIndex()
+            sel.setCurrentIndex(current, sel.SelectionFlag.ClearAndSelect)
+            try:
+                self.tree_changed.emit()
+            except Exception:
+                pass
 
     def add_keywords(self, parent_index):
         if not parent_index.isValid(): return
@@ -112,6 +218,10 @@ class LogicTreeWidget(QTreeView):
         if new_item and isinstance(new_item, QtEditorItem):
             self.setExpanded(new_item.parent().get_raw_item().index(), True)
             self.setCurrentIndex(new_item.get_raw_item().index())
+            try:
+                self.tree_changed.emit()
+            except Exception:
+                pass
 
     def add_action_sibling(self, action_index, action_data=None):
         pass
@@ -166,7 +276,7 @@ class LogicTreeWidget(QTreeView):
         # Check role via data manager using index
         role = self.data_manager.get_item_type(parent_index)
 
-        items = [tr("Triggered Ability"), tr("Static Ability")]
+        items = [tr("Triggered Ability"), tr("Static Ability"), tr("Replacement Ability")]
 
         # Check if we can add Reaction Ability
         # Only for CARD (not SPELL_SIDE)
@@ -184,6 +294,9 @@ class LogicTreeWidget(QTreeView):
             elif item == tr("Static Ability"):
                 mod_data = self.data_manager.create_default_static_data()
                 self.add_child_item(parent_index, "MODIFIER", mod_data, f"{tr('Static')}: COST_MODIFIER")
+            elif item == tr("Replacement Ability"):
+                rep_data = self.data_manager.create_default_replacement_data()
+                self.add_child_item(parent_index, "EFFECT", rep_data, f"{tr('REPLACEMENT')}: {tr('ON_DESTROY')}")
             elif item == tr("Reaction Ability"):
                 self.add_reaction(parent_index)
 
@@ -202,6 +315,10 @@ class LogicTreeWidget(QTreeView):
 
         # Restore Expansion State
         self._restore_expansion_state(expanded_ids)
+        try:
+            self.tree_changed.emit()
+        except Exception:
+            pass
 
     def _save_expansion_state(self):
         """Saves the IDs of expanded items."""
@@ -249,6 +366,10 @@ class LogicTreeWidget(QTreeView):
         if item and isinstance(item, QtEditorItem):
             self.setCurrentIndex(item.get_raw_item().index())
             self.expand(item.get_raw_item().index())
+            try:
+                self.tree_changed.emit()
+            except Exception:
+                pass
         return item
 
     def add_child_item(self, parent_index, item_type, data, label):
@@ -256,6 +377,10 @@ class LogicTreeWidget(QTreeView):
         if new_item and isinstance(new_item, QtEditorItem):
             self.setExpanded(parent_index, True)
             self.setCurrentIndex(new_item.get_raw_item().index())
+            try:
+                self.tree_changed.emit()
+            except Exception:
+                pass
         return new_item
 
     def remove_current_item(self):
@@ -272,14 +397,26 @@ class LogicTreeWidget(QTreeView):
             # Select next item which is now at 'row'
             new_idx = self.standard_model.index(row, 0, parent)
             self.setCurrentIndex(new_idx)
+            try:
+                self.tree_changed.emit()
+            except Exception:
+                pass
         elif self.standard_model.rowCount(parent) > 0:
             # Select last item
             new_idx = self.standard_model.index(self.standard_model.rowCount(parent) - 1, 0, parent)
             self.setCurrentIndex(new_idx)
+            try:
+                self.tree_changed.emit()
+            except Exception:
+                pass
         else:
             # Select parent
             if parent.isValid():
                 self.setCurrentIndex(parent)
+                try:
+                    self.tree_changed.emit()
+                except Exception:
+                    pass
 
     def add_spell_side(self, card_index):
         if not card_index.isValid(): return
@@ -293,40 +430,74 @@ class LogicTreeWidget(QTreeView):
         if not card_index.isValid(): return
         self.data_manager.remove_spell_side_item(card_index)
 
-    def add_rev_change(self, card_index):
-        if not card_index.isValid(): return
-        eff_item = self.data_manager.apply_template_by_key(card_index, "REVOLUTION_CHANGE", "Revolution Change")
-        if eff_item and isinstance(eff_item, QtEditorItem):
+    def _build_races_context(self, payload, context_key):
+        """Builds extra context from payload races for template substitution."""
+        extra_context = {}
+        if payload and payload.get('races'):
+            extra_context[context_key] = payload['races']
+        return extra_context
+
+    def _apply_logic_template(self, card_index, template_key, label, payload=None, races_context_key=None):
+        """Apply a logic template and normalize post-apply UI updates.
+        再発防止: テンプレート適用後の選択更新と展開処理を共通化し、能力別実装の差分漏れを防ぐ。"""
+        if not card_index.isValid():
+            return None
+
+        extra_context = {}
+        if races_context_key:
+            extra_context = self._build_races_context(payload, races_context_key)
+
+        eff_item = self.data_manager.apply_template_by_key(
+            card_index,
+            template_key,
+            label,
+            extra_context=extra_context,
+        )
+        if eff_item and hasattr(eff_item, 'get_raw_item'):
             self.setCurrentIndex(eff_item.get_raw_item().index())
             self.expand(card_index)
         return eff_item
+
+    def add_rev_change(self, card_index, payload=None):
+        return self._apply_logic_template(
+            card_index,
+            "REVOLUTION_CHANGE",
+            "自分のクリーチャーが攻撃する時",
+            payload=payload,
+            races_context_key="rc_races",
+        )
 
     def remove_rev_change(self, card_index):
         if not card_index.isValid(): return
+        # 再発防止: 表示ラベル変更後も旧ラベル作成済みデータを削除できるよう両方を対象にする。
+        self.data_manager.remove_logic_by_label(card_index, "自分のクリーチャーが攻撃する時")
         self.data_manager.remove_logic_by_label(card_index, "Revolution Change")
 
-    def add_mekraid(self, card_index):
+    def add_mekraid(self, card_index, payload=None):
         """メクレイド効果を追加"""
-        if not card_index.isValid(): return
-        eff_item = self.data_manager.apply_template_by_key(card_index, "MEKRAID", "Mekraid")
-        if eff_item and isinstance(eff_item, QtEditorItem):
-            self.setCurrentIndex(eff_item.get_raw_item().index())
-            self.expand(card_index)
-        return eff_item
+        return self._apply_logic_template(
+            card_index,
+            "MEKRAID",
+            "Mekraid",
+            payload=payload,
+            races_context_key="mekraid_races",
+        )
 
     def remove_mekraid(self, card_index):
         """メクレイド効果を削除"""
         if not card_index.isValid(): return
         self.data_manager.remove_logic_by_label(card_index, "Mekraid")
 
-    def add_friend_burst(self, card_index):
+    def add_friend_burst(self, card_index, payload=None):
         """フレンド・バースト効果を追加"""
-        if not card_index.isValid(): return
-        eff_item = self.data_manager.apply_template_by_key(card_index, "FRIEND_BURST", "Friend Burst")
-        if eff_item and isinstance(eff_item, QtEditorItem):
-            self.setCurrentIndex(eff_item.get_raw_item().index())
-            self.expand(card_index)
-        return eff_item
+        # フレンドバースト論理ノードの FRIEND_BURSTコマンドに str_param/target_filter.races が設定される。
+        return self._apply_logic_template(
+            card_index,
+            "FRIEND_BURST",
+            "Friend Burst",
+            payload=payload,
+            races_context_key="fb_races",
+        )
 
     def remove_friend_burst(self, card_index):
         """フレンド・バースト効果を削除"""
@@ -335,18 +506,40 @@ class LogicTreeWidget(QTreeView):
 
     def add_mega_last_burst(self, card_index):
         """メガ・ラスト・バースト効果を追加"""
-        if not card_index.isValid(): return
-        eff_item = self.data_manager.apply_template_by_key(card_index, "MEGA_LAST_BURST", "Mega Last Burst")
-        if eff_item and isinstance(eff_item, QtEditorItem):
-            self.setCurrentIndex(eff_item.get_raw_item().index())
-            self.expand(card_index)
-        return eff_item
+        return self._apply_logic_template(card_index, "MEGA_LAST_BURST", "Mega Last Burst")
 
     def remove_mega_last_burst(self, card_index):
         """メガ・ラスト・バースト効果を削除"""
         if not card_index.isValid(): return
         self.data_manager.remove_logic_by_label(card_index, "Mega Last Burst")
+    def apply_look_select_template(self, index):
+        """LOOK_SELECT_TO_ZONE テンプレートのパラメータ入力ダイアログを表示してテンプレートを適用する。
+        再発防止: index は CARD または SPELL_SIDE のインデックスであること。
+        EFFECTや他の型が渡された場合は親を遥る。"""
+        if not index.isValid():
+            return
+        from PyQt6.QtWidgets import QDialog
+        from dm_toolkit.gui.editor.template_params_dialog import LookSelectTemplateDialog
 
+        # CARD でなければ親さかのぼる
+        card_index = index
+        item_type = self.data_manager.get_item_type(index)
+        if item_type not in ("CARD", "SPELL_SIDE"):
+            card_index = index.parent()
+            if not card_index.isValid():
+                return
+            if self.data_manager.get_item_type(card_index) not in ("CARD", "SPELL_SIDE"):
+                return
+
+        dlg = LookSelectTemplateDialog(self)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            extra_context = dlg.get_extra_context()
+            eff_item = self.data_manager.apply_template_by_key(
+                card_index, "LOOK_SELECT_TO_ZONE", tr("めくって選ぶ"), extra_context=extra_context
+            )
+            if eff_item and isinstance(eff_item, QtEditorItem):
+                self.setCurrentIndex(eff_item.get_raw_item().index())
+                self.expand(card_index)
     def request_generate_options(self):
         if not getattr(self, 'current_item', None):
             return

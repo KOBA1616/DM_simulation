@@ -14,6 +14,13 @@ import json
 import os
 from typing import Dict, Any, List, Set
 
+try:
+    from dm_toolkit.consts import ZONES_EXTENDED, COMMAND_ZONES, ZONES
+except Exception:
+    ZONES_EXTENDED = []
+    COMMAND_ZONES = []
+    ZONES = []
+
 WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATES_PATH = os.path.join(WORKSPACE, 'data', 'editor_templates.json')
 
@@ -31,10 +38,14 @@ SUPPORTED_FLOW_TYPES: Set[str] = {
     'STEP_CHANGE',
 }
 
-KNOWN_ZONES: Set[str] = {
-    'BATTLE', 'MANA', 'SHIELD', 'DECK', 'HAND', 'GRAVEYARD', 'BUFFER', 'UNDER_CARD',
-    'BATTLE_ZONE', 'MANA_ZONE', 'SHIELD_ZONE', 'DECK_TOP', 'DECK_BOTTOM'
-}
+_extras = ['BUFFER', 'UNDER_CARD']
+KNOWN_ZONES: Set[str] = set()
+# Combine canonical lists from dm_toolkit.consts when available
+for lst in (COMMAND_ZONES, ZONES, ZONES_EXTENDED):
+    for v in lst or []:
+        KNOWN_ZONES.add(str(v).upper())
+for v in _extras:
+    KNOWN_ZONES.add(v)
 
 ISSUES: List[str] = []
 

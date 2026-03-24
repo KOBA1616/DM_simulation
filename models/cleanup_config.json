@@ -1,6 +1,11 @@
 {
-  "keep": 3,
+  "keep": 2,
   "archive_dir": "models/archive",
-  "extensions": ["pth", "pt", "onnx", "bin", "h5", "ckpt", "data", "json"],
-  "dry_run": true
+  "extensions": ["pth", "pt", "onnx", "bin", "h5", "ckpt", "data-00000-of-00001"],
+  "dry_run": false,
+  "checkpoints": {
+    "subdir": "checkpoints",
+    "keep": 2,
+    "extensions": ["pth", "pt", "ckpt"]
+  }
 }

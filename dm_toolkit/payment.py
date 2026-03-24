@@ -1,0 +1,555 @@
+import os
+from typing import Dict, Any, List, Optional
+from dataclasses import dataclass, field
+
+
+@dataclass
+class PaymentPlan:
+    base_cost: int
+    adjusted_after_passive: int
+    total_passive_reduction: int
+    passive_ids: List[str] = field(default_factory=list)
+    active_reduction_id: Optional[str] = None
+    active_units: Optional[int] = None
+    active_reduction_amount: int = 0
+    final_cost: int = 0
+
+
+
+
+def _is_stat_scaled_enabled() -> bool:
+    """Feature flag gate for staged rollout/rollback of STAT_SCALED."""
+    return os.environ.get('STAT_SCALED_ENABLED', '1') != '0'
+
+
+def _compute_cr_reduction(cr: Dict[str, Any], units: int) -> int:
+    """Compute numeric reduction contributed by a single PASSIVE cost_reduction.
+
+    Heuristic rules (prototype):
+    - If `reduction_per_unit` present: reduction = reduction_per_unit * applied_units
+    - Elif `amount` present: reduction = amount
+    - Elif `unit_cost` present: reduction = unit_cost * applied_units
+    - applied_units = min(units, max_units) if max_units present and >0 else units
+    - `min_mana_cost` acts as a floor on the final adjusted cost, not on reduction.
+    """
+    if not isinstance(cr, dict):
+        return 0
+    try:
+        max_units = int(cr.get('max_units')) if cr.get('max_units') is not None else 0
+    except Exception:
+        max_units = 0
+    applied = units
+    if max_units and max_units > 0:
+        applied = min(units, max_units)
+
+    if 'reduction_per_unit' in cr and isinstance(cr.get('reduction_per_unit'), int):
+        return cr['reduction_per_unit'] * applied
+
+    if 'amount' in cr and isinstance(cr.get('amount'), int):
+        return cr['amount']
+
+    if 'unit_cost' in cr and isinstance(cr.get('unit_cost'), int):
+        return cr['unit_cost'] * applied
+
+    return 0
+
+
+def apply_passive_reductions(card: Dict[str, Any], base_cost: int, units: int = 1, stat_values: Optional[Dict[str, int]] = None, zone_state: Optional[Dict[str, Dict[str, Dict[str, int]]]] = None) -> int:
+    """Return adjusted cost after applying PASSIVE cost_reductions on the card.
+
+    This is a prototype heuristic used for editor/agent-side pre-checks and tests.
+    It does not replace engine-side semantics; final rules live in the engine.
+    """
+    if not isinstance(card, dict):
+        return base_cost
+
+    # Only apply explicit PASSIVE cost_reductions here. Static COST_MODIFIERs
+    # are handled separately by evaluate_cost in the STATIC phase.
+    explicit_crs = card.get('cost_reductions') or []
+    total_reduction = 0
+    floor_min = None
+    for cr in explicit_crs:
+        if not isinstance(cr, dict):
+            continue
+        if cr.get('type') != 'PASSIVE':
+            continue
+        total_reduction += _compute_cr_reduction(cr, units)
+        # track min_mana_cost if provided: we'll apply as floor
+        if 'min_mana_cost' in cr and isinstance(cr.get('min_mana_cost'), int):
+            if floor_min is None:
+                floor_min = cr.get('min_mana_cost')
+            else:
+                # conservatively take the max floor among passives
+                floor_min = max(floor_min, cr.get('min_mana_cost'))
+
+    adjusted = max(base_cost - total_reduction, 0)
+    if floor_min is not None:
+        adjusted = max(adjusted, floor_min)
+    return adjusted
+
+
+def _sum_mana_pool(mana_pool: Any) -> int:
+    if isinstance(mana_pool, dict):
+        try:
+            return sum(int(v) for v in mana_pool.values())
+        except Exception:
+            return 0
+    try:
+        return int(mana_pool)
+    except Exception:
+        return 0
+
+
+def _has_required_civilization(card: Dict[str, Any], mana_pool: Any) -> bool:
+    """Return True if mana_pool contains at least one mana of a civilization required by card.
+
+    mana_pool may be an int (no per-civilization info) or a dict mapping civ->{count}.
+    We conservatively require at least one mana of any declared civilization if the card
+    specifies `civilization` (str) or `civilizations` (list).
+    """
+    if not isinstance(card, dict):
+        return True
+    req = None
+    if 'civilization' in card and card.get('civilization'):
+        req = [card.get('civilization')]
+    elif 'civilizations' in card and card.get('civilizations'):
+        try:
+            req = list(card.get('civilizations'))
+        except Exception:
+            req = None
+
+    if not req:
+        return True
+
+    if not isinstance(mana_pool, dict):
+        # No per-civ info available; be conservative and assume it's insufficient
+        return False
+
+    # Check if any required civ has at least one mana in the pool
+    for civ in req:
+        if civ in mana_pool and int(mana_pool.get(civ, 0)) > 0:
+            return True
+    return False
+
+
+def can_pay_with_mana(card: Dict[str, Any], mana_available: Any, base_cost: int, units: int = 1) -> bool:
+    """Return True if mana_available can pay adjusted cost considering PASSIVE reductions.
+
+    `mana_available` may be an integer (total mana) or a dict mapping civilization->count.
+    If the card declares a required civilization, at least one mana of that civilization must
+    be present in the mana pool dict form. If only an int is provided and the card requires
+    a civilization, we conservatively return False.
+    """
+    plan = evaluate_cost(card, base_cost, units=units)
+    total = _sum_mana_pool(mana_available)
+    if total < plan.final_cost:
+        return False
+    return _has_required_civilization(card, mana_available)
+
+
+def evaluate_cost(card: Dict[str, Any], base_cost: int, units: int = 1, active_reduction_id: Optional[str] = None, active_units: Optional[int] = None, stat_values: Optional[Dict[str, int]] = None, zone_state: Optional[Dict[str, Dict[str, Dict[str, int]]]] = None) -> PaymentPlan:
+    """Produce a PaymentPlan describing passive and optional active reductions.
+
+    This is a Python-side prototype to help design the engine `PaymentPlan`.
+    """
+    plan = PaymentPlan(
+        base_cost=base_cost,
+        adjusted_after_passive=base_cost,
+        total_passive_reduction=0,
+        passive_ids=[],
+        active_reduction_id=active_reduction_id,
+        active_units=active_units,
+        active_reduction_amount=0,
+        final_cost=base_cost,
+    )
+
+    # Composition order: 1) explicit PASSIVE cost_reductions 2) static COST_MODIFIERs (FIXED/STAT_SCALED) 3) ACTIVE_PAYMENT
+    # First, evaluate explicit PASSIVE reductions only.
+    explicit_crs = card.get('cost_reductions') or []
+    floor_min = None
+    total_red = 0
+    passive_ids = []
+    for cr in explicit_crs:
+        if not isinstance(cr, dict):
+            continue
+        if cr.get('type') != 'PASSIVE':
+            continue
+        red = _compute_cr_reduction(cr, units)
+        if red:
+            total_red += red
+            if 'id' in cr and cr.get('id'):
+                passive_ids.append(cr.get('id'))
+        if 'min_mana_cost' in cr and isinstance(cr.get('min_mana_cost'), int):
+            if floor_min is None:
+                floor_min = cr.get('min_mana_cost')
+            else:
+                floor_min = max(floor_min, cr.get('min_mana_cost'))
+
+    adjusted = max(base_cost - total_red, 0)
+    if floor_min is not None:
+        adjusted = max(adjusted, floor_min)
+
+    plan.adjusted_after_passive = adjusted
+    plan.total_passive_reduction = total_red
+    plan.passive_ids = passive_ids
+
+    # Next, apply static COST_MODIFIER reductions (converted to PASSIVE-like amounts).
+    static_crs = _convert_static_cost_modifiers(card, stat_values, zone_state)
+    static_total_red = 0
+    for cr in static_crs:
+        if not isinstance(cr, dict):
+            continue
+        # these converted entries are always of type PASSIVE for arithmetic
+        static_total_red += _compute_cr_reduction(cr, units)
+
+    # Apply static reductions on top of adjusted_after_passive
+    adjusted_after_static = max(plan.adjusted_after_passive - static_total_red, 0)
+    plan.final_cost = adjusted_after_static
+
+    # Optionally apply ACTIVE_PAYMENT
+    if active_reduction_id:
+        red_amt = 0
+        # active reductions should be looked up from explicit cost_reductions list
+        for cr in explicit_crs:
+            if isinstance(cr, dict) and cr.get('id') == active_reduction_id and cr.get('type') == 'ACTIVE_PAYMENT':
+                red_amt = _compute_active_reduction(cr, active_units or units)
+                # respect min_mana_cost on the target active reduction
+                floor = cr.get('min_mana_cost') if isinstance(cr.get('min_mana_cost'), int) else None
+                break
+        plan.active_reduction_amount = red_amt
+        plan.final_cost = max(plan.final_cost - red_amt, 0)
+        if 'floor' in locals() and floor is not None:
+            plan.final_cost = max(plan.final_cost, floor)
+    else:
+        # plan.final_cost already set to adjusted_after_static
+        pass
+
+    return plan
+
+
+def _compute_active_reduction(cr: Dict[str, Any], units: int) -> int:
+    """Compute reduction for an ACTIVE_PAYMENT entry given selected units.
+
+    Rules (prototype):
+    - If `reduction_per_unit` present: reduction = reduction_per_unit * applied_units
+    - applied_units = units if provided else cr.get('units') if present else 0
+    - If `max_units` present, clamp applied_units to max_units
+    - If `amount` present (one-shot), use that as reduction
+    """
+    if not isinstance(cr, dict):
+        return 0
+    try:
+        applied = int(units) if units is not None else None
+    except Exception:
+        applied = None
+
+    if applied is None:
+        try:
+            applied = int(cr.get('units')) if cr.get('units') is not None else 0
+        except Exception:
+            applied = 0
+
+    try:
+        max_units = int(cr.get('max_units')) if cr.get('max_units') is not None else 0
+    except Exception:
+        max_units = 0
+    if max_units and max_units > 0:
+        applied = min(applied, max_units)
+
+    if 'reduction_per_unit' in cr and isinstance(cr.get('reduction_per_unit'), int):
+        return cr['reduction_per_unit'] * applied
+
+    if 'amount' in cr and isinstance(cr.get('amount'), int):
+        return cr['amount']
+
+    return 0
+
+
+def _merged_passive_definitions(card: Dict[str, Any], stat_values: Optional[Dict[str, int]] = None, zone_state: Optional[Dict[str, Dict[str, Dict[str, int]]]] = None) -> List[Dict[str, Any]]:
+    """Return a list of cost_reduction-like dicts including PASSIVE entries and
+    converted `static_abilities` entries of type `COST_MODIFIER`.
+
+    This helper is used only in the toolkit/editor evaluation paths to provide a
+    conservative, unified view of passive cost modifiers coming from multiple
+    data sources. It intentionally does not mutate the original card dict.
+    """
+    merged: List[Dict[str, Any]] = []
+    if not isinstance(card, dict):
+        return merged
+
+    # Start with explicit cost_reductions if present
+    explicit = card.get('cost_reductions') or []
+    for cr in explicit:
+        if isinstance(cr, dict):
+            merged.append(cr.copy())
+
+    # Convert static_abilities COST_MODIFIER entries into PASSIVE-like reductions
+    statics = card.get('static_abilities') or []
+    for idx, s in enumerate(statics):
+        if not isinstance(s, dict):
+            continue
+        if s.get('type') == 'COST_MODIFIER':
+            # Support two modes:
+            # - FIXED: existing behavior (value -> PASSIVE.amount)
+            # - STAT_SCALED: compute reduction from provided stat_values and convert to PASSIVE.amount
+            value_mode = s.get('value_mode', 'FIXED')
+            # If a condition is present and it's a CARDS_MATCHING_FILTER, evaluate
+            # against provided zone_state. If zone_state is not provided, skip conversion
+            # for conditional static modifiers (conservative behavior).
+            cond = s.get('condition')
+            cond_ok = True
+            if isinstance(cond, dict) and cond.get('type') == 'CARDS_MATCHING_FILTER':
+                # require zone_state to evaluate existence checks
+                if zone_state is None:
+                    cond_ok = False
+                else:
+                    try:
+                        f = cond.get('filter', {}) or {}
+                        owner = f.get('owner', 'SELF')
+                        zones = f.get('zones', []) or []
+                        races = f.get('races', []) or []
+                        op = cond.get('op', '>=')
+                        value = int(cond.get('value', 1))
+
+                        count = 0
+                        owner_zone = zone_state.get(owner, {})
+                        for z in zones:
+                            zone_races = owner_zone.get(z, {})
+                            if races:
+                                for r in races:
+                                    try:
+                                        count += int(zone_races.get(r, 0))
+                                    except Exception:
+                                        pass
+                            else:
+                                # if no race specified, sum all counts in the zone
+                                for v in zone_races.values():
+                                    try:
+                                        count += int(v)
+                                    except Exception:
+                                        pass
+
+                        if op == '>=':
+                            cond_ok = count >= value
+                        elif op == '==':
+                            cond_ok = count == value
+                        else:
+                            # unsupported op -> conservative skip
+                            cond_ok = False
+                    except Exception:
+                        cond_ok = False
+            # if conditional and not satisfied, skip conversion
+            if not cond_ok:
+                continue
+
+            if value_mode == 'FIXED':
+                val = s.get('value')
+                try:
+                    val_int = int(val)
+                except Exception:
+                    continue
+                if val_int == 0:
+                    continue
+                merged.append({
+                    'type': 'PASSIVE',
+                    'id': f'static-cost-mod-{idx}',
+                    'amount': val_int,
+                })
+            elif value_mode == 'STAT_SCALED':
+                # 再発防止: ロールバック時は STAT_SCALED を完全に無効化する。
+                if not _is_stat_scaled_enabled():
+                    continue
+                # Require stat_values to compute; if not provided, skip conservative conversion
+                if not stat_values:
+                    # Skip conversion when no runtime stat values provided
+                    continue
+                stat_key = s.get('stat_key')
+                per_value = s.get('per_value')
+                try:
+                    per_value_int = int(per_value)
+                except Exception:
+                    continue
+                min_stat = s.get('min_stat', 1)
+                try:
+                    min_stat_int = int(min_stat)
+                except Exception:
+                    min_stat_int = 1
+                max_reduction = s.get('max_reduction')
+                try:
+                    max_reduction_int = int(max_reduction) if max_reduction is not None else None
+                except Exception:
+                    max_reduction_int = None
+
+                stat_val = 0
+                if stat_key and isinstance(stat_key, str) and stat_key in stat_values:
+                    try:
+                        stat_val = int(stat_values.get(stat_key, 0))
+                    except Exception:
+                        stat_val = 0
+
+                calculated = max(0, stat_val - min_stat_int + 1) * per_value_int
+                if max_reduction_int is not None:
+                    calculated = min(calculated, max_reduction_int)
+                if calculated <= 0:
+                    continue
+                merged.append({
+                    'type': 'PASSIVE',
+                    'id': f'static-cost-mod-{idx}',
+                    'amount': int(calculated),
+                })
+
+    return merged
+
+
+def _convert_static_cost_modifiers(card: Dict[str, Any], stat_values: Optional[Dict[str, int]] = None, zone_state: Optional[Dict[str, Dict[str, Dict[str, int]]]] = None) -> List[Dict[str, Any]]:
+    """Convert `static_abilities` COST_MODIFIER entries into PASSIVE-like dicts.
+
+    This mirrors the conversion logic used by _merged_passive_definitions but
+    isolates static->passive conversion so evaluate_cost can apply explicit
+    PASSIVE entries first and static modifiers second (composition order).
+    """
+    converted: List[Dict[str, Any]] = []
+    if not isinstance(card, dict):
+        return converted
+
+    statics = card.get('static_abilities') or []
+    for idx, s in enumerate(statics):
+        if not isinstance(s, dict):
+            continue
+        if s.get('type') != 'COST_MODIFIER':
+            continue
+
+        value_mode = s.get('value_mode', 'FIXED')
+        cond = s.get('condition')
+        cond_ok = True
+        if isinstance(cond, dict) and cond.get('type') == 'CARDS_MATCHING_FILTER':
+            if zone_state is None:
+                cond_ok = False
+            else:
+                try:
+                    f = cond.get('filter', {}) or {}
+                    owner = f.get('owner', 'SELF')
+                    zones = f.get('zones', []) or []
+                    races = f.get('races', []) or []
+                    op = cond.get('op', '>=')
+                    value = int(cond.get('value', 1))
+
+                    count = 0
+                    owner_zone = zone_state.get(owner, {})
+                    for z in zones:
+                        zone_races = owner_zone.get(z, {})
+                        if races:
+                            for r in races:
+                                try:
+                                    count += int(zone_races.get(r, 0))
+                                except Exception:
+                                    pass
+                        else:
+                            for v in zone_races.values():
+                                try:
+                                    count += int(v)
+                                except Exception:
+                                    pass
+
+                    if op == '>=':
+                        cond_ok = count >= value
+                    elif op == '==':
+                        cond_ok = count == value
+                    else:
+                        cond_ok = False
+                except Exception:
+                    cond_ok = False
+        if not cond_ok:
+            continue
+
+        if value_mode == 'FIXED':
+            val = s.get('value')
+            try:
+                val_int = int(val)
+            except Exception:
+                continue
+            if val_int == 0:
+                continue
+            converted.append({
+                'type': 'PASSIVE',
+                'id': f'static-cost-mod-{idx}',
+                'amount': val_int,
+            })
+        elif value_mode == 'STAT_SCALED':
+            # 再発防止: ロールバック時は STAT_SCALED を完全に無効化する。
+            if not _is_stat_scaled_enabled():
+                continue
+            if not stat_values:
+                continue
+            stat_key = s.get('stat_key')
+            per_value = s.get('per_value')
+            try:
+                per_value_int = int(per_value)
+            except Exception:
+                continue
+            min_stat = s.get('min_stat', 1)
+            try:
+                min_stat_int = int(min_stat)
+            except Exception:
+                min_stat_int = 1
+            max_reduction = s.get('max_reduction')
+            try:
+                max_reduction_int = int(max_reduction) if max_reduction is not None else None
+            except Exception:
+                max_reduction_int = None
+
+            stat_val = 0
+            if stat_key and isinstance(stat_key, str) and stat_key in stat_values:
+                try:
+                    stat_val = int(stat_values.get(stat_key, 0))
+                except Exception:
+                    stat_val = 0
+
+            calculated = max(0, stat_val - min_stat_int + 1) * per_value_int
+            if max_reduction_int is not None:
+                calculated = min(calculated, max_reduction_int)
+            if calculated <= 0:
+                continue
+            converted.append({
+                'type': 'PASSIVE',
+                'id': f'static-cost-mod-{idx}',
+                'amount': int(calculated),
+            })
+
+    return converted
+
+
+def apply_active_payment(card: Dict[str, Any], base_cost: int, reduction_id: str, units: int = 1) -> int:
+    """Apply a selected ACTIVE_PAYMENT reduction (by id) to base_cost and return adjusted cost.
+
+    This prototype only applies the single selected ACTIVE_PAYMENT and does not combine multiple.
+    """
+    if not isinstance(card, dict) or not reduction_id:
+        return base_cost
+
+    crs = card.get('cost_reductions') or []
+    target = None
+    for cr in crs:
+        if isinstance(cr, dict) and cr.get('id') == reduction_id and cr.get('type') == 'ACTIVE_PAYMENT':
+            target = cr
+            break
+
+    if target is None:
+        return base_cost
+
+    reduction = _compute_active_reduction(target, units)
+    # respect min_mana_cost floor if present
+    floor = None
+    if 'min_mana_cost' in target and isinstance(target.get('min_mana_cost'), int):
+        floor = target.get('min_mana_cost')
+
+    adjusted = max(base_cost - reduction, 0)
+    if floor is not None:
+        adjusted = max(adjusted, floor)
+    return adjusted
+
+
+def can_pay_with_active(card: Dict[str, Any], mana_available: int, base_cost: int, reduction_id: str, units: int = 1) -> bool:
+    plan = evaluate_cost(card, base_cost, units=units, active_reduction_id=reduction_id, active_units=units)
+    total = _sum_mana_pool(mana_available)
+    return total >= plan.final_cost

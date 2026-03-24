@@ -2,6 +2,11 @@
 from PyQt6.QtWidgets import QComboBox, QSpinBox, QPushButton, QLabel, QHBoxLayout, QWidget, QGridLayout, QCheckBox
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.consts import ZONES_EXTENDED, TargetScope
+from dm_toolkit.gui.editor.text_resources import CardTextResources
+
+# Expose the quick stats as a module-level constant to allow tests to verify
+# that UI code references the canonical registry without constructing widgets.
+MEASURE_MODE_STATS = list(CardTextResources.EDITOR_QUICK_STATS_KEYS)
 
 
 def make_scope_combo(parent=None, include_zones=False):
@@ -67,7 +72,7 @@ def make_value_spin(parent=None, minimum=-9999, maximum=9999):
 def make_measure_mode_combo(parent=None):
     combo = QComboBox(parent)
     combo.addItem(tr("CARDS_MATCHING_FILTER"), "CARDS_MATCHING_FILTER")
-    stats = ["MANA_CIVILIZATION_COUNT", "SHIELD_COUNT", "HAND_COUNT", "CARDS_DRAWN_THIS_TURN"]
+    stats = MEASURE_MODE_STATS
     for s in stats:
         combo.addItem(tr(s), s)
     return combo

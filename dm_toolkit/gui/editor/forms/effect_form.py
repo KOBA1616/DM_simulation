@@ -8,6 +8,7 @@ from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWi
 from dm_toolkit.consts import TRIGGER_TYPES, SPELL_TRIGGER_TYPES, LAYER_TYPES
 from dm_toolkit.gui.editor.forms.parts.keyword_selector import KeywordSelectorWidget
 from dm_toolkit.gui.editor.unified_filter_handler import UnifiedFilterHandler
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 from dm_toolkit.gui.editor.consistency import validate_trigger_scope_filter
 
 class EffectEditForm(BaseEditForm):
@@ -37,6 +38,7 @@ class EffectEditForm(BaseEditForm):
         self.mode_combo = QComboBox()
         self.mode_combo.addItem(tr("TRIGGERED"), "TRIGGERED")
         self.mode_combo.addItem(tr("STATIC"), "STATIC")
+        self.mode_combo.addItem(tr("REPLACEMENT"), "REPLACEMENT")
         self.register_widget(self.mode_combo)
         self.add_field(tr("Ability Mode"), self.mode_combo)
 
@@ -64,8 +66,8 @@ class EffectEditForm(BaseEditForm):
         tf_layout = QGridLayout(self.trigger_filter_group)
         # Create filter widget and wrap in scroll area to avoid layout overlap
         self.trigger_filter = UnifiedFilterHandler.create_filter_widget("TRIGGER", self)
-        self.trigger_filter.filterChanged.connect(self.update_data)
-        self.trigger_filter.filterChanged.connect(self.on_trigger_filter_changed)
+        safe_connect(self.trigger_filter, "filterChanged", self.update_data)
+        safe_connect(self.trigger_filter, "filterChanged", self.on_trigger_filter_changed)
         self.register_widget(self.trigger_filter, 'trigger_filter')
         self.trigger_filter_area = QScrollArea()
         self.trigger_filter_area.setWidgetResizable(True)
@@ -97,7 +99,7 @@ class EffectEditForm(BaseEditForm):
         
         # Keyword Helper - Unified Widget
         self.layer_keyword_combo = KeywordSelectorWidget(allow_settable=True)
-        self.layer_keyword_combo.keywordSelected.connect(self.on_layer_keyword_changed)
+        safe_connect(self.layer_keyword_combo, "keywordSelected", self.on_layer_keyword_changed)
 
         l_layout.addWidget(QLabel(tr("Layer Type")), 0, 0)
         l_layout.addWidget(self.layer_type_combo, 0, 1)
@@ -110,8 +112,9 @@ class EffectEditForm(BaseEditForm):
 
         # Target Filter - Unified Handler
         self.target_filter = UnifiedFilterHandler.create_filter_widget("STATIC", self)
-        self.target_filter.filterChanged.connect(self.update_data)
-        self.register_widget(self.target_filter, 'filter')
+        safe_connect(self.target_filter, "filterChanged", self.update_data)
+        # 再発防止: 効果対象条件は target_filter に統一し、trigger_filter/filter と混在させない。
+        self.register_widget(self.target_filter, 'target_filter')
         self.target_filter_area = QScrollArea()
         self.target_filter_area.setWidgetResizable(True)
         self.target_filter_area.setWidget(self.target_filter)
@@ -122,25 +125,25 @@ class EffectEditForm(BaseEditForm):
 
         # Condition (Shared)
         self.condition_widget = ConditionEditorWidget()
-        self.condition_widget.dataChanged.connect(self.update_data)
+        safe_connect(self.condition_widget, "dataChanged", self.update_data)
         self.add_field(None, self.condition_widget, 'condition')
 
         # Actions Section
         self.add_action_btn = QPushButton(tr("Add Command"))
-        self.add_action_btn.clicked.connect(self.on_add_action_clicked)
+        safe_connect(self.add_action_btn, "clicked", self.on_add_action_clicked)
         self.add_field(None, self.add_action_btn)
 
         # Connect signals
-        self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
-        self.mode_combo.currentIndexChanged.connect(self.update_data)
+        safe_connect(self.mode_combo, "currentIndexChanged", self.on_mode_changed)
+        safe_connect(self.mode_combo, "currentIndexChanged", self.update_data)
 
-        self.trigger_combo.currentIndexChanged.connect(self.update_data)
-        self.trigger_scope_combo.currentIndexChanged.connect(self.update_data)
+        safe_connect(self.trigger_combo, "currentIndexChanged", self.update_data)
+        safe_connect(self.trigger_scope_combo, "currentIndexChanged", self.update_data)
 
-        self.layer_type_combo.currentIndexChanged.connect(self.update_data)
-        self.layer_type_combo.currentIndexChanged.connect(self.update_layer_keyword_visibility)
-        self.layer_val_spin.valueChanged.connect(self.update_data)
-        self.layer_str_edit.textChanged.connect(self.update_data)
+        safe_connect(self.layer_type_combo, "currentIndexChanged", self.update_data)
+        safe_connect(self.layer_type_combo, "currentIndexChanged", self.update_layer_keyword_visibility)
+        safe_connect(self.layer_val_spin, "valueChanged", self.update_data)
+        safe_connect(self.layer_str_edit, "textChanged", self.update_data)
 
         # Initial UI State
         self.on_mode_changed()
@@ -149,25 +152,68 @@ class EffectEditForm(BaseEditForm):
         mode = self.mode_combo.currentData()
         if mode is None:
             mode = "TRIGGERED"  # Default fallback
-        is_triggered = (mode == "TRIGGERED")
+        # TRIGGERED と REPLACEMENT はどちらもトリガー系UIを共有する
+        is_trigger_based = (mode in ("TRIGGERED", "REPLACEMENT"))
 
-        self.trigger_combo.setVisible(is_triggered)
-        self.lbl_trigger.setVisible(is_triggered)
+        self.trigger_combo.setVisible(is_trigger_based)
+        self.lbl_trigger.setVisible(is_trigger_based)
 
-        self.trigger_scope_combo.setVisible(is_triggered)
-        self.lbl_scope.setVisible(is_triggered)
+        self.trigger_scope_combo.setVisible(is_trigger_based)
+        self.lbl_scope.setVisible(is_trigger_based)
 
-        self.trigger_filter_group.setVisible(is_triggered)
+        self.trigger_filter_group.setVisible(is_trigger_based)
 
-        self.layer_group.setVisible(not is_triggered)
+        self.layer_group.setVisible(mode == "STATIC")
 
-        if is_triggered:
+        if mode == "TRIGGERED":
             self.condition_widget.setTitle(tr("Trigger Condition"))
+        elif mode == "REPLACEMENT":
+            self.condition_widget.setTitle(tr("置換条件"))
         else:
             self.condition_widget.setTitle(tr("Apply Condition"))
+
+        # 再発防止: モード切替時にトリガー候補を再生成しないと、REPLACEMENTで誘発用候補が残る。
+        card_type = self._get_current_card_type()
+        self.update_trigger_options(card_type, mode)
         
         # Update keyword combo visibility
         self.update_layer_keyword_visibility()
+
+    def _get_current_card_type(self) -> str:
+        """Return current card type from tree context (CREATURE/SPELL)."""
+        if not self.current_item:
+            return "CREATURE"
+
+        card_type = "CREATURE"
+        parent = self.current_item.parent()
+        if parent:
+            grandparent = parent.parent()
+            if grandparent:
+                role = grandparent.data(Qt.ItemDataRole.UserRole + 1)
+                if role == "SPELL_SIDE":
+                    card_type = "SPELL"
+                elif role == "CARD":
+                    cdata = grandparent.data(Qt.ItemDataRole.UserRole + 2)
+                    card_type = get_attr(cdata, 'type', 'CREATURE')
+        return card_type
+
+    @staticmethod
+    def _to_replacement_trigger_label(trigger_text: str) -> str:
+        """Convert trigger text from post-event tone (〜た時) to replacement tone (〜る時)."""
+        text = trigger_text
+        replacements = [
+            ("された時", "される時"),
+            ("置かれた時", "置かれる時"),
+            ("唱えた時", "唱える時"),
+            ("引いた時", "引く時"),
+            ("出た時", "出る時"),
+            ("した時", "する時"),
+            ("った時", "る時"),
+        ]
+        for src, dst in replacements:
+            if src in text:
+                return text.replace(src, dst)
+        return text
     
     def on_layer_keyword_changed(self, keyword: str):
         """Update str_val when keyword is selected from unified widget."""
@@ -191,13 +237,13 @@ class EffectEditForm(BaseEditForm):
         """
         # Convert to dict if needed
         data = to_dict(data)
+        card_type = "CREATURE"
         
         item_type = "EFFECT"
         if item:
             item_type = item.data(Qt.ItemDataRole.UserRole + 1)
 
             # Logic Mask: Filter triggers based on Card Type
-            card_type = "CREATURE"
             parent = item.parent() # Group
             if parent:
                 grandparent = parent.parent() # Card or Spell Side
@@ -209,21 +255,30 @@ class EffectEditForm(BaseEditForm):
                          cdata = grandparent.data(Qt.ItemDataRole.UserRole + 2)
                          card_type = get_attr(cdata, 'type', 'CREATURE')
 
-            self.update_trigger_options(card_type)
-
         # Determine Mode
         mode = "TRIGGERED"
         if item_type == "MODIFIER":
             mode = "STATIC"
+        elif data.get('mode') == "REPLACEMENT" or data.get('timing_mode') == "PRE":
+            mode = "REPLACEMENT"
         elif 'layer_type' in data or 'type' in data and item_type != "EFFECT":
             # Legacy check or inferred from data
             mode = "STATIC"
 
         self.set_combo_by_data(self.mode_combo, mode)
+        # Build trigger options after mode has been decided.
+        self.update_trigger_options(card_type, mode)
+
+        # 後方互換: 旧実装の PRE:TRIGGER を読み込んだ場合は通常トリガーへ正規化
+        if mode == "REPLACEMENT" and isinstance(data.get('trigger'), str):
+            trg = data.get('trigger', '')
+            if trg.startswith("PRE:"):
+                data['trigger'] = trg.split(":", 1)[1]
+
         # Trigger visibility update immediately
         self.on_mode_changed()
 
-        if mode == "TRIGGERED":
+        if mode in ("TRIGGERED", "REPLACEMENT"):
              # Try to normalize data for binding if legacy keys exist
              if 'trigger_condition' in data and 'condition' not in data:
                  data['condition'] = data['trigger_condition']
@@ -240,6 +295,9 @@ class EffectEditForm(BaseEditForm):
             if 'layer_str' in data: data['str_val'] = data['layer_str']
             if 'static_condition' in data and 'condition' not in data:
                  data['condition'] = data['static_condition']
+            # Legacy互換: 旧キー filter で保存された対象条件を target_filter に正規化
+            if 'target_filter' not in data and 'filter' in data:
+                data['target_filter'] = data.get('filter', {})
 
         # Use Bindings
         self._apply_bindings(data)
@@ -257,20 +315,36 @@ class EffectEditForm(BaseEditForm):
         # Update keyword combo visibility
         self.update_layer_keyword_visibility()
 
-    def update_trigger_options(self, card_type):
+    def update_trigger_options(self, card_type, mode=None):
+        if mode is None:
+            mode = self.mode_combo.currentData() or "TRIGGERED"
         is_spell = (card_type == "SPELL")
 
-        allowed = SPELL_TRIGGER_TYPES if is_spell else TRIGGER_TYPES
+        base_allowed = SPELL_TRIGGER_TYPES if is_spell else TRIGGER_TYPES
+        if mode == "REPLACEMENT":
+            # 置換モードは表示のみ「〜る時」にし、内部値は通常トリガーを保持する
+            allowed = [(self._to_replacement_trigger_label(tr(t)), t) for t in base_allowed]
+        else:
+            allowed = [(tr(t), t) for t in base_allowed]
 
         current_data = self.trigger_combo.currentData()
+        if isinstance(current_data, str):
+            if current_data.startswith("PRE:"):
+                current_data = current_data.split(":", 1)[1]
+
         self.trigger_combo.blockSignals(True)
         self.trigger_combo.clear()
 
         # Ensure current data is preserved if it was valid before or legacy
-        if current_data and current_data not in allowed:
-            allowed.append(current_data)
+        current_values = {item[1] for item in allowed}
+        if current_data and current_data not in current_values:
+            if mode == "REPLACEMENT" and isinstance(current_data, str):
+                base = current_data.split(":", 1)[1] if current_data.startswith("PRE:") else current_data
+                allowed.append((self._to_replacement_trigger_label(tr(base)), base))
+            elif isinstance(current_data, str):
+                allowed.append((tr(current_data), current_data))
 
-        self.populate_combo(self.trigger_combo, allowed, display_func=tr, data_func=lambda x: x)
+        self.populate_combo(self.trigger_combo, allowed, clear=True)
 
         # Restore selection
         idx = self.trigger_combo.findData(current_data)
@@ -290,20 +364,30 @@ class EffectEditForm(BaseEditForm):
         # Apply bindings (collects into data)
         self._collect_bindings(data)
 
+        # 再発防止: 旧キー filter が混在した場合は target_filter に正規化する。
+        if 'target_filter' not in data and 'filter' in data:
+            data['target_filter'] = data.get('filter', {})
+
+        # 後方互換: 旧実装の内部値 PRE:<TRIGGER> を正規化
+        raw_trigger = data.get('trigger')
+        if isinstance(raw_trigger, str) and raw_trigger.startswith('PRE:'):
+            data['trigger'] = raw_trigger.split(':', 1)[1]
+
         # Post-processing based on Mode
         if self.current_item:
-             current_type_code = self.current_item.data(Qt.ItemDataRole.UserRole + 1)
-             target_type_code = "EFFECT" if mode == "TRIGGERED" else "MODIFIER"
+            current_type_code = self.current_item.data(Qt.ItemDataRole.UserRole + 1)
+            target_type_code = "EFFECT" if mode in ("TRIGGERED", "REPLACEMENT") else "MODIFIER"
 
-             # Update type if changed
-             if current_type_code != target_type_code:
-                 self.current_item.setData(target_type_code, Qt.ItemDataRole.UserRole + 1)
-                 # Emit MOVE_EFFECT to trigger UI/Label updates in the tree
-                 self.structure_update_requested.emit("MOVE_EFFECT", {"item": self.current_item, "target_type": mode})
+            # Update type if changed
+            if current_type_code != target_type_code:
+                self.current_item.setData(target_type_code, Qt.ItemDataRole.UserRole + 1)
+                # Emit MOVE_EFFECT to trigger UI/Label updates in the tree
+                self.structure_update_requested.emit("MOVE_EFFECT", {"item": self.current_item, "target_type": mode})
 
         if mode == "TRIGGERED":
             # Explicitly save trigger filter from widget (bindings might not catch it if it's complex/custom getter)
             data['trigger_filter'] = self.trigger_filter.get_data()
+            data.pop('mode', None)  # TRIGGERED はデフォルトなので mode フィールド不要
             # Consistency validation: warn about duplicate or conflicting settings
             try:
                 warns = validate_trigger_scope_filter(data)
@@ -315,7 +399,15 @@ class EffectEditForm(BaseEditForm):
                 pass
 
             # Clean Static/Legacy keys
-            for k in ['type', 'value', 'str_val', 'filter', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'trigger_condition']:
+            for k in ['type', 'value', 'str_val', 'filter', 'target_filter', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'trigger_condition']:
+                data.pop(k, None)
+
+        elif mode == "REPLACEMENT":
+            # 置換効果: トリガー系フィールドを保存し mode='REPLACEMENT' を明示する
+            data['mode'] = 'REPLACEMENT'
+            data['timing_mode'] = 'PRE'
+            data['trigger_filter'] = self.trigger_filter.get_data()
+            for k in ['type', 'value', 'str_val', 'filter', 'target_filter', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'trigger_condition']:
                 data.pop(k, None)
 
         else: # STATIC
@@ -323,11 +415,12 @@ class EffectEditForm(BaseEditForm):
             if not self.layer_str_edit.text():
                 data.pop('str_val', None)
 
+            # STATICは target_filter を正として保存し、trigger_filter/filter は持たない。
+            data['target_filter'] = self.target_filter.get_data()
+
             # Clean Trigger/Legacy keys
             # Preserve trigger_scope to maintain user selection across mode toggles.
-            # Also preserve trigger_filter so that returning to TRIGGERED restores previous filter.
-            # Other legacy/static normalization keys can be safely cleaned.
-            for k in ['trigger', 'trigger_condition', 'layer_type', 'layer_value', 'layer_str', 'static_condition']:
+            for k in ['trigger', 'trigger_filter', 'filter', 'trigger_condition', 'layer_type', 'layer_value', 'layer_str', 'static_condition', 'mode', 'timing_mode']:
                 data.pop(k, None)
 
     def _get_display_text(self, data):
@@ -342,8 +435,13 @@ class EffectEditForm(BaseEditForm):
              elif scope == "ALL_PLAYERS":
                  scope_str = " (両プレイヤー)"
              else:
-                 scope_str = f" ({tr(scope)})"
+                 # 再発防止: 未翻訳/空文字スコープで "()" が表示されるのを防ぐ。
+                 scope_label = tr(scope).strip()
+                 scope_str = f" ({scope_label})" if scope_label else ""
 
+             if data.get('mode') == 'REPLACEMENT':
+                 replacement_trigger = self._to_replacement_trigger_label(tr(data.get('trigger', '')))
+                 return f"{tr('REPLACEMENT')}: {replacement_trigger}{scope_str}"
              return f"{tr('Effect')}: {tr(data.get('trigger', ''))}{scope_str}"
         elif 'type' in data or 'layer_type' in data:
              t = data.get('type', data.get('layer_type', ''))
@@ -363,7 +461,7 @@ class EffectEditForm(BaseEditForm):
             
             desc = CardTextGenerator.generate_trigger_filter_description(trigger_filter)
             if desc:
-                self.trigger_filter_desc_label.setText(f"📋 条件: {desc}")
+                self.trigger_filter_desc_label.setText(tr("📋 条件: {desc}").format(desc=desc))
             else:
                 self.trigger_filter_desc_label.setText("")
         except Exception:

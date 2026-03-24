@@ -82,25 +82,32 @@ namespace dm::core {
     }
 
     inline void from_json(const nlohmann::json& j, Instruction& i) {
-        if (j.contains("op")) {
+        // Defensive parsing: allow `j` to be null or non-object without throwing
+        if (!j.is_null() && j.contains("op")) {
             j.at("op").get_to(i.op);
         } else {
             i.op = InstructionOp::NOOP;
         }
 
-        // Copy everything to args first
-        i.args = j;
+        // Ensure args is always an object (not null) for downstream code
+        if (j.is_null() || j.is_array()) {
+            i.args = nlohmann::json::object();
+        } else {
+            i.args = j;
+        }
 
-        // Remove reserved keys from args
-        i.args.erase("op");
-        i.args.erase("then");
-        i.args.erase("else");
+        // Remove reserved keys from args if present
+        if (i.args.is_object()) {
+            i.args.erase("op");
+            i.args.erase("then");
+            i.args.erase("else");
+        }
 
-        // Parse blocks
-        if (j.contains("then")) {
+        // Parse blocks safely
+        if (!j.is_null() && j.contains("then")) {
              j.at("then").get_to(i.then_block);
         }
-        if (j.contains("else")) {
+        if (!j.is_null() && j.contains("else")) {
              j.at("else").get_to(i.else_block);
         }
     }

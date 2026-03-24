@@ -1,6 +1,7 @@
 #include "condition_system.hpp"
 #include "engine/utils/target_utils.hpp"
 #include "engine/systems/effects/effect_system.hpp"
+#include <algorithm>
 #include <iostream>
 
 namespace dm::engine::rules {
@@ -71,6 +72,29 @@ namespace dm::engine::rules {
         }
     };
 
+    class PlayedWithoutManaTargetEvaluator : public IConditionEvaluator {
+    public:
+        bool evaluate(GameState& state, const ConditionDef& condition, int /*source_instance_id*/,
+                      const std::map<CardID, CardDefinition>& /*card_db*/,
+                      const std::map<std::string, int>& execution_context) override {
+            // 再発防止: IF の input_value_key を stat_key として受け取り、
+            // execution_context から対象 instance_id を解決して踏み倒し履歴と突き合わせる。
+            if (condition.stat_key.empty()) {
+                // 入力リンクが無い場合は従来挙動に近いターン全体フラグで判定
+                return state.turn_stats.played_without_mana != 0;
+            }
+
+            auto it = execution_context.find(condition.stat_key);
+            if (it == execution_context.end()) {
+                return false;
+            }
+
+            const int target_instance_id = it->second;
+            const auto& ids = state.turn_stats.played_without_mana_instance_ids;
+            return std::find(ids.begin(), ids.end(), target_instance_id) != ids.end();
+        }
+    };
+
     class CivilizationMatchEvaluator : public IConditionEvaluator {
     public:
         bool evaluate(GameState& state, const ConditionDef& condition, int source_instance_id, const std::map<CardID, CardDefinition>& card_db, const std::map<std::string, int>& /*execution_context*/) override {
@@ -116,6 +140,18 @@ namespace dm::engine::rules {
             else if (key == "OPPONENT_SHIELD_COUNT") left_value = (int)opp.shield_zone.size();
             else if (key == "MY_BATTLE_ZONE_COUNT") left_value = (int)self.battle_zone.size();
             else if (key == "OPPONENT_BATTLE_ZONE_COUNT") left_value = (int)opp.battle_zone.size();
+            // 再発防止: CardTextResources 側で COMPARE_STAT キーを追加したら、
+            // ここにも同じキー解決を追加しないと判定が常に 0 になりうる。
+            else if (key == "SUMMON_COUNT_THIS_TURN") left_value = state.turn_stats.summon_count_this_turn;
+            else if (key == "SPELL_CAST_THIS_TURN" || key == "SPELL_CAST_COUNT_THIS_TURN") left_value = state.turn_stats.spells_cast_this_turn;
+            else if (key == "DESTROY_COUNT_THIS_TURN") left_value = state.turn_stats.creatures_destroyed_this_turn;
+            else if (key == "MANA_SET_THIS_TURN") left_value = state.turn_stats.mana_set_this_turn;
+            else if (key == "CARDS_DRAWN_THIS_TURN") left_value = state.turn_stats.cards_drawn_this_turn;
+            else if (key == "SHIELD_BREAK_ATTEMPT_THIS_TURN") left_value = state.turn_stats.shield_break_attempt_count_this_turn;
+            else if (key == "SHIELD_BREAK_RESOLVED_THIS_TURN") left_value = state.turn_stats.shield_break_resolved_count_this_turn;
+            else if (key == "ATTACKED_THIS_TURN") left_value = state.turn_stats.attacked_this_turn;
+            else if (key == "MY_ATTACKED_THIS_TURN") left_value = state.turn_stats.attacked_this_turn_by_player[self_id];
+            else if (key == "OPPONENT_ATTACKED_THIS_TURN") left_value = state.turn_stats.attacked_this_turn_by_player[opp_id];
 
             // Operator
             if (condition.op == ">") return left_value > condition.value;
@@ -126,6 +162,48 @@ namespace dm::engine::rules {
             if (condition.op == "!=") return left_value != condition.value;
 
             return false;
+        }
+    };
+
+    class OpponentDrawCountEvaluator : public IConditionEvaluator {
+    public:
+        // 再発防止: OPPONENT_DRAW_COUNT 条件は turn_stats.player_draw_count[opponent] を参照する。
+        //   例: "opponent drew 2+ cards" → condition.value=2, condition.op=">=" (default: >=)
+        bool evaluate(GameState& state, const ConditionDef& condition, int source_instance_id,
+                      const std::map<CardID, CardDefinition>& /*card_db*/,
+                      const std::map<std::string, int>& /*execution_context*/) override {
+            PlayerID self_id = dm::engine::effects::EffectSystem::get_controller(state, source_instance_id);
+            PlayerID opp_id = (self_id == 0) ? 1 : 0;
+            int draw_count = state.turn_stats.player_draw_count[opp_id];
+            std::string op = condition.op.empty() ? ">=" : condition.op;
+            if (op == ">=") return draw_count >= condition.value;
+            if (op == ">")  return draw_count >  condition.value;
+            if (op == "==") return draw_count == condition.value;
+            if (op == "<=") return draw_count <= condition.value;
+            if (op == "<")  return draw_count <  condition.value;
+            return draw_count >= condition.value;
+        }
+    };
+
+    class CompareInputEvaluator : public IConditionEvaluator {
+    public:
+        // 再発防止: COMPARE_INPUT 条件は execution_context[入力値キー] と condition.value を比較する。
+        //   stat_key に execution_context のキー名を格納する。
+        bool evaluate(GameState& /*state*/, const ConditionDef& condition, int /*source_instance_id*/,
+                      const std::map<CardID, CardDefinition>& /*card_db*/,
+                      const std::map<std::string, int>& execution_context) override {
+            int left_value = 0;
+            const std::string& key = condition.stat_key;
+            if (execution_context.count(key)) {
+                left_value = execution_context.at(key);
+            }
+            std::string op = condition.op.empty() ? ">=" : condition.op;
+            if (op == ">=") return left_value >= condition.value;
+            if (op == ">")  return left_value >  condition.value;
+            if (op == "==") return left_value == condition.value;
+            if (op == "<=") return left_value <= condition.value;
+            if (op == "<")  return left_value <  condition.value;
+            return left_value >= condition.value;
         }
     };
 
@@ -198,5 +276,68 @@ namespace dm::engine::rules {
         register_evaluator("COMPARE_STAT", std::make_unique<CompareStatEvaluator>());
         register_evaluator("DECK_EMPTY", std::make_unique<DeckEmptyEvaluator>());
         register_evaluator("CARDS_MATCHING_FILTER", std::make_unique<CardsMatchingFilterEvaluator>());
+        // 再発防止: 新しい条件タイプを追加したら必ず initialize_defaults() にも登録すること
+        register_evaluator("OPPONENT_DRAW_COUNT", std::make_unique<OpponentDrawCountEvaluator>());
+        register_evaluator("COMPARE_INPUT", std::make_unique<CompareInputEvaluator>());
+        register_evaluator("PLAYED_WITHOUT_MANA_TARGET", std::make_unique<PlayedWithoutManaTargetEvaluator>());
+    }
+
+    bool dm::engine::rules::ConditionSystem::evaluate_node(
+        GameState& state, const ConditionNode& node, int source_instance_id,
+        const std::map<CardID, CardDefinition>& card_db,
+        const std::map<std::string, int>& execution_context) {
+        const std::string op = node.op.empty() ? "LEAF" : node.op;
+
+        if (op == "LEAF") {
+            ConditionDef cond;
+            cond.type = node.type;
+            cond.value = node.value;
+            cond.str_val = node.str_val;
+            cond.stat_key = node.stat_key;
+            cond.op = node.op_str;
+            cond.filter = node.filter;
+            return evaluate_def(state, cond, source_instance_id, card_db,
+                                execution_context);
+        }
+
+        std::vector<ConditionNode> children;
+        if (node.children.is_array()) {
+            for (const auto& raw : node.children) {
+                try {
+                    children.push_back(raw.get<ConditionNode>());
+                } catch (...) {
+                    // 再発防止: 不正ノードは false 評価扱いにして暴走を防ぐ。
+                    if (op == "AND") return false;
+                }
+            }
+        }
+
+        if (op == "AND") {
+            for (const auto& ch : children) {
+                if (!evaluate_node(state, ch, source_instance_id, card_db,
+                                   execution_context)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        if (op == "OR") {
+            for (const auto& ch : children) {
+                if (evaluate_node(state, ch, source_instance_id, card_db,
+                                  execution_context)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        if (op == "NOT") {
+            if (children.empty()) return true;
+            return !evaluate_node(state, children.front(), source_instance_id,
+                                  card_db, execution_context);
+        }
+
+        return false;
     }
 }

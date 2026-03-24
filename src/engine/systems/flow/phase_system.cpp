@@ -251,6 +251,9 @@ bool PhaseSystem::check_game_over(GameState &game_state, GameResult &result) {
   }
 
   if (is_over) {
+    // 再発防止: game_over フラグを必ず設定する。winner のみ設定すると Python 側で
+    //   s.game_over が常に False のままになりゲーム終了が検知できない。
+    game_state.game_over = true;
     if (!game_state.stats_recorded) {
       game_state.on_game_finished(result);
       game_state.stats_recorded = true;
@@ -307,7 +310,6 @@ void PhaseSystem::on_start_turn(
 
 void PhaseSystem::on_draw_phase(
     GameState &game_state, const std::map<CardID, CardDefinition> &card_db) {
-  (void)card_db;
   bool skip_draw =
       (game_state.turn_number == 1 && game_state.active_player_id == 0);
 
@@ -322,6 +324,36 @@ void PhaseSystem::on_draw_phase(
       return;
     }
     move_card_cmd(game_state, player.deck, Zone::DECK, Zone::HAND, player.id);
+
+    // Track cards drawn this turn (undoable via StatCommand).
+    {
+      auto stat_cmd = std::make_unique<dm::engine::game_command::StatCommand>(
+          dm::engine::game_command::StatCommand::StatType::CARDS_DRAWN, 1);
+      game_state.execute_command(std::move(stat_cmd));
+    }
+
+    // 再発防止: ドロー数トラッキングと ON_OPPONENT_DRAW トリガー発火。
+    //   player_draw_count を更新しないと OPPONENT_DRAW_COUNT 条件が常に 0 のまま。
+    //   draw 後に相手バトルゾーンを走査し ON_OPPONENT_DRAW 持ちカードを発火する。
+    PlayerID drawer_id = game_state.active_player_id;
+    game_state.turn_stats.player_draw_count[static_cast<int>(drawer_id)]++;
+
+    PlayerID observer_id = PlayerID(1 - static_cast<int>(drawer_id));
+    const Player &observer = game_state.players[observer_id];
+    for (const auto &obs_card : observer.battle_zone) {
+      if (!card_db.count(obs_card.card_id)) continue;
+      const auto &def = card_db.at(obs_card.card_id);
+      for (const auto &effect : def.effects) {
+        if (effect.trigger != TriggerType::ON_OPPONENT_DRAW) continue;
+        PendingEffect pe(EffectType::TRIGGER_ABILITY, obs_card.instance_id,
+                         observer_id);
+        pe.resolve_type = ResolveType::EFFECT_RESOLUTION;
+        pe.effect_def = effect;
+        pe.optional = true;
+        pe.chain_depth = game_state.turn_stats.current_chain_depth + 1;
+        TriggerSystem::instance().add_pending_effect(game_state, pe);
+      }
+    }
   }
 }
 

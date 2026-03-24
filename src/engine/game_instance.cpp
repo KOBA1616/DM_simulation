@@ -33,6 +33,34 @@ GameInstance::GameInstance(
     diag.close();
   }
   initial_seed_ = seed;
+
+  // 再発防止: apply_move(GameState) は CardRegistry の定義を参照するため、
+  // GameInstance に外部注入された card_db と Registry の乖離を防ぐ。
+  if (card_db) {
+    dm::engine::infrastructure::CardRegistry::set_definitions(*card_db);
+  }
+
+  // Diagnostic: write out static_abilities counts for known test card IDs
+  try {
+    std::ofstream diag2("c:\\temp\\game_instance_constructor.txt", std::ios::app);
+    if (diag2) {
+      diag2 << "GameInstance card_db entries=" << (card_db ? card_db->size() : 0) << "\n";
+      if (card_db) {
+        std::vector<int> probe_ids = {9101, 9102, 9103};
+        for (int pid : probe_ids) {
+          auto it = card_db->find((core::CardID)pid);
+          if (it != card_db->end()) {
+            diag2 << "  probe card_id=" << pid << " static_abilities=" << it->second.static_abilities.size() << "\n";
+          } else {
+            diag2 << "  probe card_id=" << pid << " NOT_FOUND\n";
+          }
+        }
+      }
+      diag2.close();
+    }
+  } catch (...) {
+  }
+
   trigger_manager = std::make_shared<systems::TriggerManager>();
   pipeline = std::make_shared<systems::PipelineExecutor>();
 
@@ -298,6 +326,22 @@ void GameInstance::resolve_command(const core::CommandDef &cmd_def) {
     cmd = std::make_unique<PassCommand>();
     break;
   case core::CommandType::CHOICE: {
+    // 再発防止: CHOICE/SELECT_NUMBER にはパイプライン一時停止パスと
+    //   pending_effects パスの2種類がある。waiting_for_user_input=True の場合は
+    //   dispatch_command でパイプラインコンテキストに値をセットし pipeline->execute()
+    //   で再開すること。pending_effects パスのみ実装すると無限ループになる。
+    if (state.waiting_for_user_input) {
+      state.waiting_for_user_input = false;
+      systems::GameLogicSystem::dispatch_command(*pipeline, state, cmd_def,
+                                                 *card_db);
+      systems::ContinuousEffectSystem::recalculate(state, *card_db);
+      try {
+        if (pipeline)
+          pipeline->execute(nullptr, state, *card_db);
+      } catch (...) {
+      }
+      return;
+    }
     int effect_idx = cmd_def.slot_index;
     int option_idx = cmd_def.target_instance;
     (void)option_idx; // Unused for now
@@ -306,7 +350,59 @@ void GameInstance::resolve_command(const core::CommandDef &cmd_def) {
       state.pending_effects.erase(state.pending_effects.begin() + effect_idx);
     }
   } break;
+  case core::CommandType::SELECT_FROM_BUFFER: {
+    // 再発防止: SELECT_FROM_BUFFER も SELECT_NUMBER と同様にパイプライン一時停止から
+    //   再開する必要がある。未実装だと IntentGenerator が SELECT_FROM_BUFFER を返し続け
+    //   ゲームがフリーズする（Turn 27 以降の game stuck パターン）。
+    if (state.waiting_for_user_input) {
+      state.waiting_for_user_input = false;
+      systems::GameLogicSystem::dispatch_command(*pipeline, state, cmd_def,
+                                                 *card_db);
+      systems::ContinuousEffectSystem::recalculate(state, *card_db);
+      try {
+        if (pipeline)
+          pipeline->execute(nullptr, state, *card_db);
+      } catch (...) {
+      }
+      return;
+    }
+    break;
+  }
+  case core::CommandType::SELECT_TARGET: {
+    // 再発防止: SELECT_TARGET も SELECT_NUMBER と同様にパイプライン一時停止パスを
+    //   実装しないと waiting_for_user_input=true のまま残り、IntentGenerator が
+    //   SELECT_TARGET を返し続けて無限ループになる。
+    //   waiting_for_user_input=false をセットしてから dispatch_command+execute で再開。
+    if (state.waiting_for_user_input) {
+      state.waiting_for_user_input = false;
+      systems::GameLogicSystem::dispatch_command(*pipeline, state, cmd_def,
+                                                 *card_db);
+      systems::ContinuousEffectSystem::recalculate(state, *card_db);
+      try {
+        if (pipeline)
+          pipeline->execute(nullptr, state, *card_db);
+      } catch (...) {
+      }
+      return;
+    }
+    break;
+  }
   case core::CommandType::SELECT_NUMBER: {
+    // 再発防止: waiting_for_user_input=True のときは dispatch_command + pipeline
+    //   execute で対処する。pending_effects のみだとパイプライン一時停止が解除されず
+    //   IntentGenerator が SELECT_NUMBER を返し続け無限ループになる。
+    if (state.waiting_for_user_input) {
+      state.waiting_for_user_input = false;
+      systems::GameLogicSystem::dispatch_command(*pipeline, state, cmd_def,
+                                                 *card_db);
+      systems::ContinuousEffectSystem::recalculate(state, *card_db);
+      try {
+        if (pipeline)
+          pipeline->execute(nullptr, state, *card_db);
+      } catch (...) {
+      }
+      return;
+    }
     int effect_idx = cmd_def.slot_index;
     int chosen_number = cmd_def.target_instance;
 

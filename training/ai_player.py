@@ -2,6 +2,7 @@
 import torch
 import numpy as np
 from pathlib import Path
+from typing import Any, List, Optional
 import sys
 
 # Ensure project root is in path
@@ -10,7 +11,8 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 from dm_toolkit.ai.agent.transformer_model import DuelTransformer
-from dm_toolkit.ai.agent.tokenization import StateTokenizer, ActionEncoder
+# 再発防止: ActionEncoder は CommandEncoder の後方互換エイリアス。CommandEncoder を使用すること。
+from dm_toolkit.ai.agent.tokenization import StateTokenizer, CommandEncoder
 from dm_ai_module import GameCommand
 
 class AIPlayer:
@@ -29,7 +31,7 @@ class AIPlayer:
 
         self.tokenizer = StateTokenizer(max_len=self.config.get('max_len', 200))
 
-        # Ensure action_dim matches CommandEncoder schema when available
+        # Ensure command_dim matches CommandEncoder schema when available
         try:
             dm_mod = __import__('dm_ai_module')
             if hasattr(dm_mod, 'CommandEncoder'):
@@ -39,7 +41,7 @@ class AIPlayer:
         except Exception:
             action_dim = int(self.config.get('action_dim', 600))
 
-        self.action_encoder = ActionEncoder(action_dim=action_dim)
+        self.command_encoder = CommandEncoder(action_dim=action_dim)
 
         self.model = DuelTransformer(
             vocab_size=self.config['vocab_size'],
@@ -64,11 +66,13 @@ class AIPlayer:
 
         self.model.eval()
 
-    def get_action(self, game_state, player_id: int, valid_indices: list[int] = None) -> GameCommand:
+    def get_command(self, game_state: Any, player_id: int, valid_indices: list[int] = None) -> GameCommand:
         # 1. Tokenize
         state_tokens = self.tokenizer.encode_state(game_state, player_id)
 
-        state_tensor = torch.tensor([state_tokens], dtype=torch.long).to(self.device)
+        # 再発防止: list[ndarray]をそのままtorch.tensorに渡すと極端に遅くなる警告が出る。
+        #           必ず numpy.array() で1つのndarrayに変換してからtensorに渡すこと。
+        state_tensor = torch.tensor(np.array([state_tokens]), dtype=torch.long).to(self.device)
         padding_mask = (state_tensor == 0)
 
         phase = int(getattr(game_state, 'current_phase', 0))
@@ -78,24 +82,25 @@ class AIPlayer:
         with torch.no_grad():
             policy_logits, _ = self.model(state_tensor, padding_mask=padding_mask, phase_ids=phase_ids)
 
-        # 3. Masking (Optional)
+        # 3. Masking (Optional) - valid_indices は合法コマンドインデックス
         if valid_indices is not None and len(valid_indices) > 0:
-            # Create a mask with -inf for invalid actions
+            # 有効インデックス以外を -inf でマスク
             full_mask = torch.full_like(policy_logits, float('-inf'))
 
-            # Filter valid indices that are within range
+            # 範囲内のインデックスのみ適用
             safe_indices = [idx for idx in valid_indices if 0 <= idx < policy_logits.shape[1]]
 
             if safe_indices:
                 full_mask[0, safe_indices] = 0
-                # Apply mask
                 policy_logits = policy_logits + full_mask
-            else:
-                pass # No valid indices in range? Fallback to raw model output
+            # safe_indices が空なら生モデル出力でフォールバック
 
-        # 4. Decode
-        action_idx = torch.argmax(policy_logits, dim=1).item()
+        # 4. コマンドインデックスが最大値のコマンドを選択
+        command_idx = torch.argmax(policy_logits, dim=1).item()
 
-        # 5. Map to GameCommand
-        command = self.action_encoder.decode_action(action_idx, game_state, player_id)
+        # 5. インデックスを GameCommand にデコード
+        command = self.command_encoder.decode_command(command_idx, game_state, player_id)
         return command
+
+    # 後方互換エイリアス。新規コードでは get_command を使用すること。
+    get_action = get_command

@@ -11,31 +11,27 @@ from dm_toolkit.domain.simulation import SimulationRunner
 
 class TestHeadless(unittest.TestCase):
     def test_editor_headless(self):
-        print("Testing Headless Editor...")
+        # 再発防止: print() は CI 出力を汚染するため削除済み。
         model = HeadlessEditorModel()
         manager = CardDataManager(model)
 
         # Add Card
         card_item = manager.add_new_card()
         self.assertIsNotNone(card_item)
-        print(f"Added card: {card_item.text()}")
 
         # Add Effect
         eff_data = manager.create_default_trigger_data()
         eff_item = manager.add_child_item(card_item, "EFFECT", eff_data, "Effect: ON_PLAY")
         self.assertIsNotNone(eff_item)
-        print(f"Added effect: {eff_item.text()}")
 
         # Verify Data
         full_data = manager.get_full_data()
         self.assertEqual(len(full_data), 1)
         self.assertEqual(full_data[0]['name'], "New Card")
         self.assertEqual(len(full_data[0]['effects']), 1)
-        print("Headless Editor verification successful.")
 
     def test_simulation_runner(self):
-        print("Testing Simulation Runner...")
-        # Mock card_db (just an object or minimal mock)
+        # 再発防止: print() は CI 出力を汚染するため削除済み。
         class MockCardDB:
             pass
 
@@ -45,7 +41,6 @@ class TestHeadless(unittest.TestCase):
         # Just check it instantiates. Running might fail if engine not available.
         # But we can verify it doesn't crash on init.
         self.assertIsNotNone(runner)
-        print("SimulationRunner instantiated.")
 
         # We verify that we can call cancel (without running)
         runner.cancel()

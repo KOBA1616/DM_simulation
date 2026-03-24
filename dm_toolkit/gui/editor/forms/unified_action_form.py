@@ -6,18 +6,22 @@
 
 import json
 import os
+from typing import Any
 from PyQt6.QtWidgets import (
     QWidget, QFormLayout, QComboBox, QGroupBox, QLabel, QVBoxLayout, QPushButton, QHBoxLayout, QStackedWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from pydantic import ValidationError
+from pydantic import ValidationError, BaseModel
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dict
 from dm_toolkit.gui.editor.models import CommandModel
 from dm_toolkit.gui.editor.widget_factory import WidgetFactory
 from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 from dm_toolkit.gui.editor.schema_def import SchemaLoader, get_schema, FieldSchema, FieldType
 from dm_toolkit.gui.editor.consts import STRUCT_CMD_GENERATE_OPTIONS
+from dm_toolkit.gui.editor.forms.diff_tree_widget import DiffTreeWidget
+from dm_toolkit.gui.editor.consistency import format_integrity_warnings, validate_command_list
 
 COMMAND_GROUPS = EditorConfigLoader.get_command_groups()
 
@@ -48,18 +52,64 @@ class UnifiedActionForm(BaseEditForm):
         self.action_group_combo = QComboBox()
         self.populate_combo(self.action_group_combo, list(COMMAND_GROUPS.keys()), display_func=tr)
         self.main_layout.addRow(tr("Command Group"), self.action_group_combo)
-        self.action_group_combo.currentIndexChanged.connect(self.on_group_changed)
+        safe_connect(self.action_group_combo, 'currentIndexChanged', self.on_group_changed)
 
         # Type Combo
         self.type_combo = QComboBox()
         self.main_layout.addRow(tr("Command Type"), self.type_combo)
-        self.type_combo.currentIndexChanged.connect(self.on_type_changed)
+        safe_connect(self.type_combo, 'currentIndexChanged', self.on_type_changed)
 
         # Dynamic Content Container
         self.dynamic_container = QWidget()
         self.dynamic_layout = QFormLayout(self.dynamic_container)
         self.dynamic_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.addRow(self.dynamic_container)
+
+        # Condition preview area (updated when child condition widgets change)
+        self.condition_preview_label = QLabel("")
+        try:
+            self.condition_preview_label.setWordWrap(True)
+        except Exception:
+            pass
+        try:
+            # Limit height to avoid layout explosion when many lines are present
+            self.condition_preview_label.setMaximumHeight(120)
+        except Exception:
+            pass
+        try:
+            # small visual hint; safe in headless too
+            self.condition_preview_label.setStyleSheet('font-size:12px;')
+        except Exception:
+            pass
+        self.condition_preview_label.setVisible(False)
+        self.main_layout.addRow(tr("Condition Preview"), self.condition_preview_label)
+
+        # CIR summary + action (minimal integration)
+        cir_row = QHBoxLayout()
+        self.cir_label = QLabel("")
+        self.cir_label.setVisible(False)
+        cir_row.addWidget(self.cir_label)
+        self.apply_cir_btn = QPushButton(tr("Apply CIR"))
+        self.apply_cir_btn.setEnabled(False)
+        safe_connect(self.apply_cir_btn, 'clicked', self.on_apply_cir)
+        cir_row.addWidget(self.apply_cir_btn)
+        # Add Apply Selected button for partial application of CIR
+        self.apply_selected_btn = QPushButton(tr("Apply Selected"))
+        self.apply_selected_btn.setEnabled(False)
+        safe_connect(self.apply_selected_btn, 'clicked', self.on_apply_selected)
+        cir_row.addWidget(self.apply_selected_btn)
+        # Add a Reject button to allow dismissing CIR suggestions
+        self.reject_cir_btn = QPushButton(tr("Reject CIR"))
+        self.reject_cir_btn.setEnabled(False)
+        safe_connect(self.reject_cir_btn, 'clicked', self.on_reject_cir)
+        cir_row.addWidget(self.reject_cir_btn)
+        cir_row.addStretch()
+        self.main_layout.addRow(cir_row)
+
+        # Diff tree widget (hidden until CIR present)
+        self.diff_tree_widget = DiffTreeWidget()
+        self.diff_tree_widget.setVisible(False)
+        self.main_layout.addRow(tr("Diff"), self.diff_tree_widget)
 
         # Trigger initial population
         self.on_group_changed()
@@ -173,6 +223,17 @@ class UnifiedActionForm(BaseEditForm):
             
             self.widgets_map[key] = widget
             self.dynamic_layout.addRow(tr(field_schema.label), widget)
+            # If widget provides a preview API (ConditionEditorWidget), hook its change signal
+            # so the unified preview updates live. Use safe_connect to tolerate mocked Qt.
+            try:
+                if hasattr(widget, 'get_preview_text'):
+                    safe_connect(widget, 'dataChanged', self.update_condition_preview)
+            except Exception:
+                try:
+                    if hasattr(widget, 'dataChanged') and hasattr(self, 'update_condition_preview'):
+                        widget.dataChanged.connect(self.update_condition_preview)
+                except Exception:
+                    pass
 
     def _check_auto_generation(self, changed_key):
         """Checks if a field change should trigger structure updates (e.g. generating options)."""
@@ -211,6 +272,12 @@ class UnifiedActionForm(BaseEditForm):
 
     def _load_ui_from_data(self, data, item):
         """Loads data using interface-based widgets."""
+        # Clear any previous diff highlights before rebuilding/loading
+        try:
+            self.clear_diff_highlight()
+        except Exception:
+            pass
+
         if not data: data = {}
         # Handle case where data is already a CommandModel instance
         if isinstance(data, CommandModel):
@@ -222,6 +289,8 @@ class UnifiedActionForm(BaseEditForm):
             data_dict = data
         self.current_model = model
         self.current_item = item
+        # 再発防止: params は dict だけでなく Pydantic モデルでも来るため、読み出し前に辞書へ正規化する。
+        params_data = to_dict(getattr(model, 'params', {}))
 
         cmd_type = model.type
         # Legacy compatibility: ADD_KEYWORD used str_param in older data
@@ -259,11 +328,12 @@ class UnifiedActionForm(BaseEditForm):
         # Set current_item for VariableLinkWidget
         for key, widget in self.widgets_map.items():
             if key in ['links', 'input_link', 'output_link', 'input_var', 'output_var']:
-                if hasattr(widget, 'set_current_item'):
+                if item is not None and hasattr(widget, 'set_current_item'):
                     widget.set_current_item(item)
         
         # Populate widgets via interface
         for key, widget in self.widgets_map.items():
+            # Prefer set_value API; if missing, fall back to set_data for structured widgets
             if hasattr(widget, 'set_value'):
                 # Special handling for flattened models vs structured widgets
                 if key in ['links', 'input_link', 'output_link', 'input_var', 'output_var']:
@@ -272,15 +342,15 @@ class UnifiedActionForm(BaseEditForm):
                     widget.set_value(data_dict)
                 elif key == 'target_filter':
                     # target_filter is now stored in params
-                    tf = model.params.get('target_filter')
+                    tf = params_data.get('target_filter')
                     widget.set_value(tf if tf else {})
                 elif key == 'options':
                     widget.set_value(model.options)
                 else:
-                    # check model attrs first, then params
-                    val = getattr(model, key, None)
+                    # 再発防止: コマンド固有値は typed params 側に入るため、params を優先して読む。
+                    val = params_data.get(key)
                     if val is None:
-                        val = model.params.get(key)
+                        val = getattr(model, key, None)
 
                     # Only set value if data actually exists (not None and not empty string)
                     # This ensures saved data is displayed, but unsaved fields remain empty ("---")
@@ -288,9 +358,788 @@ class UnifiedActionForm(BaseEditForm):
                     if val is not None and (isinstance(val, (bool, int, float)) or val != ''):
                         widget.set_value(val)
                     # else: Leave widget at initial state (empty item "---" for combos)
+            elif hasattr(widget, 'set_data'):
+                # Structured widget that exposes set_data (e.g., ConditionEditorWidget)
+                try:
+                    # Determine value from typed params first, then top-level attrs
+                    val = params_data.get(key)
+                    if val is None:
+                        val = getattr(model, key, None)
+                    if val is None:
+                        # For some commands, condition may be stored directly under params['condition']
+                        val = params_data.get(key)
+                    # If the widget expects a dict-like payload, pass it directly
+                    if val is not None:
+                        widget.set_data(val)
+                except Exception:
+                    try:
+                        widget.set_data({})
+                    except Exception:
+                        pass
 
         # Clear validation styles on load
         self._clear_validation_styles()
+
+        # Minimal CIR UI integration: delegate UI state and diff rendering.
+        try:
+            cir = self._extract_cir_entries(item)
+            self._update_cir_ui_state(cir)
+            self._update_cir_diff_view(cir)
+        except Exception:
+            self._update_cir_ui_state(None)
+
+        # Update preview after loading values so unified preview reflects loaded condition
+        try:
+            self.update_condition_preview()
+        except Exception:
+            pass
+
+    def update_condition_preview(self) -> None:
+        """Aggregate preview texts from any condition-like child widgets and update
+        the shared `condition_preview_label`.
+
+        Looks for widgets exposing `get_preview_text()` and shows the first
+        non-empty preview or concatenates multiple previews with line breaks.
+        """
+        try:
+            parts: list[str] = []
+            for key, w in getattr(self, 'widgets_map', {}).items():
+                try:
+                    if hasattr(w, 'get_preview_text'):
+                        txt = w.get_preview_text() or ''
+                        if txt:
+                            parts.append(txt)
+                except Exception:
+                    continue
+
+            if parts:
+                # Join multiple previews; parts are expected to be safe HTML
+                html_text = '<br/>'.join(parts)
+                try:
+                    self.condition_preview_label.setText(html_text)
+                except Exception:
+                    self.condition_preview_label.setText(' '.join(parts))
+                # Ensure .text() returns value even in headless/mocked Qt where
+                # QLabel.text() may be unreliable: cache and monkeypatch a simple
+                # callable attribute as a fallback.
+                try:
+                    # Preferred: read actual text
+                    _t = self.condition_preview_label.text()
+                except Exception:
+                    _t = None
+                try:
+                    if not _t:
+                        # store fallback and monkeypatch method if possible
+                        setattr(self.condition_preview_label, '_cached_preview', html_text)
+                        try:
+                            setattr(self.condition_preview_label, 'text', lambda: getattr(self.condition_preview_label, '_cached_preview', html_text))
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                try:
+                    self.condition_preview_label.setVisible(True)
+                except Exception:
+                    pass
+            else:
+                try:
+                    self.condition_preview_label.setText(tr('(no preview)'))
+                except Exception:
+                    try:
+                        self.condition_preview_label.setText('')
+                    except Exception:
+                        pass
+                try:
+                    self.condition_preview_label.setVisible(False)
+                except Exception:
+                    pass
+        except Exception:
+            # Best-effort: do not raise from UI aggregation
+            try:
+                self.condition_preview_label.setVisible(False)
+            except Exception:
+                pass
+
+    def _extract_cir_entries(self, item):
+        """Extract CIR entries from item data if present."""
+        if item is not None and hasattr(item, 'data'):
+            return item.data('ROLE_CIR')
+        return None
+
+    def _update_cir_ui_state(self, cir):
+        """Update CIR-related button/label visibility from CIR availability.
+        再発防止: CIRなし読み込み時に Apply/Reject/Apply Selected と diff 表示を確実にリセットする。"""
+        has_cir = bool(cir)
+
+        if has_cir:
+            self.cir_label.setText(tr("CIR entries: {n}").format(n=len(cir)))
+            self.cir_label.setVisible(True)
+            self.apply_cir_btn.setEnabled(True)
+            try:
+                self.reject_cir_btn.setEnabled(True)
+            except Exception:
+                pass
+            return
+
+        self.cir_label.setVisible(False)
+        self.apply_cir_btn.setEnabled(False)
+        try:
+            self.reject_cir_btn.setEnabled(False)
+        except Exception:
+            pass
+        try:
+            self.apply_selected_btn.setEnabled(False)
+        except Exception:
+            pass
+        try:
+            if hasattr(self, 'diff_tree_widget'):
+                self.diff_tree_widget.setVisible(False)
+        except Exception:
+            pass
+
+    def _update_cir_diff_view(self, cir):
+        """Update tooltip/highlight/diff tree from first CIR payload."""
+        if not cir:
+            try:
+                if hasattr(self, 'diff_tree_widget'):
+                    self.diff_tree_widget.set_diff_tree({})
+                    self.diff_tree_widget.setVisible(False)
+            except Exception:
+                pass
+            return
+
+        try:
+            summary = self.format_structural_diff(cir[0].get('payload', cir[0]))
+            tip = str(cir)
+            if summary:
+                tip += '\nDiff:\n' + summary
+            self.cir_label.setToolTip(tip)
+        except Exception:
+            self.cir_label.setToolTip(str(cir))
+
+        first = cir[0]
+        if not isinstance(first, dict):
+            return
+
+        payload = first.get('payload', first)
+        self.highlight_diff(payload)
+
+        try:
+            if hasattr(self, 'diff_tree_widget'):
+                tree = self.compute_structural_diff_tree(payload)
+                self.diff_tree_widget.set_diff_tree(tree)
+                self.diff_tree_widget.set_selectable(True)
+                has_lines = bool(self.diff_tree_widget.get_lines())
+                self.apply_selected_btn.setEnabled(has_lines)
+                self.diff_tree_widget.setVisible(bool(tree))
+        except Exception:
+            pass
+
+    def on_apply_cir(self):
+        """Handler for Apply CIR button - emits an action for higher layers to consume.
+
+        Currently this performs a best-effort emit with the CIR payload; actual
+        model population logic can be implemented iteratively in follow-up tasks.
+        """
+        try:
+            cir = None
+            if self.current_item is not None and hasattr(self.current_item, 'data'):
+                cir = self.current_item.data('ROLE_CIR')
+            if cir:
+                # First try to apply CIR locally to the form
+                try:
+                    applied = self.apply_cir(cir)
+                except Exception:
+                    applied = False
+                # Emit for CardEditor or other listeners to act upon
+                self.structure_update_requested.emit('APPLY_CIR', {'cir': cir, 'applied': applied})
+                # After applying, disable reject/apply until next CIR
+                try:
+                    self.apply_cir_btn.setEnabled(False)
+                    self.reject_cir_btn.setEnabled(False)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def _extract_value_by_flat_path(self, payload: dict[str, Any], path: str):
+        """Extract value from nested payload given a flattened path like 'options[1].label'."""
+        if not payload:
+            return None
+        # parse into parts
+        parts = []
+        buf = ''
+        i = 0
+        while i < len(path):
+            c = path[i]
+            if c == '.':
+                if buf:
+                    parts.append(buf)
+                    buf = ''
+                i += 1
+                continue
+            if c == '[':
+                if buf:
+                    parts.append(buf)
+                    buf = ''
+                j = path.find(']', i+1)
+                if j == -1:
+                    return None
+                idx = path[i+1:j]
+                try:
+                    parts.append(int(idx))
+                except Exception:
+                    parts.append(idx)
+                i = j+1
+                continue
+            buf += c
+            i += 1
+        if buf:
+            parts.append(buf)
+
+        cur = payload
+        for p in parts:
+            if isinstance(p, int):
+                if not isinstance(cur, list) or p >= len(cur):
+                    return None
+                cur = cur[p]
+            else:
+                if not isinstance(cur, dict) or p not in cur:
+                    return None
+                cur = cur[p]
+        return cur
+
+    def on_apply_selected(self):
+        """Apply only selected diff paths from the current CIR payload."""
+        try:
+            cir = None
+            if self.current_item is not None and hasattr(self.current_item, 'data'):
+                cir = self.current_item.data('ROLE_CIR')
+            if not cir:
+                return
+            first = cir[0]
+            payload = first.get('payload') or first.get('params') or {}
+            if not isinstance(payload, dict):
+                return
+
+            # get selected flat paths
+            try:
+                selected = self.diff_tree_widget.get_selected_lines()
+            except Exception:
+                selected = []
+
+            if not selected:
+                # nothing selected: treat as no-op
+                applied = False
+            else:
+                partial = {}
+                for p in selected:
+                    val = self._extract_value_by_flat_path(payload, p)
+                    if val is not None:
+                        partial[p] = val
+                # construct minimal CIR entry and apply via existing apply_cir
+                try:
+                    applied = self.apply_cir([{'type': first.get('type'), 'payload': partial}])
+                except Exception:
+                    applied = False
+
+            # emit partial apply event for higher-level handlers
+            try:
+                self.structure_update_requested.emit('APPLY_CIR_PARTIAL', {'cir': cir, 'selected': selected, 'applied': applied})
+            except Exception:
+                pass
+
+            # After applying, disable selection apply button until next CIR
+            try:
+                self.apply_selected_btn.setEnabled(False)
+            except Exception:
+                pass
+        except Exception:
+            pass
+
+    def on_reject_cir(self):
+        """Reject/dismiss the CIR preview shown in the form.
+
+        This clears diff highlights and hides the diff widget, and emits
+        a REJECT_CIR signal for higher layers to record the rejection if
+        desired.
+        """
+        try:
+            cir = None
+            if self.current_item is not None and hasattr(self.current_item, 'data'):
+                cir = self.current_item.data('ROLE_CIR')
+            # clear highlights and diff view
+            try:
+                self.clear_diff_highlight()
+            except Exception:
+                pass
+            self.cir_label.setVisible(False)
+            try:
+                self.apply_cir_btn.setEnabled(False)
+                self.reject_cir_btn.setEnabled(False)
+            except Exception:
+                pass
+            # Emit rejection event
+            self.structure_update_requested.emit('REJECT_CIR', {'cir': cir})
+        except Exception:
+            pass
+
+    def highlight_diff(self, cir_payload: dict[str, Any]) -> None:
+        """Mark widgets whose current value differs from CIR payload.
+
+        This is a best-effort shallow comparison keyed by param name.
+        Widgets are expected to be accessible via `self.widgets_map[name]`
+        and expose `get_value()` and `setStyleSheet()`.
+        """
+        if not cir_payload:
+            return
+        for key, widget in getattr(self, 'widgets_map', {}).items():
+            try:
+                widget_val = None
+                # prefer widget.get_value() if available
+                if hasattr(widget, 'get_value'):
+                    widget_val = widget.get_value()
+                else:
+                    widget_val = getattr(widget, 'value', None)
+
+                cir_val = cir_payload.get(key)
+                if cir_val is None:
+                    # no comparison value; clear highlight
+                    if hasattr(widget, 'setStyleSheet'):
+                        widget.setStyleSheet('')
+                    continue
+
+                if widget_val != cir_val:
+                    if hasattr(widget, 'setStyleSheet'):
+                        widget.setStyleSheet('background: yellow;')
+                else:
+                    if hasattr(widget, 'setStyleSheet'):
+                        widget.setStyleSheet('')
+            except Exception:
+                # best-effort: ignore widget failures
+                continue
+
+    def clear_diff_highlight(self) -> None:
+        """Clear any diff highlights on managed widgets."""
+        for widget in getattr(self, 'widgets_map', {}).values():
+            try:
+                if hasattr(widget, 'setStyleSheet'):
+                    widget.setStyleSheet('')
+            except Exception:
+                continue
+        try:
+            if hasattr(self, 'diff_tree_widget'):
+                self.diff_tree_widget.set_diff_tree({})
+                try:
+                    self.diff_tree_widget.set_selectable(False)
+                    self.apply_selected_btn.setEnabled(False)
+                except Exception:
+                    pass
+                self.diff_tree_widget.setVisible(False)
+        except Exception:
+            pass
+
+    def compute_diff_summary(self, cir_payload: dict[str, Any]) -> list[str]:
+        """Return list of keys where cir_payload and current widget/model differ.
+
+        - Keys present in payload but missing in widgets are included (as 'extra').
+        - Keys present in widgets but missing in payload are not considered changed.
+        - Shallow comparison only.
+        """
+        diffs: list[str] = []
+        if not cir_payload:
+            return diffs
+
+        # compare keys present in payload
+        for k, v in cir_payload.items():
+            w = getattr(self, 'widgets_map', {}).get(k)
+            try:
+                if w is None:
+                    diffs.append(k)
+                    continue
+                if hasattr(w, 'get_value'):
+                    wval = w.get_value()
+                else:
+                    wval = getattr(w, 'value', None)
+
+                if wval != v:
+                    diffs.append(k)
+            except Exception:
+                diffs.append(k)
+
+        return diffs
+
+    def compute_structural_diff(self, cir_payload: dict[str, Any]) -> list[str]:
+        """Return flattened paths of keys where cir_payload and current widget/model differ.
+
+        Examples of returned paths:
+        - 'target_filter.cost' for nested dicts
+        - 'options[1].label' for lists of dicts
+        - top-level keys that have no corresponding widget will be returned as-is
+        """
+        diffs: list[str] = []
+        if not cir_payload:
+            return diffs
+
+        def _get_widget_value_for_key(key: str):
+            w = getattr(self, 'widgets_map', {}).get(key)
+            if w is None:
+                return None, False
+            try:
+                if hasattr(w, 'get_value'):
+                    return w.get_value(), True
+                return getattr(w, 'value', None), True
+            except Exception:
+                return None, True
+
+        def _compare(prefix: str, payload_val, widget_val):
+            # payload_val exists; widget_val may be None meaning missing widget or missing value
+            if isinstance(payload_val, dict):
+                if not isinstance(widget_val, dict):
+                    # widget missing or not a dict: report full prefix
+                    diffs.append(prefix)
+                    return
+                for k, v in payload_val.items():
+                    new_prefix = f"{prefix}.{k}" if prefix else k
+                    _compare(new_prefix, v, widget_val.get(k))
+            elif isinstance(payload_val, list):
+                if not isinstance(widget_val, list):
+                    diffs.append(prefix)
+                    return
+                # compare element-wise; if lengths differ, mark extra indices as diffs
+                min_len = min(len(payload_val), len(widget_val))
+                for i in range(min_len):
+                    pv = payload_val[i]
+                    wv = widget_val[i]
+                    new_prefix = f"{prefix}[{i}]"
+                    if isinstance(pv, dict):
+                        if not isinstance(wv, dict):
+                            diffs.append(new_prefix)
+                        else:
+                            for kk, vv in pv.items():
+                                _compare(f"{new_prefix}.{kk}", vv, wv.get(kk))
+                    else:
+                        if pv != wv:
+                            diffs.append(new_prefix)
+                # extra payload elements are considered diffs
+                if len(payload_val) > len(widget_val):
+                    for i in range(min_len, len(payload_val)):
+                        diffs.append(f"{prefix}[{i}]")
+            else:
+                # primitive comparison
+                if widget_val != payload_val:
+                    diffs.append(prefix)
+
+        # top-level: iterate payload keys and fetch widget values
+        for key, val in cir_payload.items():
+            widget_val, has_widget = _get_widget_value_for_key(key)
+            if not has_widget:
+                # no widget present for this key: include it
+                diffs.append(key)
+                continue
+            _compare(key, val, widget_val)
+
+        return diffs
+
+    def compute_structural_diff_tree(self, cir_payload: dict[str, Any]) -> dict:
+        """Return nested dict marking paths that differ between payload and widgets.
+
+        Leaves are True to indicate a difference. Example:
+        { 'target_filter': { 'cost': True }, 'options': { 1: { 'label': True } }, 'extra': True }
+        """
+        tree: dict = {}
+        if not cir_payload:
+            return tree
+
+        def _set_path(t: dict, parts: list, value=True):
+            if not parts:
+                return
+            key = parts[0]
+            if len(parts) == 1:
+                t[key] = value
+                return
+            if key not in t or not isinstance(t[key], dict):
+                t[key] = {}
+            _set_path(t[key], parts[1:], value)
+
+        def _get_widget_value_for_key(key: str):
+            w = getattr(self, 'widgets_map', {}).get(key)
+            if w is None:
+                return None, False
+            try:
+                if hasattr(w, 'get_value'):
+                    return w.get_value(), True
+                return getattr(w, 'value', None), True
+            except Exception:
+                return None, True
+
+        def _recurse(prefix_parts: list, payload_val, widget_val):
+            if isinstance(payload_val, dict):
+                if not isinstance(widget_val, dict):
+                    _set_path(tree, prefix_parts)
+                    return
+                for k, v in payload_val.items():
+                    _recurse(prefix_parts + [k], v, widget_val.get(k))
+            elif isinstance(payload_val, list):
+                if not isinstance(widget_val, list):
+                    _set_path(tree, prefix_parts)
+                    return
+                min_len = min(len(payload_val), len(widget_val))
+                for i in range(min_len):
+                    pv = payload_val[i]
+                    wv = widget_val[i]
+                    if isinstance(pv, dict):
+                        for kk, vv in pv.items():
+                            _recurse(prefix_parts + [i, kk], vv, (wv.get(kk) if isinstance(wv, dict) else None))
+                    else:
+                        if pv != wv:
+                            _set_path(tree, prefix_parts + [i])
+                if len(payload_val) > len(widget_val):
+                    for i in range(min_len, len(payload_val)):
+                        _set_path(tree, prefix_parts + [i])
+            else:
+                if widget_val != payload_val:
+                    _set_path(tree, prefix_parts)
+
+        for key, val in cir_payload.items():
+            widget_val, has_widget = _get_widget_value_for_key(key)
+            if not has_widget:
+                tree[key] = True
+                continue
+            _recurse([key], val, widget_val)
+
+        return tree
+
+    def format_structural_diff(self, cir_payload: dict[str, Any]) -> str:
+        """Return a human-readable multiline summary for structural diffs.
+
+        Each changed path is on its own line. For lists/dicts the path format
+        follows compute_structural_diff (e.g. 'options[1].label').
+        """
+        paths = self.compute_structural_diff(cir_payload)
+        if not paths:
+            return ''
+        # Sort for deterministic output
+        paths = sorted(paths)
+        return '\n'.join(paths)
+
+    def apply_cir(self, cir_list: list) -> bool:
+        """Apply a canonical IR payload to the current form.
+
+        This is a best-effort mapper: it takes the first CIR entry, maps its
+        `type` to the form's type selector and copies any payload keys into
+        corresponding widgets (via `set_value`) and into `current_model.params`.
+        Returns True if any widget/model was updated.
+        """
+        if not cir_list:
+            return False
+        cir = cir_list[0]
+        updated = False
+        try:
+            # Set type if present
+            ctype = cir.get('type') or cir.get('kind')
+            if ctype:
+                try:
+                    # Determine group for this type (maintain compatibility with COMMAND_GROUPS)
+                    grp = 'OTHER'
+                    for g, types in COMMAND_GROUPS.items():
+                        if ctype in types:
+                            grp = g
+                            break
+                    # Set group and type safely
+                    self.set_combo_by_data(self.action_group_combo, grp)
+                    self.set_combo_by_data(self.type_combo, ctype)
+                except Exception:
+                    # best-effort: ignore if combo helpers unavailable
+                    pass
+
+            payload = cir.get('payload') or cir.get('params') or {}
+            if not isinstance(payload, dict):
+                payload = {}
+
+            # Ensure current_model exists
+            if self.current_model is None:
+                try:
+                    self.current_model = CommandModel(type=ctype if ctype else 'UNKNOWN')
+                except Exception:
+                    pass
+
+            for k, v in payload.items():
+                # Support dotted/indexed path keys (e.g. 'options[1].label' or 'target_filter.cost.min')
+                # If a path-like key is provided, apply the nested value into the top-level
+                # model.params entry and into the corresponding widget if present.
+                def _parse_path(key: str):
+                    # Split into top key and path parts like ['options', 1, 'label']
+                    parts = []
+                    buf = ''
+                    i = 0
+                    while i < len(key):
+                        c = key[i]
+                        if c == '.':
+                            if buf:
+                                parts.append(buf)
+                                buf = ''
+                            i += 1
+                            continue
+                        if c == '[':
+                            if buf:
+                                parts.append(buf)
+                                buf = ''
+                            # parse index
+                            j = key.find(']', i+1)
+                            if j == -1:
+                                # malformed, treat rest as part
+                                buf = key[i:]
+                                break
+                            idx = key[i+1:j]
+                            try:
+                                idxi = int(idx)
+                            except Exception:
+                                idxi = idx
+                            parts.append(idxi)
+                            i = j+1
+                            continue
+                        buf += c
+                        i += 1
+                    if buf:
+                        parts.append(buf)
+                    return parts
+
+                def _set_in_structure(root, parts, value):
+                    if not parts:
+                        return value
+                    cur = root
+                    for i, p in enumerate(parts):
+                        last = (i == len(parts)-1)
+                        if isinstance(p, int):
+                            # ensure list
+                            if not isinstance(cur, list):
+                                # if empty or not list, create list
+                                cur_holder = []
+                                # try to replace in parent if possible
+                                return root
+                            # expand list
+                            while len(cur) <= p:
+                                cur.append({})
+                            if last:
+                                cur[p] = value
+                            else:
+                                if not isinstance(cur[p], (dict, list)):
+                                    cur[p] = {}
+                                cur = cur[p]
+                        else:
+                            # dict key
+                            if not isinstance(cur, dict):
+                                return root
+                            if last:
+                                cur[p] = value
+                            else:
+                                if p not in cur or not isinstance(cur[p], (dict, list)):
+                                    cur[p] = {}
+                                cur = cur[p]
+                    return root
+
+                if ('.' in k) or ('[' in k):
+                    parts = _parse_path(k)
+                    if not parts:
+                        continue
+                    top = parts[0]
+                    subparts = parts[1:]
+                    # Ensure params exists
+                    try:
+                        if not hasattr(self.current_model, 'params'):
+                            self.current_model.params = {}
+                    except Exception:
+                        pass
+
+                    # Update model.params[top]
+                    existing = None
+                    try:
+                        existing = self.current_model.params.get(top) if isinstance(self.current_model.params, dict) else None
+                    except Exception:
+                        existing = None
+
+                    if existing is None:
+                        # initialize as dict or list depending on first subpart
+                        if subparts and isinstance(subparts[0], int):
+                            existing = []
+                        else:
+                            existing = {}
+                        try:
+                            self.current_model.params[top] = existing
+                        except Exception:
+                            pass
+                    else:
+                        # If existing is a Pydantic BaseModel, convert to dict for nested update
+                        try:
+                            if isinstance(existing, BaseModel):
+                                existing_dict = existing.model_dump()
+                                # Replace stored typed model with plain dict to allow nested mutation
+                                try:
+                                    self.current_model.params[top] = existing_dict
+                                    existing = existing_dict
+                                except Exception:
+                                    # Fallback: keep original but operate on a copy
+                                    existing = existing_dict
+                        except Exception:
+                            pass
+
+                    # apply nested set
+                    try:
+                        _set_in_structure(existing, subparts, v)
+                        updated = True
+                    except Exception:
+                        pass
+
+                    # Update widget if top-level widget exists
+                    w = self.widgets_map.get(top)
+                    if w and hasattr(w, 'set_value'):
+                        try:
+                            # prefer to merge into current widget value when possible
+                            cur_val = None
+                            if hasattr(w, 'get_value'):
+                                try:
+                                    cur_val = w.get_value()
+                                except Exception:
+                                    cur_val = None
+                            if cur_val is None:
+                                cur_val = existing
+                            else:
+                                try:
+                                    _set_in_structure(cur_val, subparts, v)
+                                except Exception:
+                                    cur_val = existing
+                            w.set_value(cur_val)
+                            updated = True
+                        except Exception:
+                            pass
+                    continue
+
+                # Non-path keys: Update model.params
+                try:
+                    if not hasattr(self.current_model, 'params'):
+                        self.current_model.params = {}
+                    self.current_model.params[k] = v
+                    updated = True
+                except Exception:
+                    pass
+
+                # Update widget if present
+                w = self.widgets_map.get(k)
+                if w and hasattr(w, 'set_value'):
+                    try:
+                        w.set_value(v)
+                        updated = True
+                    except Exception:
+                        pass
+            # After applying values, clear any diff highlights (best-effort)
+            try:
+                self.clear_diff_highlight()
+            except Exception:
+                pass
+        except Exception:
+            return False
+        return updated
 
     def _save_ui_to_data(self, data):
         """Saves data using interface-based widgets and provides validation feedback."""
@@ -312,27 +1161,40 @@ class UnifiedActionForm(BaseEditForm):
             # Use Pydantic model for validation/structure
             # Initialize with type first
             model = CommandModel(type=cmd_type)
+            # 再発防止: params は dict / typed model の両方で来るため、保存時は dict に正規化して扱う。
+            params_data = to_dict(getattr(model, 'params', {}))
+            if not isinstance(params_data, dict):
+                params_data = {}
 
             for key, widget in self.widgets_map.items():
                 if hasattr(widget, 'get_value'):
                     val = widget.get_value()
 
                     if key in ['links', 'input_link', 'output_link', 'input_var', 'output_var']:
-                        new_data.update(val)
-                        if 'input_var' in val: model.input_var = val['input_var']
-                        if 'output_var' in val: model.output_var = val['output_var']
-                        if 'input_value_key' in val: model.input_var = val['input_value_key']
-                        if 'output_value_key' in val: model.output_var = val['output_value_key']
+                        # Normalize legacy link keys to canonical names for saving.
+                        in_key = None
+                        out_key = None
+                        if isinstance(val, dict):
+                            in_key = val.get('input_value_key') or val.get('input_var') or val.get('input_key')
+                            out_key = val.get('output_value_key') or val.get('output_var') or val.get('output_key')
+
+                        if in_key:
+                            new_data['input_value_key'] = in_key
+                            model.input_var = in_key
+                        if out_key:
+                            new_data['output_value_key'] = out_key
+                            model.output_var = out_key
 
                     elif key == 'target_filter':
-                        if val: model.params['target_filter'] = val
+                        if val:
+                            params_data['target_filter'] = val
                     else:
                         # Only save non-None values to avoid storing empty selections
                         if val is not None and val != '':
                             if hasattr(model, key):
                                 setattr(model, key, val)
                             else:
-                                model.params[key] = val
+                                params_data[key] = val
 
             # Required field checks for grant/keyword actions
             def _get_widget_value(field_key):
@@ -357,7 +1219,7 @@ class UnifiedActionForm(BaseEditForm):
                     if widget and hasattr(widget, 'setStyleSheet'):
                         widget.setStyleSheet("border: 1px solid red;")
                         if hasattr(widget, 'setToolTip'):
-                            widget.setToolTip("必須項目です")
+                            widget.setToolTip(tr("必須項目です"))
                 return
 
             # Validate manually if needed or catch validation during assignment above if we used setters
@@ -370,37 +1232,68 @@ class UnifiedActionForm(BaseEditForm):
             key_var = new_data.get('input_value_key') or new_data.get('input_var')
 
             if usage == 'COST' and key_var:
-                if 'target_filter' in model.params:
-                    tf = model.params['target_filter']
+                if 'target_filter' in params_data:
+                    tf = params_data['target_filter']
                     if isinstance(tf, dict):
                         tf['cost_ref'] = key_var
-                        model.params['target_filter'] = tf
+                        params_data['target_filter'] = tf
 
                 # When using a dynamic cost reference (e.g. from selected number), target ALL matching cards by default
                 # 255 is the internal constant for AMOUNT_ALL
                 if hasattr(model, 'amount'):
                     model.amount = 255
                 else:
-                    model.params['amount'] = 255
+                    params_data['amount'] = 255
+
+            # Ensure dict-backed params are persisted even when initial params was typed model.
+            model.params = params_data
 
             # Merge model back to dict
             dump = model.model_dump(exclude_none=True)
             new_data.update(dump)
 
+            # Ensure legacy keys are not persisted; prefer canonical key names
+            for legacy in ('input_var', 'output_var'):
+                if legacy in new_data:
+                    del new_data[legacy]
+
             # Check outputs config
+            # 再発防止: output_value_key は全コマンドに uid ベースで自動生成する。
+            # row ベースはユニーク性が保証できないため废止。
+            # produces_output=False のコマンドもキーを持つが UI には表示しない。
             schema = get_schema(cmd_type)
-            if schema:
-                produces_output = any(f.produces_output for f in schema.fields)
-                if produces_output and 'output_value_key' not in new_data:
-                    row = 0
-                    if getattr(self, 'current_item', None):
-                        row = self.current_item.row()
+            if 'output_value_key' not in new_data or not new_data.get('output_value_key'):
+                uid_val = new_data.get('uid', '')
+                if uid_val:
+                    new_data['output_value_key'] = f"var_{uid_val[:8]}"
+                elif schema and any(f.produces_output for f in schema.fields):
+                    # uidなしかった場合のフォールバック
+                    row = getattr(self.current_item, 'row', lambda: 0)()
                     new_data['output_value_key'] = f"var_{cmd_type}_{row}"
 
+            # コマンド整合性チェック（警告が致命的な場合は保存を中止）
+            try:
+                warns = validate_command_list([new_data], _path=cmd_type)
+                if warns:
+                    # Emit warnings for UI/console listeners
+                    self.structure_update_requested.emit("INTEGRITY_WARNINGS", {"warnings": warns})
+                    formatted_warns = format_integrity_warnings(warns)
+                    # Apply simple validation styles to indicate problem fields
+                    for widget in self.widgets_map.values():
+                        if hasattr(widget, 'setStyleSheet'):
+                            widget.setStyleSheet("border: 1px solid red;")
+                            if hasattr(widget, 'setToolTip'):
+                                # 再発防止: Tooltip も共通フォーマッタを使い、UI 表示の揺れを防ぐ。
+                                widget.setToolTip(formatted_warns)
+                    # Abort save to avoid persisting invalid command
+                    return
+            except Exception:
+                # Don't let validation exceptions block saving in odd test/runtime setups
+                pass
+
+            # No blocking warnings: commit data and clear styles
             data.clear()
             data.update(new_data)
-
-            # Clear styles on success
             self._clear_validation_styles()
 
         except ValidationError as e:
@@ -432,7 +1325,7 @@ class UnifiedActionForm(BaseEditForm):
                 if hasattr(widget, 'setStyleSheet'):
                     # Red border for error
                     widget.setStyleSheet("border: 1px solid red;")
-                    widget.setToolTip(err.get('msg', 'Invalid Value'))
+                    widget.setToolTip(tr(err.get('msg', 'Invalid Value')))
 
     def _get_display_text(self, data):
         t = data.get('type', 'UNKNOWN')

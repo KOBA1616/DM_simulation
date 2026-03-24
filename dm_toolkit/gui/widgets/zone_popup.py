@@ -3,16 +3,18 @@ from PyQt6.QtWidgets import QDialog, QVBoxLayout, QPushButton, QScrollArea, QWid
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.widgets.zone_widget import ZoneWidget
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class ZonePopup(QDialog):
-    def __init__(self, title, card_data_list, card_db, civ_map=None, legal_actions=None, parent=None):
+    def __init__(self, title, card_data_list, card_db, civ_map=None, legal_commands=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(title)
+        self.setWindowTitle(tr(title))
         self.resize(800, 400)
         self.card_data_list = card_data_list
         self.card_db = card_db
         self.civ_map = civ_map
-        self.legal_actions = legal_actions if legal_actions else []
+        # 再発防止: legal_actions から legal_commands に改名済み。
+        self.legal_commands = legal_commands if legal_commands else []
 
         self.init_ui()
 
@@ -29,24 +31,24 @@ class ZonePopup(QDialog):
         layout.addWidget(scroll_area)
 
         close_btn = QPushButton(tr("Close"))
-        close_btn.clicked.connect(self.accept)
+        safe_connect(close_btn, 'clicked', self.accept)
         layout.addWidget(close_btn)
 
     def showEvent(self, event):
         super().showEvent(event)
-        self.update_content(self.card_data_list, self.card_db, self.civ_map, self.legal_actions)
+        self.update_content(self.card_data_list, self.card_db, self.civ_map, self.legal_commands)
 
-    def update_content(self, card_data_list, card_db, civ_map=None, legal_actions=None):
+    def update_content(self, card_data_list, card_db, civ_map=None, legal_commands=None):
         self.card_data_list = card_data_list
         self.card_db = card_db
         self.civ_map = civ_map
-        if legal_actions:
-            self.legal_actions = legal_actions
+        if legal_commands:
+            self.legal_commands = legal_commands
 
         self.zone_widget.update_cards(
             self.card_data_list,
             self.card_db,
             civ_map=self.civ_map,
-            legal_actions=self.legal_actions,
+            legal_commands=self.legal_commands,
             collapsed=False
         )

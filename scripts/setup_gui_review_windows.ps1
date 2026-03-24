@@ -1,4 +1,4 @@
-<#
+﻿<#
 GUI review setup (Windows) - no native build tools required.
 
 Purpose:
@@ -9,12 +9,14 @@ Purpose:
 Usage:
   pwsh -File .\scripts\setup_gui_review_windows.ps1
   pwsh -File .\scripts\setup_gui_review_windows.ps1 -CardsJson data\cards.json
+#  pwsh -File .\scripts\setup_gui_review_windows.ps1 -NoLaunch    # setup only, do not launch
 #>
 
 [CmdletBinding()]
 param(
   [string]$CardsJson = 'data\cards.json',
   [string]$Python = ''
+  [switch]$NoLaunch
 )
 
 $ErrorActionPreference = 'Stop'
@@ -62,8 +64,12 @@ try {
   & $venvPython -m pip install --upgrade pip setuptools wheel
   & $venvPython -m pip install PyQt6
 
-  Info "Launching Card Editor (no native build required)"
-  & $venvPython -m dm_toolkit.gui.editor.window $CardsJson
+  if (-not $NoLaunch) {
+    Info "Launching Card Editor (no native build required)"
+    & $venvPython -m dm_toolkit.gui.editor.window $CardsJson
+  } else {
+    Info "Setup complete (NoLaunch specified). Run: pwsh -File .\scripts\run_gui_review.ps1 to launch."
+  }
 }
 finally {
   Pop-Location

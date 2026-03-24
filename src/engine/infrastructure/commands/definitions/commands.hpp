@@ -47,6 +47,7 @@ public:
   void execute(core::GameState &state) override;
   void invert(core::GameState &state) override;
   CommandType get_type() const override { return CommandType::TRANSITION; }
+  int get_subject_id() const override { return card_instance_id; }
 };
 
 class AddCardCommand : public GameCommand {
@@ -237,7 +238,10 @@ public:
     CARDS_DRAWN,
     CARDS_DISCARDED,
     CREATURES_PLAYED,
-    SPELLS_CAST
+    SUMMONS,
+      CREATURES_DESTROYED,
+    SPELLS_CAST,
+    MANA_SET
   };
   StatType stat;
   int amount;
@@ -258,6 +262,7 @@ public:
 
   // Undo context
   core::GameResult previous_result;
+  bool previous_game_over = false;  // 再発防止: game_over の undo 用
 
   GameResultCommand(core::GameResult res)
       : result(res), previous_result(core::GameResult::NONE) {}

@@ -1,6 +1,7 @@
 #include "play_system.hpp"
 #include "engine/infrastructure/commands/definitions/commands.hpp"
 #include "engine/systems/effects/effect_system.hpp"
+#include "engine/systems/effects/passive_effect_system.hpp"
 #include "engine/systems/effects/trigger_system.hpp"
 #include "engine/systems/mechanics/mana_system.hpp"
 #include "engine/systems/rules/restriction_system.hpp"
@@ -74,6 +75,9 @@ void PlaySystem::handle_play_card(
   }
 
   if (play_for_free) {
+    // 再発防止: ターン内の踏み倒し対象を instance_id 単位で保持し、
+    // IF 条件 (変数リンク指定) で個別判定できるようにする。
+    state.turn_stats.played_without_mana_instance_ids.push_back(instance_id);
     auto flow_cmd = std::make_unique<FlowCommand>(
         FlowCommand::FlowType::SET_PLAYED_WITHOUT_MANA, 1);
     state.execute_command(std::move(flow_cmd));
@@ -268,6 +272,13 @@ void PlaySystem::handle_use_ability(
 
   if (source_id == -1 || target_id == -1)
     return;
+
+  CardInstance *source_card = state.get_card_instance(source_id);
+  if (source_card && PassiveEffectSystem::instance().check_restriction(
+                         state, *source_card,
+                         PassiveType::IGNORE_ABILITIES, card_db)) {
+    return;
+  }
 
   auto return_cmd = std::make_unique<TransitionCommand>(
       target_id, Zone::BATTLE, Zone::HAND, state.active_player_id);

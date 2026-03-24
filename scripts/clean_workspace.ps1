@@ -1,4 +1,4 @@
-<#
+﻿<#
 Clean up generated artifacts in the working tree.
 
 - Safe by default: only removes Python caches unless flags are provided.
@@ -9,6 +9,8 @@ Examples:
   .\scripts\clean_workspace.ps1 -CleanBuild     # also remove top-level build/ and bin/
   .\scripts\clean_workspace.ps1 -MoveRootLogs   # move root log/txt outputs into dumps/logs/workspace/
   .\scripts\clean_workspace.ps1 -CleanBuild -MoveRootLogs -Force
+  .\scripts\clean_workspace.ps1 -PruneModels    # archive old model checkpoints (keep latest 2)
+  .\scripts\clean_workspace.ps1 -PruneDepsCache # delete shared .cmake_deps_cache (re-fetched on next build)
 #>
 
 param(
@@ -17,6 +19,17 @@ param(
     [switch]$CleanCaches,
     [switch]$MoveRootLogs,
     [switch]$MoveRootBinaries,
+    [switch]$PruneLogs,
+    # 再発防止: 古いモデルチェックポイントが models/ に累積しやすいためビルド時に自動整理する。
+    [switch]$PruneModels,
+    # 再発防止: FetchContent 共有キャッシュを削除すると次回ビルド時に再取得される。onnxruntime など大容量 DL が発生するため適宜実行すること。
+    [switch]$PruneDepsCache,
+    [switch]$PruneInactiveBuilds,
+    [string]$ActiveBuildDirName = "",
+    [int]$KeepLogFiles = 20,
+    [int]$LogMaxAgeDays = 14,
+    [int]$LogMaxTotalMB = 512,
+    [int]$BuildMaxAgeDays = 14,
     [switch]$IncludeVenvCaches,
     [switch]$DryRun
 )
@@ -27,7 +40,7 @@ $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $projectRoot = Split-Path -Parent $scriptDir
 Set-Location $projectRoot
 
-if (-not ($CleanBuild -or $CleanCaches -or $MoveRootLogs -or $MoveRootBinaries)) {
+if (-not ($CleanBuild -or $CleanCaches -or $MoveRootLogs -or $MoveRootBinaries -or $PruneLogs -or $PruneInactiveBuilds -or $PruneModels -or $PruneDepsCache)) {
     # Default behavior: clean caches only.
     $CleanCaches = $true
 }
@@ -44,6 +57,68 @@ function Add-Candidate([System.Collections.Generic.List[string]]$list, [string]$
     }
 }
 
+function Add-PruneCandidatesByAgeAndCount(
+    [System.Collections.Generic.List[string]]$list,
+    [string]$baseDir,
+    [string[]]$patterns,
+    [int]$keepCount,
+    [int]$maxAgeDays,
+    [Int64]$maxTotalBytes
+) {
+    if (-not (Test-Path -LiteralPath $baseDir -PathType Container)) { return }
+
+    $matchedFiles = @()
+    foreach ($pattern in $patterns) {
+        try {
+            $matchedFiles += Get-ChildItem -Path $baseDir -File -Recurse -Filter $pattern -ErrorAction SilentlyContinue
+        } catch {
+            # ignore
+        }
+    }
+
+    if (-not $matchedFiles) { return }
+
+    $sortedFiles = $matchedFiles |
+        Sort-Object @(
+            @{ Expression = 'LastWriteTimeUtc'; Descending = $true },
+            @{ Expression = 'Length'; Descending = $true }
+        )
+
+    if ($keepCount -ge 0 -and $sortedFiles.Count -gt $keepCount) {
+        foreach ($file in ($sortedFiles | Select-Object -Skip $keepCount)) {
+            Add-Candidate $list $file.FullName
+        }
+    }
+
+    if ($maxAgeDays -gt 0) {
+        $cutoff = (Get-Date).ToUniversalTime().AddDays(-$maxAgeDays)
+        foreach ($file in $sortedFiles) {
+            if ($file.LastWriteTimeUtc -lt $cutoff) {
+                Add-Candidate $list $file.FullName
+            }
+        }
+    }
+
+    if ($maxTotalBytes -gt 0) {
+        $remainingFiles = @()
+        foreach ($file in $sortedFiles) {
+            if (-not ($list -contains $file.FullName)) {
+                $remainingFiles += $file
+            }
+        }
+
+        $remainingTotal = ($remainingFiles | Measure-Object Length -Sum).Sum
+        foreach ($file in ($remainingFiles | Sort-Object LastWriteTimeUtc)) {
+            if ($remainingTotal -le $maxTotalBytes) {
+                break
+            }
+
+            Add-Candidate $list $file.FullName
+            $remainingTotal -= $file.Length
+        }
+    }
+}
+
 $candidatesDelete = New-Object 'System.Collections.Generic.List[string]'
 $candidatesMove = New-Object 'System.Collections.Generic.List[string]'
 
@@ -52,7 +127,35 @@ if ($CleanBuild) {
     Add-Candidate $candidatesDelete (Join-Path $projectRoot "build")
     Add-Candidate $candidatesDelete (Join-Path $projectRoot "build-msvc")
     Add-Candidate $candidatesDelete (Join-Path $projectRoot "build-mingw")
+    # 再発防止: Ninja のビルド成果物も容量を大きく消費するため、full clean 対象に含める。
+    Add-Candidate $candidatesDelete (Join-Path $projectRoot "build-ninja")
     Add-Candidate $candidatesDelete (Join-Path $projectRoot "bin")
+}
+
+# --- Inactive build outputs (top-level only) ---
+if ($PruneInactiveBuilds) {
+    $knownBuildDirs = @("build", "build-msvc", "build-mingw", "build-ninja")
+    $cutoff = (Get-Date).ToUniversalTime().AddDays(-$BuildMaxAgeDays)
+    foreach ($dirName in $knownBuildDirs) {
+        if (-not [string]::IsNullOrWhiteSpace($ActiveBuildDirName) -and $dirName -eq $ActiveBuildDirName) {
+            continue
+        }
+
+        $path = Join-Path $projectRoot $dirName
+        if (-not (Test-Path -LiteralPath $path -PathType Container)) {
+            continue
+        }
+
+        try {
+            $dirInfo = Get-Item -LiteralPath $path -Force
+            # 再発防止: 現在使っていない古い build tree だけを対象にし、アクティブ build のキャッシュ破壊を避ける。
+            if ($BuildMaxAgeDays -le 0 -or $dirInfo.LastWriteTimeUtc -lt $cutoff) {
+                Add-Candidate $candidatesDelete $path
+            }
+        } catch {
+            # ignore
+        }
+    }
 }
 
 # --- Caches (recursive) ---
@@ -108,6 +211,13 @@ if ($MoveRootLogs) {
     }
 }
 
+# --- Logs (recursive pruning) ---
+if ($PruneLogs) {
+    # 再発防止: 巨大な debug trace が logs/ に累積しやすいため、件数と経過日数の両方で抑制する。
+    Add-PruneCandidatesByAgeAndCount $candidatesDelete (Join-Path $projectRoot "logs") @("*.log", "*.txt", "*.jsonl") $KeepLogFiles $LogMaxAgeDays ($LogMaxTotalMB * 1MB)
+    Add-PruneCandidatesByAgeAndCount $candidatesDelete (Join-Path $projectRoot "reports") @("*.log", "*.txt", "*.json") $KeepLogFiles $LogMaxAgeDays ($LogMaxTotalMB * 1MB)
+}
+
 # --- Root binary artifacts (opt-in) ---
 # These are often produced by local experiments or dependency extraction.
 # Moving them can affect runtime DLL discovery on Windows, so keep it explicit.
@@ -131,9 +241,41 @@ if ($candidatesDelete.Count -eq 0 -and $candidatesMove.Count -eq 0) {
     exit 0
 }
 
-Write-Host "Planned actions:" -ForegroundColor Cyan
+# --- Old model cleanup (delegate to cleanup_models.py) ---
+# 再発防止: models/ に大量の .pth が累積すると数百 MB 消費するため、ビルド前後に自動整理する。
+if ($PruneModels) {
+    $cleanupModelsScript = Join-Path $scriptDir "cleanup_models.py"
+    $pythonExe = if (Get-Command python -ErrorAction SilentlyContinue) { "python" } else { "python3" }
+    if (Test-Path -LiteralPath $cleanupModelsScript) {
+        $modelsDir = Join-Path $projectRoot "models"
+        if (Test-Path -LiteralPath $modelsDir) {
+            Write-Host "Pruning old model checkpoints..." -ForegroundColor Cyan
+            $dryRunFlag = if ($DryRun) { "--dry-run" } else { "--no-dry-run" }
+            try {
+                & $pythonExe $cleanupModelsScript --models-dir $modelsDir --report $dryRunFlag
+            } catch {
+                Write-Warning "cleanup_models.py failed: $_"
+            }
+        }
+    } else {
+        Write-Warning "cleanup_models.py not found at $cleanupModelsScript"
+    }
+}
+
+# --- Shared FetchContent deps cache cleanup ---
+# 再発防止: .cmake_deps_cache は build-msvc/build-ninja 間で共有するキャッシュ。
+# 削除すると次回ビルド時に onnxruntime (~300MB) を再取得するため、容量重視の場合のみ実行する。
+if ($PruneDepsCache) {
+    $depsCache = Join-Path $projectRoot ".cmake_deps_cache"
+    if (Test-Path -LiteralPath $depsCache) {
+        Add-Candidate $candidatesDelete $depsCache
+    } else {
+        Write-Host ".cmake_deps_cache not found (already clean or not yet created)." -ForegroundColor DarkGray
+    }
+}
+
 if ($candidatesDelete.Count -gt 0) {
-    Write-Host "\n[Delete]" -ForegroundColor Yellow
+    Write-Host "[Delete]" -ForegroundColor Yellow
     $candidatesDelete | Sort-Object | ForEach-Object { Write-Host " - $_" }
 }
 if ($candidatesMove.Count -gt 0) {

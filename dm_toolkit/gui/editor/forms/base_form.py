@@ -1,11 +1,21 @@
 # -*- coding: utf-8 -*-
-try:
-    from PyQt6.QtWidgets import (
-        QWidget, QComboBox, QSpinBox, QLineEdit, QCheckBox,
-        QGroupBox, QDoubleSpinBox, QLabel, QFormLayout
-    )
-    from PyQt6.QtCore import Qt, pyqtSignal
-except Exception:
+import os
+
+# Allow tests to force a dummy Qt implementation to avoid QApplication
+# lifetime/order issues in headless or CI environments. Set
+# `DM_TOOLKIT_FORCE_DUMMY_QT=1` to enable the dummy shims.
+force_dummy = os.environ.get('DM_TOOLKIT_FORCE_DUMMY_QT') == '1'
+if not force_dummy:
+    try:
+        from PyQt6.QtWidgets import (
+            QWidget, QComboBox, QSpinBox, QLineEdit, QCheckBox,
+            QGroupBox, QDoubleSpinBox, QLabel, QFormLayout
+        )
+        from PyQt6.QtCore import Qt, pyqtSignal
+    except Exception:
+        force_dummy = True
+
+if force_dummy:
     # Provide minimal shims for headless/test environments where PyQt6 isn't available
     class _DummySignal:
         def __init__(self, *a, **k): pass
@@ -38,9 +48,18 @@ except Exception:
     QDoubleSpinBox = _DummyInput
     QLabel = _DummyLabel
     QFormLayout = _DummyFormLayout
-    Qt = type('X', (), {})
+    class _DummyQt:
+        class ItemDataRole:
+            UserRole = 0
+    Qt = _DummyQt
     pyqtSignal = _DummySignal
 from contextlib import contextmanager
+import uuid
+from dm_toolkit.gui.editor.consistency import validate_command_list, format_integrity_warnings
+try:
+    from dm_toolkit.gui.editor import validators_shared as _validators_shared
+except Exception:
+    _validators_shared = None
 
 
 def to_dict(obj):
@@ -194,6 +213,114 @@ class BaseEditForm(QWidget):
             data = to_dict(data)
 
         self._save_ui_to_data(data)
+
+        # Auto-assign missing `id` to cost_reductions to improve editor UX and
+        # avoid save-time validation failures when the user omitted an id in the UI.
+        # 再発防止: cards.json のロード経路では自動付与されるが、エディタの一時データ
+        # では欠落しがちなためここで補完する（緩和的措置）。
+        try:
+            if isinstance(data, dict) and 'cost_reductions' in data and data.get('cost_reductions') is not None:
+                cr_list = data.get('cost_reductions') or []
+                for cr in cr_list:
+                    try:
+                        if isinstance(cr, dict) and not cr.get('id'):
+                            cr['id'] = f"auto_{uuid.uuid4().hex[:8]}"
+                    except Exception:
+                        continue
+                data['cost_reductions'] = cr_list
+        except Exception:
+            # Be permissive; validation will handle remaining issues
+            pass
+
+        # Global save-time consistency check: if data appears to be a Command dict,
+        # run `validate_command_list` and abort save when blocking warnings exist.
+        try:
+            if isinstance(data, dict) and data.get('type'):
+                warns = validate_command_list([data], _path=data.get('type'))
+                if warns:
+                    # Apply a simple validation style to all bound widgets and set tooltip
+                    msg = format_integrity_warnings(warns)
+                    for widget in list(self.bindings.values()):
+                        w = widget[0] if isinstance(widget, tuple) else widget
+                        if hasattr(w, 'setStyleSheet'):
+                            try:
+                                w.setStyleSheet("border: 1px solid red;")
+                            except Exception:
+                                pass
+                        if hasattr(w, 'setToolTip'):
+                            try:
+                                w.setToolTip(msg)
+                            except Exception:
+                                pass
+                    # Abort save to avoid persisting invalid command
+                    return
+        except Exception:
+            # If validation infrastructure is unavailable, don't block save
+            pass
+
+        # Additional: validate cost_reductions payloads when present
+        try:
+            if _validators_shared is not None and isinstance(data, dict) and 'cost_reductions' in data:
+                try:
+                    errs = _validators_shared.validate_cost_reductions(data.get('cost_reductions'))
+                except Exception:
+                    errs = []
+                if errs:
+                    msg = format_integrity_warnings(errs) if 'format_integrity_warnings' in globals() else '\n'.join(errs)
+                    for widget in list(self.bindings.values()):
+                        w = widget[0] if isinstance(widget, tuple) else widget
+                        if hasattr(w, 'setStyleSheet'):
+                            try:
+                                w.setStyleSheet("border: 1px solid red;")
+                            except Exception:
+                                pass
+                        if hasattr(w, 'setToolTip'):
+                            try:
+                                w.setToolTip(msg)
+                            except Exception:
+                                pass
+                    # Abort save to avoid persisting invalid data
+                    return
+        except Exception:
+            # Be permissive on any unexpected validator failure
+            pass
+
+        # Passive vs static conflict detection: show warnings but do not abort save
+        try:
+            if _validators_shared is not None and isinstance(data, dict):
+                try:
+                    conflicts = _validators_shared.detect_passive_static_conflicts(data)
+                except Exception:
+                    conflicts = []
+                if conflicts:
+                    # 再発防止: validators_shared の severity 契約（ERROR/WARNING）に合わせ、
+                    # ERROR を含む場合は保存をブロックして二重適用定義の混入を防ぐ。
+                    has_error = any(isinstance(c, str) and c.startswith('ERROR:') for c in conflicts)
+                    # Display warnings on bound widgets but allow save to continue
+                    msg = format_integrity_warnings(conflicts) if 'format_integrity_warnings' in globals() else '\n'.join(conflicts)
+                    for widget in list(self.bindings.values()):
+                        w = widget[0] if isinstance(widget, tuple) else widget
+                        if has_error and hasattr(w, 'setStyleSheet'):
+                            try:
+                                w.setStyleSheet("border: 1px solid red;")
+                            except Exception:
+                                pass
+                        if hasattr(w, 'setToolTip'):
+                            try:
+                                existing = getattr(w, 'toolTip', None)
+                                w.setToolTip(msg)
+                            except Exception:
+                                pass
+                    # Also attach to data for editor consumers if possible
+                    try:
+                        if isinstance(data, dict):
+                            data.setdefault('_editor_warnings', []).extend(conflicts)
+                    except Exception:
+                        pass
+                    if has_error:
+                        return
+        except Exception:
+            pass
 
         self.current_item.setData(data, Qt.ItemDataRole.UserRole + 2)
         self.current_item.setText(self._get_display_text(data))
@@ -353,10 +480,25 @@ class BaseEditForm(QWidget):
 
         # Fallback: try matching by text
         if value is not None:
-            text_idx = combo.findText(str(value))
-            if text_idx >= 0:
-                combo.setCurrentIndex(text_idx)
-                return
+            try:
+                text_idx = combo.findText(str(value))
+                if text_idx >= 0:
+                    combo.setCurrentIndex(text_idx)
+                    return
+            except Exception:
+                # Some test/mocked combo implementations do not provide findText.
+                # Fall back to comparing visible text entries.
+                try:
+                    vstr = str(value)
+                    for i in range(combo.count()):
+                        try:
+                            if combo.itemText(i) == vstr:
+                                combo.setCurrentIndex(i)
+                                return
+                        except Exception:
+                            continue
+                except Exception:
+                    pass
 
         # Fallback: string-compare data payloads (handles type mismatches)
         try:

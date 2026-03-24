@@ -3,6 +3,7 @@
 #include "engine/systems/mechanics/cost_payment_system.hpp"
 #include "engine/systems/mechanics/mana_system.hpp"
 #include "engine/utils/target_utils.hpp"
+#include "engine/systems/mechanics/payment_plan.hpp"
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -202,11 +203,14 @@ MainPhaseStrategy::generate(const CommandGenContext &ctx) {
             if (reduction.max_units != -1 && units > reduction.max_units)
               break;
 
-            int reduction_val = units * reduction.reduction_amount;
-            int adjusted_cost =
-                ManaSystem::get_adjusted_cost(game_state, active_player, def);
-            int effective_cost = std::max(reduction.min_mana_cost,
-                                          adjusted_cost - reduction_val);
+            // Use engine PaymentPlan evaluator to conservatively compute final cost
+            // after passive reductions and the selected active payment units.
+            std::optional<std::string> active_name;
+            if (!reduction.id.empty()) active_name = reduction.id;
+            else if (!reduction.name.empty()) active_name = reduction.name;
+
+            auto plan = dm::engine::evaluate_cost(def, units, active_name, units);
+            int effective_cost = plan.final_cost;
 
             int available_mana = ManaSystem::get_usable_mana_count(
                 game_state, active_player.id, def.civilizations, card_db);
@@ -215,11 +219,12 @@ MainPhaseStrategy::generate(const CommandGenContext &ctx) {
               CommandDef cmd;
               cmd.type = CommandType::PLAY_FROM_ZONE;
               cmd.instance_id = card.instance_id;
-              cmd.target_instance = units;
-              cmd.str_param = "ACTIVE_PAYMENT";
+              // Express explicit payment intent so execution uses the same reduction
+              cmd.payment_mode = "ACTIVE_PAYMENT";
+              cmd.payment_units = units;
+              if (!reduction.id.empty()) cmd.reduction_id = reduction.id;
+              else cmd.str_val = reduction.name; // legacy fallback
               cmd.slot_index = static_cast<int>(i);
-              cmd.target_slot_index =
-                  units; // Mirror units to target_slot_index just in case
               actions.push_back(cmd);
             }
           }
@@ -274,25 +279,54 @@ AttackPhaseStrategy::generate(const CommandGenContext &ctx) {
       if (can_attack_creature && !passive_restricted) {
         for (size_t j = 0; j < opponent.battle_zone.size(); ++j) {
           const auto &opp_card = opponent.battle_zone[j];
-          if (opp_card.is_tapped) {
-            if (card_db.count(opp_card.card_id)) {
-              const auto &opp_def = card_db.at(opp_card.card_id);
-              bool protected_by_jd =
-                  dm::engine::utils::TargetUtils::is_protected_by_just_diver(
-                      opp_card, opp_def, game_state, active_player.id);
-              if (game_state.turn_number > opp_card.turn_played)
-                protected_by_jd = false;
-              if (protected_by_jd)
-                continue;
+
+          // Allow attacks against tapped creatures as normal, or allow against
+          // untapped creatures if a passive effect grants that permission
+          bool target_allowed_by_passive = PassiveEffectSystem::instance().allows_attack_untapped(game_state, card, card_db);
+
+          // Delegate legality to RestrictionSystem for accurate checks
+          if (card_db.count(opp_card.card_id)) {
+            const auto &opp_def = card_db.at(opp_card.card_id);
+
+            // Quick passive scan: allow attack if there exists a passive
+            // ALLOW_ATTACK_UNTAPPED that explicitly lists this attacker.
+            bool allowed_via_passive = false;
+            for (const auto &eff : game_state.passive_effects) {
+              if (eff.type == dm::core::PassiveType::ALLOW_ATTACK_UNTAPPED) {
+                if (eff.specific_targets.has_value()) {
+                  for (int id : *eff.specific_targets) {
+                    if (id == card.instance_id) {
+                      allowed_via_passive = true;
+                      break;
+                    }
+                  }
+                }
+              }
+              if (allowed_via_passive) break;
             }
 
-            CommandDef attack_creature;
-            attack_creature.type = CommandType::ATTACK_CREATURE;
-            attack_creature.instance_id = card.instance_id;
-            attack_creature.target_instance = opp_card.instance_id;
-            attack_creature.slot_index = static_cast<int>(i);
-            attack_creature.target_slot_index = static_cast<int>(j);
-            actions.push_back(attack_creature);
+            bool protected_by_jd =
+                dm::engine::utils::TargetUtils::is_protected_by_just_diver(
+                    opp_card, opp_def, game_state, active_player.id);
+            if (game_state.turn_number > opp_card.turn_played)
+              protected_by_jd = false;
+            if (protected_by_jd)
+              continue;
+
+            // If target is tapped it's allowed; if untapped, allow only when
+            // a passive explicitly permits this attacker. Prefer the
+            // PassiveEffectSystem check (`target_allowed_by_passive`) which
+            // centralizes passive logic; fallback to allowed_via_passive scan
+            // only if needed.
+            if (opp_card.is_tapped || target_allowed_by_passive || allowed_via_passive) {
+              CommandDef attack_creature;
+              attack_creature.type = CommandType::ATTACK_CREATURE;
+              attack_creature.instance_id = card.instance_id;
+              attack_creature.target_instance = opp_card.instance_id;
+              attack_creature.slot_index = static_cast<int>(i);
+              attack_creature.target_slot_index = static_cast<int>(j);
+              actions.push_back(attack_creature);
+            }
           }
         }
       }

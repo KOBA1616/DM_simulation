@@ -2,17 +2,14 @@
 .DS_Store
 Thumbs.db
 Desktop.ini
+*.code-workspace
 
 # VS Code
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/extensions.json
-.vscode/cmake-kits.json
-
-# Ignore build deps created by CMake/FetchContent
-build-msvc/_deps/
-*.code-workspace
+!.vscode/cmake-kits.json
 
 # Python
 __pycache__/
@@ -22,65 +19,71 @@ __pycache__/
 venv/
 env/
 *.egg-info/
+.mypy_cache/
 
-# Logs & Data
+# Logs & generated reports
 *.log
 test_results*.txt
+build_log*.txt
+build_out*.txt
+build_err*.txt
+build_result.txt
+build_summary.txt
+tmp_selfplay_long.log
+_tmp_*.py
+_session_*.json
+_report_*.txt
+logs/
+reports/
 data/analytics/
 data/generations/
 data/logs/
-logs/
 checkpoints/
 
-# Models
+# Generated models and datasets
 models/*.pth
-
-# Build
-bin/
-build/
-*.pyd
-*.so
-*.dll
-*.exe
-*.obj
 model_v1.pth
 *.pth
 *.npz
 data/*.onnx
 data/*.onnx.data
-.mypy_cache/
 
-# Build artifacts to ignore
-# Visual Studio / MSVC artifacts (do not commit generated files)
+# Recurrence prevention: never allow generated build trees or toolchain outputs back into Git.
+bin/
+build/
+build-*/
+build_*/
+build-msvc/
+build-ninja/
+build_debug/
+build_vs/
+build_vs_nmake/
+build_mingw/
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+Testing/
+_deps/
+# 再発防止: FetchContent共有キャッシュ(.cmake_deps_cache)はビルドアーティファクトなのでGit管理外とする。
+.cmake_deps_cache/
 *.sln
 *.vcxproj
 *.vcxproj.filters
 *.vcxproj.user
 *.suo
-build/
-build_*/
-Debug/
-Release/
+*.pyd
+*.so
+*.dll
+*.exe
+*.obj
 *.lib
 *.pdb
 *.ilk
-*.zip
-build/
-CMakeFiles/
-CMakeCache.txt
-Debug/
-Release/
-RelWithDebInfo/
-bin/
-__pycache__/
-*.pyc
-models/*.pth
+
 archive/
-# Keep .vscode files tracked but ignore other workspace-specific state
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/extensions.json
-!.vscode/cmake-kits.json
 !docs/archive/
-_deps/

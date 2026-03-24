@@ -6,6 +6,10 @@ Maps trigger types, conditions, scopes, and modifier types to Japanese text.
 
 from typing import Dict, Optional, Tuple
 from dm_toolkit.consts import TargetScope
+from dm_toolkit.stat_keys import (
+    COMPARE_STAT_EDITOR_KEYS as SHARED_COMPARE_STAT_EDITOR_KEYS,
+    EDITOR_QUICK_STATS_KEYS as SHARED_EDITOR_QUICK_STATS_KEYS,
+)
 
 
 class CardTextResources:
@@ -29,6 +33,7 @@ class CardTextResources:
         "SHIELD_COUNT": "シールド枚数",
         "CIVILIZATION_MATCH": "文明一致",
         "OPPONENT_PLAYED_WITHOUT_MANA": "相手がマナなしでプレイ",
+        "PLAYED_WITHOUT_MANA_TARGET": "指定対象が踏み倒しで出ていれば",
         "OPPONENT_DRAW_COUNT": "相手のドロー枚数",
         "DURING_YOUR_TURN": "自分のターン中",
         "DURING_OPPONENT_TURN": "相手のターン中",
@@ -62,22 +67,36 @@ class CardTextResources:
     
     # Trigger event Japanese mapping
     TRIGGER_JAPANESE: Dict[str, str] = {
+        # Current TriggerType set
         "ON_PLAY": "このクリーチャーが出た時",
         "ON_OTHER_ENTER": "他のクリーチャーが出た時",
-        "AT_ATTACK": "このクリーチャーが攻撃する時",
-        "ON_DESTROY": "このクリーチャーが破壊された時",
-        "AT_END_OF_TURN": "自分のターンの終わりに",
-        "AT_END_OF_OPPONENT_TURN": "相手のターンの終わりに",
-        "ON_BLOCK": "このクリーチャーがブロックした時",
+        "ON_OPPONENT_CREATURE_ENTER": "相手のクリーチャーが出た時",
+        "ON_ATTACK": "このクリーチャーが攻撃する時",
+        # 再発防止: 旧トリガー ON_ATTACK_FROM_HAND を使う既存データ互換のため翻訳を維持する。
         "ON_ATTACK_FROM_HAND": "手札から攻撃する時",
+        "ON_BLOCK": "このクリーチャーがブロックした時",
+        "ON_DESTROY": "このクリーチャーが破壊された時",
         "TURN_START": "自分のターンのはじめに",
+        "ON_TURN_END": "ターンの終わりに",
+        "ON_BATTLE_WIN": "このクリーチャーがバトルに勝った時",
+        "ON_BATTLE_LOSE": "このクリーチャーがバトルに負けた時",
+        "ON_DRAW": "カードを引いた時",
+        "ON_OPPONENT_DRAW": "相手がカードを引いた時",
+        "ON_TAP": "このクリーチャーがタップした時",
+        "ON_UNTAP": "このクリーチャーがアンタップした時",
+        "ON_CAST_SPELL": "呪文を唱えた時",
+        "AT_BREAK_SHIELD": "シールドをブレイクする時",
+        "BEFORE_BREAK_SHIELD": "シールドをブレイクする前",
+        "ON_SHIELD_ADD": "カードがシールドゾーンに置かれた時",
+        "ON_EXIT": "このクリーチャーがバトルゾーンを離れた時",
+        "ON_DISCARD": "このカードが捨てられた時",
         "S_TRIGGER": "S・トリガー",
         "PASSIVE_CONST": "（常在効果）",
-        "ON_SHIELD_ADD": "カードがシールドゾーンに置かれた時",
-        "AT_BREAK_SHIELD": "シールドをブレイクする時",
-        "ON_CAST_SPELL": "呪文を唱えた時",
-        "ON_OPPONENT_DRAW": "相手がカードを引いた時",
-        "ON_OPPONENT_CREATURE_ENTER": "相手のクリーチャーが出た時",
+
+        # Legacy aliases kept for backward compatibility
+        "AT_ATTACK": "このクリーチャーが攻撃する時",
+        "AT_END_OF_TURN": "自分のターンの終わりに",
+        "AT_END_OF_OPPONENT_TURN": "相手のターンの終わりに",
         "NONE": ""
     }
     
@@ -160,8 +179,11 @@ class CardTextResources:
         "CANNOT_ATTACK_OR_BLOCK": "攻撃またはブロックできない",
         # New phrasing: cannot attack and cannot block (both)
         "CANNOT_ATTACK_AND_BLOCK": "攻撃もブロックもできない",
+        "CANNOT_LEAVE_BATTLE": "バトルゾーンを離れない",
+            "SUPER_SOUL_X": "超魂X",
         "TARGET_RESTRICTION": "対象制限",
         "SPELL_RESTRICTION": "呪文制限",
+        "IGNORE_ABILITY": "能力無視",
         "TARGET_THIS_CANNOT_SELECT": "このクリーチャーを対象として選択できない",
         "TARGET_THIS_FORCE_SELECT": "可能ならこのクリーチャーを選択する"
     }
@@ -207,7 +229,8 @@ class CardTextResources:
         "DARKNESS": "闇",
         "FIRE": "火",
         "NATURE": "自然",
-        "ZERO": "ゼロ"
+        "ZERO": "ゼロ",
+        "MULTICOLOR": "多色"
     }
     
     # Card type Japanese mapping
@@ -279,13 +302,15 @@ class CardTextResources:
         "REVEAL_TO_BUFFER": "{source_zone}から{value1}枚を表向きにしてバッファに置く。",
         "SELECT_FROM_BUFFER": "バッファから{value1}枚選ぶ（{filter}）。",
         "PLAY_FROM_BUFFER": "バッファからプレイする。",
-        "MOVE_BUFFER_TO_ZONE": "バッファから{zone}に置く。",
-        "SELECT_OPTION": "次の中から選ぶ。",
+        "MOVE_BUFFER_TO_ZONE": "見た{filter}{zone}に置く。",  # フィルター有=暗黙的選択, フィルター無=SELECT_FROM_BUFFER 依存
+        "MOVE_BUFFER_REMAIN_TO_ZONE": "残りを{zone}に置く。",
+        "SELECT_OPTION": "{filter}から{value1}枚選ぶ。",
         "LOCK_SPELL": "相手は呪文を唱えられない。",
         "SPELL_RESTRICTION": "相手は呪文を唱えられない。",
         "CANNOT_PUT_CREATURE": "相手はクリーチャーを出せない。",
         "CANNOT_SUMMON_CREATURE": "相手はクリーチャーを召喚できない。",
         "PLAYER_CANNOT_ATTACK": "相手は攻撃できない。",
+        "IGNORE_ABILITY": "{filter}の能力を無視する。",
         "REPLACE_CARD_MOVE": "{target}を{from_zone}に置くかわりに{to_zone}に置く。",
         "REPLACE_MOVE_CARD": "（置換移動）",
         "APPLY_MODIFIER": "効果を付与する。",
@@ -309,6 +334,13 @@ class CardTextResources:
         "GAME_RESULT": "ゲームを終了する（{result}）。",
     }
 
+    # 再発防止: compare_stat 候補は dm_toolkit.stat_keys を単一ソースとして参照する。
+    COMPARE_STAT_EDITOR_KEYS: Tuple[str, ...] = SHARED_COMPARE_STAT_EDITOR_KEYS
+
+    # Quick stats used by condition/query UIs for common measurements
+    EDITOR_QUICK_STATS_KEYS: Tuple[str, ...] = SHARED_EDITOR_QUICK_STATS_KEYS
+
+    # 再発防止: COMPARE_STAT_EDITOR_KEYS に追加したキーは必ずここへ翻訳を追加すること。
     STAT_KEY_MAP: Dict[str, Tuple[str, str]] = {
         "MANA_COUNT": ("マナゾーンのカード", "枚"),
         "CREATURE_COUNT": ("クリーチャー", "体"),
@@ -316,6 +348,12 @@ class CardTextResources:
         "HAND_COUNT": ("手札", "枚"),
         "GRAVEYARD_COUNT": ("墓地のカード", "枚"),
         "BATTLE_ZONE_COUNT": ("バトルゾーンのカード", "枚"),
+        "MY_MANA_COUNT": ("自分のマナゾーンのカード", "枚"),
+        "MY_HAND_COUNT": ("自分の手札", "枚"),
+        "MY_SHIELD_COUNT": ("自分のシールド", "つ"),
+        "MY_BATTLE_ZONE_COUNT": ("自分のバトルゾーンのカード", "枚"),
+        "SUMMON_COUNT_THIS_TURN": ("このターンに召喚したクリーチャー数", "体"),
+        "DESTROY_COUNT_THIS_TURN": ("このターンに破壊されたクリーチャー数", "体"),
         "OPPONENT_MANA_COUNT": ("相手のマナゾーンのカード", "枚"),
         "OPPONENT_CREATURE_COUNT": ("相手のクリーチャー", "体"),
         "OPPONENT_SHIELD_COUNT": ("相手のシールド", "つ"),
@@ -323,7 +361,34 @@ class CardTextResources:
         "OPPONENT_GRAVEYARD_COUNT": ("相手の墓地のカード", "枚"),
         "OPPONENT_BATTLE_ZONE_COUNT": ("相手のバトルゾーンのカード", "枚"),
         "CARDS_DRAWN_THIS_TURN": ("このターンに引いたカード", "枚"),
+        "SPELL_CAST_THIS_TURN": ("このターンに唱えた呪文", "回"),
         "MANA_CIVILIZATION_COUNT": ("マナゾーンの文明数", ""),
+        "MANA_SET_THIS_TURN": ("このターンにマナに置かれたカード数", "枚"),
+        "SHIELD_BREAK_ATTEMPT_THIS_TURN": ("このターンに行われたシールド割りの試行回数", "回"),
+        "SHIELD_BREAK_RESOLVED_THIS_TURN": ("このターンに実際にシールドが割れた回数", "回"),
+        "ATTACKED_THIS_TURN": ("このターンに攻撃した回数", "回"),
+        "MY_ATTACKED_THIS_TURN": ("自分がこのターンに攻撃した回数", "回"),
+        "OPPONENT_ATTACKED_THIS_TURN": ("相手がこのターンに攻撃した回数", "回"),
+        # Cost reduction preview legacy/sample keys
+        "TOTAL_POWER": ("自分のバトルゾーンの合計パワー", ""),
+        "CARDS_IN_BATTLE": ("自分のバトルゾーンのカード", "枚"),
+        "TOTAL_TAP": ("タップしている自分のカード", "枚"),
+        "BOARD_COUNT": ("自分の場のカード", "枚"),
+        "SELF_POWER": ("このクリーチャーのパワー", ""),
+        "ENEMY_CREATURES": ("相手のクリーチャー", "体"),
+        "OPPONENT_HAND": ("相手の手札", "枚"),
+    }
+
+    # 再発防止: 実行系と表示系でキー名が揺れる別名をここで正規化する。
+    # 追加時は C++ 側の同義キー解決 (pipeline/condition) も同時に確認すること。
+    STAT_KEY_ALIASES: Dict[str, str] = {
+        "SPELL_CAST_COUNT_THIS_TURN": "SPELL_CAST_THIS_TURN",
+        "MY_CREATURE_COUNT": "MY_BATTLE_ZONE_COUNT",
+        "OPPONENT_CREATURE_COUNT": "OPPONENT_CREATURE_COUNT",
+        # Legacy editor sample keys mapped to canonical counters where possible
+        "CARDS_IN_BATTLE": "BATTLE_ZONE_COUNT",
+        "OPPONENT_HAND": "OPPONENT_HAND_COUNT",
+        "ENEMY_CREATURES": "OPPONENT_CREATURE_COUNT",
     }
 
     # Short aliases for natural language rendering of common zone transitions
@@ -510,7 +575,15 @@ class CardTextResources:
         Returns:
             Japanese stat key label with unit
         """
-        if stat_key in cls.STAT_KEY_MAP:
-            name, unit = cls.STAT_KEY_MAP[stat_key]
+        normalized = cls.normalize_stat_key(stat_key)
+        if normalized in cls.STAT_KEY_MAP:
+            name, unit = cls.STAT_KEY_MAP[normalized]
             return f"{name}（{unit}）" if unit else name
-        return stat_key
+        return normalized
+
+    @classmethod
+    def normalize_stat_key(cls, stat_key: str) -> str:
+        """Normalize stat key aliases used across query/condition/cost preview paths."""
+        if not isinstance(stat_key, str):
+            return str(stat_key)
+        return cls.STAT_KEY_ALIASES.get(stat_key, stat_key)

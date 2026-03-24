@@ -116,6 +116,14 @@ class LayoutBuilder:
         window.control_panel.confirm_clicked.connect(window.confirm_selection)
         window.control_panel.reset_clicked.connect(window.reset_game)
 
+        # 再発防止: input_handler は control_panel より先に生成されるため
+        # ここで action_command_selected シグナルを接続する。
+        # __init__ 内の input_handler.__init__ では control_panel が存在しないため接続が無音で失敗する。
+        if hasattr(window, 'input_handler'):
+            window.control_panel.action_command_selected.connect(
+                window.input_handler._on_panel_command_selected
+            )
+
         # Tool connections
         window.control_panel.deck_builder_clicked.connect(window.open_deck_builder)
         window.control_panel.card_editor_clicked.connect(window.open_card_editor)
@@ -146,7 +154,7 @@ class LayoutBuilder:
 
         # Board Panel
         window.game_board = GameBoard()
-        window.game_board.action_triggered.connect(window.session.execute_action)
+        window.game_board.command_triggered.connect(window.session.execute_command)  # 再発防止: action_triggered/execute_action は削除済み
         window.game_board.card_clicked.connect(window.on_card_clicked)
         window.game_board.card_double_clicked.connect(window.on_card_double_clicked)
         window.game_board.card_hovered.connect(window.on_card_hovered)

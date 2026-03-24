@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
   [ValidateSet('Release','RelWithDebInfo','Debug')]
   [string]$Configuration = 'Release',
@@ -48,7 +48,15 @@ function Invoke-Step {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+# Auto-detect preferred build directory: prefer Ninja build if present.
 $buildDir = 'build-msvc'
+if (Test-Path (Join-Path $repoRoot 'build-ninja')) {
+  $buildDir = 'build-ninja'
+} elseif (Test-Path (Join-Path $repoRoot 'build')) {
+  $buildDir = 'build'
+} elseif (Test-Path (Join-Path $repoRoot 'build-msvc')) {
+  $buildDir = 'build-msvc'
+}
 $pythonExe = Join-Path $repoRoot '.venv\Scripts\python.exe'
 if (-not (Test-Path $pythonExe)) {
   $pythonExe = 'python'
@@ -83,7 +91,13 @@ try {
     # Configure+build only if build dir missing or CMakeCache missing
     Invoke-Step -Name 'Configure CMake' -LogFile $logFile -StepLogFile (Join-Path $runDir '20_cmake_configure.log') -Script {
       if (-not (Test-Path "$buildDir\CMakeCache.txt")) {
-        cmake -S . -B $buildDir -A x64 -DCMAKE_BUILD_TYPE=$Configuration
+        if ($buildDir -eq 'build-ninja') {
+          # Ninja generator: do not pass -A
+          cmake -S . -B $buildDir -G Ninja -DCMAKE_BUILD_TYPE=$Configuration
+        } else {
+          # Visual Studio generators require -A x64
+          cmake -S . -B $buildDir -A x64 -DCMAKE_BUILD_TYPE=$Configuration
+        }
       } else {
         Write-Host "CMake already configured: $buildDir/CMakeCache.txt exists"
       }

@@ -11,6 +11,8 @@ from dm_toolkit.gui.editor.forms.parts.condition_widget import ConditionEditorWi
 from dm_toolkit.gui.editor.forms.unified_widgets import make_player_scope_selector
 from dm_toolkit.gui.editor.forms.parts.keyword_selector import KeywordSelectorWidget
 from dm_toolkit.gui.editor.unified_filter_handler import UnifiedFilterHandler
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
+from dm_toolkit.gui.editor.text_resources import CardTextResources
 
 class ModifierEditForm(BaseEditForm):
     """
@@ -36,7 +38,14 @@ class ModifierEditForm(BaseEditForm):
             traceback.print_exc()
 
     def setup_ui(self):
-        layout = QVBoxLayout(self)
+        # Create layout without passing `self` as parent to avoid mismatches
+        # between dummy QWidget used in tests and real PyQt widgets.
+        layout = QVBoxLayout()
+        try:
+            self.setLayout(layout)
+        except Exception:
+            # Fallback: some dummy widget implementations may ignore setLayout
+            pass
 
         # Top section: Basic Modifier Properties
         self.basic_group = QGroupBox(tr("Modifier Settings"))
@@ -44,8 +53,8 @@ class ModifierEditForm(BaseEditForm):
 
         # Type
         self.type_combo = QComboBox()
-        self.type_combo.currentTextChanged.connect(self.update_data)
-        self.type_combo.currentTextChanged.connect(self.update_visibility)
+        safe_connect(self.type_combo, "currentTextChanged", self.update_data)
+        safe_connect(self.type_combo, "currentTextChanged", self.update_visibility)
         self.register_widget(self.type_combo, 'type')
         form_layout.addRow(tr("Type"), self.type_combo)
 
@@ -55,7 +64,7 @@ class ModifierEditForm(BaseEditForm):
         restriction_types = ["TARGET_RESTRICTION", "SPELL_RESTRICTION"]
         for t in restriction_types:
             self.restriction_combo.addItem(tr(t), t)
-        self.restriction_combo.currentTextChanged.connect(self.update_data)
+        safe_connect(self.restriction_combo, "currentTextChanged", self.update_data)
         # We don't register it directly with register_widget because it maps to mutation_kind conditionally
         # self.register_widget(self.restriction_combo)
         self.label_restriction = QLabel(tr("Restriction Type"))
@@ -64,14 +73,59 @@ class ModifierEditForm(BaseEditForm):
         # Value (for Power/Cost)
         self.value_spin = QSpinBox()
         self.value_spin.setRange(-99999, 99999)
-        self.value_spin.valueChanged.connect(self.update_data)
+        safe_connect(self.value_spin, "valueChanged", self.update_data)
         self.register_widget(self.value_spin, 'value')
         self.label_value = QLabel(tr("Value"))
         form_layout.addRow(self.label_value, self.value_spin)
 
+        # Value mode (FIXED | STAT_SCALED)
+        self.value_mode_combo = QComboBox()
+        self.value_mode_combo.addItem(tr('FIXED'), 'FIXED')
+        self.value_mode_combo.addItem(tr('STAT_SCALED'), 'STAT_SCALED')
+        safe_connect(self.value_mode_combo, "currentTextChanged", self.update_data)
+        safe_connect(self.value_mode_combo, "currentTextChanged", self.update_visibility)
+        self.register_widget(self.value_mode_combo, 'value_mode')
+        self.label_value_mode = QLabel(tr("Value Mode"))
+        form_layout.addRow(self.label_value_mode, self.value_mode_combo)
+
+        # STAT_SCALED specific fields
+        self.stat_key_combo = QComboBox()
+        for key in CardTextResources.COMPARE_STAT_EDITOR_KEYS:
+            # 再発防止: 生キー翻訳(ja.json)依存ではなく STAT_KEY_MAP の正規ラベルを表示する。
+            # data は統計キー本体を保持するため保存形式は従来互換。
+            self.stat_key_combo.addItem(CardTextResources.get_stat_key_label(key), key)
+        safe_connect(self.stat_key_combo, "currentTextChanged", self.update_data)
+        self.register_widget(self.stat_key_combo, 'stat_key')
+        self.label_stat_key = QLabel(tr("Stat Key"))
+        form_layout.addRow(self.label_stat_key, self.stat_key_combo)
+
+        self.per_value_spin = QSpinBox()
+        # 再発防止: STAT_SCALED の per_value=0 は保存時にバリデーションエラーとなるため、UIで 1 以上に制限する。
+        self.per_value_spin.setRange(1, 99999)
+        self.per_value_spin.setValue(1)
+        safe_connect(self.per_value_spin, "valueChanged", self.update_data)
+        self.register_widget(self.per_value_spin, 'per_value')
+        self.label_per_value = QLabel(tr("Per Value"))
+        form_layout.addRow(self.label_per_value, self.per_value_spin)
+
+        self.min_stat_spin = QSpinBox()
+        self.min_stat_spin.setRange(0, 99999)
+        self.min_stat_spin.setValue(1)
+        safe_connect(self.min_stat_spin, "valueChanged", self.update_data)
+        self.register_widget(self.min_stat_spin, 'min_stat')
+        self.label_min_stat = QLabel(tr("Min Stat"))
+        form_layout.addRow(self.label_min_stat, self.min_stat_spin)
+
+        self.max_reduction_spin = QSpinBox()
+        self.max_reduction_spin.setRange(0, 99999)
+        safe_connect(self.max_reduction_spin, "valueChanged", self.update_data)
+        self.register_widget(self.max_reduction_spin, 'max_reduction')
+        self.label_max_reduction = QLabel(tr("Max Reduction"))
+        form_layout.addRow(self.label_max_reduction, self.max_reduction_spin)
+
         # Keyword Selection - Unified Widget
         self.keyword_combo = KeywordSelectorWidget(allow_settable=True)
-        self.keyword_combo.keywordSelected.connect(self.update_data)
+        safe_connect(self.keyword_combo, "keywordSelected", self.update_data)
         self.register_widget(self.keyword_combo)
         self.label_keyword = QLabel(tr("Keyword"))
         form_layout.addRow(self.label_keyword, self.keyword_combo)
@@ -82,8 +136,8 @@ class ModifierEditForm(BaseEditForm):
         scope_group = QGroupBox(tr("Scope (Owner)"))
         scope_layout = QFormLayout(scope_group)
         self.scope_widget, self.scope_self_check, self.scope_opp_check = make_player_scope_selector()
-        self.scope_self_check.toggled.connect(self.update_data)
-        self.scope_opp_check.toggled.connect(self.update_data)
+        safe_connect(self.scope_self_check, "toggled", self.update_data)
+        safe_connect(self.scope_opp_check, "toggled", self.update_data)
         self.register_widget(self.scope_self_check)
         self.register_widget(self.scope_opp_check)
         scope_layout.addRow(tr("Owner"), self.scope_widget)
@@ -91,13 +145,13 @@ class ModifierEditForm(BaseEditForm):
 
         # Condition Section
         self.condition_widget = ConditionEditorWidget()
-        self.condition_widget.dataChanged.connect(self.update_data)
+        safe_connect(self.condition_widget, "dataChanged", self.update_data)
         layout.addWidget(self.condition_widget)
 
         # Filter Section - Unified Handler (wrap in scroll area)
         self.filter_widget = UnifiedFilterHandler.create_filter_widget("STATIC", self)
-        self.filter_widget.filterChanged.connect(self.update_data)
-        self.filter_widget.filterChanged.connect(self._refresh_type_combo_items)
+        safe_connect(self.filter_widget, "filterChanged", self.update_data)
+        safe_connect(self.filter_widget, "filterChanged", self._refresh_type_combo_items)
         self.filter_area = QScrollArea()
         self.filter_area.setWidgetResizable(True)
         self.filter_area.setWidget(self.filter_widget)
@@ -109,7 +163,12 @@ class ModifierEditForm(BaseEditForm):
             'type': self.type_combo,
             'value': self.value_spin,
             'condition': self.condition_widget,
-            'filter': self.filter_widget
+            'filter': self.filter_widget,
+            'value_mode': self.value_mode_combo,
+            'stat_key': self.stat_key_combo,
+            'per_value': self.per_value_spin,
+            'min_stat': self.min_stat_spin,
+            'max_reduction': self.max_reduction_spin,
         }
 
         # Initial visibility
@@ -186,6 +245,9 @@ class ModifierEditForm(BaseEditForm):
         if mtype is None:
             mtype = "COST_MODIFIER"  # Default fallback
 
+        # 再発防止: タイプ切替後も前タイプの範囲設定を引きずらないよう、毎回ベース範囲へ戻してから分岐する。
+        self.value_spin.setRange(-99999, 99999)
+
         # Defaults
         self.label_value.setVisible(False)
         self.value_spin.setVisible(False)
@@ -196,30 +258,60 @@ class ModifierEditForm(BaseEditForm):
         self.restriction_combo.setVisible(False)
 
         if mtype == "COST_MODIFIER":
-            self.label_value.setVisible(True)
-            self.value_spin.setVisible(True)
-            self.label_value.setText("軽減量")
-            self.filter_widget.setTitle("軽減対象カード")
+            # Show value mode selector
+            self.label_value_mode.setVisible(True)
+            self.value_mode_combo.setVisible(True)
+            self.filter_widget.setTitle(tr("軽減対象カード"))
+
+            vm = self.value_mode_combo.currentData() or self.value_mode_combo.currentText()
+            if vm == 'STAT_SCALED':
+                # Hide basic fixed value, show stat-scaled fields
+                self.label_value.setVisible(False)
+                self.value_spin.setVisible(False)
+                self.label_stat_key.setVisible(True)
+                self.stat_key_combo.setVisible(True)
+                self.label_per_value.setVisible(True)
+                self.per_value_spin.setVisible(True)
+                self.label_min_stat.setVisible(True)
+                self.min_stat_spin.setVisible(True)
+                self.label_max_reduction.setVisible(True)
+                self.max_reduction_spin.setVisible(True)
+            else:
+                # FIXED mode (default)
+                self.label_value.setVisible(True)
+                self.value_spin.setVisible(True)
+                self.label_stat_key.setVisible(False)
+                self.stat_key_combo.setVisible(False)
+                self.label_per_value.setVisible(False)
+                self.per_value_spin.setVisible(False)
+                self.label_min_stat.setVisible(False)
+                self.min_stat_spin.setVisible(False)
+                self.label_max_reduction.setVisible(False)
+                self.max_reduction_spin.setVisible(False)
 
         elif mtype == "POWER_MODIFIER":
             self.label_value.setVisible(True)
             self.value_spin.setVisible(True)
-            self.label_value.setText("パワー修正値")
-            self.filter_widget.setTitle("強化対象クリーチャー")
+            self.label_value.setText(tr("パワー修正値"))
+            self.filter_widget.setTitle(tr("強化対象クリーチャー"))
 
         elif mtype == "GRANT_KEYWORD":
+            self.label_value.setVisible(True)
+            self.value_spin.setVisible(True)
             self.label_keyword.setVisible(True)
             self.keyword_combo.setVisible(True)
-            self.filter_widget.setTitle("対象クリーチャー")
+            self.label_value.setText(tr("対象数（0 = すべて）"))
+            self.value_spin.setRange(0, 99999)
+            self.filter_widget.setTitle(tr("対象クリーチャー"))
 
         elif mtype in ("TARGET_RESTRICTION", "SPELL_RESTRICTION", "TARGET_THIS_CANNOT_SELECT", "TARGET_THIS_FORCE_SELECT", "ADD_RESTRICTION"):
             # Unified restriction types
-            self.filter_widget.setTitle("制限対象")
+            self.filter_widget.setTitle(tr("制限対象"))
 
         elif mtype == "SET_KEYWORD":
             self.label_keyword.setVisible(True)
             self.keyword_combo.setVisible(True)
-            self.filter_widget.setTitle("対象クリーチャー")
+            self.filter_widget.setTitle(tr("対象クリーチャー"))
 
     def _load_ui_from_data(self, data, item):
         """Load data into UI widgets."""
@@ -285,6 +377,34 @@ class ModifierEditForm(BaseEditForm):
             else:
                 self.keyword_combo.setCurrentIndex(0)
 
+        # Load STAT_SCALED related fields if present
+        # Default value_mode to FIXED when absent
+        vm = data.get('value_mode', 'FIXED')
+        idx = self.value_mode_combo.findData(vm)
+        if idx >= 0:
+            self.value_mode_combo.setCurrentIndex(idx)
+        # stat_key
+        if 'stat_key' in data and data.get('stat_key'):
+            sk = data.get('stat_key')
+            idx2 = self.stat_key_combo.findData(sk)
+            if idx2 >= 0:
+                self.stat_key_combo.setCurrentIndex(idx2)
+        if 'per_value' in data:
+            try:
+                self.per_value_spin.setValue(int(data.get('per_value') or 0))
+            except Exception:
+                pass
+        if 'min_stat' in data:
+            try:
+                self.min_stat_spin.setValue(int(data.get('min_stat') or 1))
+            except Exception:
+                pass
+        if 'max_reduction' in data and data.get('max_reduction') is not None:
+            try:
+                self.max_reduction_spin.setValue(int(data.get('max_reduction')))
+            except Exception:
+                pass
+
         # Update visibility based on current modifier type
         self.update_visibility()
 
@@ -327,6 +447,31 @@ class ModifierEditForm(BaseEditForm):
             # Clear both fields for non-keyword types
             data['mutation_kind'] = ''
             data['str_val'] = ''
+
+        # Persist STAT_SCALED fields when selected
+        if data.get('type') == 'COST_MODIFIER':
+            vm = self.value_mode_combo.currentData() or self.value_mode_combo.currentText()
+            data['value_mode'] = vm
+            if vm == 'STAT_SCALED':
+                # Save stat fields
+                data['stat_key'] = self.stat_key_combo.currentData() or self.stat_key_combo.currentText()
+                # 再発防止: 0 は無効値なので保存時にも下限 1 に正規化する。
+                data['per_value'] = max(1, int(self.per_value_spin.value()))
+                data['min_stat'] = int(self.min_stat_spin.value())
+                # max_reduction: 0 は未指定としてキー自体を落とす（None を入れると validator でエラー）
+                mr = int(self.max_reduction_spin.value())
+                if mr > 0:
+                    data['max_reduction'] = mr
+                else:
+                    data.pop('max_reduction', None)
+                # STAT_SCALED では legacy value は禁止。残っていると保存がブロックされる。
+                data.pop('value', None)
+            else:
+                # FIXED mode: ensure legacy 'value' remains primary
+                data.pop('stat_key', None)
+                data.pop('per_value', None)
+                data.pop('min_stat', None)
+                data.pop('max_reduction', None)
 
     def _get_display_text(self, data):
         """Generate concise display text for tree item."""

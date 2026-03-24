@@ -1,4 +1,32 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
+import json
+import os
+from typing import Any, Iterable
+
+
+def safe_load_json(primary_path: str, fallback_paths: Iterable[str] | None = None) -> Any:
+    """Try to load JSON from primary_path, otherwise try fallback_paths in order.
+
+    Returns the parsed JSON on success, or None if all attempts fail.
+    """
+    paths = [primary_path]
+    if fallback_paths:
+        paths.extend(fallback_paths)
+
+    for p in paths:
+        try:
+            if not p:
+                continue
+            if os.path.exists(p):
+                with open(p, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception:
+            # Swallow errors and try next path
+            continue
+    return None
+# -*- coding: utf-8 -*-
 
 def normalize_action_zone_keys(data):
     """
@@ -55,3 +83,5 @@ def normalize_command_zone_keys(data):
     if 'destination_zone' in data: del data['destination_zone']
 
     return data
+
+# LEGACY_CMDDEF_REFERENCE: This file references 'ActionDef' (legacy). Consider migrating to 'CommandDef'.

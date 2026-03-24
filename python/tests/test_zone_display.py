@@ -15,7 +15,7 @@ class MockCardWidget:
     def __init__(self, *args, **kwargs):
         self.clicked = MockSignal()
         self.hovered = MockSignal()
-        self.action_triggered = MockSignal()
+        self.command_triggered = MockSignal()  # 再発防止: 旧 action_triggered は削除済み
         self.double_clicked = MockSignal()
         self.instance_id = -1
         # Set instance_id if provided in args/kwargs
@@ -28,8 +28,12 @@ class MockCardWidget:
         pass
     def set_selected(self, selected):
         pass
-    def update_legal_actions(self, actions):
+    def update_legal_commands(self, commands):
         pass
+
+    # 後方互換エイリアス（段階的廃止予定）
+    def update_legal_actions(self, actions):
+        self.update_legal_commands(actions)
 
 from dm_toolkit.gui.widgets.zone_widget import ZoneWidget
 
@@ -45,7 +49,8 @@ class TestZoneDisplay(unittest.TestCase):
             patch('dm_toolkit.gui.widgets.zone_widget.CardWidget', MockCardWidget),
             patch('dm_toolkit.gui.widgets.zone_widget.tr', lambda x: x),
             patch('dm_toolkit.gui.widgets.zone_widget.get_card_civilization', lambda x: 'FIRE'),
-            patch('dm_toolkit.gui.widgets.zone_widget.wrap_action', lambda x: x),
+            # 再発防止: wrap_action は wrap_command に改名済み。
+            patch('dm_toolkit.gui.widgets.zone_widget.wrap_command', lambda x: x),
         ]
         for p in self._patchers:
             p.start()

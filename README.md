@@ -129,6 +129,31 @@ Workspace cleanup (optional):
 ./scripts/clean_workspace.ps1 -CleanCaches -MoveRootLogs -Force
 ```
 
+Build scripts now prune stale inactive build directories and old logs before configure/build by default.
+
+```powershell
+# Default: prune stale logs/inactive build trees, then build
+./scripts/quick_build.ps1
+# Skip auto cleanup only when you intentionally need to preserve old artifacts
+./scripts/quick_build.ps1 -SkipAutoCleanup
+```
+
+Git tracking is also hardened so generated build trees like `build-msvc`, `build-ninja`, `build_vs`, and `build_debug` stay ignored and are not routed into Git LFS.
+
+If you need to scrub legacy build artifacts from repository history, use the dedicated rewrite script on a fresh bare mirror instead of rewriting a dirty working tree in place.
+
+```powershell
+# Create a sibling cleaned clone and remove historical build artifacts from Git history
+./scripts/rewrite_git_history_remove_build_artifacts.ps1
+```
+
+Training artifact cleanup also prunes old logs/reports in addition to models/data.
+
+```powershell
+# Preview retention actions for models/data/logs/reports
+python training/artifact_manager.py --dry-run
+```
+
 If you must use Visual Studio to inspect the native code, prefer generating project files from CMake instead of checking generated `.sln`/`.vcxproj` files into source control:
 
 ```powershell

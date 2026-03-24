@@ -61,3 +61,24 @@ def test_replace_card_move_deck_top():
     # DECK should be localized to "山札" or "デッキ" depending on the translation
     # For now, accept either
     assert ("山札" in generated or "デッキ" in generated or "DECK" in generated)
+
+
+def test_replace_card_move_event_source_without_explicit_selection():
+    """EVENT_SOURCE linked replacement should use implicit trigger target, not explicit choose wording."""
+    cmd = {
+        "type": "REPLACE_CARD_MOVE",
+        "from_zone": "BATTLE",
+        "to_zone": "MANA",
+        "input_value_key": "EVENT_SOURCE",
+        "input_value_usage": "",
+        "_input_value_label": "EVENT_SOURCE (イベント発生源 (汎用))",
+        "amount": 1,
+    }
+
+    generated = CardTextGenerator._format_command(cmd)
+
+    assert "そのクリーチャー" in generated
+    assert "選び" not in generated
+    assert "入力元: EVENT_SOURCE" in generated
+    assert "(イベント発生源" not in generated
+    assert "（イベント発生源" not in generated

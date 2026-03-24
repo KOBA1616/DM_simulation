@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-# command_config.py (ACTION_UI_CONFIG)
-# アクション設定の構成ファイル。unified_action_form.py および schema_def.py が使用するデータを定義します。
+# command_config.py
+# コマンド設定の構成ファイル（旧名: ACTION_UI_CONFIG）。unified_action_form.py および schema_def.py が使用するデータを定義します。
+# 再発防止: ファイル内「アクション(Action)」表記はすべて「コマンド(Command)」に移行済み。
 # 備考: AIが編集する際は unified_action_form.py や schema_def.py とセットで同期する必要があります。
 # 重要: このファイルは削除しないでください。動的フォーム生成の構成基盤です。
 
-import json
-import os
+from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
 
 class CommandDef:
     """
@@ -38,32 +38,9 @@ class CommandDef:
         return conf
 
 def load_command_config():
-    config_path = None
-    # 1. Environment Variable
-    env_path = os.environ.get('DM_COMMAND_UI_CONFIG_PATH')
-    if env_path and os.path.exists(env_path):
-        config_path = env_path
-    else:
-        # 2. Relative Path
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        candidates = [
-            os.path.join(current_dir, '..', '..', '..', 'data', 'configs', 'command_ui.json'),
-            # repository root fallback (forms -> editor -> gui -> dm_toolkit -> repo root)
-            os.path.join(current_dir, '..', '..', '..', '..', 'data', 'configs', 'command_ui.json'),
-            os.path.join(os.getcwd(), 'data', 'configs', 'command_ui.json')
-        ]
-        for c in candidates:
-            if os.path.exists(c):
-                config_path = c
-                break
-
-    if config_path:
-        try:
-            with open(config_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Error loading command_ui.json: {e}")
-    return {}
+    # 再発防止: 設定ロード経路を EditorConfigLoader に一本化して、
+    # forms 側での重複したパス探索実装を再導入しない。
+    return EditorConfigLoader.get_command_ui_config()
 
 # Load JSON
 _raw_config = load_command_config()

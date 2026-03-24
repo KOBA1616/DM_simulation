@@ -1,0 +1,62 @@
+[
+  {
+    "card_id_1": 1,
+    "card_id_2": 1,
+    "synergy_score": 1.0,
+    "description": "Self synergy for testing"
+  },
+  {
+    "card_id_1": 100,
+    "card_id_2": 101,
+    "synergy_score": 0.8,
+    "description": "Aggro combo"
+  },
+  {
+    "card_id_1": 102,
+    "card_id_2": 103,
+    "synergy_score": 0.7,
+    "description": "Control synergy"
+  },
+  {
+    "card_id_1": 200,
+    "card_id_2": 205,
+    "synergy_score": 0.9,
+    "description": "Evolution base and evolution creature"
+  },
+  {
+    "card_id_1": 300,
+    "card_id_2": 301,
+    "synergy_score": 0.6,
+    "description": "Spell recursion"
+  },
+  {
+    "card_id_1": 400,
+    "card_id_2": 401,
+    "synergy_score": 0.5,
+    "description": "Shield trigger synergy"
+  },
+  {
+    "card_id_1": 500,
+    "card_id_2": 501,
+    "synergy_score": 0.75,
+    "description": "Ramp synergy"
+  },
+  {
+    "card_id_1": 600,
+    "card_id_2": 601,
+    "synergy_score": 0.85,
+    "description": "Graveyard interaction"
+  },
+  {
+    "card_id_1": 700,
+    "card_id_2": 701,
+    "synergy_score": 0.65,
+    "description": "Blocker support"
+  },
+  {
+    "card_id_1": 800,
+    "card_id_2": 801,
+    "synergy_score": 0.95,
+    "description": "God link"
+  }
+]

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PyQt6.QtCore import Qt
 from dm_toolkit.gui.i18n import tr
-from dm_toolkit.gui.editor.constants import RESERVED_VARIABLES
+from dm_toolkit.gui.editor.consts import RESERVED_VARIABLES
 from dm_toolkit.gui.editor.forms.command_config import COMMAND_UI_CONFIG
 from dm_toolkit.gui.editor.forms.base_form import get_attr
 
@@ -24,7 +24,10 @@ class VariableLinkManager:
 
         # Add Reserved Constants
         for key, desc in RESERVED_VARIABLES.items():
-            variables.append((f"{key} ({tr(desc)})", key))
+            # 再発防止: 説明文が空の時に "key ()" が出る表示崩れを防ぐ。
+            desc_label = tr(desc).strip()
+            label = f"{key} ({desc_label})" if desc_label else key
+            variables.append((label, key))
 
         if not current_item:
             return variables

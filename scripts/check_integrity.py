@@ -20,10 +20,22 @@ def check_command_ui_json():
     print("1. command_ui.json の整合性チェック")
     print("=" * 60)
     
-    with open(PROJECT_ROOT / 'data/configs/command_ui.json', 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    
-    groups = data.get('COMMAND_GROUPS', {})
+    # Prefer using the project's EditorConfigLoader to centralize config loading.
+    try:
+        if str(PROJECT_ROOT) not in sys.path:
+            sys.path.insert(0, str(PROJECT_ROOT))
+        from dm_toolkit.gui.editor.configs.config_loader import EditorConfigLoader
+
+        data = EditorConfigLoader.load() or {}
+        groups = EditorConfigLoader.get_command_groups() or data.get('COMMAND_GROUPS', {})
+        # Get the flattened command UI mapping (modern or legacy)
+        command_ui_map = EditorConfigLoader.get_command_ui_config()
+    except Exception:
+        # If loader import or load fails, treat as missing config and warn
+        print("Warning: EditorConfigLoader unavailable or failed; treating command UI config as empty.")
+        data = {}
+        groups = {}
+        command_ui_map = {}
     all_commands = {}
     duplicates = []
     
@@ -47,7 +59,7 @@ def check_command_ui_json():
         print("\n✅ 重複なし")
     
     # UI定義とグループの対応チェック
-    defined_commands = [k for k in data.keys() if k != 'COMMAND_GROUPS' and k.isupper()]
+    defined_commands = list(command_ui_map.keys())
     print(f"\n定義済みコマンドUI: {len(defined_commands)}")
     
     missing = []

@@ -118,9 +118,9 @@ class CardDataManager:
         item = self._ensure_item(parent_index)
         return self.feature_service.add_reaction(item)
 
-    def apply_template_by_key(self, card_item, template_key, display_label=None):
+    def apply_template_by_key(self, card_item, template_key, display_label=None, extra_context=None):
         item = self._ensure_item(card_item)
-        return self.feature_service.apply_template_by_key(item, template_key, display_label)
+        return self.feature_service.apply_template_by_key(item, template_key, display_label, extra_context=extra_context)
 
     def remove_logic_by_label(self, card_item, label_substring):
         item = self._ensure_item(card_item)
@@ -149,6 +149,17 @@ class CardDataManager:
         )
         return model.model_dump()
 
+    def create_default_replacement_data(self):
+        """置換効果のデフォルトデータを生成する（ON_DESTROY を置換対象イベントとして初期設定）。"""
+        model = EffectModel(
+            trigger="ON_DESTROY",
+            condition=None,
+            commands=[]
+        )
+        data = model.model_dump()
+        data['mode'] = 'REPLACEMENT'
+        return data
+
     def create_default_static_data(self):
         """Create default data for a static ability."""
         model = ModifierModel(
@@ -171,7 +182,8 @@ class CardDataManager:
     def format_command_label(self, cmd_data):
         """Format a label for a command item."""
         cmd_type = cmd_data.get('type', 'UNKNOWN')
-        return f"{tr('Action')}: {tr(cmd_type)}"
+        # 再発防止: ラベルは "コマンド: TYPE" に統一。"アクション" 表記は廃止。
+        return f"{tr('Command')}: {tr(cmd_type)}"
 
     def add_child_item(self, parent_index, item_type, data, label):
         parent_item = self._ensure_item(parent_index)
@@ -201,7 +213,7 @@ class CardDataManager:
         # Determine target container based on selection
         if type_ in ["EFFECT", "OPTION", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]:
             target_item = item
-        elif type_ in ["COMMAND", "ACTION"]:
+        elif type_ in ["COMMAND", "LEGACY_CMD"]:
              cmd_model = self.get_item_model_obj(item)
              cmd_type = None
              if hasattr(cmd_model, 'type'):
@@ -260,15 +272,15 @@ class CardDataManager:
         target_item.append_row(new_item)
         return new_item
 
-    # --- Legacy Action conversion helpers (for tests / migration) ---
+    # --- 旧形式アクション変換ヘルパ（テスト / マイグレーション用） ---
 
     def convert_action_tree_to_command(self, action_item):
-        """Convert an ACTION tree item into a normalized GameCommand dict.
+        """Convert a legacy action tree item into a normalized GameCommand dict.
         """
         # We need ActionConverter. It's safe to import here as long as it doesn't depend on Qt.
         # dm_toolkit/gui/editor/action_converter.py needs check.
         # But let's assume it's pure logic.
-        from dm_toolkit.gui.editor.action_converter import ActionConverter
+        from dm_toolkit.gui.editor.command_converter import CommandConverter
 
         item = self._ensure_item(action_item)
         try:
@@ -279,7 +291,7 @@ class CardDataManager:
         if not isinstance(action_data, dict):
             return {"type": "NONE", "legacy_warning": True, "str_param": "Invalid action item"}
 
-        return ActionConverter.convert(action_data)
+        return CommandConverter.convert(action_data)
 
     def collect_conversion_preview(self, root_item):
         """Collect a preview list of action->command conversions under root_item."""
@@ -296,7 +308,9 @@ class CardDataManager:
             except Exception:
                 role_type = None
 
-            if role_type == "ACTION":
+            # 再発防止: 旧形式のアクションは後方互換で扱う。
+            # 新規作成アイテムは必ず "COMMAND" を使用すること。
+            if role_type in ("LEGACY_CMD", "COMMAND"):
                 try:
                     label = item.text()
                 except Exception:
@@ -328,6 +342,8 @@ class CardDataManager:
             internal_type = "EFFECT"
         elif target_type == tr("Static Ability"):
             internal_type = "MODIFIER"
+        elif target_type == tr("Replacement Ability"):
+            internal_type = "EFFECT"  # 置換能力はEFFECTツリー項目に格納、data['mode']='REPLACEMENT'で識別
         elif target_type == tr("Reaction Ability"):
             internal_type = "REACTION_ABILITY"
 
@@ -416,8 +432,12 @@ class CardDataManager:
 
         # Add option items
         for i, opt in enumerate(new_options):
-            opt_item = self.model.create_item(f"{tr('Option')} {i+1}")
+            default_label = f"{tr('Option')} {i+1}"
+            opt_item = self.model.create_item(default_label)
             opt_item.set_data("OPTION", ROLE_TYPE)
+            # 再発防止: option item に ROLE_DATA を設定してラベル編集をサポートする。
+            # label フィールドが空の場合は "Option N" をデフォルトとして OptionForm で表示する。
+            opt_item.set_data({'label': '', 'uid': str(__import__('uuid').uuid4())}, ROLE_DATA)
             item.append_row(opt_item)
             # Add commands inside option
             for cmd in opt:

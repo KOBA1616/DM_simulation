@@ -7,6 +7,7 @@ from dm_toolkit.gui.i18n import tr
 from typing import Any, Dict
 from dm_toolkit.gui.editor.forms.base_form import BaseEditForm, get_attr, to_dict
 from dm_toolkit.gui.editor.forms.parts.reaction_condition_widget import ReactionConditionWidget
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class ReactionEditForm(BaseEditForm):
     """
@@ -28,28 +29,32 @@ class ReactionEditForm(BaseEditForm):
 
         # Type
         self.type_combo = QComboBox()
-        self.type_combo.addItems(["NONE", "NINJA_STRIKE", "STRIKE_BACK", "REVOLUTION_0_TRIGGER"])
-        self.type_combo.currentIndexChanged.connect(self.update_data)
-        self.type_combo.currentIndexChanged.connect(self.update_visibility)
+        # 再発防止: addItem(表示テキスト, 生値) パターン。保存時は currentData() を使用する。
+        for raw in ["NONE", "NINJA_STRIKE", "STRIKE_BACK", "REVOLUTION_0_TRIGGER"]:
+            self.type_combo.addItem(tr(raw), raw)
+        safe_connect(self.type_combo, "currentIndexChanged", self.update_data)
+        safe_connect(self.type_combo, "currentIndexChanged", self.update_visibility)
         layout.addRow(tr("Type"), self.type_combo)
 
         # Cost
         self.label_cost = QLabel(tr("Cost / Requirement"))
         self.cost_spin = QSpinBox()
         self.cost_spin.setRange(0, 99)
-        self.cost_spin.valueChanged.connect(self.update_data)
+        safe_connect(self.cost_spin, "valueChanged", self.update_data)
         layout.addRow(self.label_cost, self.cost_spin)
 
         # Zone
         self.label_zone = QLabel(tr("Zone"))
         self.zone_edit = QComboBox()
-        self.zone_edit.addItems(["HAND", "GRAVEYARD", "MANA_ZONE"])
-        self.zone_edit.currentTextChanged.connect(self.update_data)
+        # 再発防止: addItem(表示テキスト, 生値) パターン。保存時は currentData() を使用する。
+        for raw in ["HAND", "GRAVEYARD", "MANA_ZONE"]:
+            self.zone_edit.addItem(tr(raw), raw)
+        safe_connect(self.zone_edit, "currentIndexChanged", self.update_data)
         layout.addRow(self.label_zone, self.zone_edit)
 
         # Condition Widget (Extracted)
         self.reaction_condition = ReactionConditionWidget()
-        self.reaction_condition.dataChanged.connect(self.update_data)
+        safe_connect(self.reaction_condition, "dataChanged", self.update_data)
         layout.addRow(self.reaction_condition)
 
         # Initial visibility
@@ -63,14 +68,17 @@ class ReactionEditForm(BaseEditForm):
         self.cost_spin.setVisible(True)
 
         # Propagate visibility update to condition widget
+        # Use centralized visibility rules from ReactionConditionWidget where possible
         self.reaction_condition.update_visibility(rtype)
 
-        if rtype == "STRIKE_BACK":
+        # Cost visibility rules: hide for specific types
+        COST_HIDDEN_FOR = {"STRIKE_BACK", "REVOLUTION_0_TRIGGER"}
+        if rtype in COST_HIDDEN_FOR:
             self.label_cost.setVisible(False)
             self.cost_spin.setVisible(False)
-        elif rtype == "REVOLUTION_0_TRIGGER":
-            self.label_cost.setVisible(False)
-            self.cost_spin.setVisible(False)
+        else:
+            self.label_cost.setVisible(True)
+            self.cost_spin.setVisible(True)
 
     def _load_ui_from_data(self, data, item):
         # data is passed directly from BaseEditForm.load_data
@@ -89,9 +97,10 @@ class ReactionEditForm(BaseEditForm):
         self.update_visibility()
 
     def _save_ui_to_data(self, data):
-        data['type'] = self.type_combo.currentText()
+        # 再発防止: 翻訳表示のため currentData() で生値を取得する。currentText() 不可。
+        data['type'] = self.type_combo.currentData() or self.type_combo.currentText()
         data['cost'] = self.cost_spin.value()
-        data['zone'] = self.zone_edit.currentText()
+        data['zone'] = self.zone_edit.currentData() or self.zone_edit.currentText()
         data['condition'] = self.reaction_condition.get_data()
 
     def _get_display_text(self, data):
@@ -104,7 +113,10 @@ class ReactionEditForm(BaseEditForm):
         self.reaction_condition.blockSignals(block)
 
     def set_combo_text(self, combo, text):
-        idx = combo.findText(text)
+        # 再発防止: 翻訳表示コンボでは findData() で生値を検索する。
+        idx = combo.findData(text)
+        if idx < 0:
+            idx = combo.findText(text)  # フォールバック: 旧形式(生値直接表示)対応
         if idx >= 0:
             combo.setCurrentIndex(idx)
         else:

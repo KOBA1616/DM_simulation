@@ -251,7 +251,7 @@ def run_one_game(max_steps=10000, max_actions_per_phase=50):
         actions_this_phase = 0
         while True:
             try:
-                sess.execute_action(choice)
+                sess.execute_command(choice)
                 actions_executed += 1
             except Exception:
                 exceptions += 1
@@ -290,7 +290,7 @@ def run_one_game(max_steps=10000, max_actions_per_phase=50):
             if not has_play_candidate and pass_cmd is not None:
                 choice = pass_cmd
                 try:
-                    sess.execute_action(choice)
+                    sess.execute_command(choice)
                     actions_executed += 1
                 except Exception:
                     exceptions += 1

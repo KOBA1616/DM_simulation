@@ -5,6 +5,7 @@ from PyQt6.QtCore import Qt, QMimeData, QSize
 from PyQt6.QtGui import QDrag
 from dm_toolkit.gui.i18n import tr
 import json
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class CardSearchWidget(QWidget):
     def __init__(self, parent=None):
@@ -25,7 +26,7 @@ class CardSearchWidget(QWidget):
         name_layout.addWidget(QLabel(tr("Name:")))
         self.search_edit = QLineEdit()
         self.search_edit.setPlaceholderText(tr("Search by name..."))
-        self.search_edit.textChanged.connect(self.apply_filter)
+        safe_connect(self.search_edit, 'textChanged', self.apply_filter)
         name_layout.addWidget(self.search_edit)
         filter_layout.addLayout(name_layout)
 
@@ -39,7 +40,7 @@ class CardSearchWidget(QWidget):
         self.civ_combo.addItem(tr("Nature"), "NATURE")
         self.civ_combo.addItem(tr("Light"), "LIGHT")
         self.civ_combo.addItem(tr("Darkness"), "DARKNESS")
-        self.civ_combo.currentIndexChanged.connect(self.apply_filter)
+        safe_connect(self.civ_combo, 'currentIndexChanged', self.apply_filter)
         civ_layout.addWidget(self.civ_combo)
         filter_layout.addLayout(civ_layout)
 
@@ -48,7 +49,7 @@ class CardSearchWidget(QWidget):
         cost_layout.addWidget(QLabel(tr("Cost:")))
         self.cost_edit = QLineEdit()
         self.cost_edit.setPlaceholderText(tr("e.g. 5"))
-        self.cost_edit.textChanged.connect(self.apply_filter)
+        safe_connect(self.cost_edit, 'textChanged', self.apply_filter)
         cost_layout.addWidget(self.cost_edit)
         filter_layout.addLayout(cost_layout)
 

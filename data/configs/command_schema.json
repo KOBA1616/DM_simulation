@@ -108,10 +108,13 @@
   },
   "ADD_KEYWORD": {
     "fields": [
-      { "key": "target_group", "widget": "scope_combo", "label": "Target Scope" },
+      { "key": "target_group", "widget": "player_scope", "label": "Target Scope" },
       { "key": "target_filter", "widget": "filter_editor" },
-      { "key": "mutation_kind", "widget": "keyword_combo", "label": "Keyword" },
-      { "key": "amount", "widget": "spinbox", "label": "Duration (Turns)" }
+      { "key": "explicit_self", "widget": "checkbox", "label": "This Card" },
+      { "key": "str_val", "widget": "combo", "label": "Keyword" },
+      { "key": "duration", "widget": "combo", "label": "Duration" },
+      { "key": "amount", "widget": "spinbox", "label": "Target Count (0 = all)" },
+      { "key": "input_link", "widget": "variable_link" }
     ]
   },
   "QUERY": {

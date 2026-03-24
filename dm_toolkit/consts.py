@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
+from dm_toolkit.stat_keys import QUERY_STAT_KEYS
 
 """
 Central Constants Definition.
@@ -24,6 +25,7 @@ except ImportError:
     _HAS_MODULE = False
 
 from typing import Any, List
+from enum import Enum
 
 
 def _get_enum_names(enum_cls: Any) -> List[str]:
@@ -92,6 +94,9 @@ class TargetScope:
     def all_values(cls) -> list:
         """Get all valid scope values."""
         return [cls.SELF, cls.OPPONENT, cls.ALL]
+
+# Canonical target scopes for editor/schema usage (preserve PLAYER_* aliases for compatibility)
+TARGET_SCOPES = [TargetScope.PLAYER_SELF, TargetScope.PLAYER_OPPONENT, TargetScope.ALL]
 
 # =============================================================================
 # Zones
@@ -183,8 +188,10 @@ else:
         "SELECT_FROM_BUFFER",
         "PLAY_FROM_BUFFER",
         "MOVE_BUFFER_TO_ZONE",
+        "MOVE_BUFFER_REMAIN_TO_ZONE",
         "FRIEND_BURST",
         "REGISTER_DELAYED_EFFECT",
+        "IGNORE_ABILITY",
         "NONE",
     ]
 
@@ -203,7 +210,7 @@ else:
         "RESET_INSTANCE", "SEARCH_DECK", "SHUFFLE_DECK", "ADD_SHIELD",
         "SEND_SHIELD_TO_GRAVE", "SEND_TO_DECK_BOTTOM", "MOVE_TO_UNDER_CARD",
         "SELECT_NUMBER", "FRIEND_BURST", "GRANT_KEYWORD", "MOVE_CARD",
-        "CAST_SPELL", "PUT_CREATURE", "SELECT_OPTION", "RESOLVE_BATTLE", "NONE"
+        "CAST_SPELL", "PUT_CREATURE", "SELECT_OPTION", "IGNORE_ABILITY", "RESOLVE_BATTLE", "NONE"
     ]
 
 # =============================================================================
@@ -275,21 +282,120 @@ GRANTABLE_KEYWORDS = [
 SETTABLE_KEYWORDS = GRANTABLE_KEYWORDS.copy()
 
 # =============================================================================
+# Mutation / Effect UI Lists (editor subsets kept here to avoid duplication)
+# =============================================================================
+# Mutation types used in editor selection for ADD_KEYWORD and similar
+MUTATION_TYPES = [
+    "SPEED_ATTACKER", "BLOCKER", "SLAYER", "DOUBLE_BREAKER", "TRIPLE_BREAKER",
+    "POWER_ATTACKER", "S_TRIGGER", "MACH_FIGHTER", "UNBLOCKABLE",
+    "CANNOT_BE_BLOCKED", "ALWAYS_WIN_BATTLE", "INFINITE_POWER_ATTACKER",
+    "JUST_DIVER", "G_STRIKE", "HYPER_ENERGY", "SHIELD_BURN", "EX_LIFE",
+    "SUPER_SOUL_X",
+]
+
+# Effect IDs for APPLY_MODIFIER (not keywords)
+EFFECT_IDS = [
+    "CANNOT_ATTACK",
+    "CANNOT_BLOCK",
+    "CANNOT_ATTACK_OR_BLOCK",
+    "CANNOT_ATTACK_AND_BLOCK",
+    "CANNOT_LEAVE_BATTLE",
+]
+
+# Convenience option list used by schema definitions
+APPLY_MODIFIER_OPTIONS = EFFECT_IDS + ["COST"]
+
+# Mutation kinds used for MUTATE command
+MUTATION_KINDS_FOR_MUTATE = [
+    "POWER_MOD", "ADD_KEYWORD"
+]
+
+
+# Central enum for mutation kinds. Use `str` subclass so JSON dumps as string.
+class MutationKind(str, Enum):
+    # Core mutation kinds used by MUTATE commands and text generation
+    POWER_MOD = "POWER_MOD"
+    ADD_KEYWORD = "ADD_KEYWORD"
+    TAP = "TAP"
+    UNTAP = "UNTAP"
+    GIVE_POWER = "GIVE_POWER"
+    GIVE_ABILITY = "GIVE_ABILITY"
+    REMOVE_KEYWORD = "REMOVE_KEYWORD"
+    ADD_PASSIVE_EFFECT = "ADD_PASSIVE_EFFECT"
+    ADD_MODIFIER = "ADD_MODIFIER"
+    ADD_COST_MODIFIER = "ADD_COST_MODIFIER"
+
+    # Keyword-like mutation kinds (from MUTATION_TYPES / Grantable keywords)
+    SPEED_ATTACKER = "SPEED_ATTACKER"
+    BLOCKER = "BLOCKER"
+    SLAYER = "SLAYER"
+    DOUBLE_BREAKER = "DOUBLE_BREAKER"
+    TRIPLE_BREAKER = "TRIPLE_BREAKER"
+    POWER_ATTACKER = "POWER_ATTACKER"
+    S_TRIGGER = "S_TRIGGER"
+    MACH_FIGHTER = "MACH_FIGHTER"
+    UNBLOCKABLE = "UNBLOCKABLE"
+    CANNOT_BE_BLOCKED = "CANNOT_BE_BLOCKED"
+    ALWAYS_WIN_BATTLE = "ALWAYS_WIN_BATTLE"
+    INFINITE_POWER_ATTACKER = "INFINITE_POWER_ATTACKER"
+    JUST_DIVER = "JUST_DIVER"
+    G_STRIKE = "G_STRIKE"
+    SHIELD_BURN = "SHIELD_BURN"
+    REVOLUTION_CHANGE = "REVOLUTION_CHANGE"
+
+    # Restriction-style mutation kinds
+    CANNOT_ATTACK = "CANNOT_ATTACK"
+    CANNOT_BLOCK = "CANNOT_BLOCK"
+    CANNOT_ATTACK_OR_BLOCK = "CANNOT_ATTACK_OR_BLOCK"
+    CANNOT_ATTACK_AND_BLOCK = "CANNOT_ATTACK_AND_BLOCK"
+    # Targeting helpers used by some static/mutation entries in card data
+    TARGET_THIS_FORCE_SELECT = "TARGET_THIS_FORCE_SELECT"
+    TARGET_THIS_CANNOT_SELECT = "TARGET_THIS_CANNOT_SELECT"
+
+# Delayed effect IDs used by REGISTER_DELAYED_EFFECT schema options
+DELAYED_EFFECT_IDS = [
+    "AT_END_OF_TURN_DESTROY",
+    "AT_END_OF_TURN_RETURN_TO_HAND",
+    "AT_END_OF_TURN_UNTAP",
+    "AT_START_OF_TURN_DRAW",
+    "AT_ATTACK_END_UNTAP"
+]
+
+# =============================================================================
 # Trigger Types (Effect Triggers)
+# 再発防止: C++ の TriggerType enum (card_json_types.hpp) と必ず1:1対応を保つこと。
+#   新しいトリガーを追加したら card_json_types.hpp / bind_core.cpp / trigger_manager.cpp
+#   の3ファイルも同時に更新すること。
 # =============================================================================
 TRIGGER_TYPES = [
-    "ON_PLAY",
-    "ON_ATTACK",
-    "ON_BLOCK",
-    "ON_DESTROY",
-    "TURN_START",
-    "PASSIVE_CONST",
-    "ON_OTHER_ENTER",
-    "ON_ATTACK_FROM_HAND",
-    "AT_BREAK_SHIELD",
-    "ON_CAST_SPELL",
-    "ON_OPPONENT_DRAW",
-    "ON_OPPONENT_CREATURE_ENTER"
+    # ゾーン移動系
+    "ON_PLAY",               # バトルゾーン参入（CIP）
+    "ON_OTHER_ENTER",        # 自分の他クリーチャーが参入した時
+    "ON_OPPONENT_CREATURE_ENTER",  # 相手クリーチャーが参入した時
+    "ON_DESTROY",            # バトルゾーン→墓地（破壊）
+    "ON_EXIT",               # バトルゾーンからの離脱（破壊・手札・マナ問わず）
+    "ON_DISCARD",            # 手札から捨てられた時（マッドネス等）
+    # ターン・フェイズ系
+    "TURN_START",            # ターン開始時
+    "ON_TURN_END",           # ターン終了時
+    # アクション系
+    "ON_ATTACK",             # 攻撃宣言時
+    "ON_ATTACK_FROM_HAND",   # 革命チェンジ等：攻撃起点
+    "ON_BLOCK",              # ブロック宣言時
+    "ON_BATTLE_WIN",         # バトル勝利時
+    "ON_BATTLE_LOSE",        # バトル敗北時
+    "ON_CAST_SPELL",         # 呪文詠唱時
+    "ON_DRAW",               # カードを引いた時
+    "ON_OPPONENT_DRAW",      # 相手がカードを引いた時
+    "ON_TAP",                # タップした時
+    "ON_UNTAP",              # アンタップした時
+    # シールド系
+    "AT_BREAK_SHIELD",       # シールドブレイク時
+    "BEFORE_BREAK_SHIELD",   # シールドブレイク直前（置換起点）
+    "ON_SHIELD_ADD",         # シールドゾーンへの追加時
+    # 特殊・常在型
+    "S_TRIGGER",             # シールドトリガー（割り込み型）
+    "PASSIVE_CONST",         # 常在型（後方互換のために保持、新規はstatic_abilitiesを推奨）
 ]
 
 # Triggers valid for Spells (subset of above)
@@ -297,9 +403,12 @@ SPELL_TRIGGER_TYPES = [
     "ON_PLAY",
     "ON_CAST_SPELL",
     "TURN_START",
+    "ON_TURN_END",
     "ON_OPPONENT_DRAW",
+    "ON_DRAW",
     "PASSIVE_CONST",
-    "ON_OTHER_ENTER"
+    "ON_OTHER_ENTER",
+    "ON_OPPONENT_CREATURE_ENTER",
 ]
 
 # =============================================================================
@@ -325,23 +434,8 @@ GAME_RESULTS = [
 # =============================================================================
 # Query Modes
 # =============================================================================
-QUERY_MODES = [
-    "CARDS_MATCHING_FILTER",
-    "MANA_COUNT",
-    "CREATURE_COUNT",
-    "SHIELD_COUNT",
-    "HAND_COUNT",
-    "GRAVEYARD_COUNT",
-    "BATTLE_ZONE_COUNT",
-    "OPPONENT_MANA_COUNT",
-    "OPPONENT_CREATURE_COUNT",
-    "OPPONENT_SHIELD_COUNT",
-    "OPPONENT_HAND_COUNT",
-    "OPPONENT_GRAVEYARD_COUNT",
-    "OPPONENT_BATTLE_ZONE_COUNT",
-    "CARDS_DRAWN_THIS_TURN",
-    "MANA_CIVILIZATION_COUNT"
-]
+# 再発防止: stat 系 query_mode は dm_toolkit.stat_keys.QUERY_STAT_KEYS を単一ソースにする。
+QUERY_MODES = ["CARDS_MATCHING_FILTER", *QUERY_STAT_KEYS]
 
 # =============================================================================
 # Duration Types

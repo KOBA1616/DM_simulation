@@ -18,9 +18,9 @@ Usage:
     draw_cmd = build_draw_command(amount=2)
     transition_cmd = build_transition_command(from_zone="HAND", to_zone="MANA", amount=1)
     
-    # Execute via unified execution path
-    from dm_toolkit.unified_execution import ensure_executable_command
-    cmd = ensure_executable_command(draw_cmd)
+    # Execute via EngineCompat (unified_execution は削除済み)
+    # from dm_toolkit.engine.compat import EngineCompat
+    # EngineCompat.ExecuteCommand(state, draw_cmd, card_db)
 
 Migration Path:
     Phase 1: Use alongside map_action for gradual transition
@@ -63,7 +63,7 @@ def _build_filter_def(tf_data: Dict[str, Any]) -> Any:
     f = _FilterDef()
     for k in ['zones', 'types', 'civilizations', 'races', 'min_cost', 'max_cost',
               'exact_cost', 'min_power', 'max_power', 'is_tapped', 'is_blocker',
-              'is_evolution', 'owner', 'count', 'cost_ref', 'selection_mode']:
+              'is_evolution', 'owner', 'count', 'cost_ref']:
         if k in tf_data:
             val = tf_data[k]
             # Special handling for civilizations enum conversion
@@ -84,7 +84,9 @@ def _build_filter_def(tf_data: Dict[str, Any]) -> Any:
                 else:
                     setattr(f, k, converted_civs)
             else:
-                setattr(f, k, val)
+                # 再発防止: ネイティブFilterDefから削除済みの属性は無視する。
+                if hasattr(f, k):
+                    setattr(f, k, val)
 
     if 'and_conditions' in tf_data:
         for sub in tf_data['and_conditions']:
@@ -141,6 +143,14 @@ def _build_native_command(cmd_type_str: str, **kwargs: Any) -> Any:
     if 'output_value_key' in kwargs: cmd.output_value_key = kwargs['output_value_key']
     if 'slot_index' in kwargs: cmd.slot_index = kwargs['slot_index']
     if 'target_slot_index' in kwargs: cmd.target_slot_index = kwargs['target_slot_index']
+
+    # Payment-related metadata (editor/agent -> engine)
+    if 'payment_mode' in kwargs and kwargs['payment_mode'] is not None and hasattr(cmd, 'payment_mode'):
+        cmd.payment_mode = kwargs['payment_mode']
+    if 'reduction_id' in kwargs and kwargs['reduction_id'] is not None and hasattr(cmd, 'reduction_id'):
+        cmd.reduction_id = kwargs['reduction_id']
+    if 'payment_units' in kwargs and kwargs['payment_units'] is not None and hasattr(cmd, 'payment_units'):
+        cmd.payment_units = kwargs['payment_units']
 
     # Handle Target Group
     if 'target_group' in kwargs and kwargs['target_group'] is not None:
@@ -845,6 +855,24 @@ def build_move_buffer_to_zone(
     cmd = {
         "type": "MOVE_BUFFER_TO_ZONE",
         "value1": amount,
+        "to_zone": to_zone,
+        **kwargs
+    }
+    return _ensure_uid(cmd)
+
+
+def build_move_buffer_remain_to_zone(
+    to_zone: str = "DECK_BOTTOM",
+    native: bool = True,
+    **kwargs: Any
+) -> Union[Dict[str, Any], Any]:
+    """Build a MOVE_BUFFER_REMAIN_TO_ZONE command."""
+    if native:
+        return _build_native_command("MOVE_BUFFER_REMAIN_TO_ZONE", from_zone="BUFFER", to_zone=to_zone,
+                                     **kwargs)
+
+    cmd = {
+        "type": "MOVE_BUFFER_REMAIN_TO_ZONE",
         "to_zone": to_zone,
         **kwargs
     }

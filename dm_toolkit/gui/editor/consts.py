@@ -34,3 +34,14 @@ STRUCT_CMD_REPLACE_WITH_COMMAND = "REPLACE_WITH_COMMAND"
 # Defined here to avoid magic numbers scattered throughout the code
 ROLE_TYPE = UserRole + 1
 ROLE_DATA = UserRole + 2
+
+# Reserved variables used by editor variable-link UI
+RESERVED_VARIABLES = {
+    "$evo_target": "進化元",
+    "$cost_reducer": "コスト軽減元",
+    "$shield_trigger": "シールド・トリガー元",
+    "$attacker": "攻撃クリーチャー",
+    "$blocker": "ブロック・クリーチャー",
+    "$selected": "選択された対象",
+    "EVENT_SOURCE": "イベント発生源 (汎用)"
+}

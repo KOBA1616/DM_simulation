@@ -1,0 +1,43 @@
+name: CI (pin ONNX Runtime for native tests)
+
+on:
+  push: {}
+  pull_request: {}
+
+jobs:
+  build-and-test-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install Python deps and pinned ONNX Runtime
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install onnxruntime==1.20.1
+
+      - name: Build native (Quick build)
+        shell: pwsh
+        run: |
+          if (-not (Test-Path .venv)) { python -m venv .venv }
+          .\.venv\Scripts\Activate.ps1
+          .\scripts\quick_build.ps1
+          Copy-Item bin\dm_ai_module.cp312-win_amd64.pyd . -Force
+
+      - name: Copy ONNX Runtime bundle into workspace
+        shell: pwsh
+        run: |
+          .\.venv\Scripts\Activate.ps1
+          .\scripts\copy_full_onnxruntime_bundle.ps1
+
+      - name: Run native ONNX loader smoke test
+        shell: pwsh
+        run: |
+          .\.venv\Scripts\Activate.ps1
+          pytest tests/test_transformer_inference_native.py -q

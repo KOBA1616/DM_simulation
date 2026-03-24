@@ -742,7 +742,7 @@ class SimulationDialog(QDialog):
                 self.status_label.setText(tr("Processing"))
                 self.status_label.setStyleSheet("font-weight: bold; color: orange;")
             except Exception:
-                self.status_label.setText("Processing")
+                self.status_label.setText(tr("Processing"))
                 self.status_label.setStyleSheet("font-weight: bold; color: orange;")
 
         # Update remaining time UI if auto-loop with time limit is running

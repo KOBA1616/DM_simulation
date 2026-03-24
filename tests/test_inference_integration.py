@@ -71,45 +71,36 @@ class TestInferenceIntegration(unittest.TestCase):
         player_id = 0
         ai = AIPlayer(self.model_path, device='cpu', config=self.config)
 
-        # 2. Add cards to hand to give options (ActionEncoder maps index 1-10 to Hand 0-9)
-        # We need to ensure the model picks a valid action, but since it's random/untrained,
-        # it might pick PASS or INVALID.
-        # To make this robust, we will mock the model output OR just accept whatever it does
-        # and verify the flow completes without error.
+        # 2. Add cards to hand to give options (CommandEncoder maps index 1-10 to Hand 0-9)
+        # 再発防止: add_card_to_hand は (player_id, card_id, instance_id) の3引数必須。
+        self.game.state.add_card_to_hand(player_id, 100, 100) # Hand[0]
+        self.game.state.add_card_to_hand(player_id, 101, 101) # Hand[1]
 
-        # Let's add cards
-        self.game.state.add_card_to_hand(player_id, 100) # Hand[0]
-        self.game.state.add_card_to_hand(player_id, 101) # Hand[1]
-
-        # 3. Get Action
-        # We can't force the untrained model to pick a specific action easily without mocking.
-        # But we can verify the pipeline runs.
-
-        command = ai.get_action(self.game.state, player_id)
+        # 3. Get Command
+        command = ai.get_command(self.game.state, player_id)
 
         # 4. Verify Command Object
         self.assertIsNotNone(command)
         # CommandType is IntEnum
         self.assertIsInstance(command.type, (int, CommandType))
 
-        print(f"AI Selected Action Type: {command.type}")
+        print(f"AI Selected Command Type: {command.type}")
 
-        # 5. Execute Action
-        # We call execute_action on GameInstance
-        # Note: AIPlayer returns GameCommand, GameInstance expects Action-like object.
-        # dm_ai_module.py handles GameCommand fields (type, card_id, etc) via getattr
-
+        # 5. Execute Command
+        # AIPlayer.get_command returns GameCommand; dm_ai_module handles fields via getattr
+        # 再発防止: compat_wrappers は削除済み。直接 execute_command を使用する。
+        # 再発防止: execute_command は CommandDef を直接受け付けない（クラッシュ）。dict形式に変換して渡す。
         initial_mana_count = len(self.game.state.players[player_id].mana_zone)
         initial_hand_count = len(self.game.state.players[player_id].hand)
-
         try:
-            from dm_toolkit.compat_wrappers import execute_action_compat
-            execute_action_compat(self.game.state, command, None)
+            type_val = command.type
+            type_name = type_val.name if hasattr(type_val, 'name') else str(type_val)
+            cmd_dict: dict = {'type': type_name}
+            if hasattr(command, 'instance_id') and command.instance_id:
+                cmd_dict['instance_id'] = command.instance_id
+            self.game.execute_command(cmd_dict)
         except Exception:
-            try:
-                self.game.execute_action(command)
-            except Exception:
-                pass
+            pass
 
         # 6. Verify something happened (or didn't if PASS)
         if command.type == CommandType.MANA_CHARGE:

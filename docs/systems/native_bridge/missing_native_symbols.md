@@ -1,73 +1,385 @@
-# Missing native symbols report
+# Native symbols report (auto-generated snapshot)
 
-Detected references to `dm_ai_module` symbols and whether they are present.
+Generated: 2026-03-12
+Automated audit: 2026-03-13 — 347 symbols collected (see scripts/_list_dm_symbols_temp.py)
 
-## Present
+This file records the symbols currently exported by the native `dm_ai_module` Python extension and highlights the small set of previously-expected symbols that remain unexported.
 
-- Action
-- ActionType
-- CardDatabase
-- CardStub
-- CardType
-- Civilization
-- CommandDef
-- CommandSystem
-- CommandType
-- DataCollector
-- FlowCommand
-- FlowType
-- GameCommand
-- GameInstance
-- GameResult
-- GameState
-- JsonLoader
-- ParallelRunner
-- Phase
-- PhaseManager
-- __file__
+## Present (exported symbols)
 
-## Missing
-- ActionDef
-- ActionType (ambiguous / noisy matches)
+ADD_CARD
+ADD_COST_MODIFIER
+ADD_KEYWORD
+ADD_MANA
+ADD_PASSIVE_EFFECT
+ADD_PENDING_EFFECT
+ADD_RESTRICTION
+ADD_SHIELD
+AI
+ALLOW_ATTACK_UNTAPPED
+ALL_FILTERED
+ALL_PLAYERS
+APPLY_MODIFIER
+ATTACH
+ATTACK
+ATTACK_CREATURE
+ATTACK_INITIATE
+ATTACK_PLAYER
+AT_ATTACK
+AT_BLOCK
+AT_BREAK_SHIELD
+AT_END_OF_TURN
+AT_START_OF_TURN
+ActionDef
+AttachCommand
+AttackCommand
+BATTLE
+BATTLE_LOSE
+BATTLE_START
+BATTLE_WIN
+BEFORE_BREAK_SHIELD
+BLOCK
+BLOCKER_GRANT
+BLOCK_INITIATE
+BOOST_MANA
+BREAK_SHIELD
+BUFFER
+BeamSearchEvaluator
+BlockCommand
+CALL
+CANNOT_ATTACK
+CANNOT_BE_SELECTED
+CANNOT_BLOCK
+CANNOT_SUMMON
+CANNOT_USE_SPELLS
+CARDS_DISCARDED
+CARDS_DRAWN
+CAST_SPELL
+CHOICE
+CIP
+COST_MODIFIER
+COST_REDUCTION
+COST_REFERENCE
+COUNT
+COUNT_CARDS
+CREATURE
+CREATURES_PLAYED
+CROSS_GEAR
+CUSTOM
+CardData
+CardDatabase
+CardDefinition
+CardInstance
+CardKeywords
+CardList
+CardStats
+CardStub
+CardType
+Civilization
+CivilizationList
+CollectedBatch
+CommandDef
+CommandEncoder
+CommandSystem
+CommandType
+ConditionDef
+DARKNESS
+DECIDE
+DECK
+DECLARE_REACTION
+DESTROY
+DESTRUCTION
+DIRECT_ATTACK
+DISCARD
+DRAW
+DRAW_CARD
+DataCollector
+DecideCommand
+DeckAgent
+DeckEvolution
+DeckEvolutionConfig
+DeckInference
+DeclareReactionCommand
+Determinizer
+DevTools
+EFFECT_RESOLUTION
+ELSE
+END_OF_TURN
+EVOLUTION_CREATURE
+EffectActionType
+EffectDef
+EffectPrimitive
+EffectResolver
+EffectType
+EngineCommandType
+EventType
+FIRE
+FLOW
+FORCE_SELECTION
+FRIEND_BURST
+FilterDef
+FlowCommand
+FlowType
+GAME_ACTION
+GAME_OVER
+GAME_RESULT
+GET_GAME_STAT
+GET_STAT
+GRANT_KEYWORD
+GRAVEYARD
+GR_CREATURE
+GR_ZONE
+G_STRIKE
+GameCommand
+GameEvent
+GameInstance
+GameResult
+GameResultCommand
+GameResultInfo
+GameState
+GameStatus
+HAND
+HUMAN
+HYPER_SPATIAL
+HeuristicAgent
+HeuristicEvaluator
+IF
+IF_ELSE
+INTERNAL_PLAY
+INTERRUPT
+IS_NATIVE
+Instruction
+InstructionOp
+IntentGenerator
+ItemsView
+JsonLoader
+KEYWORD_GRANT
+KeysView
+LIGHT
+LOCK_SPELL_BY_COST
+LOOK_AND_ADD
+LOOK_TO_BUFFER
+LOOP
+LethalSolver
+MAIN
+MANA
+MANA_CHARGE
+MATH
+MCTS
+MCTSNode
+MEKRAID
+META_COUNTER
+MODIFY
+MODIFY_POWER
+MOVE
+MOVE_BUFFER_TO_ZONE
+MOVE_CARD
+MOVE_TO_UNDER_CARD
+MUTATE
+ManaChargeCommand
+MetaEnvironment
+ModelType
+ModifierDef
+ModifierType
+MutateCommand
+MutationType
+NATURE
+NONE
+NOOP
+NORMAL
+NeuralEvaluator
+ON_ATTACK
+ON_ATTACK_FROM_HAND
+ON_BATTLE_LOSE
+ON_BATTLE_WIN
+ON_BLOCK
+ON_CAST_SPELL
+ON_DESTROY
+ON_DISCARD
+ON_DRAW
+ON_EXIT
+ON_OPPONENT_CREATURE_ENTER
+ON_OPPONENT_DRAW
+ON_OTHER_ENTER
+ON_PLAY
+ON_SHIELD_ADD
+ON_TAP
+ON_TURN_END
+ON_UNTAP
+OnnxModel
+P1_WIN
+P2_WIN
+PASS
+PASSIVE_CONST
+PASS_TURN
+PHASE_CHANGE
+PHASE_END
+PHASE_START
+PLAY
+PLAYER_MANA_CHARGE
+PLAYER_OPPONENT
+PLAYER_SELF
+PLAYING
+PLAY_CARD
+PLAY_FROM_BUFFER
+PLAY_FROM_ZONE
+POMDPInference
+POWER_MOD
+POWER_MODIFIER
+PRINT
+PSYCHIC_CREATURE
+PUT_CREATURE
+ParallelRunner
+ParametricBelief
+PassCommand
+PassiveEffect
+PassiveType
+Phase
+PhaseManager
+PimcGenerator
+PipelineExecutor
+PlayCardCommand
+Player
+PlayerList
+PlayerMode
+QUERY
+QueryCommand
+QueryContext
+RANDOM
+REACTION_WINDOW
+REGISTER_DELAYED_EFFECT
+REMOVE_KEYWORD
+REPEAT
+REPLACEMENT
+RESET_INSTANCE
+RESNET
+RESOLVE_BATTLE
+RESOLVE_EFFECT
+RESOLVE_PENDING_EFFECT
+RESOLVE_PLAY
+RETURN
+RETURN_TO_HAND
+REVEAL_CARDS
+REVEAL_TO_BUFFER
+REVOLUTION_CHANGE
+ResolutionPriority
+ResolveType
+SEARCH_DECK
+SEARCH_DECK_BOTTOM
+SELECT
+SELECT_FROM_BUFFER
+SELECT_NUMBER
+SELECT_OPTION
+SELECT_TARGET
+SELF
+SEND_SHIELD_TO_GRAVE
+SEND_TO_DECK_BOTTOM
+SEND_TO_MANA
+SET_ACTIVE_PLAYER
+SET_ATTACK_PLAYER
+SET_ATTACK_SOURCE
+SET_ATTACK_TARGET
+SET_KEYWORD
+SHIELD
+SHIELD_BREAK
+SHIELD_BURN
+SHIELD_TRIGGER
+SHUFFLE
+SHUFFLE_DECK
+SLAYER_GRANT
+SPEED_ATTACKER_GRANT
+SPELL
+SPELLS_CAST
+STACK
+START_OF_TURN
+STAT
+STEP_CHANGE
+SUMMON_TOKEN
+S_TRIGGER
+ScenarioConfig
+ScenarioExecutor
+SelfAttention
+ShuffleCommand
+SimpleAI
+StatCommand
+StatType
+StateSnapshot
+TAMASEED
+TAP
+TAP_CARD
+TARGET_SELECT
+TRANSFORMER
+TRANSITION
+TRIGGER_ABILITY
+TURN_CHANGE
+TURN_END
+TURN_START
+TargetScope
+Tensor2D
+TensorConverter
+TokenConverter
+TransitionCommand
+TriggerManager
+TriggerType
+TurnStats
+UNTAP
+UNTAP_CARD
+USE_ABILITY
+UseAbilityCommand
+ValuesView
+WAITING_FOR_REACTION
+WAIT_INPUT
+WATER
+ZERO
+ZONE_ENTER
+ZONE_LEAVE
+Zone
+clear_batch_callback
+clear_flat_batch_callback
+clear_sequence_batch_callback
+debug_allows_attack_untapped
+debug_is_attack_forbidden
+dm::engine::infrastructure::CardRegistry
+get_card_stats
+has_batch_callback
+has_flat_batch_callback
+has_sequence_batch_callback
+initialize_card_stats
+native_clear
+native_infer_flat
+native_infer_sequence
+native_load_onnx
+native_load_torch
+register_card_data
+set_batch_callback
+set_flat_batch_callback
+set_sequence_batch_callback
 
-- CommandEncoder
-- IntentGenerator
+## Missing (previously expected but NOT exported under simple names)
 
-- CardDefinition
-- CardKeywords
-- CardRegistry
-- EffectActionType
-- EffectDef
-- EffectResolver
-- EffectType
-- ConditionDef
-- FilterDef
-
-- MutateCommand
-- MutationType
-- TransitionCommand
-- TriggerType
-- TokenConverter
-- TensorConverter
-
+- ActionType (not exported as a top-level symbol)
+- CardRegistry (export exists under `dm::engine::infrastructure::CardRegistry` only)
 - GameLogicSystem
-- DeckEvolution
-- DeckEvolutionConfig
-- DeckInference
-
-- HeuristicAgent
-- HeuristicEvaluator
-- NeuralEvaluator
-- ModelType
-- POMDPInference
-
-- ScenarioConfig
-- ScenarioExecutor
-
 - PlayerStub
-- PassiveEffect
-- PassiveType
 
 Notes:
-- The original scanner found many noisy / context strings (test names, code fragments). The list above filters to likely symbol names referenced by code that are not currently exported by `dm_ai_module`.
-- Many of these are higher-level native components (in C++) that should be implemented in the native binding for production. Short-term Python shims/stubs can be added to allow tests/scripts to run.
+- The previous "Missing" list was out of date; most entries are now exported by the native module.
+- A few legacy symbols expected by some scripts/tests are either not exported as top-level names or are exposed under fully-qualified identifiers (e.g. `dm::engine::infrastructure::CardRegistry`).
+- If you need any of the currently-missing symbols exposed under alternate names (for backward compatibility), I can add Python shims in `src/bindings/` to export them.
+
+Suggested next actions:
+
+- (Low risk) Add lightweight Python wrappers in `src/bindings/bind_core.cpp` to export `CardRegistry` and any other missing top-level aliases.
+- (Medium risk) Audit consumer code for references to `ActionType`, `GameLogicSystem`, `PlayerStub` and adapt callers to use available symbols or add wrappers.
+
+
+
+### Audit notes
+
+- Manual snapshot generated and reviewed: 2026-03-12.
+- Automated audit: 2026-03-13 — script `scripts/_list_dm_symbols_temp.py` executed inside the project's `.venv`; 347 exported symbols were collected and recorded above. During import a non-fatal ONNX warning was emitted (`The requested API version [20] is not available...`), but the native module loaded and symbol enumeration succeeded.
+
+Recommended next steps:
+
+- (Optional) If you require additional top-level aliases for backward compatibility, add lightweight Python shims in `src/bindings/bind_core.cpp`.
+- Re-run `scripts/update_missing_native_symbols.py` from the same activated `.venv` to reproduce this automated snapshot in CI.

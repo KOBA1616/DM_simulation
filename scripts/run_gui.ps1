@@ -4,7 +4,9 @@
     [ValidateSet('msvc', 'mingw')]
     [string]$Toolchain = 'msvc',
     [switch]$Build,
-    [switch]$AllowFallback
+    [switch]$AllowFallback,
+    [switch]$InstallPyQt,
+    [switch]$Review
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,39 +16,89 @@ $projectRoot = Split-Path -Parent $scriptDir
 $buildDirName = if ($Toolchain -eq 'mingw') { 'build-mingw' } else { 'build-msvc' }
 $buildDir = Join-Path $projectRoot $buildDirName
 
+# If the expected build directory doesn't exist, try common alternatives
+if (-not (Test-Path $buildDir)) {
+    $altNames = @('build-ninja', 'build', 'build-msvc', 'build-mingw')
+    foreach ($name in $altNames) {
+        $candidate = Join-Path $projectRoot $name
+        if (Test-Path $candidate) {
+            Write-Host "Preferred build directory '$buildDir' not found; using detected directory: $candidate"
+            $buildDir = $candidate
+            break
+        }
+    }
+}
+function Get-ProjectPythonExe {
+    param([string]$root)
+    $venv = Join-Path $root '.venv\Scripts\python.exe'
+    if (Test-Path $venv) { return $venv }
+    $sys = (Get-Command python -ErrorAction SilentlyContinue).Source
+    if ($sys) { return $sys }
+    return $null
+}
+
 # Ensure Python output is UTF-8 regardless of Windows locale.
 $env:PYTHONUTF8 = '1'
 $env:PYTHONIOENCODING = 'utf-8'
 
 # Prefer venv python if available.
-$pythonExe = Join-Path $projectRoot ".venv\Scripts\python.exe"
-if (-not (Test-Path $pythonExe)) {
-    $pythonExe = "python"
+$pythonExe = Get-ProjectPythonExe -root $projectRoot
+if (-not $pythonExe) {
+    Write-Error "Python executable not found. Activate a venv or ensure 'python' is on PATH."
+    exit 1
 }
 
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
+# GUI起動時にビルドを行う理由:
+# - GUI はネイティブの C++ 拡張（dm_ai_module など）やプラットフォーム固有の DLL/.pyd
+#   を読み込んで高速なAI処理や ONNX 推論、ネイティブリソースへのアクセスを行います。
+# - これらのネイティブアーティファクトはビルド工程で生成されるため、開発環境でGUIを
+#   正常に動作させるには事前にビルドしておくことが推奨されます。
+# - ネイティブが無い状態では Python フォールバックが使われますが、機能制限や
+#   AttributeError／不定動作（例: ヒープ破壊）が発生する可能性があるため、自動的な
+#   ビルド実行オプション（-Build）を用意しています。フォールバックが必要なら
+#   -AllowFallback を明示的に指定してください。
 if ($Build) {
     Write-Host "Building project before launching GUI..."
     & "$scriptDir/build.ps1" -Config $Config -Toolchain $Toolchain
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Build failed (build.ps1 returned $LASTEXITCODE). Aborting."
+        exit $LASTEXITCODE
+    }
+}
+
+# Optionally ensure PyQt6 is installed (installs into selected Python; venv preferred)
+if ($InstallPyQt) {
+    Write-Host "Installing PyQt6 into: $pythonExe"
+    & $pythonExe -m pip install --upgrade pip setuptools wheel
+    & $pythonExe -m pip install PyQt6
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to install PyQt6 into $pythonExe. Aborting."
+        exit 1
+    }
+}
+
+# Review mode: launch the GUI review helper if requested
+if ($Review) {
+    $reviewScript = Join-Path $scriptDir 'run_gui_review.ps1'
+    if (Test-Path $reviewScript) {
+        Write-Host "Launching GUI review mode via run_gui_review.ps1"
+        & $reviewScript
+        exit $LASTEXITCODE
+    } else {
+        Write-Warning "run_gui_review.ps1 not found; falling back to standard GUI launcher."
+    }
 }
 
 if (-not (Test-Path $buildDir)) {
-    Write-Host "Build directory not found at $buildDir. Attempting automatic build..."
-    try {
-        & "$scriptDir/build.ps1" -Config $Config -Toolchain $Toolchain
-    }
-    catch {
-        Write-Error "Automatic build failed: $_"
-    }
-    if (-not (Test-Path $buildDir)) {
-        if (-not $AllowFallback) {
-            Write-Error "Build directory still missing after automatic build. Aborting to avoid running with Python fallback."
-            exit 1
-        }
-        else {
-            Write-Warning "Build directory still missing; proceeding with Python fallback as requested by -AllowFallback."
-        }
+    Write-Error "Build directory not found at $buildDir. This script no longer attempts automatic builds."
+    Write-Host "Run the build script to create native artifacts: $scriptDir\build.ps1 -Config $Config -Toolchain $Toolchain"
+    if (-not $AllowFallback) {
+        Write-Error "Aborting to avoid running with Python fallback. Use -AllowFallback to override."
+        exit 1
+    } else {
+        Write-Warning "Build directory missing; proceeding with Python fallback as requested by -AllowFallback."
     }
 }
 
@@ -127,4 +179,4 @@ if (-not $env:DM_SELECT_NUMBER_MODE) { $env:DM_SELECT_NUMBER_MODE = 'evaluator' 
 
 
 Write-Host "Starting GUI..."
-& $pythonExe "$projectRoot/dm_toolkit/gui/app.py"
+& $pythonExe -m dm_toolkit.gui.app

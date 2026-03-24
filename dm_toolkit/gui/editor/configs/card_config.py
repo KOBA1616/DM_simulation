@@ -10,7 +10,7 @@ CARD_SCHEMA = CommandSchema(
         FieldSchema(key="civilizations", label=tr("Civilization"), field_type=FieldType.CIVILIZATION),
         FieldSchema(key="type", label=tr("Type"), field_type=FieldType.TYPE_SELECT, tooltip=tr("Card type (Creature, Spell, etc.)")),
         FieldSchema(key="cost", label=tr("Cost"), field_type=FieldType.INT, min_value=0, max_value=99, tooltip=tr("Mana cost of the card")),
-        FieldSchema(key="power", label=tr("Power"), field_type=FieldType.INT, min_value=0, max_value=99999, tooltip=tr("Creature power (ignored for Spells)"), visible_if={"type": ["CREATURE", "EVOLUTION_CREATURE", "NEO_CREATURE", "G_NEO_CREATURE"]}),
+        FieldSchema(key="power", label=tr("Power"), field_type=FieldType.INT, min_value=0, max_value=99999, step=500, tooltip=tr("Creature power (ignored for Spells)"), visible_if={"type": ["CREATURE", "EVOLUTION_CREATURE", "NEO_CREATURE", "G_NEO_CREATURE"]}),
         FieldSchema(key="races", label=tr("Races"), field_type=FieldType.RACES, tooltip=tr("Comma-separated list of races (e.g. 'Dragon, Fire Bird')")),
         FieldSchema(key="evolution_condition", label=tr("Evolution Condition"), field_type=FieldType.STRING, tooltip=tr("e.g. Fire Bird"), visible_if={"type": ["EVOLUTION_CREATURE", "NEO_CREATURE", "G_NEO_CREATURE"]}),
         FieldSchema(key="is_key_card", label=tr("Is Key Card"), field_type=FieldType.BOOL, tooltip=tr("Mark this card as critical for the deck's strategy.")),

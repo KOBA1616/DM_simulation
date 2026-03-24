@@ -2,12 +2,23 @@
 #include "core/game_event.hpp"
 #include "engine/infrastructure/data/card_registry.hpp" // Added for G-Neo lookup
 #include "engine/utils/zone_utils.hpp"
+#include "engine/infrastructure/commands/stat_update.hpp"
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 
 namespace dm::engine::game_command {
+
+// Common helper to centralize turn-stat updates for destroyed creatures.
+// Implemented here but declared in stat_update.hpp so other modules can
+// call it; centralization makes it easier to enforce replacement semantics
+// and to instrument logging/telemetry in a single place.
+void add_turn_destroyed_count(core::GameState &state, int amount) {
+  // Future extension point: route through a replacement-aware dispatcher.
+  state.turn_stats.creatures_destroyed_this_turn += amount;
+}
+
 
 // --- HistoryCommand ---
 
@@ -86,14 +97,57 @@ void TransitionCommand::execute(core::GameState &state) {
                          });
 
   if (it == source_vec->end()) {
-    // Log missing instance for diagnostics
+    // Log missing instance for diagnostics with extended context
     try {
+      // Primary human-readable log
       std::ofstream lout("logs/transition_debug.txt", std::ios::app);
       if (lout) {
         lout << "[Transition] MISSING in source: id=" << card_instance_id
              << " owner=" << owner_id << " from=" << static_cast<int>(from_zone)
              << " to=" << static_cast<int>(to_zone) << "\n";
+
+        lout << "[Transition] OWNER_ZONE_COUNTS battle=" << owner.battle_zone.size()
+             << " hand=" << owner.hand.size()
+             << " mana=" << owner.mana_zone.size()
+             << " shield=" << owner.shield_zone.size()
+             << " deck=" << owner.deck.size()
+             << " grave=" << owner.graveyard.size() << "\n";
+
+        // Dump a snapshot of the source zone with instance_id:card_id pairs
+        lout << "[Transition] SOURCE_ZONE_SNAPSHOT entries=[";
+        for (size_t i = 0; i < source_vec->size(); ++i) {
+          if (i) lout << ", ";
+          const auto &ci = (*source_vec)[i];
+          lout << "(" << ci.instance_id << ":" << ci.card_id << ")";
+          if (i >= 199) { lout << ", ..."; break; }
+        }
+        lout << "]\n";
         lout.close();
+      }
+
+      // Also write a machine-readable snapshot file for post-mortem
+      try {
+        std::filesystem::create_directories("logs/transition_snapshots");
+        auto ts = std::to_string(std::time(nullptr));
+        std::string outpath = std::string("logs/transition_snapshots/missing_") + std::to_string(card_instance_id) + "_" + ts + ".log";
+        std::ofstream jout(outpath, std::ios::app);
+        if (jout) {
+          jout << "card_instance_id:" << card_instance_id << "\n";
+          jout << "owner_id:" << owner_id << "\n";
+          jout << "from_zone:" << static_cast<int>(from_zone) << "\n";
+          jout << "to_zone:" << static_cast<int>(to_zone) << "\n";
+          jout << "owner_counts: battle=" << owner.battle_zone.size() << ",hand=" << owner.hand.size() << ",mana=" << owner.mana_zone.size() << ",deck=" << owner.deck.size() << ",grave=" << owner.graveyard.size() << "\n";
+          jout << "source_entries:";
+          for (size_t i = 0; i < source_vec->size(); ++i) {
+            const auto &ci = (*source_vec)[i];
+            jout << ci.instance_id << ":" << ci.card_id;
+            if (i + 1 < source_vec->size()) jout << ",";
+            if (i >= 999) { jout << ",..."; break; }
+          }
+          jout << "\n";
+          jout.close();
+        }
+      } catch (...) {
       }
     } catch (...) {
     }
@@ -186,6 +240,20 @@ void TransitionCommand::execute(core::GameState &state) {
     dest_vec->push_back(card);
   } else {
     dest_vec->insert(dest_vec->begin() + destination_index, card);
+  }
+
+  // If a creature moved from BATTLE to GRAVEYARD, count it as destroyed this turn
+  if (from_zone == core::Zone::BATTLE && to_zone == core::Zone::GRAVEYARD) {
+    try {
+      const auto &card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
+      if (card_db.count(card.card_id)) {
+        const auto &def = card_db.at(card.card_id);
+        if (def.type == core::CardType::CREATURE) {
+          // Use centralized helper so replacement rules can be applied consistently.
+          add_turn_destroyed_count(state, 1);
+        }
+      }
+    } catch (...) {}
   }
 
   // Phase 6: Event Dispatch (ZONE_ENTER)
@@ -498,6 +566,12 @@ void MutateCommand::execute(core::GameState &state) {
       previous_bool_value = false;
     }
   } break;
+  // 再発防止: SET_SUMMONING_SICKNESS は on_start_turn から毎ターン呼ばれる。
+  // このcaseを省くと召喚酔いが永遠に解除されず攻撃不能になるため、必ず実装すること。
+  case MutationType::SET_SUMMONING_SICKNESS:
+    previous_bool_value = card->summoning_sickness;
+    card->summoning_sickness = (int_value != 0);
+    break;
   default:
     break;
   }
@@ -545,6 +619,9 @@ void MutateCommand::invert(core::GameState &state) {
     if (previous_bool_value) {
       card->added_keywords.push_back(str_value);
     }
+    break;
+  case MutationType::SET_SUMMONING_SICKNESS:
+    card->summoning_sickness = previous_bool_value;
     break;
   default:
     break;
@@ -602,6 +679,12 @@ void FlowCommand::execute(core::GameState &state) {
       evt.context["instance_id"] = new_value;
       state.event_dispatcher(evt);
     }
+    // Update attacked_this_turn counter for the active player
+    // Preserve prior turn stats for undo and restore
+    previous_turn_stats = state.turn_stats;
+    // インクリメント: スカラー互換とプレイヤー別配列の両方を更新
+    state.turn_stats.attacked_this_turn += 1;
+    state.turn_stats.attacked_this_turn_by_player[state.active_player_id] += 1;
     break;
   case FlowType::SET_ATTACK_TARGET:
     previous_value = state.current_attack.target_instance_id;
@@ -701,6 +784,8 @@ void FlowCommand::invert(core::GameState &state) {
     break;
   case FlowType::SET_ATTACK_SOURCE:
     state.current_attack.source_instance_id = previous_value;
+    // Restore turn stats modified during execute (if any)
+    state.turn_stats = previous_turn_stats;
     break;
   case FlowType::SET_ATTACK_TARGET:
     state.current_attack.target_instance_id = previous_value;
@@ -842,9 +927,21 @@ void StatCommand::execute(core::GameState &state) {
     previous_value = state.turn_stats.creatures_played_this_turn;
     state.turn_stats.creatures_played_this_turn += amount;
     break;
+  case StatType::SUMMONS:
+    previous_value = state.turn_stats.summon_count_this_turn;
+    state.turn_stats.summon_count_this_turn += amount;
+    break;
+  case StatType::CREATURES_DESTROYED:
+    previous_value = state.turn_stats.creatures_destroyed_this_turn;
+    add_turn_destroyed_count(state, amount);
+    break;
   case StatType::SPELLS_CAST:
     previous_value = state.turn_stats.spells_cast_this_turn;
     state.turn_stats.spells_cast_this_turn += amount;
+    break;
+  case StatType::MANA_SET:
+    previous_value = state.turn_stats.mana_set_this_turn;
+    state.turn_stats.mana_set_this_turn += amount;
     break;
   }
 }
@@ -861,8 +958,17 @@ void StatCommand::invert(core::GameState &state) {
   case StatType::CREATURES_PLAYED:
     state.turn_stats.creatures_played_this_turn = previous_value;
     break;
+  case StatType::SUMMONS:
+    state.turn_stats.summon_count_this_turn = previous_value;
+    break;
+  case StatType::CREATURES_DESTROYED:
+    state.turn_stats.creatures_destroyed_this_turn = previous_value;
+    break;
   case StatType::SPELLS_CAST:
     state.turn_stats.spells_cast_this_turn = previous_value;
+    break;
+  case StatType::MANA_SET:
+    state.turn_stats.mana_set_this_turn = previous_value;
     break;
   }
 }
@@ -870,12 +976,20 @@ void StatCommand::invert(core::GameState &state) {
 // --- GameResultCommand ---
 
 void GameResultCommand::execute(core::GameState &state) {
+  // 再発防止: winner セット時に game_over も必ず true にすること。
+  //   game_over を設定しないと Python 側で s.game_over が常に False のままになり
+  //   ゲーム終了が検知されず無限ループになる。
   previous_result = state.winner;
+  previous_game_over = state.game_over;
   state.winner = result;
+  if (result != dm::core::GameResult::NONE) {
+    state.game_over = true;
+  }
 }
 
 void GameResultCommand::invert(core::GameState &state) {
   state.winner = previous_result;
+  state.game_over = previous_game_over;
 }
 
 } // namespace dm::engine::game_command

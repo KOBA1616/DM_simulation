@@ -28,7 +28,18 @@ namespace dm::engine::effects {
 
         std::cerr << "[dm::engine::effects::EffectSystem::resolve_effect_with_context] CALLED: commands.size=" << effect.commands.size() << std::endl;
 
-        if (!check_condition(game_state, effect.condition, source_instance_id, card_db, execution_context)) {
+        bool condition_ok = true;
+        if (effect.condition_tree.has_value()) {
+            // 再発防止: condition_tree が設定されている場合は legacy condition より優先評価する。
+            condition_ok = dm::engine::rules::ConditionSystem::instance().evaluate_node(
+                game_state, effect.condition_tree.value(), source_instance_id,
+                card_db, execution_context);
+        } else {
+            condition_ok = check_condition(game_state, effect.condition, source_instance_id,
+                                           card_db, execution_context);
+        }
+
+        if (!condition_ok) {
             std::cerr << "[dm::engine::effects::EffectSystem::resolve_effect_with_context] Condition check failed, returning" << std::endl;
             return;
         }
@@ -43,7 +54,16 @@ namespace dm::engine::effects {
     void dm::engine::effects::EffectSystem::resolve_effect_with_targets(GameState& game_state, const EffectDef& effect, const std::vector<int>& targets, int source_instance_id, const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db, std::map<std::string, int>& execution_context) {
         initialize();
 
-        if (!check_condition(game_state, effect.condition, source_instance_id, card_db, execution_context)) return;
+        bool condition_ok = true;
+        if (effect.condition_tree.has_value()) {
+            condition_ok = dm::engine::rules::ConditionSystem::instance().evaluate_node(
+                game_state, effect.condition_tree.value(), source_instance_id,
+                card_db, execution_context);
+        } else {
+            condition_ok = check_condition(game_state, effect.condition, source_instance_id,
+                                           card_db, execution_context);
+        }
+        if (!condition_ok) return;
 
         // CommandDef based processing (New System)
         // Store targets in execution_context for CommandSystem to use

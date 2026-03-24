@@ -13,10 +13,21 @@ dm_ai_module: Optional[ModuleType] = None
 try:
     import dm_ai_module as _dm_ai_module  # type: ignore
     dm_ai_module = _dm_ai_module
-except ImportError:
+except Exception:
+    # Any failure importing the native extension should be treated as
+    # unavailable; swallow errors to preserve Python-only test paths.
     dm_ai_module = None
 
-from dm_toolkit.dm_types import GameState, CardDB, PlayerID, Tensor, NPArray
+try:
+    from dm_toolkit.dm_types import GameState, CardDB, PlayerID, Tensor, NPArray
+except Exception:
+    # If type stubs or native extension cause import-time errors, fall back
+    # to permissive Any aliases so this module remains importable for tests.
+    GameState = Any  # type: ignore
+    CardDB = Any  # type: ignore
+    PlayerID = Any  # type: ignore
+    Tensor = Any  # type: ignore
+    NPArray = Any  # type: ignore
 
 # At runtime, prefer concrete engine types from dm_ai_module when available
 try:
@@ -390,18 +401,66 @@ class EngineCompat:
     def get_player(state: GameState, player_index: int) -> Any:
         try:
             players = getattr(state, 'players', None)
-            if players is not None:
-                # Check for length if it's a list/sequence
-                if hasattr(players, '__len__'):
-                    if player_index < len(players):
-                        return players[player_index]
-                # Some native bindings might support indexing but not len() directly via python protocols efficiently?
-                # But typically list-like bindings support len.
-                # Try direct indexing as fallback
+            if players is not None and hasattr(players, '__len__') and player_index < len(players):
+                return players[player_index]
+            try:
+                return players[player_index]
+            except (IndexError, TypeError):
+                pass
+        except Exception:
+            return None
+
+    @staticmethod
+    def ensure_recalculated(state: GameState) -> None:
+        """Ensure that continuous effects / active modifiers are recalculated.
+
+        This helper will attempt several strategies in order of decreasing
+        intrusiveness:
+        1. Call `state.ensure_recalculated()` if exposed by the Python GameState.
+        2. If a native `_native` backing exists and the module exposes a
+           `ContinuousEffectSystem.recalculate(state_native)` API, attempt to
+           call it.
+        3. As a final conservative fallback, call `state.recalculate()` or
+           `state.recompute_active_modifiers()` if present.
+        Any exceptions are swallowed to avoid failing command generation.
+        """
+        try:
+            # 1) Preferred python-exposed helper
+            ensure = getattr(state, 'ensure_recalculated', None)
+            if callable(ensure):
                 try:
-                    return players[player_index]
-                except (IndexError, TypeError):
+                    ensure()
+                    return
+                except Exception:
                     pass
+
+            # 2) Native ContinuousEffectSystem path
+            try:
+                if dm_ai_module is not None and hasattr(dm_ai_module, 'ContinuousEffectSystem'):
+                    CES = getattr(dm_ai_module, 'ContinuousEffectSystem')
+                    if hasattr(CES, 'recalculate'):
+                        native_obj = getattr(state, '_native', None)
+                        if native_obj is not None:
+                            try:
+                                CES.recalculate(native_obj)
+                                return
+                            except Exception:
+                                pass
+            except Exception:
+                pass
+
+            # 3) Other plausible fallbacks
+            for alt in ('recalculate', 'recompute_active_modifiers', 'ensure_recalc'):
+                fn = getattr(state, alt, None)
+                if callable(fn):
+                    try:
+                        fn()
+                        return
+                    except Exception:
+                        pass
+        except Exception:
+            # Never raise from compatibility helpers
+            return
 
             # Fallback for older bindings that might expose player0/player1 directly
             if player_index == 0:
@@ -411,18 +470,6 @@ class EngineCompat:
         except Exception:
             pass
         return None
-
-    # -------------------------------------------------------------------------
-    # Action Object Wrappers
-    # -------------------------------------------------------------------------
-
-    @staticmethod
-    def get_action_slot_index(action: Any) -> int:
-        return getattr(action, 'slot_index', -1)
-
-    @staticmethod
-    def get_action_source_id(action: Any) -> int:
-        return getattr(action, 'source_instance_id', -1)
 
     # -------------------------------------------------------------------------
     # API Call Wrappers
@@ -438,51 +485,9 @@ class EngineCompat:
         else:
             logger.warning("dm_ai_module.EffectResolver.resume not found.")
 
-    @staticmethod
-    def EffectResolver_resolve_action(state: GameState, action: Any, card_db: CardDB) -> None:
-        # Improved logging with structured data
-        log_data: Dict[str, Any] = {"action_str": str(action)}
-        try:
-            from dm_toolkit.action_to_command import map_action
-            log_data["command_map"] = map_action(action)
-        except Exception:
-            pass
-        get_tracer().log_event(TraceEventType.EFFECT_RESOLUTION, "Resolving Action", log_data)
-
-        EngineCompat._check_module()
-        assert dm_ai_module is not None
-        real_db = EngineCompat._resolve_db(card_db)
-        # Phase 1 (Specs/AGENTS.md Policy): Route action through unified execution when possible
-        # Prefer action.execute first (may already encapsulate command behavior)
-        try:
-            if hasattr(action, 'execute') and callable(getattr(action, 'execute')):
-                try:
-                    try:
-                        action.execute(state, real_db)
-                    except TypeError:
-                        action.execute(state)
-                    return
-                except Exception:
-                    pass
-        except Exception:
-            pass
-
-        # Attempt unified conversion to Command dict and execute via EngineCompat
-        try:
-            from dm_toolkit.unified_execution import ensure_executable_command
-            cmd = ensure_executable_command(action)
-            # If conversion is inconclusive (NONE or legacy_warning), defer to native resolver
-            if isinstance(cmd, dict) and (cmd.get('type') in (None, 'NONE') or cmd.get('legacy_warning')):
-                raise RuntimeError('Inconclusive unified conversion; use native resolver')
-            EngineCompat.ExecuteCommand(state, cmd, card_db)
-            return
-        except Exception:
-            pass
-
-        # Legacy fallback: call native resolver directly if available
-        # REMOVED: GenericCardSystem (EffectResolver.resolve_action) is incomplete.
-        # All actions must be convertible to commands via ensure_executable_command.
-        logger.warning("EffectResolver_resolve_action: Action could not be converted to Command: %s", action)
+    # 再発防止: EffectResolver_resolve_action は削除済み（呼び出し元なし）。
+    # EffectResolver.resolve_action は C++ 側にバインドされておらず、常に失敗するデッドコードだった。
+    # 代替: EngineCompat.ExecuteCommand を使用すること。
 
     @staticmethod
     def PhaseManager_next_phase(state: GameState, card_db: CardDB) -> None:

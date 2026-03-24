@@ -14,7 +14,10 @@ class ModelSerializer:
     """
 
     def __init__(self):
-        pass
+        # Cache to hold computed CIRs for the most recently loaded cards.
+        # Keyed by card id (if present) to aid further transformations without
+        # mutating the persisted payload.
+        self._cir_cache: dict[str, list] = {}
 
     def get_item_data(self, item: IEditorItem) -> dict:
         """
@@ -53,6 +56,14 @@ class ModelSerializer:
         model.set_horizontal_header_labels([tr("Logic Tree")])
 
         for card_raw in cards_data:
+            # Migrate legacy tokens in-place before validation so that old data
+            # is absorbed only at load time (migration layer responsibility).
+            try:
+                self._migrate_legacy_card(card_raw)
+            except Exception:
+                # Migration must not block loading; fall back to best-effort
+                pass
+
             # Validate/Convert using Pydantic
             try:
                 # Handle legacy 'triggers' vs 'effects' normalization
@@ -68,6 +79,13 @@ class ModelSerializer:
                     card_model = None
 
             if card_model:
+                # Attach any cached CIRs to the card model (non-destructive).
+                try:
+                    self._apply_cached_cir_to_card(card_model)
+                except Exception:
+                    # Best-effort: failure to attach CIR should not block loading
+                    pass
+
                 card_item = self.create_card_item(model, card_model)
 
                 # Effects
@@ -100,6 +118,89 @@ class ModelSerializer:
 
                 model.append_row(card_item)
 
+    def _migrate_legacy_card(self, card_raw: dict):
+        """Walk card_raw and convert legacy action-like dicts into
+        minimal command dicts so Pydantic ingestion succeeds.
+
+        This should be conservative: it only modifies dicts that look like
+        legacy actions (contain legacy keys and lack a `type`), and wraps
+        the original payload under `legacy_action` while assigning
+        `type: 'LEGACY_CMD'`.
+        """
+        LEGACY_KEYS = {
+            'action', 'input_link', 'input_value_key', 'input_var',
+            'output_link', 'output_value_key', 'output_var', 'flags'
+        }
+
+        # Import converter (local import to avoid startup dependency issues)
+        try:
+            from dm_toolkit.gui.editor.transforms.legacy_to_command import convert_legacy_action
+        except Exception:
+            convert_legacy_action = None
+
+        def walk(obj):
+            if isinstance(obj, dict):
+                # If this dict is a command-like object but has no 'type',
+                # check for legacy markers.
+                if 'type' not in obj:
+                    # Detect legacy keys case-insensitively (e.g., 'action')
+                    if any(k.lower() in LEGACY_KEYS for k in obj.keys()):
+                        # Preserve original payload and convert via helper if available
+                        obj_copy = dict(obj)
+                        if convert_legacy_action is not None:
+                            try:
+                                new = convert_legacy_action(obj_copy)
+                                obj.clear()
+                                obj.update(new)
+                                return
+                            except Exception:
+                                # Fall back to conservative wrap
+                                pass
+                        # Conservative fallback: wrap as LEGACY_CMD
+                        obj.clear()
+                        obj['type'] = 'LEGACY_CMD'
+                        obj['legacy_action'] = obj_copy
+                        return
+                # Recurse into values
+                for v in obj.values():
+                    walk(v)
+            elif isinstance(obj, list):
+                for item in obj:
+                    walk(item)
+
+        walk(card_raw)
+        # After migration, compute CIRs for command-like nodes and cache them
+        # for later processing. This is non-destructive to the card_raw.
+        try:
+            from dm_toolkit.gui.editor.transforms.normalize_command import canonicalize
+        except Exception:
+            canonicalize = None
+
+        cirs = []
+
+        def collect_cir(o):
+            if isinstance(o, dict):
+                # Heuristic: treat dicts with 'type' or branching keys as command-like
+                if 'type' in o or 'if_true' in o or 'if_false' in o or 'options' in o:
+                    if canonicalize is not None:
+                        try:
+                            cirs.append(canonicalize(o))
+                        except Exception:
+                            pass
+                for v in o.values():
+                    collect_cir(v)
+            elif isinstance(o, list):
+                for it in o:
+                    collect_cir(it)
+
+        collect_cir(card_raw)
+        card_id = str(card_raw.get('id')) if isinstance(card_raw, dict) and 'id' in card_raw else None
+        if card_id:
+            self._cir_cache[card_id] = cirs
+        else:
+            # store under special key for unidentified cards
+            self._cir_cache.setdefault('_no_id', []).extend(cirs)
+
     def get_full_data(self, model: IEditorModel):
         cards = []
         root = model.root_item()
@@ -111,8 +212,90 @@ class ModelSerializer:
 
             card_model = self.reconstruct_card_model(card_item)
             if card_model:
-                cards.append(card_model.model_dump(exclude_none=True))
+                cards.append(self._serialize_card_model(card_model))
         return cards
+
+    def save_full_data(self, model_or_list: Any, path: str) -> bool:
+        """Persist full data to JSON file.
+
+        - If `model_or_list` is a sequence (list/tuple), it is written as-is.
+        - Otherwise, it is treated as an IEditorModel and `get_full_data` is used.
+        Returns True on success, False on failure.
+        """
+        try:
+            import json
+            if isinstance(model_or_list, (list, tuple)):
+                data = list(model_or_list)
+            else:
+                data = self.get_full_data(model_or_list)
+
+            # Ensure parent dir exists
+            import os
+            parent = os.path.dirname(path)
+            if parent and not os.path.exists(parent):
+                try:
+                    os.makedirs(parent, exist_ok=True)
+                except Exception:
+                    pass
+
+            # Ensure cost_reductions have ids for backward compatibility when saving
+            try:
+                from dm_toolkit.gui.editor.validators_shared import generate_missing_ids
+                if isinstance(data, list):
+                    for card in data:
+                        try:
+                            cr = card.get('cost_reductions') if isinstance(card, dict) else None
+                            if cr is not None:
+                                generate_missing_ids(cr)
+                        except Exception:
+                            pass
+            except Exception:
+                # If validator util is unavailable, continue without migration
+                pass
+
+            # Validate cost_reductions for errors (e.g., duplicate ids) and abort save if invalid
+            try:
+                from dm_toolkit.gui.editor.validators_shared import validate_cost_reductions
+                if isinstance(data, list):
+                    for card in data:
+                        try:
+                            cr = card.get('cost_reductions') if isinstance(card, dict) else None
+                            if cr is not None:
+                                errs = validate_cost_reductions(cr)
+                                if errs:
+                                    # Abort save when validation errors present
+                                    return False
+                        except Exception:
+                            pass
+            except Exception:
+                # If validator util is unavailable, continue without blocking
+                pass
+
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            return True
+        except Exception:
+            return False
+
+    def _serialize_card_model(self, card_model: CardModel) -> dict:
+        """Serialize a CardModel to a persistable dict.
+
+        Non-destructive enhancement: if a CardModel has cached CIRs attached
+        (private attribute `_cir`), include them under `_canonical_ir` in the
+        serialized output. This allows a reversible write-path to carry CIR
+        information without altering existing fields.
+        """
+        if card_model is None:
+            return {}
+
+        data = card_model.model_dump(exclude_none=True)
+        cirs = getattr(card_model, '_cir', None)
+        if cirs:
+            try:
+                data['_canonical_ir'] = list(cirs)
+            except Exception:
+                pass
+        return data
 
     def reconstruct_card_model(self, card_item: IEditorItem) -> Optional[CardModel]:
         if card_item is None:
@@ -150,7 +333,45 @@ class ModelSerializer:
         except ImportError:
             pass
 
-        return CardModel(**card_data)
+        try:
+            return CardModel(**card_data)
+        except Exception:
+            # 再発防止: 一部ノードが部分的に壊れていてもプレビューを空白にしない。
+            # 非検証 construct にフォールバックして、編集継続可能な状態を優先する。
+            try:
+                return CardModel.model_construct(**card_data)
+            except Exception:
+                try:
+                    return CardModel.construct(**card_data)
+                except Exception:
+                    return None
+
+    def _apply_cached_cir_to_card(self, card_model: CardModel):
+        """Attach cached canonical IRs to a CardModel instance.
+
+        This method is intentionally non-destructive: it does not modify the
+        persistent payload and only stores CIRs on the in-memory model under
+        the `_cir` attribute for downstream consumers.
+        """
+        if not card_model:
+            return
+
+        card_id = getattr(card_model, 'id', None)
+        key = str(card_id) if card_id is not None else None
+        cirs = None
+        if key and key in self._cir_cache:
+            cirs = self._cir_cache.get(key)
+        else:
+            # fallback to unnamed cache bucket
+            cirs = self._cir_cache.get('_no_id')
+
+        if cirs:
+            try:
+                # Attach as a private attribute to avoid changing model schema
+                setattr(card_model, '_cir', list(cirs))
+            except Exception:
+                # Do not fail on attach errors
+                pass
 
     def _reconstruct_effect(self, eff_item: IEditorItem) -> EffectModel:
         raw = self.get_item_data(eff_item)
@@ -251,10 +472,20 @@ class ModelSerializer:
         else:
             cmd_model = model_or_dict
 
-        label = f"{tr('Action')}: {tr(cmd_model.type)}"
+        label = f"{tr('Command')}: {tr(cmd_model.type)}"
         item = model.create_item(label)
         item.set_data("COMMAND", ROLE_TYPE)
         item.set_data(cmd_model, ROLE_DATA)
+
+        # If the command model carries computed canonical IRs, expose them on
+        # the item under a dedicated role so UI/editors can access without
+        # mutating the model schema.
+        try:
+            cirs = getattr(cmd_model, '_cir', None)
+            if cirs:
+                item.set_data(list(cirs), 'ROLE_CIR')
+        except Exception:
+            pass
 
         # Recursive rendering for branches/options
         if cmd_model.if_true:

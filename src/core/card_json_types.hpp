@@ -10,21 +10,34 @@ namespace dm::core {
 
     // Enums for JSON mapping
     enum class TriggerType {
-        ON_PLAY,
-        ON_ATTACK,
-        ON_DESTROY,
-        S_TRIGGER,
-        TURN_START,
-        PASSIVE_CONST,
-        ON_OTHER_ENTER,
-        ON_ATTACK_FROM_HAND,
-        ON_BLOCK,
-        AT_BREAK_SHIELD,
-        BEFORE_BREAK_SHIELD,
-        ON_SHIELD_ADD,
-        ON_CAST_SPELL,
-        ON_OPPONENT_DRAW,
-        ON_DRAW,
+        // --- ゾーン移動系 ---
+        ON_PLAY,              // バトルゾーン参入（CIP: Come Into Play）
+        ON_OTHER_ENTER,       // 自分の他クリーチャーが参入した時
+        ON_OPPONENT_CREATURE_ENTER, // 相手クリーチャーが参入した時（Python側から移植）
+        ON_DESTROY,           // バトルゾーン→墓地（破壊）
+        ON_EXIT,              // バトルゾーンからの離脱（破壊・手札・マナ問わず）
+        ON_DISCARD,           // 手札からの捨て（手札→墓地）
+        // --- ターン・フェイズ系 ---
+        TURN_START,           // ターン開始時
+        ON_TURN_END,          // ターン終了時
+        // --- アクション系 ---
+        ON_ATTACK,            // 攻撃宣言時
+        ON_ATTACK_FROM_HAND,  // 手札から攻撃（革命チェンジ等の起点）
+        ON_BLOCK,             // ブロック宣言時
+        ON_BATTLE_WIN,        // バトル勝利時
+        ON_BATTLE_LOSE,       // バトル敗北時
+        ON_CAST_SPELL,        // 呪文詠唱時
+        ON_DRAW,              // カードを引いた時
+        ON_OPPONENT_DRAW,     // 相手がカードを引いた時
+        ON_TAP,               // タップした時
+        ON_UNTAP,             // アンタップした時
+        // --- シールド系 ---
+        AT_BREAK_SHIELD,      // シールドブレイク時
+        BEFORE_BREAK_SHIELD,  // シールドブレイク直前（置換起点）
+        ON_SHIELD_ADD,        // シールドゾーンへの追加時
+        // --- 特殊・常在型 ---
+        S_TRIGGER,            // シールドトリガー（割り込み型）
+        PASSIVE_CONST,        // 常在型能力（後方互換のため保持）
         NONE
     };
 
@@ -189,6 +202,29 @@ namespace dm::core {
         MANA_CHARGE,
         SELECT_TARGET,
 
+        // cards.json で使用される追加コマンドタイプ
+        // 再発防止: cards.json に新コマンドタイプを追加したら必ずここにも追加すること
+        APPLY_MODIFIER,      // 一時的な修正効果付与 (APPLY_MODIFIER in JSON)
+        REVOLUTION_CHANGE,   // 革命チェンジ宣言/処理 (REVOLUTION_CHANGE in JSON)
+        GRANT_KEYWORD,       // キーワード付与 (GRANT_KEYWORD in JSON)
+        PUT_CREATURE,        // クリーチャーを場に出す (PUT_CREATURE in JSON)
+        REPLACE_CARD_MOVE,   // カード移動の置換効果 (REPLACE_CARD_MOVE in JSON)
+        ADD_RESTRICTION,     // 制約追加 (ADD_RESTRICTION in JSON)
+        SELECT_OPTION,       // 選択肢提示 (SELECT_OPTION in JSON, alias of CHOICE)
+        DRAW,                // カードを引く (DRAW_CARD の別名, FLOW内で使用)
+        REPLACE_MOVE_CARD,   // 置換効果: カードの移動先を墓地に変更 (マグナム系)
+
+        // 再発防止: 制限コマンドタイプ — カードエディタから出力される新形式
+        //   JSON の "type" フィールドに直接これらの文字列が入る。
+        //   duration フィールドは DURATION_OPTIONS 文字列 ("THIS_TURN" 等) で格納される。
+        LOCK_SPELL,             // 呪文使用禁止
+        SPELL_RESTRICTION,      // コスト指定呪文禁止 (target_filter.exact_cost で指定)
+        CANNOT_PUT_CREATURE,    // クリーチャーを出す禁止
+        CANNOT_SUMMON_CREATURE, // クリーチャー召喚禁止
+        PLAYER_CANNOT_ATTACK,   // プレイヤーの攻撃禁止
+        IGNORE_ABILITY,         // 指定タイプ/コストの能力を無視
+
+            MOVE_BUFFER_REMAIN_TO_ZONE, // バッファ残余を指定ゾーンへ移動
         NONE
     };
 
@@ -225,13 +261,19 @@ namespace dm::core {
         std::optional<bool> is_card_designation;
         std::optional<int> count;
 
-        std::optional<std::string> selection_mode;
-        std::optional<std::string> selection_sort_key;
-
         std::optional<std::string> power_max_ref;
         std::optional<std::string> cost_ref;  // Reference to execution_context variable for exact_cost
 
         std::vector<FilterDef> and_conditions;
+
+        // 再発防止: IF コマンドの target_filter に条件データを埋め込む場合に使用する:
+        //   type に評価タイプ (例: OPPONENT_DRAW_COUNT, COMPARE_INPUT) → JSONキー "type" に対応
+        //   value に閾値 → JSONキー "value" に対応
+        //   op に比較演算子 (>=, <=, == 等) → JSONキー "op" に対応
+        //   注意: types (vector) と type (optional単体) は別フィールドで非競合
+        std::optional<std::string> type;   // 条件タイプ: OPPONENT_DRAW_COUNT, COMPARE_INPUT 等
+        std::optional<int>         value;  // 条件の閾値
+        std::optional<std::string> op;     // 比較演算子: >=, <=, ==, <, > 等
     };
 
     struct CostDef {
@@ -248,6 +290,7 @@ namespace dm::core {
         int reduction_amount;
         int max_units = -1;
         int min_mana_cost = 0;
+        std::string id; // unique identifier for the reduction (new)
         std::string name;
     };
 
@@ -261,14 +304,61 @@ namespace dm::core {
         nlohmann::json extra_fields = nlohmann::json::object();  // Added: to handle unknown JSON fields
     };
 
+    // フェーズ3: ConditionTree — AND/OR/NOT の再帰的条件木
+    // 使い方:
+    //   LEAF: op="LEAF", type/value/str_val/stat_key/op_str/filter で単一条件を表現（旧ConditionDefと対応）
+    //   AND:  op="AND",  children に子ノードリスト（全て真なら誘発）
+    //   OR:   op="OR",   children に子ノードリスト（いずれか真なら誘発）
+    //   NOT:  op="NOT",  children[0] の反転
+    // 再発防止: C++は再帰構造を直接保持できないため children を nlohmann::json で格納し
+    //   エフェクト評価時にパースする。新しい条件タイプを追加したら effect_system.cpp も更新。
+    // 再発防止: to_json/from_json は FilterDef の NLOHMANN マクロの後で定義すること
+    //   (前方宣言の問題を避けるため、namespace以下の ConditionNode シリアライザセクションに記述)
+    struct ConditionNode {
+        std::string op = "LEAF"; // "LEAF" | "AND" | "OR" | "NOT"
+        // LEAF 時のフィールド（旧 ConditionDef と同等）
+        std::string type;
+        int value = 0;
+        std::string str_val;
+        std::string stat_key;
+        std::string op_str; // 比較演算子: ">=", "<=", "==", ">", "<"
+        std::optional<FilterDef> filter;
+        // AND/OR/NOT 時の子ノード（再帰を nlohmann::json で表現）
+        nlohmann::json children = nlohmann::json::array();
+    };
+    // ConditionNode の to_json/from_json は NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef,...) の後で定義する
+
     struct ModifierDef {
         ModifierType type = ModifierType::NONE;
         int value = 0;
         std::string str_val;
         ConditionDef condition;
         FilterDef filter;
+        // Extended fields for COST_MODIFIER STAT_SCALED support
+        std::string value_mode; // "FIXED" | "STAT_SCALED" (default empty -> FIXED)
+        std::string stat_key;
+        int per_value = 0;
+        int min_stat = 1;
+        std::optional<int> max_reduction;
     };
 
+    // Deprecated legacy structure: ActionDef
+    // NOTE: `ActionDef` remains defined for JSON deserialization compatibility.
+    // New code should prefer `CommandDef`. The conversion is performed in
+    // `json_loader.cpp::convert_legacy_action` and callers should migrate to
+    // `CommandDef` when possible. This struct is retained to avoid breaking
+    // existing card JSON files and to support incremental migration (T-05).
+    //
+    // DEPRECATION: Marked [[deprecated]] so builds will emit a warning when
+    // this type is referenced from new code. The intent is to make usages
+    // visible at compile-time and to encourage incremental replacement with
+    // `CommandDef`. Final removal will be a separate, explicitly-scheduled
+    // breaking change once tests and JSON coverage confirm parity.
+    // 廃止期限: 2026-06-30 までに ActionDef 互換層を削除する計画。
+    // 再発防止: 新規データは schema_version>=2 + CommandDef のみ許可し、
+    // ActionDef が新規JSONへ再流入しないよう json_loader.cpp 側で境界を強制する。
+    // ActionDef is legacy; prefer CommandDef. Removed C++ attribute for MSVC
+    // compatibility to avoid compile-time attribute placement errors.
     struct ActionDef {
         EffectPrimitive type = EffectPrimitive::NONE;
         TargetScope scope = TargetScope::NONE;
@@ -301,6 +391,11 @@ namespace dm::core {
         FilterDef target_filter;
         int amount = 0;
         std::string str_param;
+        // 再発防止: str_val と duration はカードエディタが出力する新形式フィールド。
+        //   ADD_KEYWORD の keyword、LOCK_SPELL 系の期間などで使用する。
+        //   NLOHMANN マクロに必ず含めること。
+        std::string str_val;      // キーワード識別子 (ADD_KEYWORD 等)
+        std::string duration;     // 持続期間文字列 (DURATION_OPTIONS 値、例: "THIS_TURN")
         bool optional = false;
         std::string from_zone;
         std::string to_zone;
@@ -314,7 +409,24 @@ namespace dm::core {
         int slot_index = -1;
         int target_slot_index = -1;
         bool up_to = false;
+        // Payment intent fields: represent explicit payment selection produced by editor/AI
+        // These are optional and used to express `ACTIVE_PAYMENT` choices or other payment modes.
+        std::string payment_mode;    // e.g. "ACTIVE_PAYMENT", "PAY_FROM_MANA"
+        std::string reduction_id;    // id of cost_reductions entry
+        int payment_units = 0;       // units selected when using ACTIVE_PAYMENT
         std::vector<std::vector<CommandDef>> options;
+    };
+
+    // TriggerDescriptor: EffectDef の誘発条件を多次元で記述する構造体
+    // trigger_list に複数のTriggerTypeを指定するとOR結合で誘発する（《超次元の王家》のパンドラ・シフト等）
+    // timing_mode:  "POST"(デフォルト,「～た時」) / "PRE"(「出る時」=置換効果起点)
+    // multiplicity: "ONCE"(デフォルト,「時」) / "WHENEVER"(「たび」=複数誘発)
+    // trigger_zones: ゾーン移動系トリガー用ゾーン指定（"BATTLE_ZONE","HAND","MANA" 等）
+    struct TriggerDescriptor {
+        std::vector<TriggerType> trigger_list;  // OR結合トリガーリスト（空なら trigger フィールドを使用）
+        std::vector<std::string> trigger_zones; // ON_ZONE_ENTER/EXIT 用ゾーン指定
+        std::string timing_mode  = "POST";      // "POST" | "PRE"
+        std::string multiplicity = "ONCE";      // "ONCE" | "WHENEVER"
     };
 
     struct EffectDef {
@@ -324,6 +436,12 @@ namespace dm::core {
         ConditionDef condition;
         std::vector<ActionDef> actions;
         std::vector<CommandDef> commands;
+        // フェーズ2追加: TriggerDescriptor（後方互換のため optional）
+        // 再発防止: trigger_descriptor を使う場合は trigger フィールドを NONE のままにせず
+        //   trigger_descriptor.trigger_list[0] と一致させると可読性が上がる
+        std::optional<TriggerDescriptor> trigger_descriptor;
+        // フェーズ3追加: ConditionTree（後方互換のため optional、設定時は condition より優先）
+        std::optional<ConditionNode> condition_tree;
     };
 
     struct ReactionCondition {
@@ -391,21 +509,34 @@ namespace nlohmann {
 namespace dm::core {
     NLOHMANN_JSON_SERIALIZE_ENUM(TriggerType, {
         {TriggerType::NONE, "NONE"},
+        // ゾーン移動系
         {TriggerType::ON_PLAY, "ON_PLAY"},
-        {TriggerType::ON_ATTACK, "ON_ATTACK"},
-        {TriggerType::ON_DESTROY, "ON_DESTROY"},
-        {TriggerType::S_TRIGGER, "S_TRIGGER"},
-        {TriggerType::TURN_START, "TURN_START"},
-        {TriggerType::PASSIVE_CONST, "PASSIVE_CONST"},
         {TriggerType::ON_OTHER_ENTER, "ON_OTHER_ENTER"},
+        {TriggerType::ON_OPPONENT_CREATURE_ENTER, "ON_OPPONENT_CREATURE_ENTER"},
+        {TriggerType::ON_DESTROY, "ON_DESTROY"},
+        {TriggerType::ON_EXIT, "ON_EXIT"},
+        {TriggerType::ON_DISCARD, "ON_DISCARD"},
+        // ターン・フェイズ系
+        {TriggerType::TURN_START, "TURN_START"},
+        {TriggerType::ON_TURN_END, "ON_TURN_END"},
+        // アクション系
+        {TriggerType::ON_ATTACK, "ON_ATTACK"},
         {TriggerType::ON_ATTACK_FROM_HAND, "ON_ATTACK_FROM_HAND"},
         {TriggerType::ON_BLOCK, "ON_BLOCK"},
+        {TriggerType::ON_BATTLE_WIN, "ON_BATTLE_WIN"},
+        {TriggerType::ON_BATTLE_LOSE, "ON_BATTLE_LOSE"},
+        {TriggerType::ON_CAST_SPELL, "ON_CAST_SPELL"},
+        {TriggerType::ON_DRAW, "ON_DRAW"},
+        {TriggerType::ON_OPPONENT_DRAW, "ON_OPPONENT_DRAW"},
+        {TriggerType::ON_TAP, "ON_TAP"},
+        {TriggerType::ON_UNTAP, "ON_UNTAP"},
+        // シールド系
         {TriggerType::AT_BREAK_SHIELD, "AT_BREAK_SHIELD"},
         {TriggerType::BEFORE_BREAK_SHIELD, "BEFORE_BREAK_SHIELD"},
         {TriggerType::ON_SHIELD_ADD, "ON_SHIELD_ADD"},
-        {TriggerType::ON_CAST_SPELL, "ON_CAST_SPELL"},
-        {TriggerType::ON_OPPONENT_DRAW, "ON_OPPONENT_DRAW"},
-        {TriggerType::ON_DRAW, "ON_DRAW"}
+        // 特殊・常在型
+        {TriggerType::S_TRIGGER, "S_TRIGGER"},
+        {TriggerType::PASSIVE_CONST, "PASSIVE_CONST"}
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(ReactionType, {
@@ -543,7 +674,30 @@ namespace dm::core {
         {CommandType::PASS, "PASS"},
         {CommandType::USE_ABILITY, "USE_ABILITY"},
         {CommandType::MANA_CHARGE, "MANA_CHARGE"},
-        {CommandType::SELECT_TARGET, "SELECT_TARGET"}
+        {CommandType::SELECT_TARGET, "SELECT_TARGET"},
+
+        // cards.json 追加コマンドタイプ
+        // 再発防止: 新コマンドタイプを追加したら NLOHMANN と CommandType enum の両方を更新すること
+        {CommandType::APPLY_MODIFIER, "APPLY_MODIFIER"},
+        // 再発防止: 旧cards.json互換。COST_MODIFIER は APPLY_MODIFIER として扱う。
+        {CommandType::APPLY_MODIFIER, "COST_MODIFIER"},
+        // 再発防止: cards.json の REVOLUTION_CHANGE は C++ enum に必ず登録し、NONE 変換を防ぐ。
+        {CommandType::REVOLUTION_CHANGE, "REVOLUTION_CHANGE"},
+        {CommandType::GRANT_KEYWORD, "GRANT_KEYWORD"},
+        {CommandType::PUT_CREATURE, "PUT_CREATURE"},
+        {CommandType::REPLACE_CARD_MOVE, "REPLACE_CARD_MOVE"},
+        {CommandType::ADD_RESTRICTION, "ADD_RESTRICTION"},
+        {CommandType::SELECT_OPTION, "SELECT_OPTION"},
+        {CommandType::DRAW, "DRAW"},
+        {CommandType::REPLACE_MOVE_CARD, "REPLACE_MOVE_CARD"},
+        // 再発防止: 制限コマンドタイプ — 追加したら command_system.cpp の switch にも追加すること
+        {CommandType::LOCK_SPELL, "LOCK_SPELL"},
+        {CommandType::SPELL_RESTRICTION, "SPELL_RESTRICTION"},
+        {CommandType::CANNOT_PUT_CREATURE, "CANNOT_PUT_CREATURE"},
+        {CommandType::CANNOT_SUMMON_CREATURE, "CANNOT_SUMMON_CREATURE"},
+        {CommandType::PLAYER_CANNOT_ATTACK, "PLAYER_CANNOT_ATTACK"},
+        {CommandType::IGNORE_ABILITY, "IGNORE_ABILITY"},
+        {CommandType::MOVE_BUFFER_REMAIN_TO_ZONE, "MOVE_BUFFER_REMAIN_TO_ZONE"},
     })
 
     NLOHMANN_JSON_SERIALIZE_ENUM(CostType, {
@@ -560,11 +714,102 @@ namespace dm::core {
         {ReductionType::ACTIVE_PAYMENT, "ACTIVE_PAYMENT"}
     })
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, exact_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, selection_mode, selection_sort_key, power_max_ref, cost_ref, and_conditions)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FilterDef, owner, zones, types, civilizations, races, min_cost, max_cost, exact_cost, min_power, max_power, is_tapped, is_blocker, is_evolution, is_card_designation, count, power_max_ref, cost_ref, and_conditions, type, value, op)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ConditionDef, type, value, str_val, stat_key, op, filter, extra_fields)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ActionDef, type, scope, filter, value1, value2, str_val, value, optional, target_player, source_zone, destination_zone, target_choice, input_value_key, input_value_usage, output_value_key, inverse_target, condition, options, cast_spell_side)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, input_value_usage, output_value_key, slot_index, target_slot_index, up_to, options)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ModifierDef, type, value, str_val, condition, filter, value_mode, stat_key, per_value, min_stat, max_reduction)
+    // Custom from_json for ActionDef to accept legacy numeric enums and
+    // non-standard scope strings (e.g. "SINGLE") produced by older editors.
+    inline void from_json(const nlohmann::json& j, ActionDef& a) {
+        // type: can be numeric (legacy) or string mapped via NLOHMANN macro
+        if (j.contains("type")) {
+            try {
+                if (j.at("type").is_number()) {
+                    a.type = static_cast<EffectPrimitive>(j.at("type").get<int>());
+                } else {
+                    j.at("type").get_to(a.type);
+                }
+            } catch (...) {
+                a.type = EffectPrimitive::NONE;
+            }
+        }
+
+        // scope: accept legacy string "SINGLE" as TARGET_SELECT, or numeric/string
+        if (j.contains("scope")) {
+            try {
+                if (j.at("scope").is_string()) {
+                    std::string s = j.at("scope").get<std::string>();
+                    if (s == "SINGLE") a.scope = TargetScope::TARGET_SELECT;
+                    else {
+                        try { j.at("scope").get_to(a.scope); }
+                        catch (...) { a.scope = TargetScope::NONE; }
+                    }
+                } else if (j.at("scope").is_number()) {
+                    a.scope = static_cast<TargetScope>(j.at("scope").get<int>());
+                }
+            } catch (...) {
+                a.scope = TargetScope::NONE;
+            }
+        }
+
+        // Standard fields: guard against explicit JSON nulls before converting
+        if (j.contains("filter") && !j.at("filter").is_null()) { try{ j.at("filter").get_to(a.filter); } catch(...){} }
+        if (j.contains("value1") && !j.at("value1").is_null()) { try{ j.at("value1").get_to(a.value1); } catch(...){} }
+        if (j.contains("value2") && !j.at("value2").is_null()) { try{ j.at("value2").get_to(a.value2); } catch(...){} }
+        if (j.contains("str_val") && !j.at("str_val").is_null()) { try{ j.at("str_val").get_to(a.str_val); } catch(...){} }
+        if (j.contains("value") && !j.at("value").is_null()) { try{ j.at("value").get_to(a.value); } catch(...){} }
+        if (j.contains("optional") && !j.at("optional").is_null()) { try{ j.at("optional").get_to(a.optional); } catch(...){} }
+        if (j.contains("up_to") && !j.at("up_to").is_null()) { try{ j.at("up_to").get_to(a.up_to); } catch(...){} }
+        if (j.contains("target_player") && !j.at("target_player").is_null()) { try{ j.at("target_player").get_to(a.target_player); } catch(...){} }
+        if (j.contains("source_zone") && !j.at("source_zone").is_null()) { try{ j.at("source_zone").get_to(a.source_zone); } catch(...){} }
+        if (j.contains("destination_zone") && !j.at("destination_zone").is_null()) { try{ j.at("destination_zone").get_to(a.destination_zone); } catch(...){} }
+        if (j.contains("target_choice") && !j.at("target_choice").is_null()) { try{ j.at("target_choice").get_to(a.target_choice); } catch(...){} }
+        if (j.contains("input_value_key") && !j.at("input_value_key").is_null()) { try{ j.at("input_value_key").get_to(a.input_value_key); } catch(...){} }
+        if (j.contains("input_value_usage") && !j.at("input_value_usage").is_null()) { try{ j.at("input_value_usage").get_to(a.input_value_usage); } catch(...){} }
+        if (j.contains("output_value_key") && !j.at("output_value_key").is_null()) { try{ j.at("output_value_key").get_to(a.output_value_key); } catch(...){} }
+        if (j.contains("inverse_target") && !j.at("inverse_target").is_null()) { try{ j.at("inverse_target").get_to(a.inverse_target); } catch(...){} }
+        if (j.contains("cast_spell_side") && !j.at("cast_spell_side").is_null()) { try{ j.at("cast_spell_side").get_to(a.cast_spell_side); } catch(...){} }
+
+        if (j.contains("condition") && !j.at("condition").is_null()) {
+            try { j.at("condition").get_to(a.condition); } catch (...) {}
+        }
+
+        if (j.contains("options") && j.at("options").is_array()) {
+            try { j.at("options").get_to(a.options); } catch (...) {}
+        }
+    }
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CommandDef, type, instance_id, target_instance, owner_id, target_group, target_filter, amount, str_param, str_val, duration, optional, from_zone, to_zone, mutation_kind, condition, if_true, if_false, input_value_key, input_value_usage, output_value_key, slot_index, target_slot_index, up_to, payment_mode, reduction_id, payment_units, options)
+
+    // フェーズ3: ConditionNode の JSON シリアライズ
+    // 再発防止: FilterDef の NLOHMANN マクロの後でないとコンパイルエラーになるため、ここに定義。
+    inline void to_json(nlohmann::json& j, const ConditionNode& n) {
+        j["op"] = n.op;
+        if (n.op == "LEAF") {
+            if (!n.type.empty())     j["type"]     = n.type;
+            if (n.value != 0)        j["value"]    = n.value;
+            if (!n.str_val.empty())  j["str_val"]   = n.str_val;
+            if (!n.stat_key.empty()) j["stat_key"]  = n.stat_key;
+            if (!n.op_str.empty())   j["op_str"]    = n.op_str;
+            if (n.filter.has_value()) j["filter"]   = n.filter.value();
+        } else {
+            j["children"] = n.children;
+        }
+    }
+
+    inline void from_json(const nlohmann::json& j, ConditionNode& n) {
+        n.op = j.value("op", std::string("LEAF"));
+        if (n.op == "LEAF") {
+            n.type     = j.value("type",     std::string(""));
+            n.value    = j.value("value",    0);
+            n.str_val  = j.value("str_val",  std::string(""));
+            n.stat_key = j.value("stat_key", std::string(""));
+            n.op_str   = j.value("op_str",   std::string(""));
+            if (j.contains("filter") && !j.at("filter").is_null()) {
+                try { FilterDef f; j.at("filter").get_to(f); n.filter = f; } catch(...) {}
+            }
+        } else {
+            n.children = j.value("children", nlohmann::json::array());
+        }
+    }
 
     // Manual to_json for EffectDef to exclude actions
     inline void to_json(nlohmann::json& j, const EffectDef& e) {
@@ -576,15 +821,59 @@ namespace dm::core {
             {"commands", e.commands}
             // Explicitly excluding "actions" from output
         };
+        // フェーズ2: TriggerDescriptor が設定されている場合のみ出力
+        if (e.trigger_descriptor.has_value()) {
+            const auto& td = e.trigger_descriptor.value();
+            nlohmann::json tdj;
+            if (!td.trigger_list.empty()) tdj["trigger_list"] = td.trigger_list;
+            if (!td.trigger_zones.empty()) tdj["trigger_zones"] = td.trigger_zones;
+            if (td.timing_mode != "POST")  tdj["timing_mode"]  = td.timing_mode;
+            if (td.multiplicity != "ONCE") tdj["multiplicity"]  = td.multiplicity;
+            if (!tdj.empty()) j["trigger_descriptor"] = tdj;
+        }
+        // フェーズ3: ConditionTree が設定されている場合のみ出力
+        if (e.condition_tree.has_value()) {
+            j["condition_tree"] = e.condition_tree.value();
+        }
     }
 
     inline void from_json(const nlohmann::json& j, EffectDef& e) {
         if (j.contains("trigger")) j.at("trigger").get_to(e.trigger);
         if (j.contains("trigger_scope")) j.at("trigger_scope").get_to(e.trigger_scope);
         if (j.contains("trigger_filter")) j.at("trigger_filter").get_to(e.trigger_filter);
-        if (j.contains("condition")) j.at("condition").get_to(e.condition);
-        if (j.contains("commands")) j.at("commands").get_to(e.commands);
-        if (j.contains("actions")) j.at("actions").get_to(e.actions);
+        if (j.contains("condition") && !j.at("condition").is_null()) j.at("condition").get_to(e.condition);
+        if (j.contains("commands") && !j.at("commands").is_null()) {
+            try { j.at("commands").get_to(e.commands); } catch(...) { e.commands = {}; }
+        }
+        if (j.contains("actions") && !j.at("actions").is_null()) {
+            try { j.at("actions").get_to(e.actions); } catch(...) { e.actions = {}; }
+        }
+        // フェーズ2: TriggerDescriptor の読み込み
+        if (j.contains("trigger_descriptor") && j.at("trigger_descriptor").is_object()) {
+            TriggerDescriptor td;
+            const auto& tdj = j.at("trigger_descriptor");
+            if (tdj.contains("trigger_list")) {
+                for (const auto& item : tdj.at("trigger_list")) {
+                    TriggerType tt = TriggerType::NONE;
+                    item.get_to(tt);
+                    td.trigger_list.push_back(tt);
+                }
+            }
+            if (tdj.contains("trigger_zones")) tdj.at("trigger_zones").get_to(td.trigger_zones);
+            if (tdj.contains("timing_mode"))   tdj.at("timing_mode").get_to(td.timing_mode);
+            if (tdj.contains("multiplicity"))  tdj.at("multiplicity").get_to(td.multiplicity);
+            // trigger_listの最初の要素をtriggerフィールドとしてミラー（後方互換）
+            if (!td.trigger_list.empty() && e.trigger == TriggerType::NONE) {
+                e.trigger = td.trigger_list[0];
+            }
+            e.trigger_descriptor = td;
+        }
+        // フェーズ3: ConditionTree の読み込み
+        if (j.contains("condition_tree") && j.at("condition_tree").is_object()) {
+            ConditionNode cn;
+            j.at("condition_tree").get_to(cn);
+            e.condition_tree = cn;
+        }
     }
 
     // NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions, commands) -- REPLACED BY MANUAL IMPL ABOVE
@@ -593,7 +882,7 @@ namespace dm::core {
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionAbility, type, cost, zone, condition)
 
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CostDef, type, amount, filter, is_optional, cost_id)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CostReductionDef, type, unit_cost, reduction_amount, max_units, min_mana_cost, name)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CostReductionDef, type, unit_cost, reduction_amount, max_units, min_mana_cost, id, name)
 
     inline void to_json(nlohmann::json& j, const CardData& c) {
         j = nlohmann::json{
@@ -652,7 +941,12 @@ namespace dm::core {
         }
 
         if (j.contains("metamorph_abilities")) {
-            j.at("metamorph_abilities").get_to(c.metamorph_abilities);
+            if (!j.at("metamorph_abilities").is_null()) {
+                try { j.at("metamorph_abilities").get_to(c.metamorph_abilities); }
+                catch(...) { c.metamorph_abilities = {}; }
+            } else {
+                c.metamorph_abilities = {};
+            }
         } else {
             c.metamorph_abilities = {};
         }

@@ -142,23 +142,12 @@ class DeckEvolution:
                             # Fallback to action path if available
                             if actions:
                                 action = random.choice(actions)
+                                # 再発防止: GameLogicSystem/EffectResolver.resolve_action は未バインドのため削除済み。ExecuteCommand を使用。
                                 try:
-                                    from dm_toolkit.unified_execution import ensure_executable_command
                                     from dm_toolkit.engine.compat import EngineCompat
-                                    cdict = ensure_executable_command(action)
-                                    EngineCompat.ExecuteCommand(gs, cdict, self.card_db)
+                                    EngineCompat.ExecuteCommand(gs, action, self.card_db)
                                 except Exception:
-                                    try:
-                                        from dm_toolkit.compat_wrappers import execute_action_compat
-                                        execute_action_compat(gs, action, self.card_db)
-                                    except Exception:
-                                        try:
-                                            dm.GameLogicSystem.resolve_action(gs, action, self.card_db)
-                                        except Exception:
-                                            try:
-                                                dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
-                                            except Exception:
-                                                pass
+                                    pass
 
                 # Best-effort: if the chosen command is a flow/pass-like command, advance phase
                 try:
@@ -169,25 +158,14 @@ class DeckEvolution:
                 except Exception:
                     pass
             else:
-                # No ICommand available; pick an Action and try to run it via unified path first
+                # No ICommand available; pick an Action and try to run it
                 action = random.choice(actions)
+                # 再発防止: GameLogicSystem/EffectResolver.resolve_action は未バインドのため削除済み。ExecuteCommand を使用。
                 try:
-                    from dm_toolkit.unified_execution import ensure_executable_command
                     from dm_toolkit.engine.compat import EngineCompat
-                    cdict = ensure_executable_command(action)
-                    EngineCompat.ExecuteCommand(gs, cdict, self.card_db)
+                    EngineCompat.ExecuteCommand(gs, action, self.card_db)
                 except Exception:
-                    try:
-                        from dm_toolkit.compat_wrappers import execute_action_compat
-                        execute_action_compat(gs, action, self.card_db)
-                    except Exception:
-                        try:
-                            dm.GameLogicSystem.resolve_action(gs, action, self.card_db)
-                        except Exception:
-                            try:
-                                dm_ai_module.EffectResolver.resolve_action(gs, action, self.card_db)
-                            except Exception:
-                                pass
+                    pass
                 try:
                     if action.type == dm_ai_module.CommandType.PASS:
                         dm_ai_module.PhaseManager.next_phase(gs)

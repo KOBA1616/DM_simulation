@@ -1,8 +1,8 @@
-<#
+﻿<#
 Development pipeline helper for this repo.
 Usage (PowerShell, venv activated):
   .\scripts\dev_pipeline.ps1            # run full pipeline (install, lint, typecheck, tests)
-  .\scripts\dev_pipeline.ps1 -RunGUI   # run GUI at end (will call run_gui_with_real_pyqt.ps1)
+    .\scripts\dev_pipeline.ps1 -RunGUI   # run GUI at end (will call run_gui.ps1 -InstallPyQt)
   .\scripts\dev_pipeline.ps1 -NoInstall -SkipTests
 #>
 
@@ -48,8 +48,8 @@ if (-not $SkipTests) {
 Write-Host "Pipeline steps completed successfully."
 
 if ($RunGUI) {
-    Write-Host "Launching GUI with real PyQt6 (runs run_gui_with_real_pyqt.ps1)..."
-    & .\scripts\run_gui_with_real_pyqt.ps1
+    Write-Host "Launching GUI (ensuring PyQt6 is installed into venv if necessary)..."
+    & .\scripts\run_gui.ps1 -InstallPyQt
 }
 
 exit 0

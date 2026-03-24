@@ -1,8 +1,7 @@
 """scripts/ conftest.
 
-Historically this folder had its own dm_ai_module shim.
-The repository now provides a canonical loader at repo root (dm_ai_module.py),
-so we avoid force-loading anything here.
+再発防止: dm_ai_module.py (Python フォールバック) は削除済み。
+現在は dm_ai_module.cp312-win_amd64.pyd (ネイティブ C++) が唯一の実装になる。
 """
 
 import os

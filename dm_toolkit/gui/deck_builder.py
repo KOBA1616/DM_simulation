@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QLabel, QLineEdit, QMessageBox, QFileDialog
 )
 from PyQt6.QtCore import Qt
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 import dm_ai_module
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.utils.card_helpers import get_card_civilizations, get_card_name, get_card_cost
@@ -31,12 +32,12 @@ class DeckBuilder(QWidget):
         left_panel = QVBoxLayout()
         self.search_bar = QLineEdit()
         self.search_bar.setPlaceholderText(tr("Search..."))
-        self.search_bar.textChanged.connect(self.filter_cards)
+        safe_connect(self.search_bar, 'textChanged', self.filter_cards)
         left_panel.addWidget(self.search_bar)
 
         self.card_list = QListWidget()
-        self.card_list.itemClicked.connect(self.show_preview_from_db)
-        self.card_list.itemDoubleClicked.connect(self.add_card)
+        safe_connect(self.card_list, 'itemClicked', self.show_preview_from_db)
+        safe_connect(self.card_list, 'itemDoubleClicked', self.add_card)
         left_panel.addWidget(self.card_list)
         
         # Add New Card Button

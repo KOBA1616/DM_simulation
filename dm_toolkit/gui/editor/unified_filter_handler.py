@@ -31,36 +31,46 @@ class UnifiedFilterHandler:
         
         if ability_type == "STATIC":
             # Static abilities: emphasize owner/scope filters and numeric properties
-            widget.set_visible_sections({
+            raw_sections = {
                 'owner': True,         # Scope (SELF/OPPONENT/ALL)
                 'basic': True,         # Type, civilization
                 'stats': True,         # Cost, power ranges
                 'flags': True,         # Tapped, blocker, evolution flags
                 'keywords': False,     # Keywords (less relevant for static)
                 'selection': False     # Selection (not applicable)
-            })
+            }
+            # Allowlist keys that FilterEditorWidget recognizes
+            allowed = {'basic', 'stats', 'flags', 'selection'}
+            sections = {k: v for k, v in raw_sections.items() if k in allowed}
+            widget.set_visible_sections(sections)
         
         elif ability_type == "TRIGGER":
             # Trigger effects: exclude flags that change dynamically
-            widget.set_visible_sections({
+            raw_sections = {
                 'owner': True,         # Target specification
                 'basic': True,         # Type, civilization
                 'stats': True,         # Cost, power
                 'flags': False,        # Tapped, blocker (change during game, unreliable)
                 'keywords': False,
                 'selection': False
-            })
+            }
+            allowed = {'basic', 'stats', 'flags', 'selection'}
+            sections = {k: v for k, v in raw_sections.items() if k in allowed}
+            widget.set_visible_sections(sections)
         
         else:
-            # Default: show all available sections
-            widget.set_visible_sections({
+            # Default: show all available sections (sanitized)
+            raw_sections = {
                 'owner': True,
                 'basic': True,
                 'stats': True,
                 'flags': True,
                 'keywords': False,
                 'selection': False
-            })
+            }
+            allowed = {'basic', 'stats', 'flags', 'selection'}
+            sections = {k: v for k, v in raw_sections.items() if k in allowed}
+            widget.set_visible_sections(sections)
         
         return widget
     

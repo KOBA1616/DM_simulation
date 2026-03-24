@@ -6,6 +6,70 @@
 #include "core/card_def.hpp"
 #include <iostream>
 
+namespace {
+using namespace dm::core;
+
+static bool zone_name_matches(const std::string& name, int zone_value) {
+    if (name == "BATTLE" || name == "BATTLE_ZONE") return zone_value == (int)Zone::BATTLE;
+    if (name == "HAND") return zone_value == (int)Zone::HAND;
+    if (name == "MANA" || name == "MANA_ZONE") return zone_value == (int)Zone::MANA;
+    if (name == "SHIELD" || name == "SHIELD_ZONE") return zone_value == (int)Zone::SHIELD;
+    if (name == "GRAVEYARD") return zone_value == (int)Zone::GRAVEYARD;
+    if (name == "DECK") return zone_value == (int)Zone::DECK;
+    return false;
+}
+
+static bool matches_trigger_descriptor(const TriggerDescriptor& td, const GameEvent& event) {
+    // timing_mode: PRE は event.context 側で is_pre=1 か timing_mode=0 を要求
+    const std::string timing = td.timing_mode.empty() ? "POST" : td.timing_mode;
+    if (timing == "PRE") {
+        const bool is_pre = (event.context.count("is_pre") && event.context.at("is_pre") == 1) ||
+                            (event.context.count("timing_mode") && event.context.at("timing_mode") == 0);
+        if (!is_pre) return false;
+    } else {
+        // POST は既定。明示PREマーカーがあるイベントではマッチしない。
+        if (event.context.count("is_pre") && event.context.at("is_pre") == 1) return false;
+    }
+
+    if (!td.trigger_zones.empty()) {
+        int to_zone = event.context.count("to_zone") ? event.context.at("to_zone") : -1;
+        int from_zone = event.context.count("from_zone") ? event.context.at("from_zone") : -1;
+        bool zone_ok = false;
+        for (const auto& z : td.trigger_zones) {
+            if (zone_name_matches(z, to_zone) || zone_name_matches(z, from_zone)) {
+                zone_ok = true;
+                break;
+            }
+        }
+        if (!zone_ok) return false;
+    }
+
+    return true;
+}
+
+static bool already_pending_once(const GameState& state, const PendingEffect& pending) {
+    // 再発防止: multiplicity=ONCE は同一pendingが重複積みされないよう保護する。
+    for (const auto& p : state.pending_effects) {
+        if (p.type != EffectType::TRIGGER_ABILITY) continue;
+        if (p.source_instance_id != pending.source_instance_id) continue;
+        if (p.controller != pending.controller) continue;
+        if (p.resolve_type != pending.resolve_type) continue;
+        // 再発防止: std::optional<EffectDef> を直接 to_json すると ADL 解決で C2665 になる。
+        // has_value() を確認し、value/null を比較して重複判定する。
+        nlohmann::json ja = nullptr;
+        nlohmann::json jb = nullptr;
+        if (p.effect_def.has_value()) {
+            dm::core::to_json(ja, p.effect_def.value());
+        }
+        if (pending.effect_def.has_value()) {
+            dm::core::to_json(jb, pending.effect_def.value());
+        }
+        if (ja == jb) return true;
+    }
+    return false;
+}
+} // namespace
+
 namespace dm::engine::systems {
 
     using namespace core;
@@ -28,34 +92,68 @@ namespace dm::engine::systems {
 
     // Helper to map GameEvent to TriggerType
     // Returns TriggerType::NONE if no mapping exists
+    // 再発防止: 新しいTriggerTypeを追加したら必ずここのマッピングも更新すること
     static TriggerType map_event_to_trigger(const GameEvent& event) {
         if (event.type == EventType::ZONE_ENTER) {
-            if (event.context.count("to_zone") && event.context.at("to_zone") == (int)Zone::BATTLE) {
+            auto to   = event.context.count("to_zone")   ? event.context.at("to_zone")   : -1;
+            auto from = event.context.count("from_zone") ? event.context.at("from_zone") : -1;
+
+            // バトルゾーン参入 → ON_PLAY
+            if (to == (int)Zone::BATTLE) {
                 return TriggerType::ON_PLAY;
             }
-            if (event.context.count("to_zone") && event.context.at("to_zone") == (int)Zone::HAND &&
-                event.context.count("from_zone") && event.context.at("from_zone") == (int)Zone::DECK) {
+            // 山札→手札 = ドロー
+            if (to == (int)Zone::HAND && from == (int)Zone::DECK) {
                 return TriggerType::ON_DRAW;
             }
-            // Destruction Logic: Moved TO Graveyard FROM Battle Zone
-             if (event.context.count("to_zone") && event.context.at("to_zone") == (int)Zone::GRAVEYARD &&
-                 event.context.count("from_zone") && event.context.at("from_zone") == (int)Zone::BATTLE) {
-                 return TriggerType::ON_DESTROY;
-             }
+            // バトルゾーン→墓地 = 破壊（ON_DESTROY）
+            if (to == (int)Zone::GRAVEYARD && from == (int)Zone::BATTLE) {
+                return TriggerType::ON_DESTROY;
+            }
+            // 手札→墓地 = 捨て（ON_DISCARD）
+            if (to == (int)Zone::GRAVEYARD && from == (int)Zone::HAND) {
+                return TriggerType::ON_DISCARD;
+            }
+            // シールドゾーン追加
+            if (to == (int)Zone::SHIELD) {
+                return TriggerType::ON_SHIELD_ADD;
+            }
+        }
+        // バトルゾーンからの離脱（ON_EXIT）— 破壊以外も含む広範なトリガー
+        if (event.type == EventType::ZONE_LEAVE) {
+            auto from = event.context.count("from_zone") ? event.context.at("from_zone") : -1;
+            if (from == (int)Zone::BATTLE) {
+                return TriggerType::ON_EXIT;
+            }
         }
         if (event.type == EventType::ATTACK_INITIATE) {
             return TriggerType::ON_ATTACK;
         }
         if (event.type == EventType::BLOCK_INITIATE) {
-             return TriggerType::ON_BLOCK;
+            return TriggerType::ON_BLOCK;
+        }
+        if (event.type == EventType::BATTLE_WIN) {
+            return TriggerType::ON_BATTLE_WIN;
+        }
+        if (event.type == EventType::BATTLE_LOSE) {
+            return TriggerType::ON_BATTLE_LOSE;
         }
         if (event.type == EventType::SHIELD_BREAK) {
             return TriggerType::AT_BREAK_SHIELD;
         }
         if (event.type == EventType::PLAY_CARD) {
-             if (event.context.count("is_spell") && event.context.at("is_spell") == 1) {
-                 return TriggerType::ON_CAST_SPELL;
-             }
+            if (event.context.count("is_spell") && event.context.at("is_spell") == 1) {
+                return TriggerType::ON_CAST_SPELL;
+            }
+        }
+        if (event.type == EventType::TURN_END) {
+            return TriggerType::ON_TURN_END;
+        }
+        if (event.type == EventType::TAP_CARD) {
+            return TriggerType::ON_TAP;
+        }
+        if (event.type == EventType::UNTAP_CARD) {
+            return TriggerType::ON_UNTAP;
         }
         return TriggerType::NONE;
     }
@@ -64,6 +162,17 @@ namespace dm::engine::systems {
                                         const std::map<CardID, CardDefinition>& card_db) {
         TriggerType trigger_type = map_event_to_trigger(event);
         if (trigger_type == TriggerType::NONE) return;
+
+        // 再発防止: ON_PLAYはpipelineのCHECK_CREATURE_ENTER_TRIGGERSで処理済み。
+        // TransitionCommand→ZONE_ENTER経由でTriggerManagerが発火すると、
+        // TriggerSystem::resolve_triggerと合わせてON_PLAYが二重発火する。
+        // ON_CAST_SPELLもCHECK_SPELL_CAST_TRIGGERSで処理されるため同様にスキップ。
+        // ON_EXIT/ON_DISCARDはZONE_LEAVEから派生するが、map_event_to_triggerがON_EXIT返す場合に
+        // 二重処理が発生しないよう確認済み（ZONE_LEAVEは直接TriggerSystem経由では呼ばれない）。
+        if (trigger_type == TriggerType::ON_PLAY ||
+            trigger_type == TriggerType::ON_CAST_SPELL) {
+            return;
+        }
 
         // Standard self-trigger logic + iteration over active cards
         // Zones to check for potential listeners
@@ -88,7 +197,33 @@ namespace dm::engine::systems {
                 active_effects.insert(active_effects.end(), def->effects.begin(), def->effects.end());
 
                 for (const auto& effect : active_effects) {
-                    if (effect.trigger == trigger_type) {
+                    const TriggerDescriptor* td_ptr =
+                        (effect.trigger_descriptor.has_value())
+                            ? &effect.trigger_descriptor.value()
+                            : nullptr;
+
+                    // フェーズ2: TriggerDescriptor の trigger_list（OR結合）を優先して照合
+                    bool trigger_match = false;
+                    if (td_ptr && !td_ptr->trigger_list.empty()) {
+                        for (const auto& t : td_ptr->trigger_list) {
+                            if (t == trigger_type) { trigger_match = true; break; }
+                        }
+                    } else {
+                        trigger_match = (effect.trigger == trigger_type);
+                        // 再発防止: 旧データの ON_ATTACK_FROM_HAND は実質的に攻撃時トリガーとして運用される。
+                        // map_event_to_trigger は ATTACK_INITIATE -> ON_ATTACK を返すため、
+                        // 互換エイリアスを認めないと革命チェンジ系 pending_effect が生成されない。
+                        if (!trigger_match && trigger_type == TriggerType::ON_ATTACK &&
+                            effect.trigger == TriggerType::ON_ATTACK_FROM_HAND) {
+                            trigger_match = true;
+                        }
+                    }
+
+                    if (trigger_match && td_ptr) {
+                        trigger_match = matches_trigger_descriptor(*td_ptr, event);
+                    }
+
+                    if (trigger_match) {
                         bool condition_met = false;
                         TargetScope scope = effect.trigger_scope;
 
@@ -157,7 +292,11 @@ namespace dm::engine::systems {
                             pending.optional = true;
                             pending.chain_depth = state.turn_stats.current_chain_depth + 1;
 
-                            state.pending_effects.push_back(pending);
+                            const bool once_only = td_ptr &&
+                                (td_ptr->multiplicity.empty() || td_ptr->multiplicity == "ONCE");
+                            if (!once_only || !already_pending_once(state, pending)) {
+                                state.pending_effects.push_back(pending);
+                            }
                         }
                     }
                 }

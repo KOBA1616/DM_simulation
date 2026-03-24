@@ -86,6 +86,9 @@ py::dict command_to_dict(const CommandDef& c) {
     d["slot_index"] = c.slot_index;
     d["target_slot_index"] = c.target_slot_index;
     d["up_to"] = c.up_to;
+    d["payment_mode"] = c.payment_mode;
+    d["reduction_id"] = c.reduction_id;
+    d["payment_units"] = c.payment_units;
 
     py::list if_true_list;
     for (const auto& sub : c.if_true) {
@@ -117,6 +120,10 @@ void bind_core(py::module& m) {
     py::bind_vector<std::vector<dm::core::CardInstance>>(m, "CardList");
     py::bind_vector<std::vector<dm::core::Civilization>>(m, "CivilizationList");
     py::bind_vector<std::vector<dm::core::Player>>(m, "PlayerList");
+    // 再発防止: std::vector<CostReductionDef> が bind されていないと、
+    // CardDefinition::cost_reductions (ベクトル型) が Python から見えなかった。
+    // 解決: 明示的に bind_vector で登録してコンテナ変換を確保。
+    py::bind_vector<std::vector<dm::core::CostReductionDef>>(m, "CostReductionDefList");
 
     // ... (Previous Enums and Classes) ...
     // GameEvent bindings
@@ -226,21 +233,34 @@ void bind_core(py::module& m) {
         .export_values();
 
     py::enum_<TriggerType>(m, "TriggerType")
+        // ゾーン移動系
         .value("ON_PLAY", TriggerType::ON_PLAY)
-        .value("ON_ATTACK", TriggerType::ON_ATTACK)
-        .value("ON_DESTROY", TriggerType::ON_DESTROY)
-        .value("S_TRIGGER", TriggerType::S_TRIGGER)
-        .value("TURN_START", TriggerType::TURN_START)
-        .value("PASSIVE_CONST", TriggerType::PASSIVE_CONST)
-        .value("BEFORE_BREAK_SHIELD", TriggerType::BEFORE_BREAK_SHIELD)
-        .value("AT_BREAK_SHIELD", TriggerType::AT_BREAK_SHIELD)
-        .value("ON_BLOCK", TriggerType::ON_BLOCK)
         .value("ON_OTHER_ENTER", TriggerType::ON_OTHER_ENTER)
+        .value("ON_OPPONENT_CREATURE_ENTER", TriggerType::ON_OPPONENT_CREATURE_ENTER)
+        .value("ON_DESTROY", TriggerType::ON_DESTROY)
+        .value("ON_EXIT", TriggerType::ON_EXIT)
+        .value("ON_DISCARD", TriggerType::ON_DISCARD)
+        // ターン・フェイズ系
+        .value("TURN_START", TriggerType::TURN_START)
+        .value("ON_TURN_END", TriggerType::ON_TURN_END)
+        // アクション系
+        .value("ON_ATTACK", TriggerType::ON_ATTACK)
         .value("ON_ATTACK_FROM_HAND", TriggerType::ON_ATTACK_FROM_HAND)
-        .value("ON_SHIELD_ADD", TriggerType::ON_SHIELD_ADD)
+        .value("ON_BLOCK", TriggerType::ON_BLOCK)
+        .value("ON_BATTLE_WIN", TriggerType::ON_BATTLE_WIN)
+        .value("ON_BATTLE_LOSE", TriggerType::ON_BATTLE_LOSE)
         .value("ON_CAST_SPELL", TriggerType::ON_CAST_SPELL)
-        .value("ON_OPPONENT_DRAW", TriggerType::ON_OPPONENT_DRAW)
         .value("ON_DRAW", TriggerType::ON_DRAW)
+        .value("ON_OPPONENT_DRAW", TriggerType::ON_OPPONENT_DRAW)
+        .value("ON_TAP", TriggerType::ON_TAP)
+        .value("ON_UNTAP", TriggerType::ON_UNTAP)
+        // シールド系
+        .value("AT_BREAK_SHIELD", TriggerType::AT_BREAK_SHIELD)
+        .value("BEFORE_BREAK_SHIELD", TriggerType::BEFORE_BREAK_SHIELD)
+        .value("ON_SHIELD_ADD", TriggerType::ON_SHIELD_ADD)
+        // 特殊・常在型
+        .value("S_TRIGGER", TriggerType::S_TRIGGER)
+        .value("PASSIVE_CONST", TriggerType::PASSIVE_CONST)
         .value("NONE", TriggerType::NONE)
         .export_values();
 
@@ -251,11 +271,13 @@ void bind_core(py::module& m) {
         .value("BLOCKER_GRANT", PassiveType::BLOCKER_GRANT)
         .value("SPEED_ATTACKER_GRANT", PassiveType::SPEED_ATTACKER_GRANT)
         .value("SLAYER_GRANT", PassiveType::SLAYER_GRANT)
+        .value("ALLOW_ATTACK_UNTAPPED", PassiveType::ALLOW_ATTACK_UNTAPPED)
         .value("CANNOT_ATTACK", PassiveType::CANNOT_ATTACK)
         .value("CANNOT_BLOCK", PassiveType::CANNOT_BLOCK)
         .value("CANNOT_USE_SPELLS", PassiveType::CANNOT_USE_SPELLS)
         .value("LOCK_SPELL_BY_COST", PassiveType::LOCK_SPELL_BY_COST)
         .value("CANNOT_SUMMON", PassiveType::CANNOT_SUMMON)
+        .value("IGNORE_ABILITIES", PassiveType::IGNORE_ABILITIES)
         .value("FORCE_SELECTION", PassiveType::FORCE_SELECTION)
         .value("CANNOT_BE_SELECTED", PassiveType::CANNOT_BE_SELECTED)
         .export_values();
@@ -300,6 +322,13 @@ void bind_core(py::module& m) {
         .value("EFFECT_RESOLUTION", ResolveType::EFFECT_RESOLUTION)
         .export_values();
 
+    // フェーズ4: ResolutionPriority バインディング
+    py::enum_<ResolutionPriority>(m, "ResolutionPriority")
+        .value("REPLACEMENT", ResolutionPriority::REPLACEMENT)
+        .value("INTERRUPT",   ResolutionPriority::INTERRUPT)
+        .value("NORMAL",      ResolutionPriority::NORMAL)
+        .export_values();
+
     // Re-assert TARGET_SELECT to be TargetScope::TARGET_SELECT (resolving collision with ResolveType)
     m.attr("TARGET_SELECT") = TargetScope::TARGET_SELECT;
 
@@ -311,6 +340,24 @@ void bind_core(py::module& m) {
         .value("SET_KEYWORD", ModifierType::SET_KEYWORD)
         .value("ADD_RESTRICTION", ModifierType::ADD_RESTRICTION)
         .export_values();
+
+    // 再発防止: CostReductionDef がこの時点では未バインディングだったため Python から見えず、
+    // PASSIVE/ACTIVE_PAYMENT の軽減が engine で自動適用されていても Python 検証が失敗していた。
+    // 解決: ReductionType enum と CostReductionDef class をバインディング。
+    py::enum_<ReductionType>(m, "ReductionType")
+        .value("PASSIVE", ReductionType::PASSIVE)
+        .value("ACTIVE_PAYMENT", ReductionType::ACTIVE_PAYMENT)
+        .export_values();
+
+    py::class_<CostReductionDef>(m, "CostReductionDef")
+        .def(py::init<>())
+        .def_readwrite("type", &CostReductionDef::type)
+        .def_readwrite("unit_cost", &CostReductionDef::unit_cost)
+        .def_readwrite("reduction_amount", &CostReductionDef::reduction_amount)
+        .def_readwrite("max_units", &CostReductionDef::max_units)
+        .def_readwrite("min_mana_cost", &CostReductionDef::min_mana_cost)
+        .def_readwrite("id", &CostReductionDef::id)
+        .def_readwrite("name", &CostReductionDef::name);
 
     py::enum_<EffectPrimitive>(m, "EffectPrimitive")
         .value("DRAW_CARD", EffectPrimitive::DRAW_CARD)
@@ -422,6 +469,12 @@ void bind_core(py::module& m) {
         .value("USE_ABILITY", CommandType::USE_ABILITY)
         .value("MANA_CHARGE", CommandType::MANA_CHARGE)
         .value("SELECT_TARGET", CommandType::SELECT_TARGET)
+        .value("LOCK_SPELL", CommandType::LOCK_SPELL)
+        .value("SPELL_RESTRICTION", CommandType::SPELL_RESTRICTION)
+        .value("CANNOT_PUT_CREATURE", CommandType::CANNOT_PUT_CREATURE)
+        .value("CANNOT_SUMMON_CREATURE", CommandType::CANNOT_SUMMON_CREATURE)
+        .value("PLAYER_CANNOT_ATTACK", CommandType::PLAYER_CANNOT_ATTACK)
+        .value("IGNORE_ABILITY", CommandType::IGNORE_ABILITY)
         .value("NONE", CommandType::NONE)
         .export_values();
 
@@ -516,28 +569,17 @@ void bind_core(py::module& m) {
         .def_readwrite("value", &ModifierDef::value)
         .def_readwrite("str_val", &ModifierDef::str_val)
         .def_readwrite("condition", &ModifierDef::condition)
-        .def_readwrite("filter", &ModifierDef::filter);
+        .def_readwrite("filter", &ModifierDef::filter)
+        // Expose STAT_SCALED related fields to Python so tests and Python shim
+        // can read the configuration when native module is loaded.
+        .def_readwrite("value_mode", &ModifierDef::value_mode)
+        .def_readwrite("stat_key", &ModifierDef::stat_key)
+        .def_readwrite("per_value", &ModifierDef::per_value)
+        .def_readwrite("min_stat", &ModifierDef::min_stat)
+        .def_readwrite("max_reduction", &ModifierDef::max_reduction);
 
-    py::class_<ActionDef>(m, "ActionDef")
-        .def(py::init<>())
-        .def_readwrite("type", &ActionDef::type)
-        .def_readwrite("value1", &ActionDef::value1)
-        .def_readwrite("value2", &ActionDef::value2)
-        .def_readwrite("str_val", &ActionDef::str_val)
-        .def_readwrite("optional", &ActionDef::optional)
-        .def_readwrite("up_to", &ActionDef::up_to)
-        .def_readwrite("filter", &ActionDef::filter)
-        .def_readwrite("target_player", &ActionDef::target_player)
-        .def_readwrite("source_zone", &ActionDef::source_zone)
-        .def_readwrite("destination_zone", &ActionDef::destination_zone)
-        .def_readwrite("target_choice", &ActionDef::target_choice)
-        .def_readwrite("input_value_key", &ActionDef::input_value_key)
-        .def_readwrite("input_value_usage", &ActionDef::input_value_usage)
-        .def_readwrite("output_value_key", &ActionDef::output_value_key)
-        .def_readwrite("condition", &ActionDef::condition)
-        .def_readwrite("options", &ActionDef::options)
-        .def_readwrite("scope", &ActionDef::scope)
-        .def_readwrite("cast_spell_side", &ActionDef::cast_spell_side);
+    // Legacy ActionDef is no longer exposed directly; use CommandDef instead.
+    // A Python-level alias `ActionDef = CommandDef` is provided later for compatibility.
 
     // Bind CommandDef
     py::class_<CommandDef>(m, "CommandDef")
@@ -563,8 +605,16 @@ void bind_core(py::module& m) {
         .def_readwrite("slot_index", &CommandDef::slot_index)
         .def_readwrite("target_slot_index", &CommandDef::target_slot_index)
         .def_readwrite("up_to", &CommandDef::up_to)
+        .def_readwrite("payment_mode", &CommandDef::payment_mode)
+        .def_readwrite("reduction_id", &CommandDef::reduction_id)
+        .def_readwrite("payment_units", &CommandDef::payment_units)
         .def_readwrite("options", &CommandDef::options)
         .def("to_dict", &command_to_dict);
+
+    // Backwards-compatibility: expose ActionDef name as alias to CommandDef in Python
+    // This allows existing Python code that constructs ActionDef instances to keep working
+    // while the internal migration continues in C++.
+    m.attr("ActionDef") = m.attr("CommandDef");
 
     py::class_<EffectDef>(m, "EffectDef")
         .def(py::init<>())
@@ -573,24 +623,24 @@ void bind_core(py::module& m) {
         .def_readwrite("actions", &EffectDef::actions)
         .def_readwrite("commands", &EffectDef::commands); // Added commands field
 
-    py::class_<CardDefinition, std::shared_ptr<CardDefinition>>(m, "CardDefinition")
+    py::class_<CardDefinition>(m, "CardDefinition")
         .def(py::init([](int id, std::string name, std::string civ_str, std::vector<std::string> races, int cost, int power, CardKeywords keywords, std::vector<EffectDef> effects) {
             try {
-                auto c = std::make_shared<CardDefinition>();
-                c->id = id;
-                c->name = name;
-                c->cost = cost;
-                if (civ_str == "FIRE") c->civilizations.push_back(Civilization::FIRE);
-                else if (civ_str == "WATER") c->civilizations.push_back(Civilization::WATER);
-                else if (civ_str == "NATURE") c->civilizations.push_back(Civilization::NATURE);
-                else if (civ_str == "LIGHT") c->civilizations.push_back(Civilization::LIGHT);
-                else if (civ_str == "DARKNESS") c->civilizations.push_back(Civilization::DARKNESS);
-                c->power = power;
-                c->races = races;
-                c->keywords = keywords;
-                c->effects = effects;
+                CardDefinition c;
+                c.id = id;
+                c.name = name;
+                c.cost = cost;
+                if (civ_str == "FIRE") c.civilizations.push_back(Civilization::FIRE);
+                else if (civ_str == "WATER") c.civilizations.push_back(Civilization::WATER);
+                else if (civ_str == "NATURE") c.civilizations.push_back(Civilization::NATURE);
+                else if (civ_str == "LIGHT") c.civilizations.push_back(Civilization::LIGHT);
+                else if (civ_str == "DARKNESS") c.civilizations.push_back(Civilization::DARKNESS);
+                c.power = power;
+                c.races = races;
+                c.keywords = keywords;
+                c.effects = effects;
                 // Default type
-                c->type = CardType::CREATURE;
+                c.type = CardType::CREATURE;
                 return c;
             } catch (const py::error_already_set& e) {
                 throw;
@@ -611,7 +661,17 @@ void bind_core(py::module& m) {
         .def_readwrite("races", &CardDefinition::races)
         .def_readwrite("keywords", &CardDefinition::keywords)
         .def_readwrite("effects", &CardDefinition::effects)
+        // Ensure `metamorph_abilities` is directly exposed as a field so that
+        // container conversion always provides access from Python-side objects.
+        .def_readwrite("metamorph_abilities", &CardDefinition::metamorph_abilities)
         .def_readwrite("static_abilities", &CardDefinition::static_abilities)
+            // 再発防止: cost_reductions が未公開だったのでテスト検証できなかった。
+            .def_readwrite("cost_reductions", &CardDefinition::cost_reductions)
+        .def("get_cost_reductions_size", [](const CardDefinition& cd) { return cd.cost_reductions.size(); })
+        .def("get_cost_reduction", [](const CardDefinition& cd, size_t idx) -> const CostReductionDef* {
+            if (idx < cd.cost_reductions.size()) return &cd.cost_reductions[idx];
+            return nullptr;
+        }, py::return_value_policy::reference_internal)
         .def_readwrite("evolution_condition", &CardDefinition::evolution_condition)
         .def_readwrite("revolution_change_condition", &CardDefinition::revolution_change_condition)
         .def_readwrite("is_key_card", &CardDefinition::is_key_card)
@@ -785,6 +845,9 @@ void bind_core(py::module& m) {
              if (d.contains("mutation_kind")) cmd.mutation_kind = d["mutation_kind"].cast<std::string>();
              if (d.contains("input_value_key")) cmd.input_value_key = d["input_value_key"].cast<std::string>();
              if (d.contains("output_value_key")) cmd.output_value_key = d["output_value_key"].cast<std::string>();
+             if (d.contains("payment_mode")) cmd.payment_mode = d["payment_mode"].cast<std::string>();
+             if (d.contains("reduction_id")) cmd.reduction_id = d["reduction_id"].cast<std::string>();
+             if (d.contains("payment_units")) cmd.payment_units = d["payment_units"].cast<int>();
 
              dm::engine::systems::PipelineExecutor pipeline;
              const auto& card_db = dm::engine::infrastructure::CardRegistry::get_all_definitions();
@@ -1071,4 +1134,15 @@ void bind_core(py::module& m) {
             throw std::runtime_error("Unknown error in get_card_stats");
         }
     });
+
+    // NOTE: 再発防止 — CardStub は Python フォールバック互換のエイリアス。
+    // テストコードが `from dm_ai_module import CardStub` で簡易カードを生成できるように
+    // CardInstance のファクトリ関数として登録する。
+    // CardStub(card_id) → CardInstance.card_id=card_id, instance_id=card_id
+    m.def("CardStub", [](int card_id, int instance_id) {
+        CardInstance c;
+        c.card_id = static_cast<CardID>(card_id);
+        c.instance_id = (instance_id >= 0 ? instance_id : card_id);
+        return c;
+    }, py::arg("card_id"), py::arg("instance_id") = -1);
 }

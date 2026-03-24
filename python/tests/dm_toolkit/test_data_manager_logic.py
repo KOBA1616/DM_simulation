@@ -47,11 +47,31 @@ class MockItem:
     def setEditable(self, val): pass
     def setToolTip(self, val): pass
 
+    # Compatibility aliases for snake_case APIs used by CardDataManager
+    def row_count(self):
+        return self.rowCount()
+
+    def append_row(self, item):
+        return self.appendRow(item)
+
+    def set_data(self, value, role):
+        return self.setData(value, role)
+
+    def set_text(self, t):
+        return self.setText(t)
+
 class MockModel:
     def __init__(self):
         self._root = MockItem("ROOT")
 
     def invisibleRootItem(self): return self._root
+
+    # Compatibility shim for tests vs production API naming
+    def item_from_index(self, index):
+        # If a MockItem is passed directly, return it (tests often pass items directly).
+        if isinstance(index, MockItem):
+            return index
+        return self.itemFromIndex(index)
 
     def itemFromIndex(self, index):
         # Simplification: we might need to rely on mocking return values in tests
@@ -82,12 +102,12 @@ class TestDataManagerMocked(unittest.TestCase):
 
         # Setup an item structure that represents an ACTION
         action_item = MockItem("Action: DRAW_CARD")
-        action_item.setData("ACTION", ROLE_TYPE)  # UserRole + 1
+        action_item.setData("LEGACY_CMD", ROLE_TYPE)  # UserRole + 1
         action_item.setData(action_data, ROLE_DATA)  # UserRole + 2
 
-        # Mock ActionConverter.convert
-        with patch('dm_toolkit.gui.editor.action_converter.ActionConverter') as MockConverter:
-            MockConverter.convert.return_value = {
+        # Mock legacy ActionConverter via the CommandConverter shim
+        with patch('dm_toolkit.gui.editor.command_converter.CommandConverter.convert') as mock_convert:
+            mock_convert.return_value = {
                 "type": "TRANSITION",
                 "to_zone": "HAND",
                 "amount": 1
@@ -101,14 +121,14 @@ class TestDataManagerMocked(unittest.TestCase):
     def test_collect_conversion_preview(self):
         # Create a tree: ROOT -> ACTION
         action_item = MockItem("Action: DRAW_CARD")
-        action_item.setData("ACTION", ROLE_TYPE)
+        action_item.setData("LEGACY_CMD", ROLE_TYPE)
         action_item.setData({"type": "DRAW_CARD"}, ROLE_DATA)
 
         root = self.model.invisibleRootItem()
         root.appendRow(action_item)
 
-        with patch('dm_toolkit.gui.editor.action_converter.ActionConverter') as MockConverter:
-            MockConverter.convert.return_value = {"type": "TRANSITION"}
+        with patch('dm_toolkit.gui.editor.command_converter.CommandConverter.convert') as mock_convert:
+            mock_convert.return_value = {"type": "TRANSITION"}
 
             previews = self.manager.collect_conversion_preview(root)
 

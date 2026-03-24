@@ -6,8 +6,21 @@ from PyQt6.QtWidgets import (
     QMainWindow, QSplitter, QVBoxLayout, QWidget, QMessageBox, QToolBar, QFileDialog,
     QSizePolicy
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtGui import QAction, QKeySequence, QStandardItem
+
+# QSize location differs between PyQt builds; try core then gui, else provide
+# a lightweight fallback for headless/test stubs.
+try:
+    from PyQt6.QtCore import QSize
+except Exception:
+    try:
+        from PyQt6.QtGui import QSize
+    except Exception:
+        class QSize:
+            def __init__(self, w, h):
+                self.width = w
+                self.height = h
 from dm_toolkit.gui.editor.logic_tree import LogicTreeWidget
 from dm_toolkit.gui.editor.property_inspector import PropertyInspector
 from dm_toolkit.gui.editor.preview_pane import CardPreviewWidget
@@ -21,6 +34,7 @@ from dm_toolkit.gui.editor.consts import (
     STRUCT_CMD_GENERATE_BRANCHES, STRUCT_CMD_GENERATE_OPTIONS, STRUCT_CMD_MOVE_EFFECT, 
     STRUCT_CMD_ADD_CHILD_ACTION, STRUCT_CMD_REPLACE_WITH_COMMAND
 )
+from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 class CardEditor(QMainWindow):
     data_saved = pyqtSignal()
@@ -31,6 +45,13 @@ class CardEditor(QMainWindow):
         self.resize(1600, 900) # Optimized for 3-pane layout with room for OS/DE chrome
 
         self.cards_data = []
+        self._preview_target_index = None
+        # 再発防止: 連続編集時にプレビューが毎フレーム再描画されないようデバウンスタイマーを
+        # init_ui() より前に初期化する（シグナル接続時にタイマーが存在する必要がある）
+        self._preview_debounce_timer = QTimer(self)
+        self._preview_debounce_timer.setSingleShot(True)
+        self._preview_debounce_timer.setInterval(300)  # 300ms 無操作後に一度だけ更新
+        safe_connect(self._preview_debounce_timer, 'timeout', self.update_current_preview)
         self.init_ui()
         self.load_data()
 
@@ -42,33 +63,39 @@ class CardEditor(QMainWindow):
         toolbar.setStyleSheet("QToolBar { padding: 2px; }")
 
         new_act = QAction(tr("New Card"), self)
-        new_act.triggered.connect(self.new_card)
+        safe_connect(new_act, 'triggered', self.new_card)
         new_act.setShortcut(QKeySequence.StandardKey.New)
         new_act.setStatusTip(tr("Create a new card"))
         toolbar.addAction(new_act)
 
         save_act = QAction(tr("Save JSON"), self)
-        save_act.triggered.connect(self.save_data)
+        safe_connect(save_act, 'triggered', self.save_data)
         save_act.setShortcut(QKeySequence.StandardKey.Save)
         save_act.setStatusTip(tr("Save all changes to JSON"))
         toolbar.addAction(save_act)
 
+        reload_act = QAction(tr("Reload JSON"), self)
+        safe_connect(reload_act, 'triggered', self._reload_data_manual)
+        reload_act.setShortcut("Ctrl+Shift+R")
+        reload_act.setStatusTip(tr("Reload card JSON from disk"))
+        toolbar.addAction(reload_act)
+
         add_eff_act = QAction(tr("Add Effect"), self)
-        add_eff_act.triggered.connect(self.add_effect)
+        safe_connect(add_eff_act, 'triggered', self.add_effect)
         add_eff_act.setShortcut("Ctrl+Shift+E")
         add_eff_act.setText(tr("Add Eff"))
         add_eff_act.setStatusTip(tr("Add a new effect to the selected card"))
         toolbar.addAction(add_eff_act)
 
         add_act_act = QAction(tr("Add Command"), self)
-        add_act_act.triggered.connect(self.add_command)
+        safe_connect(add_act_act, 'triggered', self.add_command)
         add_act_act.setShortcut("Ctrl+Shift+C")
         add_act_act.setText(tr("Add Cmd"))
         add_act_act.setStatusTip(tr("Add a command to the selected effect"))
         toolbar.addAction(add_act_act)
 
         del_act = QAction(tr("Delete Item"), self)
-        del_act.triggered.connect(self.delete_item)
+        safe_connect(del_act, 'triggered', self.delete_item)
         del_act.setShortcut(QKeySequence.StandardKey.Delete)
         del_act.setText(tr("Delete"))
         del_act.setStatusTip(tr("Delete the selected item"))
@@ -80,7 +107,7 @@ class CardEditor(QMainWindow):
         toolbar.addWidget(empty)
 
         update_preview_act = QAction(tr("Update Preview"), self)
-        update_preview_act.triggered.connect(self.update_preview_manual)
+        safe_connect(update_preview_act, 'triggered', self.update_preview_manual)
         update_preview_act.setShortcut(QKeySequence.StandardKey.Refresh)
         update_preview_act.setText(tr("Update"))
         update_preview_act.setStatusTip(tr("Force update the card preview"))
@@ -119,58 +146,165 @@ class CardEditor(QMainWindow):
         # Signals
         sel = self.tree_widget.selectionModel()
         if sel is not None:
-            sel.selectionChanged.connect(self.on_selection_changed)
+            safe_connect(sel, 'selectionChanged', self.on_selection_changed)
+
+        # Listen for structural changes from the tree widget
+        try:
+            safe_connect(self.tree_widget, 'tree_changed', self.on_tree_changed)
+        except Exception:
+            pass
 
         # Connect Data Changes from Inspector to Preview
-        self.inspector.card_form.dataChanged.connect(self.on_data_changed)
-        self.inspector.effect_form.dataChanged.connect(self.on_data_changed)
+        safe_connect(self.inspector.card_form, 'dataChanged', self.on_data_changed)
+        safe_connect(self.inspector.effect_form, 'dataChanged', self.on_data_changed)
         # Unified form replaces previous action/command editors
-        self.inspector.unified_form.dataChanged.connect(self.on_data_changed)
-        self.inspector.spell_side_form.dataChanged.connect(self.on_data_changed)
-        self.inspector.modifier_form.dataChanged.connect(self.on_data_changed)
+        safe_connect(self.inspector.unified_form, 'dataChanged', self.on_data_changed)
+        safe_connect(self.inspector.spell_side_form, 'dataChanged', self.on_data_changed)
+        safe_connect(self.inspector.modifier_form, 'dataChanged', self.on_data_changed)
 
         # Connect Structural Changes
-        self.inspector.structure_update_requested.connect(self.on_structure_update)
+        safe_connect(self.inspector, 'structure_update_requested', self.on_structure_update)
 
     def load_data(self):
-        if os.path.exists(self.json_path):
+        from dm_toolkit.gui.editor.utils import safe_load_json
+
+        data = safe_load_json(self.json_path)
+        if data is None:
             try:
-                with open(self.json_path, 'r', encoding='utf-8') as f:
-                    self.cards_data = json.load(f)
-            except Exception as e:
-                QMessageBox.critical(self, tr("Error"), f"{tr('Failed to load JSON')}: {e}")
-                self.cards_data = []
-        else:
+                QMessageBox.warning(self, tr("Warning"), tr("No card JSON found; starting empty."))
+            except Exception:
+                pass
             self.cards_data = []
+        else:
+            self.cards_data = data
 
         self.tree_widget.load_data(self.cards_data)
 
-    def save_data(self):
-        data = self.tree_widget.get_full_data_from_model()
+    def _get_selected_card_id(self):
+        """Return currently selected card id if selection is inside a card subtree."""
+        idx = self.tree_widget.currentIndex()
+        if not idx.isValid():
+            return None
+
+        item = self.tree_widget.standard_model.itemFromIndex(idx)
+        while item is not None:
+            item_type = item.data(Qt.ItemDataRole.UserRole + 1)
+            if item_type == "CARD":
+                try:
+                    card_data = self.tree_widget.data_manager.get_item_data(item.index())
+                    card_id = card_data.get("id") if isinstance(card_data, dict) else None
+                    return int(card_id) if card_id is not None else None
+                except Exception:
+                    return None
+            item = item.parent()
+        return None
+
+    def _restore_selection_by_card_id(self, card_id):
+        """Restore tree selection by card id after a full reload."""
         try:
-            with open(self.json_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            self.data_saved.emit()
+            row_count = self.tree_widget.standard_model.rowCount()
+            for row in range(row_count):
+                card_item = self.tree_widget.standard_model.item(row, 0)
+                if card_item is None:
+                    continue
+                if card_item.data(Qt.ItemDataRole.UserRole + 1) != "CARD":
+                    continue
+                card_data = self.tree_widget.data_manager.get_item_data(card_item.index())
+                if not isinstance(card_data, dict):
+                    continue
+                if card_data.get("id") == card_id:
+                    card_index = card_item.index()
+                    self.tree_widget.setCurrentIndex(card_index)
+                    self.tree_widget.expand(card_index)
+                    return card_index
+        except Exception:
+            return None
+        return None
+
+    def _reload_data_manual(self):
+        """Manual reload invoked from toolbar to refresh data from disk."""
+        try:
+            selected_card_id = self._get_selected_card_id()
+            self.load_data()
+            restored_index = None
+            if selected_card_id is not None:
+                restored_index = self._restore_selection_by_card_id(selected_card_id)
+
+            # 再発防止: リロードで selection model がリセットされるとプレビューが空になる。
+            # 選択を復元できない場合は先頭カードを選択して、必ずプレビュー描画経路に乗せる。
+            if restored_index is None and self.tree_widget.standard_model.rowCount() > 0:
+                first_item = self.tree_widget.standard_model.item(0, 0)
+                if first_item is not None:
+                    restored_index = first_item.index()
+                    self.tree_widget.setCurrentIndex(restored_index)
+
             sb = self.statusBar()
             if sb is not None:
-                sb.showMessage(tr("Cards saved successfully!"), 3000)
-            # Also show a confirmation dialog so the user notices the save action
+                sb.showMessage(tr("Cards reloaded from disk"), 3000)
+            # Force preview update for current selection after reload
+            self.request_preview_update(immediate=True, index=restored_index)
+        except Exception:
             try:
-                QMessageBox.information(self, tr("Saved"), tr("Cards saved successfully!"))
+                QMessageBox.critical(self, tr("Error"), tr("Failed to reload JSON from disk"))
             except Exception:
-                # If running headless or dialogs fail, ignore
                 pass
-        except Exception as e:
-            QMessageBox.critical(self, tr("Error"), f"{tr('Failed to save JSON')}: {e}")
+
+    def save_data(self):
+        # Delegate persistence to ModelSerializer to centralize file format
+        try:
+            serializer = None
+            try:
+                serializer = self.tree_widget.data_manager.serializer
+            except Exception:
+                serializer = None
+
+            saved = False
+            if serializer is not None:
+                try:
+                    saved = serializer.save_full_data(self.tree_widget, self.json_path)
+                except Exception:
+                    saved = False
+
+            # Fallback to previous behavior if serializer not available or failed
+            if not saved:
+                data = self.tree_widget.get_full_data_from_model()
+                try:
+                    with open(self.json_path, 'w', encoding='utf-8') as f:
+                        json.dump(data, f, indent=2, ensure_ascii=False)
+                    saved = True
+                except Exception as e:
+                    QMessageBox.critical(self, tr("Error"), f"{tr('Failed to save JSON')}: {e}")
+
+            if saved:
+                self.data_saved.emit()
+                sb = self.statusBar()
+                if sb is not None:
+                    sb.showMessage(tr("Cards saved successfully!"), 3000)
+                try:
+                    QMessageBox.information(self, tr("Saved"), tr("Cards saved successfully!"))
+                except Exception:
+                    pass
+        except Exception:
+            # Top-level safety: ensure no exception bubbles to UI loop
+            try:
+                QMessageBox.critical(self, tr("Error"), tr("Failed to save JSON"))
+            except Exception:
+                pass
 
     def on_selection_changed(self, selected, deselected):
         indexes = selected.indexes()
         if indexes:
             index = indexes[0]
-            self.inspector.set_selection(index)
+            self._preview_target_index = index
+            try:
+                self.inspector.set_selection(index)
+            except Exception:
+                # 再発防止: set_selection 例外で選択更新が止まると
+                # 切替後表示が更新されないため、最低限プレビュー更新は継続する。
+                pass
 
-            # Update Preview
-            self.update_current_preview()
+            # Request preview update (immediate for selection changes)
+            self.request_preview_update(immediate=True, index=index)
 
             # Auto-expand if it's a card and not already expanded
             item = self.tree_widget.standard_model.itemFromIndex(index)
@@ -179,13 +313,18 @@ class CardEditor(QMainWindow):
                 if type_ == "CARD":
                     self.tree_widget.expand(index)
         else:
-            self.inspector.set_selection(None)
+            self._preview_target_index = None
+            try:
+                self.inspector.set_selection(None)
+            except Exception:
+                pass
             self.preview_widget.clear_preview()
 
     def on_data_changed(self):
-        # Refresh preview based on current selection
-        self.update_current_preview()
-        # Ensure internal canonical cache is updated for current selection
+        # 再発防止: 連続編集時（1文字ごとの入力など）に毎回プレビュー再描画が走るのを防ぐ。
+        # デバウンスタイマー使用: 300ms 無操作後に update_current_preview を一度だけ実行。
+        self._preview_debounce_timer.start()  # 既に動いていればリセット・再スタート
+        # データマネージャのキャッシュは即座に更新（ツリー整合性維持）
         try:
             idx = self.tree_widget.currentIndex()
             if idx.isValid():
@@ -197,10 +336,13 @@ class CardEditor(QMainWindow):
             pass
 
     def update_preview_manual(self):
-        self.on_data_changed()
+        # Manual update should force immediate preview refresh
+        self.request_preview_update(immediate=True)
 
-    def update_current_preview(self):
-        idx = self.tree_widget.currentIndex()
+    def update_current_preview(self, index=None):
+        idx = index if index is not None else self._preview_target_index
+        if idx is None or not idx.isValid():
+            idx = self.tree_widget.currentIndex()
         if not idx.isValid():
             self.preview_widget.clear_preview()
             return
@@ -225,110 +367,299 @@ class CardEditor(QMainWindow):
                 self.preview_widget.clear_preview()
         else:
             self.preview_widget.clear_preview()
+        self._preview_target_index = None
+
+    def _structure_handlers(self, card_item, item, item_type, payload):
+        """Return a mapping of structure command to handler callables.
+
+        Extracted for testability and to reduce complexity in on_structure_update.
+        Handlers should return True when they mutate the tree.
+        """
+        def _add_spell_side():
+            self.tree_widget.add_spell_side(card_item.index())
+            self.tree_widget.expand(card_item.index())
+            return True
+
+        def _remove_spell_side():
+            self.tree_widget.remove_spell_side(card_item.index())
+            return True
+
+        def _add_rev_change():
+            self.tree_widget.add_rev_change(card_item.index(), payload=payload)
+            self.tree_widget.expand(card_item.index())
+            return True
+
+        def _remove_rev_change():
+            self.tree_widget.remove_rev_change(card_item.index())
+            return True
+
+        def _add_mekraid():
+            self.tree_widget.add_mekraid(card_item.index(), payload=payload)
+            self.tree_widget.expand(card_item.index())
+            return True
+
+        def _remove_mekraid():
+            self.tree_widget.remove_mekraid(card_item.index())
+            return True
+
+        def _add_friend_burst():
+            self.tree_widget.add_friend_burst(card_item.index(), payload=payload)
+            self.tree_widget.expand(card_item.index())
+            return True
+
+        def _remove_friend_burst():
+            self.tree_widget.remove_friend_burst(card_item.index())
+            return True
+
+        def _add_mega_last_burst():
+            self.tree_widget.add_mega_last_burst(card_item.index())
+            self.tree_widget.expand(card_item.index())
+            return True
+
+        def _remove_mega_last_burst():
+            self.tree_widget.remove_mega_last_burst(card_item.index())
+            return True
+
+        def _generate_options():
+            count = payload.get('count', 1)
+            action_item = None
+            if item_type in ["LEGACY_CMD", "COMMAND"]:
+                action_item = item
+            if action_item:
+                self.tree_widget.data_manager.add_option_slots(action_item, count)
+                self.tree_widget.expand(action_item.index())
+                return True
+            return False
+
+        def _generate_branches():
+            self.tree_widget.generate_branches_for_current()
+            return True
+
+        def _move_effect():
+            item_obj = payload.get('item')
+            target_type = payload.get('target_type')
+            if item_obj and target_type:
+                self.tree_widget.move_effect_item(item_obj, target_type)
+                return True
+            return False
+
+        def _add_child_effect():
+            return self._handle_add_child_effect(item, payload)
+
+        def _apply_cir():
+            try:
+                # payload may contain a 'cir' list
+                cir = payload.get('cir') if isinstance(payload, dict) else None
+                self.inspector.unified_form.apply_cir(cir or [])
+            except Exception:
+                pass
+            return False
+
+        def _add_child_action():
+            if item_type == "EFFECT":
+                self.tree_widget.add_action_to_effect(item.index())
+                return True
+            elif item_type == "OPTION":
+                self.tree_widget.add_action_to_option(item.index())
+                return True
+            elif item_type in ["LEGACY_CMD", "COMMAND"]:
+                self.tree_widget.add_action_sibling(item.index())
+                return True
+            return False
+
+        def _replace_with_command():
+            # Support payload forms:
+            # - direct data: payload is the new_data
+            # - wrapped: {'target_item': <item>, 'new_data': {...}}
+            target_data = payload
+            target_idx = None
+
+            if isinstance(payload, dict) and 'target_item' in payload and 'new_data' in payload:
+                target_item = payload.get('target_item')
+                target_data = payload.get('new_data')
+                if target_item:
+                    try:
+                        target_idx = target_item.index()
+                    except Exception:
+                        target_idx = None
+            else:
+                # fallback: use provided item index
+                try:
+                    target_idx = item.index()
+                except Exception:
+                    target_idx = None
+
+            if target_idx is not None:
+                try:
+                    self.tree_widget.replace_item_with_command(target_idx, target_data)
+                    # 再発防止: 構造更新後処理は on_structure_update の共通経路で1回だけ実行する。
+                    # 個別ハンドラで selection/preview を呼ぶと二重更新になり、表示と状態が揺れる。
+                    return True
+                except Exception:
+                    return False
+            return False
+
+        return {
+            STRUCT_CMD_ADD_SPELL_SIDE: _add_spell_side,
+            STRUCT_CMD_REMOVE_SPELL_SIDE: _remove_spell_side,
+            STRUCT_CMD_ADD_REV_CHANGE: _add_rev_change,
+            STRUCT_CMD_REMOVE_REV_CHANGE: _remove_rev_change,
+            STRUCT_CMD_ADD_MEKRAID: _add_mekraid,
+            STRUCT_CMD_REMOVE_MEKRAID: _remove_mekraid,
+            STRUCT_CMD_ADD_FRIEND_BURST: _add_friend_burst,
+            STRUCT_CMD_REMOVE_FRIEND_BURST: _remove_friend_burst,
+            STRUCT_CMD_ADD_MEGA_LAST_BURST: _add_mega_last_burst,
+            STRUCT_CMD_REMOVE_MEGA_LAST_BURST: _remove_mega_last_burst,
+            STRUCT_CMD_GENERATE_OPTIONS: _generate_options,
+            STRUCT_CMD_GENERATE_BRANCHES: _generate_branches,
+            STRUCT_CMD_MOVE_EFFECT: _move_effect,
+            STRUCT_CMD_ADD_CHILD_EFFECT: _add_child_effect,
+            STRUCT_CMD_ADD_CHILD_ACTION: _add_child_action,
+            STRUCT_CMD_REPLACE_WITH_COMMAND: _replace_with_command,
+            'APPLY_CIR': _apply_cir,
+        }
 
     def on_structure_update(self, command, payload):
         idx = self.tree_widget.currentIndex()
+        tree_changed = False
 
-        # Determine context for updates that modify hierarchy
-        if command == STRUCT_CMD_REPLACE_WITH_COMMAND:
-            target_data = payload
-            target_idx = idx
+        # Special-case: replacement handler (keeps original early-return behavior)
+        # Note: replacement commands are handled via the dispatch handlers
+        # returned by `_structure_handlers` for testability and to reduce
+        # branching in this method.
 
-            # Handle new payload structure with explicit target item
-            if 'target_item' in payload and 'new_data' in payload:
-                target_item = payload['target_item']
-                if target_item:
-                    target_idx = target_item.index()
-                target_data = payload['new_data']
-
-            if target_idx.isValid():
-                self.tree_widget.replace_item_with_command(target_idx, target_data)
+        if not idx.isValid():
             return
 
-        if not idx.isValid(): return
-
-        # Ensure we are operating on the Card Item
+        # Resolve context item and card_item via helper
         item = self.tree_widget.standard_model.itemFromIndex(idx)
         if item is None:
             return
-        card_item = None
 
-        item_type = item.data(Qt.ItemDataRole.UserRole + 1)
-        if item_type == "CARD":
-            card_item = item
-        elif item_type in ["EFFECT", "SPELL_SIDE"]:
-            parent = item.parent()
-            if parent is not None:
-                card_item = parent
-        elif item_type in ["ACTION", "COMMAND"]:
-            parent = item.parent()
-            if parent is not None:
-                grand = parent.parent()
-                if grand is not None:
-                    card_item = grand
-
+        card_item = self._find_card_item_from_item(item)
         if card_item is None:
             return
 
-        if command == STRUCT_CMD_ADD_SPELL_SIDE:
-            self.tree_widget.add_spell_side(card_item.index())
-            self.tree_widget.expand(card_item.index())
-        elif command == STRUCT_CMD_REMOVE_SPELL_SIDE:
-            self.tree_widget.remove_spell_side(card_item.index())
-        elif command == STRUCT_CMD_ADD_REV_CHANGE:
-            self.tree_widget.add_rev_change(card_item.index())
-            self.tree_widget.expand(card_item.index())
-        elif command == STRUCT_CMD_REMOVE_REV_CHANGE:
-            self.tree_widget.remove_rev_change(card_item.index())
-        elif command == STRUCT_CMD_ADD_MEKRAID:
-            self.tree_widget.add_mekraid(card_item.index())
-            self.tree_widget.expand(card_item.index())
-        elif command == STRUCT_CMD_REMOVE_MEKRAID:
-            self.tree_widget.remove_mekraid(card_item.index())
-        elif command == STRUCT_CMD_ADD_FRIEND_BURST:
-            self.tree_widget.add_friend_burst(card_item.index())
-            self.tree_widget.expand(card_item.index())
-        elif command == STRUCT_CMD_REMOVE_FRIEND_BURST:
-            self.tree_widget.remove_friend_burst(card_item.index())
-        elif command == STRUCT_CMD_ADD_MEGA_LAST_BURST:
-            self.tree_widget.add_mega_last_burst(card_item.index())
-            self.tree_widget.expand(card_item.index())
-        elif command == STRUCT_CMD_REMOVE_MEGA_LAST_BURST:
-            self.tree_widget.remove_mega_last_burst(card_item.index())
-        elif command == STRUCT_CMD_GENERATE_OPTIONS:
-            count = payload.get('count', 1)
-            # Find the actual Action Item from the current selection
-            action_item = None
-            if item_type in ["ACTION", "COMMAND"]:
-                 action_item = item
+        # Determine the item_type for dispatch and handlers
+        try:
+            item_type = item.data(Qt.ItemDataRole.UserRole + 1)
+        except Exception:
+            item_type = None
 
-            if action_item:
-                 self.tree_widget.data_manager.add_option_slots(action_item, count)
-                 self.tree_widget.expand(action_item.index())
-        elif command == STRUCT_CMD_GENERATE_BRANCHES:
-            self.tree_widget.generate_branches_for_current()
-        elif command == STRUCT_CMD_MOVE_EFFECT:
-             item_obj = payload.get('item')
-             target_type = payload.get('target_type')
-             if item_obj and target_type:
-                 self.tree_widget.move_effect_item(item_obj, target_type)
-        elif command == STRUCT_CMD_ADD_CHILD_EFFECT:
-            eff_type = payload.get('type')
-            if eff_type == "KEYWORDS":
-                self.tree_widget.add_keywords(item.index())
-            elif eff_type == "TRIGGERED":
-                self.tree_widget.add_trigger(item.index())
-            elif eff_type == "STATIC":
-                self.tree_widget.add_static(item.index())
-            elif eff_type == "REACTION":
-                self.tree_widget.add_reaction(item.index())
-        elif command == STRUCT_CMD_ADD_CHILD_ACTION:
-            if item_type == "EFFECT":
-                self.tree_widget.add_action_to_effect(item.index())
-            elif item_type == "OPTION":
-                self.tree_widget.add_action_to_option(item.index())
-            elif item_type in ["ACTION", "COMMAND"]:
-                self.tree_widget.add_action_sibling(item.index())
+        handlers = self._structure_handlers(card_item, item, item_type, payload)
+        handler = handlers.get(command)
+        if handler:
+            try:
+                tree_changed = handler()
+            except Exception:
+                tree_changed = False
+
+        if tree_changed:
+            cur = self.tree_widget.currentIndex()
+            if cur.isValid():
+                self.inspector.set_selection(cur)
+            # Centralized preview update request (immediate after structural mutation)
+            self.request_preview_update(immediate=True)
+
+    def _find_card_item_from_item(self, item):
+        """Resolve and return the parent card item for a given tree item.
+
+        This encapsulates the branching logic to make `on_structure_update`
+        simpler and testable.
+        """
+        if item is None:
+            return None
+
+        item_type = item.data(Qt.ItemDataRole.UserRole + 1)
+        if item_type == "CARD":
+            return item
+
+        if item_type in ["EFFECT", "SPELL_SIDE", "KEYWORDS", "MODIFIER", "REACTION_ABILITY"]:
+            parent = item.parent()
+            return parent if parent is not None else None
+
+        if item_type in ["LEGACY_CMD", "COMMAND"]:
+            parent = item.parent()
+            if parent is not None:
+                grand = parent.parent()
+                return grand if grand is not None else None
+
+        return None
+
+    def request_preview_update(self, immediate: bool = False, index=None):
+        """Centralized API for requesting preview updates.
+
+        - If `immediate` is True, cancel debounce and update immediately.
+        - Otherwise, start the existing debounce timer used by `on_data_changed`.
+        """
+        try:
+            if index is not None:
+                # 再発防止: selectionChanged 直後は currentIndex が旧値のことがあるため、
+                # 明示的に渡された index を優先して次回プレビュー更新に使う。
+                self._preview_target_index = index
+            if immediate:
+                # Stop any pending debounced update and update now
+                try:
+                    self._preview_debounce_timer.stop()
+                except Exception:
+                    pass
+                try:
+                    if index is None:
+                        self.update_current_preview()
+                    else:
+                        self.update_current_preview(index=index)
+                except Exception:
+                    pass
+            else:
+                try:
+                    self._preview_debounce_timer.start()
+                except Exception:
+                    # Fallback: immediate update if timer unavailable
+                    try:
+                        if index is None:
+                            self.update_current_preview()
+                        else:
+                            self.update_current_preview(index=index)
+                    except Exception:
+                        pass
+        except Exception:
+            # Ensure no exception bubbles from preview request
+            pass
+
+    def _handle_add_child_effect(self, item, payload):
+        """Handle adding specific child effect types; extracted for testability."""
+        try:
+            eff_type = payload.get('type') if isinstance(payload, dict) else None
+        except Exception:
+            eff_type = None
+        # Map effect types to tree_widget handler methods to reduce branching.
+        HANDLERS = {
+            "KEYWORDS": lambda: self.tree_widget.add_keywords(item.index()),
+            "TRIGGERED": lambda: self.tree_widget.add_trigger(item.index()),
+            "STATIC": lambda: self.tree_widget.add_static(item.index()),
+            "REACTION": lambda: self.tree_widget.add_reaction(item.index()),
+        }
+
+        handler = HANDLERS.get(eff_type)
+        if handler is None:
+            return False
+
+        try:
+            handler()
+            return True
+        except Exception:
+            return False
+
+    def on_tree_changed(self):
+        # Centralized handler for tree structure changes
+        try:
+            cur = self.tree_widget.currentIndex()
+            if cur.isValid():
+                self.inspector.set_selection(cur)
+            # Use centralized preview request API to respect debounce behavior
+            self.request_preview_update(immediate=True)
+        except Exception:
+            pass
 
     def new_card(self):
         self.tree_widget.add_new_card()
@@ -372,7 +703,8 @@ class CardEditor(QMainWindow):
         type_ = item.data(Qt.ItemDataRole.UserRole + 1)
 
         # Centralized logic in LogicTreeWidget
-        valid_types = ["EFFECT", "OPTION", "COMMAND", "ACTION", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]
+        # 再発防止: 旧形式のアクションは後方互換で扱うが、新規生成は "COMMAND" のみ。
+        valid_types = ["EFFECT", "OPTION", "COMMAND", "LEGACY_CMD", "CMD_BRANCH_TRUE", "CMD_BRANCH_FALSE"]
         if type_ in valid_types:
             self.tree_widget.add_command_contextual()
         else:

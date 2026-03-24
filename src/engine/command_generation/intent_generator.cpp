@@ -1,5 +1,7 @@
 #include "intent_generator.hpp"
 #include "core/constants.hpp"
+#include "engine/systems/effects/reaction_window.hpp"
+#include "engine/systems/effects/continuous_effect_system.hpp"
 #include <fstream>
 #include <sstream>
 #include <filesystem>
@@ -8,8 +10,14 @@ namespace dm::engine {
 
     using namespace dm::core;
 
-    std::vector<CommandDef> IntentGenerator::generate_legal_commands(const GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
+    std::vector<CommandDef> IntentGenerator::generate_legal_commands(GameState& game_state, const std::map<CardID, CardDefinition>& card_db) {
         try {
+            // Ensure continuous effects (PASSIVE/STATIC) are up-to-date before
+            // generating legal commands. This enforces the contract that any
+            // state change which could affect costs or targets has had
+            // ContinuousEffectSystem::recalculate run.
+            dm::engine::systems::ContinuousEffectSystem::recalculate(game_state, card_db);
+
             std::filesystem::create_directories("logs");
             std::ofstream diag("logs/crash_diag.txt", std::ios::app);
             if (diag) {
@@ -71,9 +79,77 @@ namespace dm::engine {
                     cmd.target_instance = val;
                     actions.push_back(cmd);
                 }
+            // NOTE: 再発防止 — SELECT_NUMBER の for ループ後に閉じ括弧が必要。
+            // ここでブロックを閉じないと else if が dangling else になりコンパイルエラー。
+            } else if (query.query_type == "SELECT_FROM_BUFFER") {
+                // 再発防止: SELECT_FROM_BUFFER のケース
+                // - 目的: バッファ内カードをユーザー/AI が選べるように単純な選択コマンドを生成する
+                // - 出力キーは一意の既定値を用いて後段が暗黙キーを期待しないようにする
+                // - owner_id を明示して「どのプレイヤーの選択か」を確定させる
+                // - バッファが空のときは PASS を返すことで安全にパイプラインを進める
+                const auto& buf = game_state.players[game_state.active_player_id].effect_buffer;
+                // Use the canonical context key used by CommandSystem/MOVE_BUFFER_TO_ZONE
+                // CommandSystem historically expects "$buffer_select" as the out key
+                const std::string default_out_key = "$buffer_select"; // 統一キー
+                const int owner = static_cast<int>(game_state.active_player_id);
+
+                for (const auto& card : buf) {
+                    CommandDef cmd;
+                    cmd.type = CommandType::SELECT_FROM_BUFFER;
+                    // instance_id は選択対象のカードインスタンスID
+                    cmd.instance_id = card.instance_id;
+                    // 明示的に owner をつけて、どのプレイヤーのバッファかを示す
+                    cmd.owner_id = owner;
+                    // 後段はこのキーで選択結果（vector<int> を想定）を受け取る
+                    cmd.output_value_key = default_out_key;
+                    actions.push_back(cmd);
+                }
+                if (actions.empty()) {
+                    // バッファが空の場合は PASS（安全フォールバック）。
+                    // 注意: PASS は空バッファの正常経路であり、エラー隠蔽にならないよう
+                    //       呼び出し元のログ/テストで検出できるようにすること。
+                    CommandDef pass_cmd;
+                    pass_cmd.type = CommandType::PASS;
+                    actions.push_back(pass_cmd);
+                }
             }
 
             dump_actions(actions, "waiting_for_user_input");
+            return actions;
+        }
+
+        // 再発防止: WAITING_FOR_REACTION 中は通常フェーズ戦略へ進まず、
+        // reaction_stack から専用の合法手を返す。ここを通さないと革命チェンジが
+        // USE_ABILITY として提示されず、AI が反応を宣言できない。
+        if (game_state.status == GameState::Status::WAITING_FOR_REACTION &&
+            !game_state.reaction_stack.empty()) {
+            std::vector<CommandDef> actions;
+            const auto& window = game_state.reaction_stack.back();
+
+            for (const auto& candidate : window.candidates) {
+                if (candidate.player_id != game_state.active_player_id) {
+                    continue;
+                }
+
+                if (candidate.type == dm::engine::systems::ReactionType::REVOLUTION_CHANGE) {
+                    CommandDef use;
+                    use.type = CommandType::USE_ABILITY;
+                    use.instance_id = candidate.instance_id;
+                    use.target_instance = game_state.current_attack.source_instance_id;
+                    actions.push_back(use);
+                } else if (candidate.type == dm::engine::systems::ReactionType::SHIELD_TRIGGER) {
+                    CommandDef st;
+                    st.type = CommandType::SHIELD_TRIGGER;
+                    st.instance_id = candidate.instance_id;
+                    actions.push_back(st);
+                }
+            }
+
+            CommandDef pass;
+            pass.type = CommandType::PASS;
+            actions.push_back(pass);
+
+            dump_actions(actions, "waiting_for_reaction");
             return actions;
         }
 

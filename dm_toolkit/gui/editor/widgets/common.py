@@ -86,6 +86,34 @@ class NumberWidget(QSpinBox, EditorWidgetMixin):
         if value is not None:
             self.setValue(int(value))
 
+
+class AmountWithAllWidget(QSpinBox, EditorWidgetMixin):
+    """枚数スピンボックス。最小値（-1）を「すべて」として表示する。
+    - -1 → "すべて" (特殊値テキスト = QSpinBox.specialValueText)
+    -  0 → 0枚
+    -  1以上 → 通常枚数
+    再発防止: setSpecialValueText はミニマム値にのみ適用される PyQt6 の仕様。
+              min_value は必ず -1 に設定すること。
+    """
+    ALL_VALUE: int = -1
+
+    def __init__(self, parent=None, max_val: int = 9999):
+        super().__init__(parent)
+        self.setMinimum(self.ALL_VALUE)
+        self.setMaximum(max_val)
+        self.setSpecialValueText(tr("すべて"))
+
+    def get_value(self) -> int:
+        return self.value()  # -1 が "all" を意味する
+
+    def set_value(self, value) -> None:
+        if value is None:
+            self.setValue(0)
+        elif str(value).upper() in ("ALL", "すべて") or int(value) == self.ALL_VALUE:
+            self.setValue(self.ALL_VALUE)
+        else:
+            self.setValue(int(value))
+
 class BoolCheckWidget(QCheckBox, EditorWidgetMixin):
     def get_value(self):
         return self.isChecked()
