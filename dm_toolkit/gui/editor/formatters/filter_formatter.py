@@ -47,29 +47,5 @@ class FilterTextFormatter:
         Applies a scope prefix (e.g., "自分の", "相手の") to a text,
         avoiding duplication like "相手の相手の".
         """
-        if not scope or scope == "NONE" or scope == "ALL":
-            return text
-
-        scope_text = CardTextResources.get_scope_text(scope)
-        if not scope_text:
-            return text
-
-        scope_variants = []
-        if scope in ("OPPONENT", "PLAYER_OPPONENT"):
-            scope_variants.extend(["相手が", "相手の"])
-        if scope in ("SELF", "PLAYER_SELF"):
-            scope_variants.extend(["自分が", "自分の"])
-
-        for v in scope_variants:
-            if v in text:
-                return text
-
-        # Handle cases where scope_text is just "自分" or "相手" without "の"
-        # and we need to attach it to a noun
-        if not text:
-            return scope_text
-
-        if scope_text.endswith("の") and text.startswith("の"):
-            return scope_text + text[1:]
-
-        return f"{scope_text}{text}"
+        from dm_toolkit.gui.editor.text_resources import TargetScopeResolver
+        return TargetScopeResolver.apply_scope_prefix(scope, text)

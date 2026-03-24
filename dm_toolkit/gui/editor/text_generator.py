@@ -1030,7 +1030,8 @@ class CardTextGenerator:
         if not scope or scope == "NONE" or scope == "ALL":
             return trigger_text
 
-        scope_text = CardTextResources.get_scope_text(scope)
+        from dm_toolkit.gui.editor.text_resources import TargetScopeResolver
+        scope_text = TargetScopeResolver.resolve_scope_prefix(scope)
         if not scope_text:
             return trigger_text
 
@@ -2164,12 +2165,10 @@ class CardTextGenerator:
         # LOCK / restriction / stat handlers
         def _resolve_player_scope_text() -> str:
             # 再発防止: target_group 優先で対象プレイヤー文言を解決し、LOCK/制限系で表記ゆれを防ぐ。
-            if scope in ["PLAYER_OPPONENT", "OPPONENT"]:
-                return "相手"
-            if scope in ["PLAYER_SELF", "SELF"]:
-                return "自分"
-            if scope == "ALL_PLAYERS":
-                return "すべてのプレイヤー"
+            from dm_toolkit.gui.editor.text_resources import TargetScopeResolver
+            noun = TargetScopeResolver.resolve_player_scope_noun(scope)
+            if noun:
+                return noun
             resolved, _ = cls._resolve_target(action, is_spell)
             return resolved
 
@@ -3651,12 +3650,10 @@ class CardTextGenerator:
         # LOCK / restriction / stat handlers
         def _resolve_player_scope_text() -> str:
             # 再発防止: target_group 優先で対象プレイヤー文言を解決し、LOCK/制限系で表記ゆれを防ぐ。
-            if scope in ["PLAYER_OPPONENT", "OPPONENT"]:
-                return "相手"
-            if scope in ["PLAYER_SELF", "SELF"]:
-                return "自分"
-            if scope == "ALL_PLAYERS":
-                return "すべてのプレイヤー"
+            from dm_toolkit.gui.editor.text_resources import TargetScopeResolver
+            noun = TargetScopeResolver.resolve_player_scope_noun(scope)
+            if noun:
+                return noun
             resolved, _ = cls._resolve_target(action, is_spell)
             return resolved
 
@@ -4958,7 +4955,8 @@ class CardTextGenerator:
 
             # Apply standard scope handling, ignoring explicit prefix handling above unless prefix was overridden to non-standard ones
             if not prefix:
-                target_desc = FilterTextFormatter.format_scope_prefix(scope, target_desc)
+                from dm_toolkit.gui.editor.text_resources import TargetScopeResolver
+                target_desc = TargetScopeResolver.apply_scope_prefix(scope, target_desc)
 
             if "SHIELD_ZONE" in zones and (not types or "CARD" in types):
                 target_desc = target_desc.replace("シールドゾーンのカード", "シールド")
@@ -4971,7 +4969,8 @@ class CardTextGenerator:
                      unit = "体"
             elif atype == "TAP" or atype == "UNTAP":
                  if "クリーチャー" not in target_desc:
-                      target_desc = FilterTextFormatter.format_scope_prefix(scope, "クリーチャー")
+                      from dm_toolkit.gui.editor.text_resources import TargetScopeResolver
+                      target_desc = TargetScopeResolver.apply_scope_prefix(scope, "クリーチャー")
                       if prefix and not target_desc.startswith(prefix):
                           target_desc = prefix + target_desc
                       unit = "体"
@@ -4987,15 +4986,14 @@ class CardTextGenerator:
                      else:
                          target_desc = prefix + target_desc
                  else:
-                     target_desc = FilterTextFormatter.format_scope_prefix(scope, target_desc)
+                     from dm_toolkit.gui.editor.text_resources import TargetScopeResolver
+                     target_desc = TargetScopeResolver.apply_scope_prefix(scope, target_desc)
 
         if not target_desc: target_desc = "カード"
 
         # Ensure '自分カード' gets fixed into '自分のカード' if it mistakenly occurred
-        if target_desc.startswith("自分") and not target_desc.startswith("自分の"):
-            target_desc = target_desc.replace("自分", "自分の", 1)
-        elif target_desc.startswith("相手") and not target_desc.startswith("相手の"):
-            target_desc = target_desc.replace("相手", "相手の", 1)
+        from dm_toolkit.gui.editor.text_resources import TargetScopeResolver
+        target_desc = TargetScopeResolver.ensure_possessive(target_desc)
         return target_desc, unit
 
     @classmethod
