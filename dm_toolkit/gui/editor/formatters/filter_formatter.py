@@ -2,6 +2,7 @@ from typing import Dict, Any, List, Optional
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.utils import is_input_linked
+from dm_toolkit.gui.editor.formatters.target_scope_resolver import TargetScopeResolver
 from dm_toolkit import consts
 
 class FilterTextFormatter:
@@ -50,22 +51,21 @@ class FilterTextFormatter:
         if not scope or scope == "NONE" or scope == "ALL":
             return text
 
-        scope_text = CardTextResources.get_scope_text(scope)
+        scope_text = TargetScopeResolver.resolve_prefix(scope)
         if not scope_text:
             return text
 
+        noun = TargetScopeResolver.resolve_noun(scope)
+
         scope_variants = []
-        if scope in ("OPPONENT", "PLAYER_OPPONENT"):
-            scope_variants.extend(["相手が", "相手の"])
-        if scope in ("SELF", "PLAYER_SELF"):
-            scope_variants.extend(["自分が", "自分の"])
+        if noun:
+            scope_variants.extend([f"{noun}が", f"{noun}の"])
 
         for v in scope_variants:
             if v in text:
                 return text
 
-        # Handle cases where scope_text is just "自分" or "相手" without "の"
-        # and we need to attach it to a noun
+        # Handle cases where we have just "自分" or "相手"
         if not text:
             return scope_text
 

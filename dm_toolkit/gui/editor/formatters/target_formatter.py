@@ -3,6 +3,7 @@ from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
 from dm_toolkit.gui.editor.formatters.utils import is_input_linked
+from dm_toolkit.gui.editor.formatters.target_scope_resolver import TargetScopeResolver
 from dm_toolkit.consts import MAX_COST_VALUE, MAX_POWER_VALUE
 
 class TargetFormatter:
@@ -18,8 +19,8 @@ class TargetFormatter:
         Returns (target_description, unit_counter)
         """
         # Accept either new ('scope'filter') or legacy ('target_group'target_filter') keys
-        # 再発防止: target_group 優先。scope は後方互換。
-        scope = action.get("target_group") or action.get("scope", "NONE")
+        # 再発防止: target_group 優先。scope は後方互換。 TargetScopeResolver に処理を委譲。
+        scope = TargetScopeResolver.resolve_action_scope(action)
         filter_def = action.get("filter") or action.get('target_filter') or {}
         if not isinstance(filter_def, dict):
             # 再発防止: target_filter が None のカードでもプレビュー更新を継続する。
@@ -76,7 +77,7 @@ class TargetFormatter:
             target_desc = ""
             unit = "枚"
             if atype == "DESTROY":
-                if scope == "PLAYER_OPPONENT" or scope == "OPPONENT":
+                if scope == "OPPONENT":
                     target_desc = "相手のクリーチャー"
                     unit = "体"
             elif atype == "TAP" or atype == "UNTAP":
@@ -91,20 +92,12 @@ class TargetFormatter:
                 if prefix:
                     if prefix.endswith("の") and target_desc == "カード":
                         target_desc = prefix + target_desc
-                    elif target_desc == "カード" and prefix in ["自分", "相手"]:
-                        target_desc = prefix + "の" + target_desc
                     else:
                         target_desc = prefix + target_desc
                 else:
                     target_desc = FilterTextFormatter.format_scope_prefix(scope, target_desc)
 
         if not target_desc: target_desc = "カード"
-
-        # Ensure '自分カード' gets fixed into '自分のカード' if it mistakenly occurred
-        if target_desc.startswith("自分") and not target_desc.startswith("自分の"):
-            target_desc = target_desc.replace("自分", "自分の", 1)
-        elif target_desc.startswith("相手") and not target_desc.startswith("相手の"):
-            target_desc = target_desc.replace("相手", "相手の", 1)
 
         return target_desc, unit
 
