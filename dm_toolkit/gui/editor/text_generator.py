@@ -515,7 +515,15 @@ class CardTextGenerator:
             if val is None:
                 # generic message
                 return tr("コスト軽減: {cond}").format(cond=cond_desc)
+
+            condition_text = ""
+            if "condition" in cr:
+                condition_text = cls._format_condition(cr["condition"]).replace(": ", "")
+
             # Example: "マナゾーンに闇の文明が2枚以上あれば、このカードの召喚コストは2少なくなる。"
+            if condition_text:
+                return f"{condition_text}、このカードの召喚コストは{val}少なくなる。"
+
             if cond_desc:
                 return f"{cond_desc}があれば、このカードの召喚コストは{val}少なくなる。"
             return f"このカードの召喚コストは{val}少なくなる。"
@@ -526,16 +534,25 @@ class CardTextGenerator:
             increment_cost = cr.get("increment_cost") or cr.get("increment") or unit_cost.get("increment_cost")
             max_reduction = cr.get("max_reduction") if cr.get("max_reduction") is not None else unit_cost.get("max_reduction")
             raw_stat_key = cr.get("stat_key") or unit_cost.get("stat_key")
-            prefix = f"{cond_desc}があると、" if cond_desc else ""
-            base = cls._format_stat_scaled_cost_text(
-                target_phrase="このカードの召喚コストを、",
-                stat_key=raw_stat_key,
-                per_value=per_value,
-                step_delta=increment_cost,
-                min_stat=cr.get('min_stat', unit_cost.get('min_stat', 1)),
-                max_reduction=max_reduction,
-                prefix=prefix,
-            )
+
+            condition_text = ""
+            if "condition" in cr:
+                condition_text = cls._format_condition(cr["condition"]).replace(": ", "")
+
+            prefix = ""
+            if condition_text:
+                prefix = f"{condition_text}、"
+            elif cond_desc:
+                prefix = f"{cond_desc}があると、"
+
+            stat_name, unit = CardTextResources.STAT_KEY_MAP.get(raw_stat_key, (raw_stat_key, ""))
+
+            base = f"{prefix}{stat_name}が大きいほど、このカードの召喚コストを軽減する（{per_value}{unit}ごと{increment_cost}削減"
+            if max_reduction is not None and max_reduction >= 0:
+                base += f"、最大{max_reduction}削減）"
+            else:
+                base += "）"
+
             # If sample provided, attempt to show example computed reduction/cost
             try:
                 stat_key = CardTextResources.normalize_stat_key(raw_stat_key) if raw_stat_key else raw_stat_key
@@ -2795,6 +2812,60 @@ class CardTextGenerator:
 
         elif cond_type == "CIVILIZATION_MATCH":
              return "マナゾーンに同じ文明があれば: "
+
+        elif cond_type == "CARDS_MATCHING_FILTER":
+             filter_def = condition.get("filter", {})
+             count = condition.get("count", 1)
+             op = condition.get("op", ">=")
+
+             desc = cls._describe_simple_filter(filter_def)
+             zones = filter_def.get("zone", [])
+
+             zone_text = ""
+             if "BATTLE_ZONE" in zones:
+                 zone_text = "バトルゾーンに"
+             elif "MANA_ZONE" in zones:
+                 zone_text = "マナゾーンに"
+
+             if zone_text and desc.startswith(zone_text):
+                 desc = desc[len(zone_text):]
+
+             if desc.endswith("の"):
+                 desc = desc[:-1]
+             if not desc:
+                 desc = "カード"
+
+             # _describe_simple_filter returns e.g. "闇" or "光" for civilizations when there are no other types
+             if desc in ("闇", "光", "火", "水", "自然"):
+                 desc = desc + "の文明"
+             elif desc in ("闇のカード", "光のカード", "火のカード", "水のカード", "自然のカード"):
+                 desc = desc.replace("のカード", "の文明")
+
+             if "CREATURE" in filter_def.get("card_type", []) or "Demon Command" in desc or "クリーチャー" in desc:
+                 unit = "体"
+             else:
+                 unit = "枚"
+
+             op_text = ""
+             if op == ">=":
+                 op_text = f"{count}{unit}以上"
+             elif op == "<=":
+                 op_text = f"{count}{unit}以下"
+             elif op == "=" or op == "==":
+                 op_text = f"{count}{unit}"
+             elif op == ">":
+                 op_text = f"{count}{unit}より多く"
+             elif op == "<":
+                 op_text = f"{count}{unit}未満"
+
+             # Add verb depending on zone or general presence
+             if unit == "体":
+                 verb = "いる"
+             else:
+                 verb = "ある"
+
+             full_desc = f"{zone_text}{desc}が{op_text}{verb}なら: "
+             return full_desc
 
         elif cond_type == "COMPARE_STAT":
              key = condition.get("stat_key", "")
