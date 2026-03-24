@@ -371,6 +371,11 @@ class CardTextResources:
         "OPPONENT_ATTACKED_THIS_TURN": ("相手がこのターンに攻撃した回数", "回"),
         # Cost reduction preview legacy/sample keys
         "TOTAL_POWER": ("自分のバトルゾーンの合計パワー", ""),
+        "ALL_TOTAL_POWER": ("バトルゾーンの合計パワー", ""),
+        "OPPONENT_TOTAL_POWER": ("相手のバトルゾーンの合計パワー", ""),
+        "MANA_COST_TOTAL": ("マナゾーンの合計コスト", ""),
+        "GRAVEYARD_COST_TOTAL": ("墓地の合計コスト", ""),
+        "SHIELD_COST_TOTAL": ("シールドの合計コスト", ""),
         "CARDS_IN_BATTLE": ("自分のバトルゾーンのカード", "枚"),
         "TOTAL_TAP": ("タップしている自分のカード", "枚"),
         "BOARD_COUNT": ("自分の場のカード", "枚"),
