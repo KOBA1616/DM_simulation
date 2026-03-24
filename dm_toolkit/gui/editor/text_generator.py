@@ -2,6 +2,7 @@
 from typing import Dict, Any, List, Tuple
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_resources import CardTextResources
+from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
 from dm_toolkit import consts
 
 class CardTextGenerator:
@@ -359,20 +360,10 @@ class CardTextGenerator:
             adjectives.append("選択した数字と同じコスト")
         elif exact_cost is not None:
             adjectives.append(f"コスト{exact_cost}")
-        elif isinstance(min_cost, dict):
-            usage = min_cost.get("input_value_usage", "")
-            if usage == "MIN_COST":
-                adjectives.append("コストその数以上")
-        elif min_cost > 0:
-            adjectives.append(f"コスト{min_cost}以上")
-        
-        # Handle max_cost that might be int or dict with input_link
-        if isinstance(max_cost, dict):
-            usage = max_cost.get("input_value_usage", "")
-            if usage == "MAX_COST":
-                adjectives.append("コストその数以下")
-        elif max_cost < 999:
-            adjectives.append(f"コスト{max_cost}以下")
+        else:
+            cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
+            if cost_text:
+                adjectives.append(cost_text)
 
         adj_str = "の".join(adjectives)
         if adj_str:
@@ -545,17 +536,22 @@ class CardTextGenerator:
             elif cond_desc:
                 prefix = f"{cond_desc}があると、"
 
-            stat_name, unit = CardTextResources.STAT_KEY_MAP.get(raw_stat_key, (raw_stat_key, ""))
+            stat_key_normalized = CardTextResources.normalize_stat_key(raw_stat_key) if raw_stat_key else raw_stat_key
+            stat_name, unit = CardTextResources.STAT_KEY_MAP.get(stat_key_normalized, (raw_stat_key, ""))
 
-            base = f"{prefix}{stat_name}が大きいほど、このカードの召喚コストを軽減する（{per_value}{unit}ごと{increment_cost}削減"
-            if max_reduction is not None and max_reduction >= 0:
-                base += f"、最大{max_reduction}削減）"
-            else:
-                base += "）"
+            base = cls._format_stat_scaled_cost_text(
+                target_phrase="このカードの召喚コストを、",
+                stat_key=raw_stat_key,
+                per_value=per_value,
+                step_delta=increment_cost,
+                min_stat=cr.get('min_stat', unit_cost.get('min_stat', 1)),
+                max_reduction=max_reduction,
+                prefix=prefix
+            )
 
             # If sample provided, attempt to show example computed reduction/cost
             try:
-                stat_key = CardTextResources.normalize_stat_key(raw_stat_key) if raw_stat_key else raw_stat_key
+                stat_key = stat_key_normalized
                 stat_name, _ = CardTextResources.STAT_KEY_MAP.get(stat_key, (stat_key or "統計", ""))
                 if sample and isinstance(sample, list) and stat_key:
                     sval = None
@@ -677,7 +673,7 @@ class CardTextGenerator:
         else:
             # Combine: condition + scope + target
             # Final structure: 「条件」「自身の」「対象」「に〜を与える」 or 「自分の」「クリーチャー」
-            full_target = scope_prefix + target_str if scope_prefix else target_str
+            full_target = FilterTextFormatter.format_scope_prefix(scope, target_str)
         
         # Map modifier types to formatter callables to reduce branching
         MODIFIER_FORMATTER_MAP = {
@@ -808,17 +804,9 @@ class CardTextGenerator:
         races = filter_def.get("races", [])
         owner = filter_def.get("owner", "")  # Will NOT apply prefix here (handled in _format_modifier)
         min_cost = filter_def.get("min_cost", 0)
-        if min_cost is None:
-            min_cost = 0
         max_cost = filter_def.get("max_cost", 999)
-        if max_cost is None:
-            max_cost = 999
         min_power = filter_def.get("min_power", 0)
-        if min_power is None:
-            min_power = 0
         max_power = filter_def.get("max_power", 999999)
-        if max_power is None:
-            max_power = 999999
         is_tapped = filter_def.get("is_tapped")
         is_blocker = filter_def.get("is_blocker")
         is_evolution = filter_def.get("is_evolution")
@@ -847,15 +835,6 @@ class CardTextGenerator:
                 # Multiple zones: "手札または墓地から"
                 parts.append("または".join(zone_names) + "から")
         
-        # Owner prefix
-        # NOTE: Owner is handled by _format_modifier as a scope prefix, NOT here
-        # This prevents duplication of "自分の" in the output
-        # if owner:
-        #     if owner == "SELF":
-        #         parts.append("自分の")
-        #     elif owner == "OPPONENT":
-        #         parts.append("相手の")
-        
         # Civilization adjective
         if civs:
             parts.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]) + "の")
@@ -864,50 +843,23 @@ class CardTextGenerator:
         if races:
             parts.append("/".join(races) + "の")
         
-        # Cost range (handle both int and dict with input_link)
-        # Check for exact_cost or cost_ref first
+        # Cost range
         exact_cost = filter_def.get("exact_cost")
         cost_ref = filter_def.get("cost_ref")
         
         if cost_ref:
-            # Reference to a variable (e.g., chosen number)
             parts.append("選択した数字と同じコストの")
         elif exact_cost is not None:
             parts.append(f"コスト{exact_cost}の")
-        elif isinstance(min_cost, dict):
-            usage = min_cost.get("input_value_usage", "")
-            if usage == "MIN_COST":
-                parts.append("コストその数以上の")
-        elif isinstance(max_cost, dict):
-            usage = max_cost.get("input_value_usage", "")
-            if usage == "MAX_COST":
-                parts.append("コストその数以下の")
         else:
-            # Both are numeric values
-            if min_cost > 0 and max_cost < 999:
-                parts.append(f"コスト{min_cost}～{max_cost}の")
-            elif min_cost > 0:
-                parts.append(f"コスト{min_cost}以上の")
-            elif max_cost < 999:
-                parts.append(f"コスト{max_cost}以下の")
+            cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
+            if cost_text:
+                parts.append(cost_text + "の")
         
-        # Power range (handle both int and dict with input_link)
-        if isinstance(min_power, dict):
-            usage = min_power.get("input_value_usage", "")
-            if usage == "MIN_POWER":
-                parts.append("パワーその数以上の")
-        elif isinstance(max_power, dict):
-            usage = max_power.get("input_value_usage", "")
-            if usage == "MAX_POWER":
-                parts.append("パワーその数以下の")
-        else:
-            # Both are numeric values
-            if min_power > 0 and max_power < 999999:
-                parts.append(f"パワー{min_power}～{max_power}の")
-            elif min_power > 0:
-                parts.append(f"パワー{min_power}以上の")
-            elif max_power < 999999:
-                parts.append(f"パワー{max_power}以下の")
+        # Power range
+        power_text = FilterTextFormatter.format_range_text(min_power, max_power, unit="パワー", min_usage="MIN_POWER", max_usage="MAX_POWER", linked_token="その数")
+        if power_text:
+            parts.append(power_text + "の")
         
         # Type noun
         type_noun = "カード"
@@ -1074,18 +1026,14 @@ class CardTextGenerator:
         # Strip trailing "の" for consistent composition
         scope_text = scope_text.rstrip("の")
 
-        # Special handling for already-subjected text to avoid duplication
-        # Some trigger_text values use "相手の..." or "自分の..." (possessive) rather than
-        # "相手が" / "自分が"; ensure we detect both forms to avoid producing
-        # duplicated prefixes like "相手の相手の...".
-        scope_variants = []
-        if scope in ("OPPONENT", "PLAYER_OPPONENT"):
-            scope_variants.extend(["相手が", "相手の"])
-        if scope in ("SELF", "PLAYER_SELF"):
-            scope_variants.extend(["自分が", "自分の"])
-        for v in scope_variants:
-            if v in trigger_text:
-                return trigger_text
+        # Uses FilterTextFormatter to avoid scope prefix duplication
+        # if the trigger text already has "相手が" or "自分が", etc.
+        formatted = FilterTextFormatter.format_scope_prefix(scope, trigger_text)
+        # If FilterTextFormatter actually did not prepend anything new (it detected the prefix),
+        # return the trigger text as-is to preserve structural replacements correctly,
+        # or we could just use its output which is identical.
+        if formatted == trigger_text:
+            return trigger_text
 
         # Helper to compose subject phrase from filter
         def _compose_subject_from_filter(default_type: str) -> str:
@@ -3550,14 +3498,9 @@ class CardTextGenerator:
              return (target, "枚")
 
         # Resolve prefix using CardTextResources
-        prefix = CardTextResources.get_scope_text(scope)
-        if not prefix:
-            if scope == "ALL_PLAYERS": prefix = "すべてのプレイヤーの"
-            elif scope == "RANDOM": prefix = "ランダムな"
-
-        # Apply possessive "の" to "自分" or "相手" if needed for natural flow
-        if prefix in ["自分", "相手"]:
-            prefix += "の"
+        prefix = ""
+        if scope == "ALL_PLAYERS": prefix = "すべてのプレイヤーの"
+        elif scope == "RANDOM": prefix = "ランダムな"
 
         if filter_def:
             zones = filter_def.get("zones", [])
@@ -3572,10 +3515,8 @@ class CardTextGenerator:
                 if single: civs = [single]
 
             # Handle explicit owner filter if scope is generic
-            if not prefix and owner != "NONE":
-                 owner_text = CardTextResources.get_scope_text(owner)
-                 if owner_text:
-                     prefix = owner_text
+            if scope in ["NONE", "ALL"] and owner != "NONE":
+                 scope = owner
 
             temp_adjs = []
             if civs: temp_adjs.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
@@ -3583,68 +3524,34 @@ class CardTextGenerator:
 
             if temp_adjs: adjectives += "/".join(temp_adjs) + "の"
 
-            # Handle min_cost (can be int or dict with input_link) or usage-only
-            min_cost = filter_def.get("min_cost", 0)
-            if min_cost is None:
-                min_cost = 0
-            # usage-only from action
             input_usage = action.get("input_value_usage") or action.get("input_usage")
             has_input_key = bool(action.get("input_value_key"))
-            if isinstance(min_cost, dict):
-                # If it's an input-linked parameter, check the usage and generate appropriate text
-                usage = min_cost.get("input_value_usage", "")
-                if usage == "MIN_COST":
-                    # Generate text as if a cost value was provided: "コストその数以上の"
-                    adjectives += "コストその数以上の"
-            elif min_cost > 0:
-                adjectives += f"コスト{min_cost}以上の"
-            elif has_input_key and input_usage == "MIN_COST":
-                adjectives += "コストその数以上の"
-            
-            # Handle max_cost (can be int or dict with input_link) or usage-only
+
+            # Cost
+            min_cost = filter_def.get("min_cost", 0)
             max_cost = filter_def.get("max_cost", 999)
-            if max_cost is None:
-                max_cost = 999
-            if isinstance(max_cost, dict):
-                # If it's an input-linked parameter, check the usage and generate appropriate text
-                usage = max_cost.get("input_value_usage", "")
-                if usage == "MAX_COST":
-                    # Generate text as if a cost value was provided: "コストその数以下の"
-                    adjectives += "コストその数以下の"
-            elif max_cost < 999:
-                adjectives += f"コスト{max_cost}以下の"
+
+            if has_input_key and input_usage == "MIN_COST":
+                adjectives += "コストその数以上の"
             elif has_input_key and input_usage == "MAX_COST":
                 adjectives += "コストその数以下の"
-
-            # Handle min_power (can be int or dict with input_link)
-            min_power = filter_def.get("min_power", 0)
-            if min_power is None:
-                min_power = 0
-            if isinstance(min_power, dict):
-                # If it's an input-linked parameter, check the usage and generate appropriate text
-                usage = min_power.get("input_value_usage", "")
-                if usage == "MIN_POWER":
-                    # Generate text as if a power value was provided: "パワーその数以上の"
-                    adjectives += "パワーその数以上の"
-            elif min_power > 0:
-                adjectives += f"パワー{min_power}以上の"
-            elif has_input_key and input_usage == "MIN_POWER":
-                adjectives += "パワーその数以上の"
+            else:
+                cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
+                if cost_text:
+                    adjectives += cost_text + "の"
             
-            # Handle max_power (can be int or dict with input_link)
+            # Power
+            min_power = filter_def.get("min_power", 0)
             max_power = filter_def.get("max_power", 999999)
-            if max_power is None:
-                max_power = 999999
-            if isinstance(max_power, dict):
-                # If it's an input-linked parameter, check the usage and generate appropriate text
-                usage = max_power.get("input_value_usage", "")
-                if usage == "MAX_POWER":
-                    # Generate text as if a power value was provided: "パワーその数以下の"
-                    adjectives += "パワーその数以下の"
-            elif max_power < 999999:
-                adjectives += f"パワー{max_power}以下の"
+
+            if has_input_key and input_usage == "MIN_POWER":
+                adjectives += "パワーその数以上の"
             elif has_input_key and input_usage == "MAX_POWER":
                 adjectives += "パワーその数以下の"
+            else:
+                power_text = FilterTextFormatter.format_range_text(min_power, max_power, unit="パワー", min_usage="MIN_POWER", max_usage="MAX_POWER", linked_token="その数")
+                if power_text:
+                    adjectives += power_text + "の"
 
             if filter_def.get("is_tapped", None) is True: adjectives = "タップされている" + adjectives
             elif filter_def.get("is_tapped", None) is False: adjectives = "アンタップされている" + adjectives
@@ -3709,6 +3616,10 @@ class CardTextGenerator:
             parts.append(type_noun)
             target_desc = "".join(parts)
 
+            # Apply standard scope handling, ignoring explicit prefix handling above unless prefix was overridden to non-standard ones
+            if not prefix:
+                target_desc = FilterTextFormatter.format_scope_prefix(scope, target_desc)
+
             if "SHIELD_ZONE" in zones and (not types or "CARD" in types):
                 target_desc = target_desc.replace("シールドゾーンのカード", "シールド")
                 unit = "つ"
@@ -3720,14 +3631,31 @@ class CardTextGenerator:
                      unit = "体"
             elif atype == "TAP" or atype == "UNTAP":
                  if "クリーチャー" not in target_desc:
-                      target_desc = prefix + "クリーチャー"
+                      target_desc = FilterTextFormatter.format_scope_prefix(scope, "クリーチャー")
+                      if prefix and not target_desc.startswith(prefix):
+                          target_desc = prefix + target_desc
                       unit = "体"
             elif atype == "DISCARD":
                  target_desc = "手札"
             else:
                  target_desc = "カード"
+                 if prefix:
+                     if prefix.endswith("の") and target_desc == "カード":
+                         target_desc = prefix + target_desc
+                     elif target_desc == "カード" and prefix in ["自分", "相手"]:
+                         target_desc = prefix + "の" + target_desc
+                     else:
+                         target_desc = prefix + target_desc
+                 else:
+                     target_desc = FilterTextFormatter.format_scope_prefix(scope, target_desc)
 
         if not target_desc: target_desc = "カード"
+
+        # Ensure '自分カード' gets fixed into '自分のカード' if it mistakenly occurred
+        if target_desc.startswith("自分") and not target_desc.startswith("自分の"):
+            target_desc = target_desc.replace("自分", "自分の", 1)
+        elif target_desc.startswith("相手") and not target_desc.startswith("相手の"):
+            target_desc = target_desc.replace("相手", "相手の", 1)
         return target_desc, unit
 
     @classmethod
@@ -3865,47 +3793,28 @@ class CardTextGenerator:
         exact_cost = trigger_filter.get("exact_cost")
         cost_ref = trigger_filter.get("cost_ref")
         min_cost = trigger_filter.get("min_cost", 0)
-        if min_cost is None:
-            min_cost = 0
         max_cost = trigger_filter.get("max_cost", 999)
-        if max_cost is None:
-            max_cost = 999
         
         if cost_ref:
             descriptions.append("コスト【選択数字】")
         elif exact_cost is not None:
             descriptions.append(f"コスト{exact_cost}")
         else:
-            if isinstance(min_cost, dict) and min_cost.get("input_value_usage") == "MIN_COST":
-                descriptions.append("コスト【入力値】以上")
-            elif isinstance(max_cost, dict) and max_cost.get("input_value_usage") == "MAX_COST":
-                descriptions.append("コスト【入力値】以下")
-            else:
-                if min_cost > 0 and max_cost < 999:
-                    descriptions.append(f"コスト{min_cost}～{max_cost}")
-                elif min_cost > 0:
-                    descriptions.append(f"コスト{min_cost}以上")
-                elif max_cost < 999:
-                    descriptions.append(f"コスト{max_cost}以下")
+            cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="【入力値】")
+            if cost_text:
+                descriptions.append(cost_text)
         
         # Power conditions
         min_power = trigger_filter.get("min_power", 0)
-        if min_power is None:
-            min_power = 0
         max_power = trigger_filter.get("max_power", 999999)
-        if max_power is None:
-            max_power = 999999
         power_max_ref = trigger_filter.get("power_max_ref")
         
         if power_max_ref:
             descriptions.append("パワー【入力値】以下")
         else:
-            if min_power > 0 and max_power < 999999:
-                descriptions.append(f"パワー{min_power}～{max_power}")
-            elif min_power > 0:
-                descriptions.append(f"パワー{min_power}以上")
-            elif max_power < 999999:
-                descriptions.append(f"パワー{max_power}以下")
+            power_text = FilterTextFormatter.format_range_text(min_power, max_power, unit="パワー", min_usage="MIN_POWER", max_usage="MAX_POWER", linked_token="【入力値】")
+            if power_text:
+                descriptions.append(power_text)
         
         # Tapped/Untapped state
         is_tapped = trigger_filter.get("is_tapped")
