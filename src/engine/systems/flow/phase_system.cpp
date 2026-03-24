@@ -201,6 +201,10 @@ void PhaseSystem::fast_forward(
       return;
     }
 
+    // Ensure continuous effects are recalculated before generating legal commands
+    // This is required so STAT_SCALED modifiers observe up-to-date stats (e.g., from MANA_CHARGE loop)
+    dm::engine::systems::ContinuousEffectSystem::recalculate(game_state, card_db);
+
     auto actions =
         IntentGenerator::generate_legal_commands(game_state, card_db);
 
