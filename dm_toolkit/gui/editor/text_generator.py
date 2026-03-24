@@ -3,6 +3,8 @@ from typing import Dict, Any, List, Tuple
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
+from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
+from dm_toolkit.gui.editor.formatters.utils import is_input_linked, get_command_amount
 from dm_toolkit import consts
 from dm_toolkit.consts import MAX_COST_VALUE, MAX_POWER_VALUE
 
@@ -11,14 +13,16 @@ class CardTextGenerator:
     Generates Japanese rule text for Duel Masters cards based on JSON data.
     """
 
-
     @classmethod
-    def generate_text(cls, data: Dict[str, Any], include_twinpact: bool = True, sample: List[Any] = None) -> str:
+    def generate_text(cls, data: Dict[str, Any], include_twinpact: bool = True, sample: List[Any] = None, ctx: TextGenerationContext = None) -> str:
         """
         Generate the full text for a card including name, cost, type, keywords, and effects.
         """
         if not data:
             return ""
+
+        if ctx is None:
+            ctx = TextGenerationContext(data, sample)
 
         lines = []
 
@@ -26,13 +30,14 @@ class CardTextGenerator:
         lines.extend(cls.generate_header_lines(data))
 
         # 2. Body (Keywords, Effects, etc.)
-        lines.append(cls.generate_body_text_lines(data, include_twinpact=False, sample=sample)) # Don't recurse here, handle manually
+        lines.append(cls.generate_body_text_lines(data, include_twinpact=False, ctx=ctx)) # Don't recurse here, handle manually
 
         # 4. Twinpact (Spell Side)
         spell_side = data.get("spell_side")
         if spell_side and include_twinpact:
             lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
-            lines.append(cls.generate_text(spell_side, sample=sample))
+            spell_ctx = TextGenerationContext(spell_side, sample)
+            lines.append(cls.generate_text(spell_side, ctx=spell_ctx))
 
         return "\n".join(lines)
 
@@ -69,14 +74,16 @@ class CardTextGenerator:
         return lines
 
     @classmethod
-    def generate_body_text_lines(cls, data: Dict[str, Any], include_twinpact: bool = True, sample: List[Any] = None) -> str:
+    def generate_body_text_lines(cls, data: Dict[str, Any], include_twinpact: bool = True, sample: List[Any] = None, ctx: TextGenerationContext = None) -> str:
         """
         Generates just the body text (keywords, effects, etc.) without the header.
         """
         lines = []
+        if ctx is None:
+            ctx = TextGenerationContext(data, sample)
 
         # Body Text (Keywords, Effects, etc.)
-        body_text = cls.generate_body_text(data, sample=sample)
+        body_text = cls.generate_body_text(data, ctx=ctx)
         if body_text:
             lines.append(body_text)
 
@@ -84,18 +91,22 @@ class CardTextGenerator:
         spell_side = data.get("spell_side")
         if spell_side and include_twinpact:
             lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
-            lines.append(cls.generate_text(spell_side, sample=sample))
+            spell_ctx = TextGenerationContext(spell_side, ctx.sample)
+            lines.append(cls.generate_text(spell_side, ctx=spell_ctx))
 
         return "\n".join(lines)
 
     @classmethod
-    def generate_body_text(cls, data: Dict[str, Any], sample: List[Any] = None) -> str:
+    def generate_body_text(cls, data: Dict[str, Any], sample: List[Any] = None, ctx: TextGenerationContext = None) -> str:
         """
         Generates only the body text (Keywords, Effects, Reactions) without headers.
         Useful for structured preview and Twinpact separation.
         """
         if not data:
             return ""
+
+        if ctx is None:
+            ctx = TextGenerationContext(data, sample)
 
         lines = []
 
@@ -160,7 +171,7 @@ class CardTextGenerator:
         # 2.5 Cost Reductions
         cost_reductions = cls._normalize_cost_reductions(data.get("cost_reductions", []))
         for cr in cost_reductions:
-            text = cls._format_cost_reduction(cr, sample=sample)
+            text = cls._format_cost_reduction(cr, sample=ctx.sample)
             if text:
                 lines.append(f"■ {text}")
 
@@ -173,7 +184,6 @@ class CardTextGenerator:
 
         # 3. Effects (Configured actions). Skip effects that only realize special keywords
         effects = data.get("effects", [])
-        is_spell = data.get("type", "CREATURE") == "SPELL"
 
         def _is_special_only_effect(eff: Dict[str, Any]) -> bool:
             cmds = eff.get("commands", []) or []
@@ -203,9 +213,7 @@ class CardTextGenerator:
         for effect in effects:
             if _is_special_only_effect(effect):
                 continue
-            # Check if this card has mega_last_burst keyword and pass it to _format_effect
-            has_mega_last_burst = data.get("keywords", {}).get("mega_last_burst", False)
-            text = cls._format_effect(effect, is_spell, sample=sample, card_mega_last_burst=has_mega_last_burst)
+            text = cls._format_effect(effect, ctx)
             if text:
                 lines.append(f"■ {text}")
 
@@ -214,7 +222,7 @@ class CardTextGenerator:
         static_abilities = data.get("static_abilities", [])
         for static_ability in static_abilities:
             if static_ability and isinstance(static_ability, dict):
-                text = cls._format_effect(static_ability, is_spell, sample=sample)
+                text = cls._format_effect(static_ability, ctx)
                 if text:
                     lines.append(f"■ {text}")
 
@@ -223,7 +231,7 @@ class CardTextGenerator:
         if metamorphs:
             lines.append("【追加能力】")
             for effect in metamorphs:
-                text = cls._format_effect(effect, is_spell, sample=sample)
+                text = cls._format_effect(effect, ctx)
                 if text:
                     lines.append(f"■ {text}")
 
@@ -246,9 +254,9 @@ class CardTextGenerator:
 
         min_cost = cond.get("min_cost", 0)
         max_cost = cond.get("max_cost", MAX_COST_VALUE)
-        if isinstance(min_cost, dict):
+        if is_input_linked(min_cost):
             parts.append("コストその数以上")
-        elif isinstance(max_cost, dict):
+        elif is_input_linked(max_cost):
             parts.append("コストその数以下")
         else:
             if isinstance(min_cost, int) and isinstance(max_cost, int):
@@ -465,35 +473,75 @@ class CardTextGenerator:
         )
 
     @classmethod
+    def _normalize_cost_reduction_dict(cls, cr: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize cost reduction dictionary to consistently use the new format.
+
+        Extracts values from legacy 'unit_cost' field into top-level properties
+        so that downstream rendering only needs to deal with one schema.
+        """
+        normalized = cr.copy()
+
+        # Merge properties from legacy unit_cost if present
+        unit_cost = normalized.get("unit_cost", {})
+        if isinstance(unit_cost, dict):
+            if "value_mode" not in normalized and "value_mode" in unit_cost:
+                normalized["value_mode"] = unit_cost.get("value_mode")
+            if "filter" not in normalized and "filter" in unit_cost:
+                normalized["filter"] = unit_cost.get("filter")
+            if "value" not in normalized and "value" in unit_cost:
+                normalized["value"] = unit_cost.get("value")
+            if "per_value" not in normalized and "per_value" in unit_cost:
+                normalized["per_value"] = unit_cost.get("per_value")
+            if "increment_cost" not in normalized and "increment_cost" in unit_cost:
+                normalized["increment_cost"] = unit_cost.get("increment_cost")
+            if "max_reduction" not in normalized and "max_reduction" in unit_cost:
+                normalized["max_reduction"] = unit_cost.get("max_reduction")
+            if "stat_key" not in normalized and "stat_key" in unit_cost:
+                normalized["stat_key"] = unit_cost.get("stat_key")
+            if "min_stat" not in normalized and "min_stat" in unit_cost:
+                normalized["min_stat"] = unit_cost.get("min_stat")
+
+        # Resolve common alias fields
+        if "value_mode" not in normalized and "mode" in normalized:
+            normalized["value_mode"] = normalized.get("mode")
+        if "value" not in normalized and "amount" in normalized:
+            normalized["value"] = normalized.get("amount")
+        if "per_value" not in normalized and "per" in normalized:
+            normalized["per_value"] = normalized.get("per")
+        if "increment_cost" not in normalized and "increment" in normalized:
+            normalized["increment_cost"] = normalized.get("increment")
+
+        return normalized
+
+    @classmethod
     def _format_cost_reduction(cls, cr: Dict[str, Any], sample: List[Any] = None) -> str:
         if not cr:
             return ""
-        ctype = cr.get("type", "PASSIVE")
-        name = cr.get("name", "")
+
+        # Pre-normalize to the new schema
+        norm_cr = cls._normalize_cost_reduction_dict(cr)
+
+        ctype = norm_cr.get("type", "PASSIVE")
+        name = norm_cr.get("name", "")
         if name:
             return f"{name}"
 
-        # Defensive: support different schemas where value_mode may be at top-level
-        value_mode = cr.get("value_mode") or cr.get("mode") or cr.get("unit_cost", {}).get("value_mode")
+        value_mode = norm_cr.get("value_mode")
+        filter_def = norm_cr.get("filter", {})
 
-        unit_cost = cr.get("unit_cost", {})
-        filter_def = unit_cost.get("filter", {}) if isinstance(unit_cost, dict) else {}
         # Describe condition (civilization, zones, races etc.)
         cond_desc = cls._describe_simple_filter(filter_def) if filter_def else ""
 
         # FIXED / PASSIVE simple reductions
-        if (value_mode and str(value_mode).upper() in ("FIXED", "FIXED_AMOUNT", "PASSIVE")) or cr.get("value") is not None:
-            val = cr.get("value") if cr.get("value") is not None else cr.get("amount", None)
-            if val is None:
-                # fallback to unit_cost.value
-                val = unit_cost.get("value") if isinstance(unit_cost, dict) else None
+        if (value_mode and str(value_mode).upper() in ("FIXED", "FIXED_AMOUNT", "PASSIVE")) or norm_cr.get("value") is not None:
+            val = norm_cr.get("value")
             if val is None:
                 # generic message
                 return tr("コスト軽減: {cond}").format(cond=cond_desc)
 
             condition_text = ""
-            if "condition" in cr:
-                condition_text = cls._format_condition(cr["condition"]).replace(": ", "")
+            if "condition" in norm_cr:
+                condition_text = cls._format_condition(norm_cr["condition"]).replace(": ", "")
 
             # Example: "マナゾーンに闇の文明が2枚以上あれば、このカードの召喚コストは2少なくなる。"
             if condition_text:
@@ -505,14 +553,14 @@ class CardTextGenerator:
 
         # STAT_SCALED style reductions
         if value_mode and str(value_mode).upper() == "STAT_SCALED":
-            per_value = cr.get("per_value") or unit_cost.get("per_value") or cr.get("per")
-            increment_cost = cr.get("increment_cost") or cr.get("increment") or unit_cost.get("increment_cost")
-            max_reduction = cr.get("max_reduction") if cr.get("max_reduction") is not None else unit_cost.get("max_reduction")
-            raw_stat_key = cr.get("stat_key") or unit_cost.get("stat_key")
+            per_value = norm_cr.get("per_value")
+            increment_cost = norm_cr.get("increment_cost")
+            max_reduction = norm_cr.get("max_reduction")
+            raw_stat_key = norm_cr.get("stat_key")
 
             condition_text = ""
-            if "condition" in cr:
-                condition_text = cls._format_condition(cr["condition"]).replace(": ", "")
+            if "condition" in norm_cr:
+                condition_text = cls._format_condition(norm_cr["condition"]).replace(": ", "")
 
             prefix = ""
             if condition_text:
@@ -528,7 +576,7 @@ class CardTextGenerator:
                 stat_key=raw_stat_key,
                 per_value=per_value,
                 step_delta=increment_cost,
-                min_stat=cr.get('min_stat', unit_cost.get('min_stat', 1)),
+                min_stat=norm_cr.get('min_stat', 1),
                 max_reduction=max_reduction,
                 prefix=prefix
             )
@@ -554,31 +602,23 @@ class CardTextGenerator:
                                 except Exception:
                                     pass
                     if sval is not None and per_value:
-                        calc = max(0, int(sval) - int(cr.get('min_stat', unit_cost.get('min_stat', 1))) + 1) * int(per_value)
+                        calc = max(0, int(sval) - int(norm_cr.get('min_stat', 1)) + 1) * int(per_value)
                         if isinstance(max_reduction, int):
                             calc = min(calc, max_reduction)
                         if calc > 0:
-                            # show example cost after reduction if base cost known
-                            base_cost = cr.get('base_cost') or None
-                            # fall back to unit_cost.base_cost or None
-                            if not base_cost and isinstance(unit_cost, dict):
-                                base_cost = unit_cost.get('base_cost')
-                            # We can't reliably know card cost here; only show reduction example
                             base += f" （例: 現在の{stat_name}{sval} → コストを{calc}削減）"
             except Exception:
                 pass
             return base
 
         # Condition-based reductions (COMPARE_STAT, CARDS_MATCHING_FILTER)
-        cond = cr.get('condition') or cr.get('condition_def') or {}
+        cond = norm_cr.get('condition') or norm_cr.get('condition_def') or {}
         if isinstance(cond, dict):
             ctype = cond.get('type')
             if ctype == 'COMPARE_STAT':
                 # Use existing condition formatter to get "自分のXがYなら: " style then adapt
                 cond_text = cls._format_condition(cond).strip('、: ')
-                val = cr.get('value') or cr.get('amount') or cr.get('reduction')
-                if val is None:
-                    val = unit_cost.get('value') if isinstance(unit_cost, dict) else None
+                val = norm_cr.get('value') or norm_cr.get('reduction')
                 if val is None:
                     return f"{cond_text}の時、このカードの召喚コストを修正する。"
                 return f"{cond_text}の時、このカードの召喚コストを{val}少なくする。"
@@ -587,7 +627,7 @@ class CardTextGenerator:
                 desc = cls._describe_simple_filter(f)
                 val = cond.get('value') or cond.get('count') or None
                 if val:
-                    return f"{desc}が{val}体以上いるなら、このカードの召喚コストは{cr.get('value') or cr.get('amount') or 'X'}少なくなる。"
+                    return f"{desc}が{val}体以上いるなら、このカードの召喚コストは{norm_cr.get('value') or 'X'}少なくなる。"
                 return f"{desc}がいるなら、このカードの召喚コストを軽減する。"
 
         # Fallback: show filter description
@@ -895,7 +935,7 @@ class CardTextGenerator:
         return result if result else "対象"
 
     @classmethod
-    def _format_effect(cls, effect: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
+    def _format_effect(cls, effect: Dict[str, Any], ctx: TextGenerationContext) -> str:
         # Check if this is a Modifier (static ability)
         # Modifiers have a 'type' field with specific values (COST_MODIFIER, POWER_MODIFIER, GRANT_KEYWORD, SET_KEYWORD)
         # and do NOT have a 'trigger' field (or trigger is NONE)
@@ -907,7 +947,7 @@ class CardTextGenerator:
             if effect_type in ("COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD", "ADD_RESTRICTION"):
                 # Verify it's not a triggered effect
                 if trigger == "NONE" or trigger not in effect:
-                    return cls._format_modifier(effect, sample=sample)
+                    return cls._format_modifier(effect, sample=ctx.sample)
         
         trigger = effect.get("trigger", "NONE")
         trigger_scope = effect.get("trigger_scope", "NONE")
@@ -917,7 +957,7 @@ class CardTextGenerator:
             condition = {}
         actions = effect.get("actions", [])
 
-        trigger_text = cls.trigger_to_japanese(trigger, is_spell, effect=effect)
+        trigger_text = cls.trigger_to_japanese(trigger, ctx.is_spell, effect=effect)
 
         # Apply trigger scope (NEW: Add prefix based on scope)
         if trigger_scope and trigger_scope != "NONE" and trigger != "PASSIVE_CONST":
@@ -969,14 +1009,13 @@ class CardTextGenerator:
                         output_label_map[out_key] = inferred_label
 
             raw_items.append(command_for_text)
-            # Pass mega_last_burst flag to _format_command for CAST_SPELL detection
-            action_texts.append(cls._format_command(command_for_text, is_spell, sample=sample, card_mega_last_burst=card_mega_last_burst))
+            action_texts.append(cls._format_command(command_for_text, ctx))
 
         # Try to merge common sequential patterns for more natural language
         full_action_text = cls._merge_action_texts(raw_items, action_texts)
 
         # If it's a Spell's main effect (ON_PLAY), we can often omit the trigger text "Played/Cast"
-        if is_spell and trigger == "ON_PLAY":
+        if ctx.is_spell and trigger == "ON_PLAY":
             trigger_text = ""
 
         if trigger_text and trigger != "NONE" and trigger != "PASSIVE_CONST":
@@ -1082,9 +1121,9 @@ class CardTextGenerator:
             elif exact_cost is not None:
                 adjs.append(f"コスト{exact_cost}")
             else:
-                if isinstance(min_cost, dict) and min_cost.get("input_value_usage") == "MIN_COST":
+                if is_input_linked(min_cost, usage="MIN_COST"):
                     adjs.append("コストその数以上")
-                elif isinstance(max_cost, dict) and max_cost.get("input_value_usage") == "MAX_COST":
+                elif is_input_linked(max_cost, usage="MAX_COST"):
                     adjs.append("コストその数以下")
                 else:
                     if min_cost > 0 and max_cost < MAX_COST_VALUE:
@@ -1097,9 +1136,9 @@ class CardTextGenerator:
             # Power conditions
             if power_max_ref:
                 adjs.append("パワーその数以下")
-            elif isinstance(min_power, dict) and min_power.get("input_value_usage") == "MIN_POWER":
+            elif is_input_linked(min_power, usage="MIN_POWER"):
                 adjs.append("パワーその数以上")
-            elif isinstance(max_power, dict) and max_power.get("input_value_usage") == "MAX_POWER":
+            elif is_input_linked(max_power, usage="MAX_POWER"):
                 adjs.append("パワーその数以下")
             else:
                 if min_power > 0 and max_power < MAX_POWER_VALUE:
@@ -1306,7 +1345,7 @@ class CardTextGenerator:
     }
 
     @classmethod
-    def _format_command(cls, command: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
+    def _format_command(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         if not command:
             return ""
 
@@ -1329,7 +1368,7 @@ class CardTextGenerator:
         formatter_cls = CommandFormatterRegistry.get_formatter(original_cmd_type)
         if formatter_cls:
             # The formatter returns the template or finalized text.
-            formatted_text = formatter_cls.format(command_copy, is_spell, sample, card_mega_last_burst)
+            formatted_text = formatter_cls.format(command_copy, ctx)
             return formatted_text
 
         # 再発防止: REVOLUTION_CHANGE コマンドはカードレベルの革命チェンジテキストで使用されるが、
@@ -1354,7 +1393,7 @@ class CardTextGenerator:
             "type": cmd_type,
             "scope": command_copy.get("target_group", "NONE"),
             "filter": command_copy.get("target_filter") or command_copy.get("filter") or {},
-            "value1": command_copy.get("amount") if command_copy.get("amount") is not None else command_copy.get("value1", 0),
+            "value1": get_command_amount(command_copy, default=0),
             "value2": command_copy.get("val2") or command_copy.get("value2", 0),
             "optional": command_copy.get("optional", False),
             "up_to": command_copy.get("up_to", False),
@@ -1369,7 +1408,7 @@ class CardTextGenerator:
             "mutation_kind": command_copy.get("mutation_kind", ""),
             "destination_zone": command_copy.get("to_zone") or command_copy.get("destination_zone", ""), # For MOVE_CARD mapping
             "result": command_copy.get("result") or command_copy.get("str_param", ""), # For GAME_RESULT, map properly
-            "is_mega_last_burst": card_mega_last_burst,  # Pass mega_last_burst flag for CAST_SPELL detection
+            "is_mega_last_burst": ctx.has_mega_last_burst,  # Pass mega_last_burst flag for CAST_SPELL detection
             "duration": command_copy.get("duration", ""),
             "cost": command_copy.get("cost"),
             "use_mana_from": command_copy.get("use_mana_from"),
@@ -1513,10 +1552,10 @@ class CardTextGenerator:
         if isinstance(short_circuit, str):
             return short_circuit
 
-        return cls._format_action(action_proxy, is_spell, sample=sample, card_mega_last_burst=card_mega_last_burst)
+        return cls._format_action(action_proxy, ctx)
 
     @classmethod
-    def _format_logic_command(cls, atype: str, action: Dict[str, Any], is_spell: bool, sample: List[Any], card_mega_last_burst: bool) -> str:
+    def _format_logic_command(cls, atype: str, action: Dict[str, Any], ctx: TextGenerationContext) -> str:
         """Handle conditional logic commands (IF, IF_ELSE, ELSE)."""
         cond_detail = action.get("condition", {}) or action.get("target_filter", {})
         cond_text = ""
@@ -1620,7 +1659,7 @@ class CardTextGenerator:
              if_true_texts = []
              for cmd in if_true_cmds:
                  if isinstance(cmd, dict):
-                     cmd_text = cls._format_command(cmd, is_spell, sample, card_mega_last_burst)
+                     cmd_text = cls._format_command(cmd, ctx)
                      if cmd_text:
                          if_true_texts.append(cmd_text)
 
@@ -1637,14 +1676,14 @@ class CardTextGenerator:
             if_true_texts = []
             for cmd in if_true_cmds:
                 if isinstance(cmd, dict):
-                    cmd_text = cls._format_command(cmd, is_spell, sample, card_mega_last_burst)
+                    cmd_text = cls._format_command(cmd, ctx)
                     if cmd_text:
                         if_true_texts.append(cmd_text)
 
             if_false_texts = []
             for cmd in if_false_cmds:
                 if isinstance(cmd, dict):
-                    cmd_text = cls._format_command(cmd, is_spell, sample, card_mega_last_burst)
+                    cmd_text = cls._format_command(cmd, ctx)
                     if cmd_text:
                         if_false_texts.append(cmd_text)
 
@@ -1716,7 +1755,7 @@ class CardTextGenerator:
              return f"見た{civ_part}{type_part}{qty_part}を選ぶ。"
 
         elif atype == "PLAY_FROM_BUFFER":
-             target_str, unit = cls._resolve_target(action, is_spell)
+             target_str, unit = cls._resolve_target(action, ctx.is_spell)
              return f"選んだカード（{target_str}）を使う。"
 
         elif atype == "MOVE_BUFFER_TO_ZONE":
@@ -1936,7 +1975,7 @@ class CardTextGenerator:
         return ""
 
     @classmethod
-    def _format_game_action_command(cls, atype: str, action: Dict[str, Any], is_spell: bool, val1: int, val2: int, target_str: str, unit: str, input_key: str, input_usage: str, sample: List[Any]) -> str:
+    def _format_game_action_command(cls, atype: str, action: Dict[str, Any], val1: int, val2: int, target_str: str, unit: str, input_key: str, input_usage: str, ctx: TextGenerationContext) -> str:
         """Handle general game action commands (SEARCH, SHIELD, BATTLE, etc)."""
 
         # 再発防止: target_group (editor新形式) を scope (legacy) より優先する。同一関数内で混在させないこと。
@@ -2188,9 +2227,9 @@ class CardTextGenerator:
             key = action.get('str_val') or action.get('result') or ''
             stat_name, stat_unit = CardTextResources.STAT_KEY_MAP.get(key, (None, None))
             if stat_name:
-                if sample is not None:
+                if ctx.sample is not None:
                     try:
-                        val = cls._compute_stat_from_sample(key, sample)
+                        val = cls._compute_stat_from_sample(key, ctx.sample)
                         if val is not None:
                             return f"{stat_name}（例: {val}{stat_unit}）"
                     except Exception:
@@ -2275,10 +2314,10 @@ class CardTextGenerator:
         ACTION_HANDLER_MAP["SELECT_TARGET"] = _handle_select_target
         # Zone movement handlers
         def _handle_transition():
-            return cls._format_zone_move_command("TRANSITION", action, is_spell, val1, target_str)
+            return cls._format_zone_move_command("TRANSITION", action, ctx.is_spell, val1, target_str)
 
         def _handle_move_card():
-            return cls._format_zone_move_command("MOVE_CARD", action, is_spell, val1, target_str)
+            return cls._format_zone_move_command("MOVE_CARD", action, ctx.is_spell, val1, target_str)
 
         ACTION_HANDLER_MAP["TRANSITION"] = _handle_transition
         ACTION_HANDLER_MAP["MOVE_CARD"] = _handle_move_card
@@ -2338,9 +2377,9 @@ class CardTextGenerator:
                     if isinstance(a, dict) and (
                         'amount' in a or 'target_group' in a or 'mutation_kind' in a or 'from_zone' in a or 'to_zone' in a
                     ):
-                        parts.append(cls._format_command(a, is_spell=is_spell, sample=sample))
+                        parts.append(cls._format_command(a, ctx))
                     else:
-                        parts.append(cls._format_action(a, is_spell, sample=sample))
+                        parts.append(cls._format_action(a, ctx))
                 chain_text = " ".join(parts)
                 lines.append(f"> {chain_text}")
             return "\n".join(lines)
@@ -4268,7 +4307,7 @@ class CardTextGenerator:
         return ""
 
     @classmethod
-    def _format_action(cls, action: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
+    def _format_action(cls, action: Dict[str, Any], ctx: TextGenerationContext) -> str:
         """
         INTERNAL: Format action-like dictionary to Japanese text.
 
@@ -4306,7 +4345,7 @@ class CardTextGenerator:
                       return f"手札を{amt}枚捨てる。" if amt > 0 else "手札をすべて捨てる。"
                  elif alias == "手札に戻す":
                       # Manually resolve vars to ensure correctness and return immediately
-                      target_str, unit = cls._resolve_target(action, is_spell)
+                      target_str, unit = cls._resolve_target(action, ctx.is_spell)
                       if up_to and amt > 0:
                           t = f"{target_str}を{amt}{unit}まで選び、手札に戻す。"
                       elif amt == 0:
@@ -4344,7 +4383,7 @@ class CardTextGenerator:
         optional = action.get("optional", False)
 
         # Resolve dynamic target strings
-        target_str, unit = cls._resolve_target(action, is_spell)
+        target_str, unit = cls._resolve_target(action, ctx.is_spell)
 
         # Parameter Substitution
         val1 = action.get("value1", 0)
@@ -4454,7 +4493,7 @@ class CardTextGenerator:
         # Complex Action Logic
         if atype == "DISCARD":
             # Standard discard with amount
-            amt = action.get('amount', val1 if val1 else 1)
+            amt = get_command_amount(action, default=val1 if val1 else 1)
             up_to_discard = bool(action.get('up_to', False))
             if amt == 0:
                 template = "手札をすべて捨てる。"
@@ -4466,26 +4505,26 @@ class CardTextGenerator:
 
 
         elif atype == "MEKRAID" or atype == "FRIEND_BURST" or atype == "APPLY_MODIFIER" or atype == "ADD_KEYWORD" or atype == "MUTATE" or atype == "REGISTER_DELAYED_EFFECT" or atype == "SUMMON_TOKEN":
-             text = cls._format_special_effect_command(atype, action, is_spell, val1, target_str, unit)
+             text = cls._format_special_effect_command(atype, action, ctx.is_spell, val1, target_str, unit)
              if text: return text
 
         elif atype == "TRANSITION" or atype == "MOVE_CARD" or atype == "REPLACE_CARD_MOVE":
              # Zone move commands return a template that needs variable substitution
              # so we assign to template and let execution proceed.
-             t = cls._format_zone_move_command(atype, action, is_spell, val1, target_str)
+             t = cls._format_zone_move_command(atype, action, ctx.is_spell, val1, target_str)
              if t:
                  template = t
 
         elif atype == "IF" or atype == "IF_ELSE" or atype == "ELSE":
-            text = cls._format_logic_command(atype, action, is_spell, sample, card_mega_last_burst)
+            text = cls._format_logic_command(atype, action, ctx)
             if text: return text
 
         # Attempt to format as a general game action command
-        text = cls._format_game_action_command(atype, action, is_spell, val1, val2, target_str, unit, input_key, input_usage, sample)
+        text = cls._format_game_action_command(atype, action, val1, val2, target_str, unit, input_key, input_usage, ctx)
         if text: return text
 
         # Check Buffer Command (Override template if specific logic exists)
-        buf = cls._format_buffer_command(atype, action, is_spell, val1)
+        buf = cls._format_buffer_command(atype, action, ctx.is_spell, val1)
         if buf:
             template = buf
 
@@ -4528,7 +4567,7 @@ class CardTextGenerator:
                 zones = temp_filter.get("zones", [])
                 linked_cost_phrase = ""
                 max_cost_def = temp_filter.get("max_cost")
-                if isinstance(max_cost_def, dict) and max_cost_def.get("input_value_usage") == "MAX_COST":
+                if is_input_linked(max_cost_def, usage="MAX_COST"):
                     source_token = cls._format_linked_count_token(action, "その数")
                     source_token = cls._normalize_linked_count_label(source_token)
                     linked_cost_phrase = f"{source_token}以下のコストの"
@@ -4613,7 +4652,7 @@ class CardTextGenerator:
             if action.get("value1", 0) == 0:
                 max_cost = temp_filter.get("max_cost", MAX_COST_VALUE)
                 # Handle max_cost that might be int or dict with input_link
-                if isinstance(max_cost, dict):
+                if is_input_linked(max_cost):
                     # If it's input-linked, don't extract a numeric value
                     # Keep max_cost in filter so _resolve_target can process it
                     pass
@@ -4658,7 +4697,7 @@ class CardTextGenerator:
             use_linked_cost = False
             max_cost = temp_filter.get("max_cost")
             linked_cost_phrase = ""
-            if isinstance(max_cost, dict) and max_cost.get("input_value_usage") == "MAX_COST":
+            if is_input_linked(max_cost, usage="MAX_COST"):
                 use_linked_cost = True
                 source_token = cls._format_linked_count_token(action, "その数")
                 source_token = cls._normalize_linked_count_label(source_token)
@@ -4720,7 +4759,7 @@ class CardTextGenerator:
 
         if atype == "COST_REDUCTION":
             if target_str == "カード" or target_str == "自分のカード":
-                replacement = "この呪文" if is_spell else "このクリーチャー"
+                replacement = "この呪文" if ctx.is_spell else "このクリーチャー"
                 text = text.replace("カード", replacement)
                 text = text.replace("自分のカード", replacement)
             cond = action.get("condition", {})
@@ -4945,9 +4984,9 @@ class CardTextGenerator:
             min_cost = filter_def.get("min_cost", 0)
             max_cost = filter_def.get("max_cost", MAX_COST_VALUE)
 
-            if has_input_key and input_usage == "MIN_COST":
+            if is_input_linked(min_cost, usage="MIN_COST") or (has_input_key and input_usage == "MIN_COST"):
                 adjectives += "コストその数以上の"
-            elif has_input_key and input_usage == "MAX_COST":
+            elif is_input_linked(max_cost, usage="MAX_COST") or (has_input_key and input_usage == "MAX_COST"):
                 adjectives += "コストその数以下の"
             else:
                 cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
@@ -4958,9 +4997,9 @@ class CardTextGenerator:
             min_power = filter_def.get("min_power", 0)
             max_power = filter_def.get("max_power", MAX_POWER_VALUE)
 
-            if has_input_key and input_usage == "MIN_POWER":
+            if is_input_linked(min_power, usage="MIN_POWER") or (has_input_key and input_usage == "MIN_POWER"):
                 adjectives += "パワーその数以上の"
-            elif has_input_key and input_usage == "MAX_POWER":
+            elif is_input_linked(max_power, usage="MAX_POWER") or (has_input_key and input_usage == "MAX_POWER"):
                 adjectives += "パワーその数以下の"
             else:
                 power_text = FilterTextFormatter.format_range_text(min_power, max_power, unit="パワー", min_usage="MIN_POWER", max_usage="MAX_POWER", linked_token="その数")

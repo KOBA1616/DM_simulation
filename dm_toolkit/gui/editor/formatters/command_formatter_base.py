@@ -1,12 +1,13 @@
 from typing import Dict, Any, List, Optional
 import dm_toolkit.consts as consts
 from dm_toolkit.gui.editor.text_resources import CardTextResources
+from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 
 class CommandFormatterBase:
     """Base class for all command text formatters."""
 
     @classmethod
-    def format(cls, command: Dict[str, Any], is_spell: bool = False, sample: List[Any] = None, card_mega_last_burst: bool = False) -> str:
+    def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         """
         Generate Japanese text for the given command.
         Must be implemented by subclasses.
