@@ -4,29 +4,13 @@ from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
 from dm_toolkit import consts
+from dm_toolkit.consts import MAX_COST_VALUE, MAX_POWER_VALUE
 
 class CardTextGenerator:
     """
     Generates Japanese rule text for Duel Masters cards based on JSON data.
     """
 
-    # Trigger text templates organized by trigger type and timing mode.
-    # 再発防止: タイミング(PRE/POST)・スコープ・トリガータイプを
-    # 1か所で変数的に組み立て、個別分岐の散在による文面不一致を防ぐ。
-    TRIGGER_COMPOSITION_TEMPLATES: Dict[str, Dict[str, str]] = {
-        "ON_PLAY": {
-            "POST": "{scope_text}の{subject}がバトルゾーンに出た時",
-            "PRE": "{scope_text}の{subject}がバトルゾーンに出る時",
-        },
-        "ON_OTHER_ENTER": {
-            "POST": "{scope_text}の他の{subject}がバトルゾーンに出た時",
-            "PRE": "{scope_text}の他の{subject}がバトルゾーンに出る時",
-        },
-        "ON_CAST_SPELL": {
-            "POST": "{scope_text}の{subject}を唱えた時",
-            "PRE": "{scope_text}の{subject}を唱える時",
-        },
-    }
 
     @classmethod
     def generate_text(cls, data: Dict[str, Any], include_twinpact: bool = True, sample: List[Any] = None) -> str:
@@ -261,7 +245,7 @@ class CardTextGenerator:
             parts.append(cls._format_civs(civs))
 
         min_cost = cond.get("min_cost", 0)
-        max_cost = cond.get("max_cost", 999)
+        max_cost = cond.get("max_cost", MAX_COST_VALUE)
         if isinstance(min_cost, dict):
             parts.append("コストその数以上")
         elif isinstance(max_cost, dict):
@@ -269,7 +253,7 @@ class CardTextGenerator:
         else:
             if isinstance(min_cost, int) and isinstance(max_cost, int):
                 has_min = min_cost > 0
-                has_max = max_cost > 0 and max_cost not in (999,)
+                has_max = max_cost > 0 and max_cost not in (MAX_COST_VALUE,)
                 if has_min and has_max and min_cost != max_cost:
                     parts.append(f"コスト{min_cost}～{max_cost}")
                 elif has_min:
@@ -347,7 +331,7 @@ class CardTextGenerator:
         races = filter_def.get("races", [])
         types = filter_def.get("types", [])
         min_cost = filter_def.get("min_cost", 0)
-        max_cost = filter_def.get("max_cost", 999)
+        max_cost = filter_def.get("max_cost", MAX_COST_VALUE)
         exact_cost = filter_def.get("exact_cost")
         cost_ref = filter_def.get("cost_ref")
 
@@ -804,9 +788,9 @@ class CardTextGenerator:
         races = filter_def.get("races", [])
         owner = filter_def.get("owner", "")  # Will NOT apply prefix here (handled in _format_modifier)
         min_cost = filter_def.get("min_cost", 0)
-        max_cost = filter_def.get("max_cost", 999)
+        max_cost = filter_def.get("max_cost", MAX_COST_VALUE)
         min_power = filter_def.get("min_power", 0)
-        max_power = filter_def.get("max_power", 999999)
+        max_power = filter_def.get("max_power", MAX_POWER_VALUE)
         is_tapped = filter_def.get("is_tapped")
         is_blocker = filter_def.get("is_blocker")
         is_evolution = filter_def.get("is_evolution")
@@ -1045,17 +1029,17 @@ class CardTextGenerator:
             min_cost = f.get("min_cost", 0)
             if min_cost is None:
                 min_cost = 0
-            max_cost = f.get("max_cost", 999)
+            max_cost = f.get("max_cost", MAX_COST_VALUE)
             if max_cost is None:
-                max_cost = 999
+                max_cost = MAX_COST_VALUE
             exact_cost = f.get("exact_cost")
             cost_ref = f.get("cost_ref")
             min_power = f.get("min_power", 0)
             if min_power is None:
                 min_power = 0
-            max_power = f.get("max_power", 999999)
+            max_power = f.get("max_power", MAX_POWER_VALUE)
             if max_power is None:
-                max_power = 999999
+                max_power = MAX_POWER_VALUE
             power_max_ref = f.get("power_max_ref")
             is_tapped = f.get("is_tapped")
             is_blocker = f.get("is_blocker")
@@ -1081,7 +1065,7 @@ class CardTextGenerator:
             if zones and "BATTLE_ZONE" not in zones:
                 zone_names = []
                 for z in zones:
-                    zone_text = cls._normalize_zone_name(z)
+                    zone_text = CardTextResources.normalize_zone_name(z)
                     if zone_text:
                         zone_names.append(zone_text)
                 if zone_names:
@@ -1103,11 +1087,11 @@ class CardTextGenerator:
                 elif isinstance(max_cost, dict) and max_cost.get("input_value_usage") == "MAX_COST":
                     adjs.append("コストその数以下")
                 else:
-                    if min_cost > 0 and max_cost < 999:
+                    if min_cost > 0 and max_cost < MAX_COST_VALUE:
                         adjs.append(f"コスト{min_cost}～{max_cost}")
                     elif min_cost > 0:
                         adjs.append(f"コスト{min_cost}以上")
-                    elif max_cost < 999:
+                    elif max_cost < MAX_COST_VALUE:
                         adjs.append(f"コスト{max_cost}以下")
 
             # Power conditions
@@ -1118,11 +1102,11 @@ class CardTextGenerator:
             elif isinstance(max_power, dict) and max_power.get("input_value_usage") == "MAX_POWER":
                 adjs.append("パワーその数以下")
             else:
-                if min_power > 0 and max_power < 999999:
+                if min_power > 0 and max_power < MAX_POWER_VALUE:
                     adjs.append(f"パワー{min_power}～{max_power}")
                 elif min_power > 0:
                     adjs.append(f"パワー{min_power}以上")
-                elif max_power < 999999:
+                elif max_power < MAX_POWER_VALUE:
                     adjs.append(f"パワー{max_power}以下")
 
             # Flags
@@ -1156,7 +1140,7 @@ class CardTextGenerator:
             return noun
 
         # Structured template composition (timing/scope/trigger as variables)
-        tmpl_set = cls.TRIGGER_COMPOSITION_TEMPLATES.get(trigger_type)
+        tmpl_set = CardTextResources.TRIGGER_COMPOSITION_TEMPLATES.get(trigger_type)
         if tmpl_set:
             timing_key = str(timing_mode or "").upper()
             if timing_key not in ("PRE", "POST"):
@@ -1229,54 +1213,6 @@ class CardTextGenerator:
         if effect is not None and cls.is_replacement_effect(effect):
             return cls._to_replacement_trigger_text(base)
         return base
-
-    @classmethod
-    def _normalize_zone_name(cls, zone: str) -> str:
-        if not zone:
-            return ""
-
-        z = str(zone).split(".")[-1].upper()
-        zone_map = {
-            # CommandSystem short names -> JSON/UI long names
-            "BATTLE": "BATTLE_ZONE",
-            "MANA": "MANA_ZONE",
-            "SHIELD": "SHIELD_ZONE",
-
-            # Identity / already-long
-            "BATTLE_ZONE": "BATTLE_ZONE",
-            "MANA_ZONE": "MANA_ZONE",
-            "SHIELD_ZONE": "SHIELD_ZONE",
-            "HAND": "HAND",
-            "GRAVEYARD": "GRAVEYARD",
-            "DECK": "DECK",
-            "DECK_TOP": "DECK_TOP",
-            "DECK_BOTTOM": "DECK_BOTTOM",
-            "BUFFER": "BUFFER",
-            "UNDER_CARD": "UNDER_CARD",
-        }
-        return zone_map.get(z, z)
-
-    @classmethod
-    def _zone_to_japanese(cls, zone: str) -> str:
-        """Best-effort zone localization for text generation.
-
-        Unit tests run with a minimal i18n stub where tr() may be identity.
-        Keep the mapping here so core text output stays readable.
-        """
-        z = cls._normalize_zone_name(zone)
-        jp = {
-            "BATTLE_ZONE": "バトルゾーン",
-            "MANA_ZONE": "マナゾーン",
-            "SHIELD_ZONE": "シールドゾーン",
-            "HAND": "手札",
-            "GRAVEYARD": "墓地",
-            "DECK": "山札",
-            "DECK_TOP": "山札の上",
-            "DECK_BOTTOM": "山札の下",
-            "BUFFER": "バッファ",
-            "UNDER_CARD": "下",
-        }
-        return jp.get(z, tr(z))
 
     @classmethod
     def _format_keyword_grant_text(cls, target_str: str, key_id: str, display_text: str, duration_text: str, amount: int = None, skip_selection: bool = False) -> str:
@@ -1391,14 +1327,11 @@ class CardTextGenerator:
             cond_text = cls._format_revolution_change_text(tf) if tf else "クリーチャー"
             return f"革命チェンジ：{cond_text}"
 
-        if cmd_type == "POWER_MOD": cmd_type = "MODIFY_POWER"
-        elif cmd_type == "ADD_KEYWORD": 
-            cmd_type = "ADD_KEYWORD"
+        cmd_type = CardTextResources.normalize_command_alias(cmd_type)
+        if cmd_type == "ADD_KEYWORD":
             # Ensure mutation_kind is mapped to str_val for text generation
             if not command_copy.get("str_val") and command_copy.get("mutation_kind"):
                 command_copy["str_val"] = command_copy["mutation_kind"]
-        elif cmd_type == "MANA_CHARGE": cmd_type = "SEND_TO_MANA" # Or ADD_MANA depending on context
-        elif cmd_type == "CHOICE": cmd_type = "SELECT_OPTION"
 
         # Construct proxy action object
         # Normalize common input-link fields from various sources
@@ -2021,7 +1954,7 @@ class CardTextGenerator:
             dest_zone = action.get("destination_zone", "HAND")
             if not dest_zone:
                 dest_zone = "HAND"
-            zone_str = cls._zone_to_japanese(dest_zone)
+            zone_str = CardTextResources.get_zone_text(dest_zone)
             count = val1 if val1 > 0 else 1
 
             if dest_zone == "HAND":
@@ -2087,10 +2020,10 @@ class CardTextGenerator:
             # Prioritize explicit from_zone
             from_z = action.get("from_zone") or action.get("source_zone")
             if from_z and from_z != "NONE":
-                src_text = cls._zone_to_japanese(from_z) + "から"
+                src_text = CardTextResources.get_zone_text(from_z) + "から"
                 filter_local.pop("zones", None)
             elif filter_zones:
-                znames = [cls._zone_to_japanese(z) for z in filter_zones]
+                znames = [CardTextResources.get_zone_text(z) for z in filter_zones]
                 src_text = "または".join(znames) + "から"
                 filter_local["zones"] = []
 
@@ -2492,97 +2425,79 @@ class CardTextGenerator:
         is_generic_selection = atype in ["MOVE_CARD", "TRANSITION"]
 
         if atype == "TRANSITION":
-            from_z = cls._normalize_zone_name(action.get("from_zone", ""))
-            to_z = cls._normalize_zone_name(action.get("to_zone", ""))
+            from_z = CardTextResources.normalize_zone_name(action.get("from_zone", ""))
+            to_z = CardTextResources.normalize_zone_name(action.get("to_zone", ""))
             amount = val1 # Use value1 which maps to amount
             up_to_flag = bool(action.get('up_to', False))
 
-            template = "{target}を{from_z}から{to_z}へ移動する。" # Default
+            template_key = (from_z, to_z)
+            if template_key in CardTextResources.ZONE_MOVE_TEMPLATES:
+                template = CardTextResources.ZONE_MOVE_TEMPLATES[template_key]
 
-            # Natural Language Mapping with explicit source/destination zones
-            if from_z == "BATTLE_ZONE" and to_z == "GRAVEYARD":
-                if up_to_flag and amount > 0:
-                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
-                else:
-                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
-                    if amount == 0 and not input_key:
+                # Further refine template based on up_to flag, amount and input_key
+                if template_key == ("BATTLE_ZONE", "GRAVEYARD") or template_key == ("BATTLE_ZONE", "MANA_ZONE"):
+                    if up_to_flag and amount > 0:
+                        template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
+                    elif amount == 0 and not input_key:
                         template = "{from_z}の{target}をすべて{to_z}に置く。"
-            elif from_z == "BATTLE_ZONE" and to_z == "MANA_ZONE":
-                if up_to_flag and amount > 0:
-                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
-                else:
-                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
-                    if amount == 0 and not input_key:
-                        template = "{from_z}の{target}をすべて{to_z}に置く。"
-            elif from_z == "BATTLE_ZONE" and to_z == "HAND":
-                if up_to_flag and amount > 0:
-                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に戻す。"
-                else:
-                    template = "{from_z}の{target}を{amount}{unit}{to_z}に戻す。"
-                    if amount == 0 and not input_key:
+                elif template_key == ("BATTLE_ZONE", "HAND"):
+                    if up_to_flag and amount > 0:
+                        template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に戻す。"
+                    elif amount == 0 and not input_key:
                         template = "{from_z}の{target}をすべて{to_z}に戻す。"
-            elif from_z == "HAND" and to_z == "MANA_ZONE":
-                if up_to_flag and amount > 0:
-                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
-                else:
-                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
-            elif from_z == "DECK" and to_z == "HAND":
-                # Draw: include both zones explicitly
-                if up_to_flag:
-                    if target_str != "カード":  # Search logic
-                        template = "{from_z}から{target}を{amount}{unit}まで選び、{to_z}に加える。"
-                    else:
-                        # 再発防止: DECK->HAND も暗黙移動ではなく選択を明示して文面を統一する。
-                        template = "山札からカードを最大{amount}枚まで選び、手札に加える。"
-                else:
-                    if target_str != "カード":  # Search logic
-                        template = "{from_z}から{target}を{amount}{unit}選び、{to_z}に加える。"
-                    else:
-                        # 再発防止: DECK->HAND の通常分岐でも選択語を含める。
-                        template = "山札からカードを{amount}枚選び、手札に加える。"
-            elif from_z == "GRAVEYARD" and to_z == "HAND":
-                if up_to_flag and amount > 0:
-                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に戻す。"
-                else:
-                    template = "{from_z}の{target}を{amount}{unit}{to_z}に戻す。"
-            elif from_z == "GRAVEYARD" and to_z == "BATTLE_ZONE":
-                if up_to_flag and amount > 0:
-                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に出す。"
-                else:
-                    template = "{from_z}の{target}を{amount}{unit}{to_z}に出す。"
-            elif to_z == "GRAVEYARD":
-                if up_to_flag and amount > 0:
-                    template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
-                else:
-                    template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
-            elif to_z == "DECK_BOTTOM":
-                if input_key:
-                    # 再発防止: HAND由来の入力リンクは「自分の手札から…」の自然文に統一する。
-                    normalized_from = cls._normalize_zone_name(from_z)
-                    scope = action.get("target_group") or action.get("scope", "NONE")
-                    if normalized_from == "HAND":
-                        to_zone_text = cls._zone_to_japanese(to_z)
-                        linked_count = cls._format_linked_count_token(action, "その同じ数")
-                        owner = ""
-                        if scope in ["PLAYER_SELF", "SELF"]:
-                            owner = "自分の"
-                        elif scope in ["PLAYER_OPPONENT", "OPPONENT"]:
-                            owner = "相手の"
-                        elif scope == "ALL_PLAYERS":
-                            owner = "各プレイヤーの"
-                        if up_to_flag:
-                            template = f"{owner}手札から{target_str}を{linked_count}だけまで選び、{to_zone_text}に置く。"
+                elif template_key == ("HAND", "MANA_ZONE"):
+                    if up_to_flag and amount > 0:
+                        template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
+                elif template_key == ("DECK", "HAND"):
+                    if up_to_flag:
+                        if target_str != "カード":
+                            template = "{from_z}から{target}を{amount}{unit}まで選び、{to_z}に加える。"
                         else:
-                            template = f"{owner}手札から{target_str}を{linked_count}だけ選び、{to_zone_text}に置く。"
-                    elif up_to_flag:
-                        template = "{from_z}の{target}をその同じ数だけまで選び、{to_z}に置く。"
+                            template = "山札からカードを最大{amount}枚まで選び、手札に加える。"
                     else:
-                        template = "{from_z}の{target}をその同じ数だけ選び、{to_z}に置く。"
-                else:
+                        if target_str != "カード":
+                            template = "{from_z}から{target}を{amount}{unit}選び、{to_z}に加える。"
+                elif template_key == ("GRAVEYARD", "HAND"):
+                    if up_to_flag and amount > 0:
+                        template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に戻す。"
+                elif template_key == ("GRAVEYARD", "BATTLE_ZONE"):
+                    if up_to_flag and amount > 0:
+                        template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に出す。"
+            else:
+                if to_z == "GRAVEYARD":
                     if up_to_flag and amount > 0:
                         template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
                     else:
                         template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                elif to_z == "DECK_BOTTOM":
+                    if input_key:
+                        normalized_from = CardTextResources.normalize_zone_name(from_z)
+                        scope = action.get("target_group") or action.get("scope", "NONE")
+                        if normalized_from == "HAND":
+                            to_zone_text = CardTextResources.get_zone_text(to_z)
+                            linked_count = cls._format_linked_count_token(action, "その同じ数")
+                            owner = ""
+                            if scope in ["PLAYER_SELF", "SELF"]:
+                                owner = "自分の"
+                            elif scope in ["PLAYER_OPPONENT", "OPPONENT"]:
+                                owner = "相手の"
+                            elif scope == "ALL_PLAYERS":
+                                owner = "各プレイヤーの"
+                            if up_to_flag:
+                                template = f"{owner}手札から{{target}}を{linked_count}だけまで選び、{to_zone_text}に置く。"
+                            else:
+                                template = f"{owner}手札から{{target}}を{linked_count}だけ選び、{to_zone_text}に置く。"
+                        elif up_to_flag:
+                            template = "{from_z}の{target}をその同じ数だけまで選び、{to_z}に置く。"
+                        else:
+                            template = "{from_z}の{target}をその同じ数だけ選び、{to_z}に置く。"
+                    else:
+                        if up_to_flag and amount > 0:
+                            template = "{from_z}の{target}を{amount}{unit}まで選び、{to_z}に置く。"
+                        else:
+                            template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                else:
+                    template = CardTextResources.ZONE_MOVE_TEMPLATES.get("DEFAULT", "{target}を{from_z}から{to_z}へ移動する。")
 
             # input_value_keyがある場合は「その同じ枚数」と表示
             # Note: We need to return the modified template to be formatted by _format_action's loop?
@@ -2599,9 +2514,9 @@ class CardTextGenerator:
 
             # Zone name localization when placeholders are present
             if "{from_z}" in template:
-                template = template.replace("{from_z}", cls._zone_to_japanese(from_z))
+                template = template.replace("{from_z}", CardTextResources.get_zone_text(from_z))
             if "{to_z}" in template:
-                template = template.replace("{to_z}", cls._zone_to_japanese(to_z))
+                template = template.replace("{to_z}", CardTextResources.get_zone_text(to_z))
 
             return template
             # But since we extracted it, we need to handle substitutions OR return a template
@@ -2634,8 +2549,8 @@ class CardTextGenerator:
             if not src_zone:
                 src_zone = action.get("from_zone", "GRAVEYARD")
 
-            zone_str = cls._zone_to_japanese(dest_zone) if dest_zone else "どこか"
-            orig_zone_str = cls._zone_to_japanese(src_zone) if src_zone else "元のゾーン"
+            zone_str = CardTextResources.get_zone_text(dest_zone) if dest_zone else "どこか"
+            orig_zone_str = CardTextResources.get_zone_text(src_zone) if src_zone else "元のゾーン"
             up_to_flag = bool(action.get('up_to', False))
 
             # 再発防止: target_group 優先。scope は後方互換。
@@ -2647,7 +2562,7 @@ class CardTextGenerator:
                 link_suffix = cls._format_input_link_context_suffix(action)
                 linked_target = "そのカード"
                 # 再発防止: EVENT_SOURCE を対象参照として扱う場合は明示選択文を出さない。
-                if input_key == "EVENT_SOURCE" and cls._normalize_zone_name(src_zone) == "BATTLE_ZONE":
+                if input_key == "EVENT_SOURCE" and CardTextResources.normalize_zone_name(src_zone) == "BATTLE_ZONE":
                     linked_target = "そのクリーチャー"
 
                 if input_usage in ("", "TARGET"):
@@ -2877,8 +2792,8 @@ class CardTextGenerator:
 
         # Special-case: treat TRANSITION from DECK->HAND as DRAW_CARD for natural language
         if atype == 'TRANSITION':
-            from_zone = cls._normalize_zone_name(action.get('from_zone') or action.get('fromZone') or '')
-            to_zone = cls._normalize_zone_name(action.get('to_zone') or action.get('toZone') or '')
+            from_zone = CardTextResources.normalize_zone_name(action.get('from_zone') or action.get('fromZone') or '')
+            to_zone = CardTextResources.normalize_zone_name(action.get('to_zone') or action.get('toZone') or '')
             amt = action.get('amount') or action.get('value1') or 0
             up_to = bool(action.get('up_to', False))
 
@@ -3197,13 +3112,13 @@ class CardTextGenerator:
                     action["source_zone"] = zones[0]
 
             if action.get("value1", 0) == 0:
-                max_cost = temp_filter.get("max_cost", 999)
+                max_cost = temp_filter.get("max_cost", MAX_COST_VALUE)
                 # Handle max_cost that might be int or dict with input_link
                 if isinstance(max_cost, dict):
                     # If it's input-linked, don't extract a numeric value
                     # Keep max_cost in filter so _resolve_target can process it
                     pass
-                elif max_cost < 999:
+                elif max_cost < MAX_COST_VALUE:
                     action["value1"] = max_cost
                     if not input_key: val1 = max_cost
                     if "max_cost" in temp_filter: del temp_filter["max_cost"]
@@ -3273,9 +3188,9 @@ class CardTextGenerator:
 
         # Destination/Source Resolution
         dest_zone = action.get("destination_zone", "")
-        zone_str = cls._zone_to_japanese(dest_zone) if dest_zone else "どこか"
+        zone_str = CardTextResources.get_zone_text(dest_zone) if dest_zone else "どこか"
         src_zone = action.get("source_zone", "")
-        src_str = cls._zone_to_japanese(src_zone) if src_zone else ""
+        src_str = CardTextResources.get_zone_text(src_zone) if src_zone else ""
 
         text = template.replace("{value1}", str(val1))
         text = text.replace("{value2}", str(val2))
@@ -3529,7 +3444,7 @@ class CardTextGenerator:
 
             # Cost
             min_cost = filter_def.get("min_cost", 0)
-            max_cost = filter_def.get("max_cost", 999)
+            max_cost = filter_def.get("max_cost", MAX_COST_VALUE)
 
             if has_input_key and input_usage == "MIN_COST":
                 adjectives += "コストその数以上の"
@@ -3542,7 +3457,7 @@ class CardTextGenerator:
             
             # Power
             min_power = filter_def.get("min_power", 0)
-            max_power = filter_def.get("max_power", 999999)
+            max_power = filter_def.get("max_power", MAX_POWER_VALUE)
 
             if has_input_key and input_usage == "MIN_POWER":
                 adjectives += "パワーその数以上の"
@@ -3793,7 +3708,7 @@ class CardTextGenerator:
         exact_cost = trigger_filter.get("exact_cost")
         cost_ref = trigger_filter.get("cost_ref")
         min_cost = trigger_filter.get("min_cost", 0)
-        max_cost = trigger_filter.get("max_cost", 999)
+        max_cost = trigger_filter.get("max_cost", MAX_COST_VALUE)
         
         if cost_ref:
             descriptions.append("コスト【選択数字】")
@@ -3806,7 +3721,7 @@ class CardTextGenerator:
         
         # Power conditions
         min_power = trigger_filter.get("min_power", 0)
-        max_power = trigger_filter.get("max_power", 999999)
+        max_power = trigger_filter.get("max_power", MAX_POWER_VALUE)
         power_max_ref = trigger_filter.get("power_max_ref")
         
         if power_max_ref:
@@ -3849,7 +3764,7 @@ class CardTextGenerator:
         if zones and "BATTLE_ZONE" not in zones:
             zone_names = []
             for z in zones:
-                zone_text = cls._normalize_zone_name(z)
+                zone_text = CardTextResources.normalize_zone_name(z)
                 if zone_text:
                     zone_names.append(zone_text)
             if zone_names:

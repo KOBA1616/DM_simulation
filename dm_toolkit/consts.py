@@ -3,6 +3,9 @@ import sys
 import os
 from dm_toolkit.stat_keys import QUERY_STAT_KEYS
 
+MAX_COST_VALUE = 999
+MAX_POWER_VALUE = 999999
+
 """
 Central Constants Definition.
 
