@@ -666,3 +666,77 @@ class CardTextResources:
         if not isinstance(stat_key, str):
             return str(stat_key)
         return cls.STAT_KEY_ALIASES.get(stat_key, stat_key)
+
+
+class TargetScopeResolver:
+    @classmethod
+    def resolve_player_scope_noun(cls, scope: str) -> str:
+        """
+        Returns the base noun for the player scope: '自分', '相手', 'すべてのプレイヤー', or '自身'.
+        """
+        from dm_toolkit.consts import TargetScope
+        normalized = TargetScope.normalize(scope)
+        if normalized == TargetScope.SELF:
+            return "自分"
+        elif normalized == TargetScope.OPPONENT:
+            return "相手"
+        elif normalized == TargetScope.ALL or normalized == "ALL_PLAYERS":
+            return "すべてのプレイヤー"
+        return ""
+
+    @classmethod
+    def resolve_scope_prefix(cls, scope: str) -> str:
+        """
+        Returns the possessive prefix for the scope: '自分の', '相手の', 'すべてのプレイヤーの', 'ランダムな'.
+        """
+        from dm_toolkit.consts import TargetScope
+        normalized = TargetScope.normalize(scope)
+        if normalized == "ALL_PLAYERS":
+            return "すべてのプレイヤーの"
+        elif normalized == "RANDOM":
+            return "ランダムな"
+        return CardTextResources.get_scope_text(normalized)
+
+    @classmethod
+    def apply_scope_prefix(cls, scope: str, text: str = "") -> str:
+        """
+        Applies a scope prefix (e.g., '自分の', '相手の') to a text,
+        avoiding duplication like '相手の相手の'.
+        """
+        from dm_toolkit.consts import TargetScope
+        if not scope or scope == "NONE" or scope == "ALL":
+            return text
+
+        scope_text = cls.resolve_scope_prefix(scope)
+        if not scope_text:
+            return text
+
+        scope_variants = []
+        normalized = TargetScope.normalize(scope)
+        if normalized == TargetScope.OPPONENT:
+            scope_variants.extend(["相手が", "相手の"])
+        elif normalized == TargetScope.SELF:
+            scope_variants.extend(["自分が", "自分の"])
+
+        for v in scope_variants:
+            if v in text:
+                return text
+
+        if not text:
+            return scope_text
+
+        if scope_text.endswith("の") and text.startswith("の"):
+            return scope_text + text[1:]
+
+        return f"{scope_text}{text}"
+
+    @classmethod
+    def ensure_possessive(cls, text: str) -> str:
+        """
+        Checks if the text starts with '自分' or '相手' without 'の', and appends 'の'.
+        """
+        if text.startswith("自分") and not text.startswith("自分の"):
+            return text.replace("自分", "自分の", 1)
+        if text.startswith("相手") and not text.startswith("相手の"):
+            return text.replace("相手", "相手の", 1)
+        return text
