@@ -490,12 +490,7 @@ namespace dm::engine::systems {
         // Ensure continuous effects are recalculated after a one-shot resolution
         // This guarantees MCTS one-shot paths and other callers observe
         // up-to-date `active_modifiers` before further cost/payment checks.
-        try {
-            dm::engine::systems::ContinuousEffectSystem::recalculate(state, card_db);
-        } catch(...) {
-            // Swallow exceptions to avoid breaking callers in production paths;
-            // errors should be surfaced via logs during development.
-        }
+        dm::engine::systems::ContinuousEffectSystem::recalculate(state, card_db);
     }
 
     void GameLogicSystem::resolve_play_from_stack(core::GameState& game_state, int stack_instance_id, int cost_reduction, core::SpawnSource spawn_source, core::PlayerID /*controller*/, const std::map<core::CardID, core::CardDefinition>& card_db, int evo_source_id, core::ZoneDestination dest_override) {
