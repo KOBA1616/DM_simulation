@@ -332,6 +332,14 @@ class CardTextResources:
         "QUERY": "クエリ発行: {query_mode}",
         "ATTACH": "{target}を{base_target}の下に重ねる。",
         "GAME_RESULT": "ゲームを終了する（{result}）。",
+        "ADD_KEYWORD": "{target}に「{str_val}」を与える。",
+        "CHOICE": "次の中から選ぶ。",
+        "MANA_CHARGE": "{target}をマナゾーンに置く。",
+        "POWER_MOD": "{target}のパワーを{value1}する。",
+        "RESOLVE_BATTLE": "{target}とバトルさせる。",
+        "SHIELD_BURN": "相手のシールドを{value1}つ選び、墓地に置く。",
+        "REVOLUTION_CHANGE": "革命チェンジ（{filter}）",
+        "NONE": "",
     }
 
     # 再発防止: compare_stat 候補は dm_toolkit.stat_keys を単一ソースとして参照する。
