@@ -125,17 +125,77 @@
                 "count": 1
               },
               "legacy_action": {
-                "zones": [
-                  "HAND"
-                ],
-                "civilizations": [],
-                "races": [],
-                "max_cost": 3,
-                "flags": [],
-                "count": 1,
-                "types": [
-                  "SPELL"
-                ]
+                "type": "LEGACY_CMD",
+                "params": {
+                  "count": 1
+                },
+                "legacy_action": {
+                  "type": "LEGACY_CMD",
+                  "params": {
+                    "count": 1
+                  },
+                  "legacy_action": {
+                    "type": "LEGACY_CMD",
+                    "params": {
+                      "count": 1
+                    },
+                    "legacy_action": {
+                      "type": "LEGACY_CMD",
+                      "params": {
+                        "count": 1
+                      },
+                      "legacy_action": {
+                        "type": "LEGACY_CMD",
+                        "params": {
+                          "count": 1
+                        },
+                        "legacy_action": {
+                          "type": "LEGACY_CMD",
+                          "params": {
+                            "count": 1
+                          },
+                          "legacy_action": {
+                            "type": "LEGACY_CMD",
+                            "params": {
+                              "count": 1
+                            },
+                            "legacy_action": {
+                              "type": "LEGACY_CMD",
+                              "params": {
+                                "count": 1
+                              },
+                              "legacy_action": {
+                                "type": "LEGACY_CMD",
+                                "params": {
+                                  "count": 1
+                                },
+                                "legacy_action": {
+                                  "type": "LEGACY_CMD",
+                                  "params": {
+                                    "count": 1
+                                  },
+                                  "legacy_action": {
+                                    "zones": [
+                                      "HAND"
+                                    ],
+                                    "civilizations": [],
+                                    "races": [],
+                                    "max_cost": 3,
+                                    "flags": [],
+                                    "count": 1,
+                                    "types": [
+                                      "SPELL"
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             },
             "optional": true,
@@ -147,17 +207,77 @@
                 "count": 1
               },
               "legacy_action": {
-                "zones": [
-                  "HAND"
-                ],
-                "civilizations": [],
-                "races": [],
-                "max_cost": 3,
-                "flags": [],
-                "count": 1,
-                "types": [
-                  "SPELL"
-                ]
+                "type": "LEGACY_CMD",
+                "params": {
+                  "count": 1
+                },
+                "legacy_action": {
+                  "type": "LEGACY_CMD",
+                  "params": {
+                    "count": 1
+                  },
+                  "legacy_action": {
+                    "type": "LEGACY_CMD",
+                    "params": {
+                      "count": 1
+                    },
+                    "legacy_action": {
+                      "type": "LEGACY_CMD",
+                      "params": {
+                        "count": 1
+                      },
+                      "legacy_action": {
+                        "type": "LEGACY_CMD",
+                        "params": {
+                          "count": 1
+                        },
+                        "legacy_action": {
+                          "type": "LEGACY_CMD",
+                          "params": {
+                            "count": 1
+                          },
+                          "legacy_action": {
+                            "type": "LEGACY_CMD",
+                            "params": {
+                              "count": 1
+                            },
+                            "legacy_action": {
+                              "type": "LEGACY_CMD",
+                              "params": {
+                                "count": 1
+                              },
+                              "legacy_action": {
+                                "type": "LEGACY_CMD",
+                                "params": {
+                                  "count": 1
+                                },
+                                "legacy_action": {
+                                  "type": "LEGACY_CMD",
+                                  "params": {
+                                    "count": 1
+                                  },
+                                  "legacy_action": {
+                                    "zones": [
+                                      "HAND"
+                                    ],
+                                    "civilizations": [],
+                                    "races": [],
+                                    "max_cost": 3,
+                                    "flags": [],
+                                    "count": 1,
+                                    "types": [
+                                      "SPELL"
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             }
           }
@@ -265,16 +385,46 @@
             "target_filter": {
               "type": "LEGACY_CMD",
               "legacy_action": {
-                "zones": [
-                  "HAND",
-                  "GRAVEYARD"
-                ],
-                "civilizations": [],
-                "races": [],
-                "flags": [],
-                "types": [
-                  "SPELL"
-                ]
+                "type": "LEGACY_CMD",
+                "legacy_action": {
+                  "type": "LEGACY_CMD",
+                  "legacy_action": {
+                    "type": "LEGACY_CMD",
+                    "legacy_action": {
+                      "type": "LEGACY_CMD",
+                      "legacy_action": {
+                        "type": "LEGACY_CMD",
+                        "legacy_action": {
+                          "type": "LEGACY_CMD",
+                          "legacy_action": {
+                            "type": "LEGACY_CMD",
+                            "legacy_action": {
+                              "type": "LEGACY_CMD",
+                              "legacy_action": {
+                                "type": "LEGACY_CMD",
+                                "legacy_action": {
+                                  "type": "LEGACY_CMD",
+                                  "legacy_action": {
+                                    "zones": [
+                                      "HAND",
+                                      "GRAVEYARD"
+                                    ],
+                                    "civilizations": [],
+                                    "races": [],
+                                    "flags": [],
+                                    "types": [
+                                      "SPELL"
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             },
             "optional": true,
@@ -283,16 +433,46 @@
             "filter": {
               "type": "LEGACY_CMD",
               "legacy_action": {
-                "zones": [
-                  "HAND",
-                  "GRAVEYARD"
-                ],
-                "civilizations": [],
-                "races": [],
-                "flags": [],
-                "types": [
-                  "SPELL"
-                ]
+                "type": "LEGACY_CMD",
+                "legacy_action": {
+                  "type": "LEGACY_CMD",
+                  "legacy_action": {
+                    "type": "LEGACY_CMD",
+                    "legacy_action": {
+                      "type": "LEGACY_CMD",
+                      "legacy_action": {
+                        "type": "LEGACY_CMD",
+                        "legacy_action": {
+                          "type": "LEGACY_CMD",
+                          "legacy_action": {
+                            "type": "LEGACY_CMD",
+                            "legacy_action": {
+                              "type": "LEGACY_CMD",
+                              "legacy_action": {
+                                "type": "LEGACY_CMD",
+                                "legacy_action": {
+                                  "type": "LEGACY_CMD",
+                                  "legacy_action": {
+                                    "zones": [
+                                      "HAND",
+                                      "GRAVEYARD"
+                                    ],
+                                    "civilizations": [],
+                                    "races": [],
+                                    "flags": [],
+                                    "types": [
+                                      "SPELL"
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             },
             "input_value_key": "var_QUERY_0",
@@ -1183,11 +1363,12 @@
             "extras": {}
           },
           {
-            "uid": "ed8b6c93-08f5-4e64-ac59-1dd4fdd7dd6b",
+            "uid": "1a7cc97d-b3f7-4f8e-9d60-2c9d10ad98de",
             "type": "SELECT_FROM_BUFFER",
             "filter": null,
             "amount": -1,
-            "extras": {}
+            "extras": {},
+            "output_value_key": "var_1a7cc97d"
           },
           {
             "uid": "4eaa2f66-cae3-4d9d-8f35-c3d66527e66c",

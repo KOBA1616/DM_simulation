@@ -74,6 +74,12 @@ class CardEditor(QMainWindow):
         save_act.setStatusTip(tr("Save all changes to JSON"))
         toolbar.addAction(save_act)
 
+        reload_act = QAction(tr("Reload JSON"), self)
+        safe_connect(reload_act, 'triggered', self._reload_data_manual)
+        reload_act.setShortcut("Ctrl+Shift+R")
+        reload_act.setStatusTip(tr("Reload card JSON from disk"))
+        toolbar.addAction(reload_act)
+
         add_eff_act = QAction(tr("Add Effect"), self)
         safe_connect(add_eff_act, 'triggered', self.add_effect)
         add_eff_act.setShortcut("Ctrl+Shift+E")
@@ -173,6 +179,75 @@ class CardEditor(QMainWindow):
             self.cards_data = data
 
         self.tree_widget.load_data(self.cards_data)
+
+    def _get_selected_card_id(self):
+        """Return currently selected card id if selection is inside a card subtree."""
+        idx = self.tree_widget.currentIndex()
+        if not idx.isValid():
+            return None
+
+        item = self.tree_widget.standard_model.itemFromIndex(idx)
+        while item is not None:
+            item_type = item.data(Qt.ItemDataRole.UserRole + 1)
+            if item_type == "CARD":
+                try:
+                    card_data = self.tree_widget.data_manager.get_item_data(item.index())
+                    card_id = card_data.get("id") if isinstance(card_data, dict) else None
+                    return int(card_id) if card_id is not None else None
+                except Exception:
+                    return None
+            item = item.parent()
+        return None
+
+    def _restore_selection_by_card_id(self, card_id):
+        """Restore tree selection by card id after a full reload."""
+        try:
+            row_count = self.tree_widget.standard_model.rowCount()
+            for row in range(row_count):
+                card_item = self.tree_widget.standard_model.item(row, 0)
+                if card_item is None:
+                    continue
+                if card_item.data(Qt.ItemDataRole.UserRole + 1) != "CARD":
+                    continue
+                card_data = self.tree_widget.data_manager.get_item_data(card_item.index())
+                if not isinstance(card_data, dict):
+                    continue
+                if card_data.get("id") == card_id:
+                    card_index = card_item.index()
+                    self.tree_widget.setCurrentIndex(card_index)
+                    self.tree_widget.expand(card_index)
+                    return card_index
+        except Exception:
+            return None
+        return None
+
+    def _reload_data_manual(self):
+        """Manual reload invoked from toolbar to refresh data from disk."""
+        try:
+            selected_card_id = self._get_selected_card_id()
+            self.load_data()
+            restored_index = None
+            if selected_card_id is not None:
+                restored_index = self._restore_selection_by_card_id(selected_card_id)
+
+            # 再発防止: リロードで selection model がリセットされるとプレビューが空になる。
+            # 選択を復元できない場合は先頭カードを選択して、必ずプレビュー描画経路に乗せる。
+            if restored_index is None and self.tree_widget.standard_model.rowCount() > 0:
+                first_item = self.tree_widget.standard_model.item(0, 0)
+                if first_item is not None:
+                    restored_index = first_item.index()
+                    self.tree_widget.setCurrentIndex(restored_index)
+
+            sb = self.statusBar()
+            if sb is not None:
+                sb.showMessage(tr("Cards reloaded from disk"), 3000)
+            # Force preview update for current selection after reload
+            self.request_preview_update(immediate=True, index=restored_index)
+        except Exception:
+            try:
+                QMessageBox.critical(self, tr("Error"), tr("Failed to reload JSON from disk"))
+            except Exception:
+                pass
 
     def save_data(self):
         # Delegate persistence to ModelSerializer to centralize file format

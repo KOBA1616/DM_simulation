@@ -1560,7 +1560,11 @@
       {
         "uid": "65b21a2b-dde8-4612-9525-44b1e2955960",
         "type": "COST_MODIFIER",
-        "value": 0,
+        "value_mode": "STAT_SCALED",
+        "stat_key": "TOTAL_POWER",
+        "per_value": 3,
+        "min_stat": 1,
+        "max_reduction": 4,
         "scope": "ALL"
       }
     ],

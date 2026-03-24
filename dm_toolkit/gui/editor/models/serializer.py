@@ -333,7 +333,18 @@ class ModelSerializer:
         except ImportError:
             pass
 
-        return CardModel(**card_data)
+        try:
+            return CardModel(**card_data)
+        except Exception:
+            # 再発防止: 一部ノードが部分的に壊れていてもプレビューを空白にしない。
+            # 非検証 construct にフォールバックして、編集継続可能な状態を優先する。
+            try:
+                return CardModel.model_construct(**card_data)
+            except Exception:
+                try:
+                    return CardModel.construct(**card_data)
+                except Exception:
+                    return None
 
     def _apply_cached_cir_to_card(self, card_model: CardModel):
         """Attach cached canonical IRs to a CardModel instance.

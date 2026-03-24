@@ -100,7 +100,9 @@ class ModifierEditForm(BaseEditForm):
         form_layout.addRow(self.label_stat_key, self.stat_key_combo)
 
         self.per_value_spin = QSpinBox()
-        self.per_value_spin.setRange(0, 99999)
+        # 再発防止: STAT_SCALED の per_value=0 は保存時にバリデーションエラーとなるため、UIで 1 以上に制限する。
+        self.per_value_spin.setRange(1, 99999)
+        self.per_value_spin.setValue(1)
         safe_connect(self.per_value_spin, "valueChanged", self.update_data)
         self.register_widget(self.per_value_spin, 'per_value')
         self.label_per_value = QLabel(tr("Per Value"))
@@ -453,11 +455,17 @@ class ModifierEditForm(BaseEditForm):
             if vm == 'STAT_SCALED':
                 # Save stat fields
                 data['stat_key'] = self.stat_key_combo.currentData() or self.stat_key_combo.currentText()
-                data['per_value'] = int(self.per_value_spin.value())
+                # 再発防止: 0 は無効値なので保存時にも下限 1 に正規化する。
+                data['per_value'] = max(1, int(self.per_value_spin.value()))
                 data['min_stat'] = int(self.min_stat_spin.value())
-                # max_reduction: store None if zero (treat zero as unspecified)
+                # max_reduction: 0 は未指定としてキー自体を落とす（None を入れると validator でエラー）
                 mr = int(self.max_reduction_spin.value())
-                data['max_reduction'] = mr if mr > 0 else None
+                if mr > 0:
+                    data['max_reduction'] = mr
+                else:
+                    data.pop('max_reduction', None)
+                # STAT_SCALED では legacy value は禁止。残っていると保存がブロックされる。
+                data.pop('value', None)
             else:
                 # FIXED mode: ensure legacy 'value' remains primary
                 data.pop('stat_key', None)

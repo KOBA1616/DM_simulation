@@ -36,3 +36,8 @@ def test_compare_stat_keys_have_human_readable_labels() -> None:
             f"キー {key} の日本語ラベル未定義。\n"
             "再発防止: 追加キーにはSTAT_KEY_MAPの翻訳を必須にすること"
         )
+
+def test_stat_key_alias_is_normalized_for_label() -> None:
+    """別名 stat_key は正規化後の日本語ラベルで表示されること。"""
+    label = CardTextResources.get_stat_key_label("SPELL_CAST_COUNT_THIS_TURN")
+    assert "このターンに唱えた呪文" in label

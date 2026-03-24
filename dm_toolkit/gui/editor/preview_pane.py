@@ -3,7 +3,7 @@ import hashlib
 import json
 from typing import Dict, Any, List, Tuple
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QGroupBox, QTextEdit, QFrame, QGridLayout,
+    QWidget, QVBoxLayout, QLabel, QTextEdit, QFrame, QGridLayout,
     QHBoxLayout, QGraphicsDropShadowEffect
 )
 from PyQt6.QtCore import Qt, QRect

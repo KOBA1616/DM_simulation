@@ -838,10 +838,22 @@ class ModifierModel(BaseModel):
     condition: Optional[ConditionModel] = None
     filter: Optional[FilterModel] = None
     value: int = 0
+    # 再発防止: STAT_SCALED 関連フィールドがモデルで未定義だと
+    # 読み込み/再保存時に消失し、プレビュー文面が退化する。
+    value_mode: Optional[str] = None
+    stat_key: Optional[str] = None
+    per_value: Optional[int] = None
+    min_stat: Optional[int] = None
+    max_reduction: Optional[int] = None
+    increment_cost: Optional[int] = None
     # Preferred field for keyword/restriction sub-types (kept for backward compatibility with str_val)
     mutation_kind: Optional[str] = None
     str_val: Optional[str] = None
     scope: str = "ALL"
+
+    class Config:
+        # Forward compatibility for editor-only or future modifier fields.
+        extra = "allow"
 
 
 class CostReductionModel(BaseModel):

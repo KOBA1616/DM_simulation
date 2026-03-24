@@ -28,7 +28,7 @@ class CardTextGenerator:
     }
 
     @classmethod
-    def generate_text(cls, data: Dict[str, Any], include_twinpact: bool = True) -> str:
+    def generate_text(cls, data: Dict[str, Any], include_twinpact: bool = True, sample: List[Any] = None) -> str:
         """
         Generate the full text for a card including name, cost, type, keywords, and effects.
         """
@@ -41,13 +41,13 @@ class CardTextGenerator:
         lines.extend(cls.generate_header_lines(data))
 
         # 2. Body (Keywords, Effects, etc.)
-        lines.append(cls.generate_body_text_lines(data, include_twinpact=False)) # Don't recurse here, handle manually
+        lines.append(cls.generate_body_text_lines(data, include_twinpact=False, sample=sample)) # Don't recurse here, handle manually
 
         # 4. Twinpact (Spell Side)
         spell_side = data.get("spell_side")
         if spell_side and include_twinpact:
             lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
-            lines.append(cls.generate_text(spell_side))
+            lines.append(cls.generate_text(spell_side, sample=sample))
 
         return "\n".join(lines)
 
@@ -84,14 +84,14 @@ class CardTextGenerator:
         return lines
 
     @classmethod
-    def generate_body_text_lines(cls, data: Dict[str, Any], include_twinpact: bool = True) -> str:
+    def generate_body_text_lines(cls, data: Dict[str, Any], include_twinpact: bool = True, sample: List[Any] = None) -> str:
         """
         Generates just the body text (keywords, effects, etc.) without the header.
         """
         lines = []
 
         # Body Text (Keywords, Effects, etc.)
-        body_text = cls.generate_body_text(data)
+        body_text = cls.generate_body_text(data, sample=sample)
         if body_text:
             lines.append(body_text)
 
@@ -99,7 +99,7 @@ class CardTextGenerator:
         spell_side = data.get("spell_side")
         if spell_side and include_twinpact:
             lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
-            lines.append(cls.generate_text(spell_side))
+            lines.append(cls.generate_text(spell_side, sample=sample))
 
         return "\n".join(lines)
 
@@ -173,9 +173,9 @@ class CardTextGenerator:
                 lines.append(f"■ 革命チェンジ：{cls._format_revolution_change_text(rc_cond)}")
 
         # 2.5 Cost Reductions
-        cost_reductions = data.get("cost_reductions", [])
+        cost_reductions = cls._normalize_cost_reductions(data.get("cost_reductions", []))
         for cr in cost_reductions:
-            text = cls._format_cost_reduction(cr)
+            text = cls._format_cost_reduction(cr, sample=sample)
             if text:
                 lines.append(f"■ {text}")
 
@@ -426,7 +426,71 @@ class CardTextGenerator:
         return tr(rtype)
 
     @classmethod
-    def _format_cost_reduction(cls, cr: Dict[str, Any]) -> str:
+    def _safe_int(cls, value: Any, default: int = 0) -> int:
+        """Best-effort int conversion helper used by text formatting paths."""
+        try:
+            return int(value)
+        except Exception:
+            return default
+
+    @classmethod
+    def _format_stat_scaled_cost_text(
+        cls,
+        target_phrase: str,
+        stat_key: Any,
+        per_value: Any,
+        step_delta: Any,
+        min_stat: Any,
+        max_reduction: Any,
+        prefix: str = "",
+    ) -> str:
+        """Build unified STAT_SCALED cost text for both cost_reductions and COST_MODIFIER.
+
+        再発防止: cost_reductions と static_abilities(COST_MODIFIER) で別実装にすると
+        語尾や単位表現がずれやすいので、STAT_SCALED の本文はこの関数で一元化する。
+        """
+        raw_stat_key = stat_key if isinstance(stat_key, str) else str(stat_key or "")
+        normalized_key = CardTextResources.normalize_stat_key(raw_stat_key) if raw_stat_key else raw_stat_key
+        stat_name, stat_unit = CardTextResources.STAT_KEY_MAP.get(normalized_key, (normalized_key or "統計値", ""))
+
+        per_n = cls._safe_int(per_value, 0)
+        step_n = cls._safe_int(step_delta, 1)
+        min_n = cls._safe_int(min_stat, 0)
+        max_n = cls._safe_int(max_reduction, -1) if max_reduction is not None else -1
+
+        if per_n > 0:
+            interval_text = f"{per_n}{stat_unit}につき" if stat_unit else f"{per_n}ごとに"
+        else:
+            interval_text = "一定量ごとに"
+
+        if step_n > 0:
+            delta_text = f"{step_n}軽減"
+            max_text = f"（最大{max_n}軽減）" if max_n > 0 else ""
+            default_action = "軽減"
+        elif step_n < 0:
+            delta_text = f"{abs(step_n)}増加"
+            max_text = f"（最大{max_n}増加）" if max_n > 0 else ""
+            default_action = "増加"
+        else:
+            # UI 既定値(0)でも文意が消えないよう、軽減として扱う。
+            delta_text = "1軽減"
+            max_text = f"（最大{max_n}軽減）" if max_n > 0 else ""
+            default_action = "軽減"
+
+        threshold_text = ""
+        if min_n > 0:
+            if stat_unit:
+                threshold_text = f"（{stat_name}が{min_n}{stat_unit}以上で適用）"
+            else:
+                threshold_text = f"（{stat_name}が{min_n}以上で適用）"
+
+        return (
+            f"{prefix}{target_phrase}{stat_name}の値に応じて{interval_text}{delta_text}する。"
+            f"{threshold_text}{max_text}"
+        )
+
+    @classmethod
+    def _format_cost_reduction(cls, cr: Dict[str, Any], sample: List[Any] = None) -> str:
         if not cr:
             return ""
         ctype = cr.get("type", "PASSIVE")
@@ -434,10 +498,125 @@ class CardTextGenerator:
         if name:
             return f"{name}"
 
+        # Defensive: support different schemas where value_mode may be at top-level
+        value_mode = cr.get("value_mode") or cr.get("mode") or cr.get("unit_cost", {}).get("value_mode")
+
         unit_cost = cr.get("unit_cost", {})
-        filter_def = unit_cost.get("filter", {})
-        desc = cls._describe_simple_filter(filter_def)
-        return f"コスト軽減: {desc}"
+        filter_def = unit_cost.get("filter", {}) if isinstance(unit_cost, dict) else {}
+        # Describe condition (civilization, zones, races etc.)
+        cond_desc = cls._describe_simple_filter(filter_def) if filter_def else ""
+
+        # FIXED / PASSIVE simple reductions
+        if (value_mode and str(value_mode).upper() in ("FIXED", "FIXED_AMOUNT", "PASSIVE")) or cr.get("value") is not None:
+            val = cr.get("value") if cr.get("value") is not None else cr.get("amount", None)
+            if val is None:
+                # fallback to unit_cost.value
+                val = unit_cost.get("value") if isinstance(unit_cost, dict) else None
+            if val is None:
+                # generic message
+                return tr("コスト軽減: {cond}").format(cond=cond_desc)
+            # Example: "マナゾーンに闇の文明が2枚以上あれば、このカードの召喚コストは2少なくなる。"
+            if cond_desc:
+                return f"{cond_desc}があれば、このカードの召喚コストは{val}少なくなる。"
+            return f"このカードの召喚コストは{val}少なくなる。"
+
+        # STAT_SCALED style reductions
+        if value_mode and str(value_mode).upper() == "STAT_SCALED":
+            per_value = cr.get("per_value") or unit_cost.get("per_value") or cr.get("per")
+            increment_cost = cr.get("increment_cost") or cr.get("increment") or unit_cost.get("increment_cost")
+            max_reduction = cr.get("max_reduction") if cr.get("max_reduction") is not None else unit_cost.get("max_reduction")
+            raw_stat_key = cr.get("stat_key") or unit_cost.get("stat_key")
+            prefix = f"{cond_desc}があると、" if cond_desc else ""
+            base = cls._format_stat_scaled_cost_text(
+                target_phrase="このカードの召喚コストを、",
+                stat_key=raw_stat_key,
+                per_value=per_value,
+                step_delta=increment_cost,
+                min_stat=cr.get('min_stat', unit_cost.get('min_stat', 1)),
+                max_reduction=max_reduction,
+                prefix=prefix,
+            )
+            # If sample provided, attempt to show example computed reduction/cost
+            try:
+                stat_key = CardTextResources.normalize_stat_key(raw_stat_key) if raw_stat_key else raw_stat_key
+                stat_name, _ = CardTextResources.STAT_KEY_MAP.get(stat_key, (stat_key or "統計", ""))
+                if sample and isinstance(sample, list) and stat_key:
+                    sval = None
+                    # Prefer numeric entries via _compute_stat_from_sample
+                    sval = cls._compute_stat_from_sample(stat_key, sample)
+                    if sval is None:
+                        # if sample contains dicts, try key lookup
+                        for s in sample:
+                            if isinstance(s, dict) and (stat_key in s or raw_stat_key in s):
+                                try:
+                                    sval_raw = s.get(stat_key)
+                                    if sval_raw is None and raw_stat_key:
+                                        sval_raw = s.get(raw_stat_key)
+                                    sval = int(sval_raw)
+                                    break
+                                except Exception:
+                                    pass
+                    if sval is not None and per_value:
+                        calc = max(0, int(sval) - int(cr.get('min_stat', unit_cost.get('min_stat', 1))) + 1) * int(per_value)
+                        if isinstance(max_reduction, int):
+                            calc = min(calc, max_reduction)
+                        if calc > 0:
+                            # show example cost after reduction if base cost known
+                            base_cost = cr.get('base_cost') or None
+                            # fall back to unit_cost.base_cost or None
+                            if not base_cost and isinstance(unit_cost, dict):
+                                base_cost = unit_cost.get('base_cost')
+                            # We can't reliably know card cost here; only show reduction example
+                            base += f" （例: 現在の{stat_name}{sval} → コストを{calc}削減）"
+            except Exception:
+                pass
+            return base
+
+        # Condition-based reductions (COMPARE_STAT, CARDS_MATCHING_FILTER)
+        cond = cr.get('condition') or cr.get('condition_def') or {}
+        if isinstance(cond, dict):
+            ctype = cond.get('type')
+            if ctype == 'COMPARE_STAT':
+                # Use existing condition formatter to get "自分のXがYなら: " style then adapt
+                cond_text = cls._format_condition(cond).strip('、: ')
+                val = cr.get('value') or cr.get('amount') or cr.get('reduction')
+                if val is None:
+                    val = unit_cost.get('value') if isinstance(unit_cost, dict) else None
+                if val is None:
+                    return f"{cond_text}の時、このカードの召喚コストを修正する。"
+                return f"{cond_text}の時、このカードの召喚コストを{val}少なくする。"
+            elif ctype == 'CARDS_MATCHING_FILTER':
+                f = cond.get('filter', {}) or {}
+                desc = cls._describe_simple_filter(f)
+                val = cond.get('value') or cond.get('count') or None
+                if val:
+                    return f"{desc}が{val}体以上いるなら、このカードの召喚コストは{cr.get('value') or cr.get('amount') or 'X'}少なくなる。"
+                return f"{desc}がいるなら、このカードの召喚コストを軽減する。"
+
+        # Fallback: show filter description
+        if filter_def:
+            desc = cls._describe_simple_filter(filter_def)
+            return tr("コスト軽減: {desc}").format(desc=desc)
+
+        return tr("コスト軽減")
+
+    @classmethod
+    def _normalize_cost_reductions(cls, crs: Any) -> List[Dict[str, Any]]:
+        """Ensure cost_reductions is a list of dicts.
+
+        Accepts None, dict (single item), or list. Filters out non-dict entries.
+        """
+        if not crs:
+            return []
+        if isinstance(crs, dict):
+            return [crs]
+        if isinstance(crs, list):
+            out: List[Dict[str, Any]] = []
+            for item in crs:
+                if isinstance(item, dict):
+                    out.append(item)
+            return out
+        return []
 
     @classmethod
     def _format_modifier(cls, modifier: Dict[str, Any], sample: List[Any] = None) -> str:
@@ -478,7 +657,7 @@ class CardTextGenerator:
         
         # Map modifier types to formatter callables to reduce branching
         MODIFIER_FORMATTER_MAP = {
-            "COST_MODIFIER": lambda: cls._format_cost_modifier(cond_text, full_target, value),
+            "COST_MODIFIER": lambda: cls._format_cost_modifier(cond_text, full_target, value, modifier=modifier),
             "POWER_MODIFIER": lambda: cls._format_power_modifier(cond_text, full_target, value),
             "GRANT_KEYWORD": lambda: cls._format_grant_keyword(cond_text, full_target, modifier),
             "SET_KEYWORD": lambda: cls._format_set_keyword(cond_text, full_target, keyword),
@@ -500,8 +679,33 @@ class CardTextGenerator:
         return CardTextResources.get_scope_text(scope)
     
     @classmethod
-    def _format_cost_modifier(cls, cond: str, target: str, value: int) -> str:
+    def _format_cost_modifier(cls, cond: str, target: str, value: int, modifier: Dict[str, Any] = None) -> str:
         """Format COST_MODIFIER modifier."""
+        # 再発防止: COST_MODIFIER は FIXED/STAT_SCALED の両モードを持つ。
+        # value のみで表現すると stat_key 情報が失われ、プレビュー文面が「修正する」だけになる。
+        if isinstance(modifier, dict):
+            vm_raw = modifier.get("value_mode")
+            # 再発防止: 旧データでは value_mode が欠落しても stat_key/per_value が保存されている場合がある。
+            # その場合は STAT_SCALED として扱わないと「コストを修正する。」に退化する。
+            if not vm_raw and (modifier.get("stat_key") or modifier.get("per_value") is not None):
+                value_mode = "STAT_SCALED"
+            else:
+                value_mode = str(vm_raw or "FIXED").upper()
+            if value_mode == "STAT_SCALED":
+                step_delta = modifier.get("value")
+                if step_delta in (None, 0):
+                    step_delta = modifier.get("increment_cost")
+                if step_delta in (None, 0):
+                    step_delta = 1
+                return cls._format_stat_scaled_cost_text(
+                    target_phrase=f"{cond}{target}のコストを、",
+                    stat_key=modifier.get("stat_key"),
+                    per_value=modifier.get("per_value", 0),
+                    step_delta=step_delta,
+                    min_stat=modifier.get("min_stat", 1),
+                    max_reduction=modifier.get("max_reduction"),
+                )
+
         if value > 0:
             return f"{cond}{target}のコストを{value}軽減する。"
         elif value < 0:

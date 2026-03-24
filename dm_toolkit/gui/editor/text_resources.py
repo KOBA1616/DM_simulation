@@ -6,6 +6,10 @@ Maps trigger types, conditions, scopes, and modifier types to Japanese text.
 
 from typing import Dict, Optional, Tuple
 from dm_toolkit.consts import TargetScope
+from dm_toolkit.stat_keys import (
+    COMPARE_STAT_EDITOR_KEYS as SHARED_COMPARE_STAT_EDITOR_KEYS,
+    EDITOR_QUICK_STATS_KEYS as SHARED_EDITOR_QUICK_STATS_KEYS,
+)
 
 
 class CardTextResources:
@@ -330,34 +334,11 @@ class CardTextResources:
         "GAME_RESULT": "ゲームを終了する（{result}）。",
     }
 
-    COMPARE_STAT_EDITOR_KEYS: Tuple[str, ...] = (
-        "MY_MANA_COUNT",
-        "OPPONENT_MANA_COUNT",
-        "MY_HAND_COUNT",
-        "OPPONENT_HAND_COUNT",
-        "MY_SHIELD_COUNT",
-        "OPPONENT_SHIELD_COUNT",
-        "MY_BATTLE_ZONE_COUNT",
-        "OPPONENT_BATTLE_ZONE_COUNT",
-        "SUMMON_COUNT_THIS_TURN",
-        "CARDS_DRAWN_THIS_TURN",
-        "SPELL_CAST_THIS_TURN",
-        "DESTROY_COUNT_THIS_TURN",
-        "MANA_SET_THIS_TURN",
-        "SHIELD_BREAK_ATTEMPT_THIS_TURN",
-        "SHIELD_BREAK_RESOLVED_THIS_TURN",
-        "ATTACKED_THIS_TURN",
-        "MY_ATTACKED_THIS_TURN",
-        "OPPONENT_ATTACKED_THIS_TURN",
-    )
+    # 再発防止: compare_stat 候補は dm_toolkit.stat_keys を単一ソースとして参照する。
+    COMPARE_STAT_EDITOR_KEYS: Tuple[str, ...] = SHARED_COMPARE_STAT_EDITOR_KEYS
 
     # Quick stats used by condition/query UIs for common measurements
-    EDITOR_QUICK_STATS_KEYS: Tuple[str, ...] = (
-        "MANA_CIVILIZATION_COUNT",
-        "SHIELD_COUNT",
-        "HAND_COUNT",
-        "CARDS_DRAWN_THIS_TURN",
-    )
+    EDITOR_QUICK_STATS_KEYS: Tuple[str, ...] = SHARED_EDITOR_QUICK_STATS_KEYS
 
     # 再発防止: COMPARE_STAT_EDITOR_KEYS に追加したキーは必ずここへ翻訳を追加すること。
     STAT_KEY_MAP: Dict[str, Tuple[str, str]] = {
@@ -388,6 +369,26 @@ class CardTextResources:
         "ATTACKED_THIS_TURN": ("このターンに攻撃した回数", "回"),
         "MY_ATTACKED_THIS_TURN": ("自分がこのターンに攻撃した回数", "回"),
         "OPPONENT_ATTACKED_THIS_TURN": ("相手がこのターンに攻撃した回数", "回"),
+        # Cost reduction preview legacy/sample keys
+        "TOTAL_POWER": ("自分のバトルゾーンの合計パワー", ""),
+        "CARDS_IN_BATTLE": ("自分のバトルゾーンのカード", "枚"),
+        "TOTAL_TAP": ("タップしている自分のカード", "枚"),
+        "BOARD_COUNT": ("自分の場のカード", "枚"),
+        "SELF_POWER": ("このクリーチャーのパワー", ""),
+        "ENEMY_CREATURES": ("相手のクリーチャー", "体"),
+        "OPPONENT_HAND": ("相手の手札", "枚"),
+    }
+
+    # 再発防止: 実行系と表示系でキー名が揺れる別名をここで正規化する。
+    # 追加時は C++ 側の同義キー解決 (pipeline/condition) も同時に確認すること。
+    STAT_KEY_ALIASES: Dict[str, str] = {
+        "SPELL_CAST_COUNT_THIS_TURN": "SPELL_CAST_THIS_TURN",
+        "MY_CREATURE_COUNT": "MY_BATTLE_ZONE_COUNT",
+        "OPPONENT_CREATURE_COUNT": "OPPONENT_CREATURE_COUNT",
+        # Legacy editor sample keys mapped to canonical counters where possible
+        "CARDS_IN_BATTLE": "BATTLE_ZONE_COUNT",
+        "OPPONENT_HAND": "OPPONENT_HAND_COUNT",
+        "ENEMY_CREATURES": "OPPONENT_CREATURE_COUNT",
     }
 
     # Short aliases for natural language rendering of common zone transitions
@@ -574,7 +575,15 @@ class CardTextResources:
         Returns:
             Japanese stat key label with unit
         """
-        if stat_key in cls.STAT_KEY_MAP:
-            name, unit = cls.STAT_KEY_MAP[stat_key]
+        normalized = cls.normalize_stat_key(stat_key)
+        if normalized in cls.STAT_KEY_MAP:
+            name, unit = cls.STAT_KEY_MAP[normalized]
             return f"{name}（{unit}）" if unit else name
-        return stat_key
+        return normalized
+
+    @classmethod
+    def normalize_stat_key(cls, stat_key: str) -> str:
+        """Normalize stat key aliases used across query/condition/cost preview paths."""
+        if not isinstance(stat_key, str):
+            return str(stat_key)
+        return cls.STAT_KEY_ALIASES.get(stat_key, stat_key)

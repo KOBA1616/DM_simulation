@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
+from dm_toolkit.stat_keys import QUERY_STAT_KEYS
 
 """
 Central Constants Definition.
@@ -433,24 +434,8 @@ GAME_RESULTS = [
 # =============================================================================
 # Query Modes
 # =============================================================================
-QUERY_MODES = [
-    "CARDS_MATCHING_FILTER",
-    "MANA_COUNT",
-    "CREATURE_COUNT",
-    "SHIELD_COUNT",
-    "HAND_COUNT",
-    "GRAVEYARD_COUNT",
-    "BATTLE_ZONE_COUNT",
-    "OPPONENT_MANA_COUNT",
-    "OPPONENT_CREATURE_COUNT",
-    "OPPONENT_SHIELD_COUNT",
-    "OPPONENT_HAND_COUNT",
-    "OPPONENT_GRAVEYARD_COUNT",
-    "OPPONENT_BATTLE_ZONE_COUNT",
-    "CARDS_DRAWN_THIS_TURN",
-    "SPELL_CAST_THIS_TURN",
-    "MANA_CIVILIZATION_COUNT"
-]
+# 再発防止: stat 系 query_mode は dm_toolkit.stat_keys.QUERY_STAT_KEYS を単一ソースにする。
+QUERY_MODES = ["CARDS_MATCHING_FILTER", *QUERY_STAT_KEYS]
 
 # =============================================================================
 # Duration Types
