@@ -2,7 +2,7 @@ from typing import Any, Dict, List
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 
-class VariableLinkTextFormatter:
+class InputLinkFormatter:
     """Formatter for resolving and generating text related to input variable linking."""
 
     @classmethod
