@@ -1,3 +1,4 @@
+from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from typing import Dict, Any, List, Optional
 from dm_toolkit.gui.editor.formatters.command_formatter_base import CommandFormatterBase
 from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
@@ -32,7 +33,7 @@ class DrawCardFormatter(CommandFormatterBase):
         if input_key:
             input_label = command.get("_input_value_label", "")
             if not input_label:
-                 input_label = CardTextGenerator._format_input_source_label(command)
+                 input_label = InputLinkFormatter.format_source_label(command)
             if input_label:
                  val_str = f"その数"
                  return template.replace("{value1}", val_str)
@@ -61,7 +62,7 @@ class DiscardFormatter(CommandFormatterBase):
             from dm_toolkit.gui.editor.text_generator import CardTextGenerator
             input_label = command.get("_input_value_label", "")
             if not input_label:
-                 input_label = CardTextGenerator._format_input_source_label(command)
+                 input_label = InputLinkFormatter.format_source_label(command)
             if input_label:
                  cnt = f"その数"
                  unit = "枚" # assuming cards

@@ -1,3 +1,4 @@
+from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from typing import Dict, Any, List
 from dm_toolkit.gui.editor.formatters.command_formatter_base import CommandFormatterBase
 from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
@@ -28,7 +29,7 @@ class CastSpellFormatter(CommandFormatterBase):
 
         usage_label_suffix = ""
         if input_key and input_usage:
-            label = CardTextGenerator._format_input_usage_label(input_usage)
+            label = InputLinkFormatter.format_usage_label(input_usage)
             if label:
                 usage_label_suffix = f"（{label}）"
 
@@ -38,8 +39,8 @@ class CastSpellFormatter(CommandFormatterBase):
             linked_cost_phrase = ""
             max_cost_def = temp_filter.get("max_cost")
             if is_input_linked(max_cost_def, usage="MAX_COST"):
-                source_token = CardTextGenerator._format_linked_count_token(action, "その数")
-                source_token = CardTextGenerator._normalize_linked_count_label(source_token)
+                source_token = InputLinkFormatter.format_count_token(action, "その数")
+                source_token = InputLinkFormatter.normalize_count_label(source_token)
                 linked_cost_phrase = f"{source_token}以下のコストの"
 
             zone_phrase = ""
@@ -87,7 +88,7 @@ class AddManaFormatter(CommandFormatterBase):
         if input_key:
              input_label = command.get("_input_value_label", "")
              if not input_label:
-                 input_label = CardTextGenerator._format_input_source_label(command)
+                 input_label = InputLinkFormatter.format_source_label(command)
              if input_label:
                  return f"自分の山札の上から、その数だけタップしてマナゾーンに置く。"
         return f"自分の山札の上から{val1}枚をタップしてマナゾーンに置く。"

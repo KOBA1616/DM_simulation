@@ -1,3 +1,4 @@
+from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from typing import Dict, Any, List
 from dm_toolkit.gui.editor.formatters.command_formatter_base import CommandFormatterBase
 from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
@@ -87,7 +88,7 @@ class ReplaceCardMoveFormatter(CommandFormatterBase):
 
         if input_key:
             input_usage = str(command.get("input_value_usage") or command.get("input_usage") or "").upper()
-            link_suffix = CardTextGenerator._format_input_link_context_suffix(command)
+            link_suffix = InputLinkFormatter.format_context_suffix(command)
             linked_target = "そのカード"
             if input_usage == "REPLACEMENT":
                  if is_self_ref:
