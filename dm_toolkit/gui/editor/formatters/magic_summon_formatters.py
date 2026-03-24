@@ -3,6 +3,7 @@ from dm_toolkit.gui.editor.formatters.command_formatter_base import CommandForma
 from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
+from dm_toolkit.gui.editor.formatters.variable_link_formatter import VariableLinkTextFormatter
 from dm_toolkit.gui.editor.formatters.utils import is_input_linked, get_command_amount
 from dm_toolkit.consts import MAX_COST_VALUE
 
@@ -28,7 +29,7 @@ class CastSpellFormatter(CommandFormatterBase):
 
         usage_label_suffix = ""
         if input_key and input_usage:
-            label = CardTextGenerator._format_input_usage_label(input_usage)
+            label = VariableLinkTextFormatter.format_input_usage_label(input_usage)
             if label:
                 usage_label_suffix = f"（{label}）"
 
