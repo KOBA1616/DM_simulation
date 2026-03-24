@@ -649,11 +649,18 @@ class CardTextGenerator:
         if scope and scope != TargetScope.ALL:
             effective_filter["owner"] = scope
         
-        target_str = cls._format_modifier_target(effective_filter) if effective_filter else "対象"
+        if scope == "NONE" and not filter_def:
+            target_str = "このクリーチャー"
+        else:
+            target_str = cls._format_modifier_target(effective_filter) if effective_filter else "対象"
         
-        # Combine: condition + scope + target
-        # Final structure: 「条件」「自分の」「カード」「に〜を与える」
-        full_target = scope_prefix + target_str if scope_prefix else target_str
+        # Avoid redundancy like "自身のこのクリーチャー"
+        if scope == "NONE" and target_str == "このクリーチャー":
+            full_target = target_str
+        else:
+            # Combine: condition + scope + target
+            # Final structure: 「条件」「自身の」「対象」「に〜を与える」 or 「自分の」「クリーチャー」
+            full_target = scope_prefix + target_str if scope_prefix else target_str
         
         # Map modifier types to formatter callables to reduce branching
         MODIFIER_FORMATTER_MAP = {
@@ -774,6 +781,10 @@ class CardTextGenerator:
         if not filter_def:
             return "対象"
         
+        owner = filter_def.get("owner", "")
+        if owner == "NONE" and not filter_def.get("zones") and not filter_def.get("types"):
+            return "このクリーチャー"
+
         zones = filter_def.get("zones", [])
         types = filter_def.get("types", [])
         civs = filter_def.get("civilizations", [])
