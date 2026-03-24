@@ -4,7 +4,7 @@ Centralized text resources for Static Abilities and Trigger Effects.
 Maps trigger types, conditions, scopes, and modifier types to Japanese text.
 """
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Any
 from dm_toolkit.consts import TargetScope
 from dm_toolkit.stat_keys import (
     COMPARE_STAT_EDITOR_KEYS as SHARED_COMPARE_STAT_EDITOR_KEYS,
@@ -338,6 +338,43 @@ class CardTextResources:
     # 再発防止: compare_stat 候補は dm_toolkit.stat_keys を単一ソースとして参照する。
     COMPARE_STAT_EDITOR_KEYS: Tuple[str, ...] = SHARED_COMPARE_STAT_EDITOR_KEYS
 
+    # Command aliases for natural language rendering
+    COMMAND_ALIASES: Dict[str, str] = {
+        "POWER_MOD": "MODIFY_POWER",
+        "MANA_CHARGE": "SEND_TO_MANA",
+        "CHOICE": "SELECT_OPTION",
+    }
+
+    # Zone movement text templates organized by (from_zone, to_zone) pairs
+    ZONE_MOVE_TEMPLATES: Dict[Any, str] = {
+        ("BATTLE_ZONE", "GRAVEYARD"): "{from_z}の{target}を{amount}{unit}{to_z}に置く。",
+        ("BATTLE_ZONE", "MANA_ZONE"): "{from_z}の{target}を{amount}{unit}{to_z}に置く。",
+        ("BATTLE_ZONE", "HAND"): "{from_z}の{target}を{amount}{unit}{to_z}に戻す。",
+        ("HAND", "MANA_ZONE"): "{from_z}の{target}を{amount}{unit}{to_z}に置く。",
+        ("DECK", "HAND"): "{from_z}から{target}を{amount}{unit}選び、{to_z}に加える。",
+        ("GRAVEYARD", "HAND"): "{from_z}の{target}を{amount}{unit}{to_z}に戻す。",
+        ("GRAVEYARD", "BATTLE_ZONE"): "{from_z}の{target}を{amount}{unit}{to_z}に出す。",
+        "DEFAULT": "{target}を{from_z}から{to_z}へ移動する。",
+    }
+
+    # Trigger text templates organized by trigger type and timing mode.
+    # 再発防止: タイミング(PRE/POST)・スコープ・トリガータイプを
+    # 1か所で変数的に組み立て、個別分岐の散在による文面不一致を防ぐ。
+    TRIGGER_COMPOSITION_TEMPLATES: Dict[str, Dict[str, str]] = {
+        "ON_PLAY": {
+            "POST": "{scope_text}の{subject}がバトルゾーンに出た時",
+            "PRE": "{scope_text}の{subject}がバトルゾーンに出る時",
+        },
+        "ON_OTHER_ENTER": {
+            "POST": "{scope_text}の他の{subject}がバトルゾーンに出た時",
+            "PRE": "{scope_text}の他の{subject}がバトルゾーンに出る時",
+        },
+        "ON_CAST_SPELL": {
+            "POST": "{scope_text}の{subject}を唱えた時",
+            "PRE": "{scope_text}の{subject}を唱える時",
+        },
+    }
+
     # Quick stats used by condition/query UIs for common measurements
     EDITOR_QUICK_STATS_KEYS: Tuple[str, ...] = SHARED_EDITOR_QUICK_STATS_KEYS
 
@@ -527,7 +564,7 @@ class CardTextResources:
     @classmethod
     def get_zone_text(cls, zone: str) -> str:
         """
-        Get Japanese text for zone.
+        Get Japanese text for zone, normalizing short names first.
         
         Args:
             zone: Zone string
@@ -535,7 +572,14 @@ class CardTextResources:
         Returns:
             Japanese zone text
         """
-        return cls.ZONE_JAPANESE.get(zone, zone)
+        z = cls.normalize_zone_name(zone)
+        # Assuming `tr` isn't available directly here, but UI layer calls `tr` if needed,
+        # or we just rely on the static ZONE_JAPANESE dict since this is specifically a resource.
+        # Fallback to returning the normalized key if not found in dict.
+        # In `text_generator.py` there was a fallback to `tr(z)`.
+        # For full separation, `text_generator` may call `tr` on the result of this function
+        # if the result is still an English key.
+        return cls.ZONE_JAPANESE.get(z, z)
     
     @classmethod
     def get_civilization_text(cls, civ: str) -> str:
@@ -562,6 +606,35 @@ class CardTextResources:
             Japanese card type text
         """
         return cls.CARD_TYPE_JAPANESE.get(card_type, card_type)
+
+    @classmethod
+    def normalize_zone_name(cls, zone: str) -> str:
+        """Normalize short zone names to full names used in UI and JSON."""
+        if not zone:
+            return ""
+
+        z = str(zone).split(".")[-1].upper()
+        zone_map = {
+            "BATTLE": "BATTLE_ZONE",
+            "MANA": "MANA_ZONE",
+            "SHIELD": "SHIELD_ZONE",
+            "BATTLE_ZONE": "BATTLE_ZONE",
+            "MANA_ZONE": "MANA_ZONE",
+            "SHIELD_ZONE": "SHIELD_ZONE",
+            "HAND": "HAND",
+            "GRAVEYARD": "GRAVEYARD",
+            "DECK": "DECK",
+            "DECK_TOP": "DECK_TOP",
+            "DECK_BOTTOM": "DECK_BOTTOM",
+            "BUFFER": "BUFFER",
+            "UNDER_CARD": "UNDER_CARD",
+        }
+        return zone_map.get(z, z)
+
+    @classmethod
+    def normalize_command_alias(cls, command_type: str) -> str:
+        """Normalize a command type string handling known aliases."""
+        return cls.COMMAND_ALIASES.get(command_type, command_type)
 
     @classmethod
     def get_duration_text(cls, duration_key: str) -> str:
