@@ -5,7 +5,7 @@ from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.utils import is_input_linked, get_command_amount
-from dm_toolkit.gui.editor.formatters.variable_link_formatter import VariableLinkTextFormatter
+from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from dm_toolkit.gui.editor.formatters.keyword_registry import SpecialKeywordRegistry
 import dm_toolkit.gui.editor.formatters.special_keywords # Ensure special keywords are registered
 from dm_toolkit import consts
@@ -992,7 +992,7 @@ class CardTextGenerator:
 
                 out_key = str(command_for_text.get("output_value_key") or "")
                 if out_key:
-                    inferred_label = VariableLinkTextFormatter.infer_output_value_label(command_for_text)
+                    inferred_label = InputLinkFormatter.infer_output_value_label(command_for_text)
                     if inferred_label:
                         output_label_map[out_key] = inferred_label
 
@@ -2116,7 +2116,7 @@ class CardTextGenerator:
             optional_draw = bool(action.get('optional', False))
             cnt = val1 if val1 > 0 else 1
             if has_input_key:
-                linked_count = VariableLinkTextFormatter.format_linked_count_token(action, "その同じ枚数")
+                linked_count = InputLinkFormatter.format_linked_count_token(action, "その同じ枚数")
                 if up_to:
                     text = f"カードを{linked_count}まで引く。"
                 else:
@@ -2378,7 +2378,7 @@ class CardTextGenerator:
              if stat_name:
                  base = f"{stat_name}{stat_unit}を数える。"
                  if input_key:
-                     usage_label = VariableLinkTextFormatter.format_input_usage_label(input_usage)
+                     usage_label = InputLinkFormatter.format_input_usage_label(input_usage)
                      if usage_label:
                          base += f"（{usage_label}）"
                  return base
@@ -2398,7 +2398,7 @@ class CardTextGenerator:
                      base = "カードの数を数える。"
 
                  if input_key:
-                     usage_label = VariableLinkTextFormatter.format_input_usage_label(input_usage)
+                     usage_label = InputLinkFormatter.format_input_usage_label(input_usage)
                      if usage_label:
                          base += f"（{usage_label}）"
                  return base
@@ -2407,7 +2407,7 @@ class CardTextGenerator:
                  sel_count = action.get("value1", action.get("amount", 1))
                  filter_txt = cls._format_filter(action.get("filter", {}))
                  if input_key:
-                     usage_label = VariableLinkTextFormatter.format_input_usage_label(input_usage)
+                     usage_label = InputLinkFormatter.format_input_usage_label(input_usage)
                      cnt_txt = "指定数"
                      if usage_label:
                          cnt_txt = f"入力値（{usage_label}）"
@@ -2421,7 +2421,7 @@ class CardTextGenerator:
 
              base = f"質問: {tr(mode)}"
              if input_key:
-                 usage_label = VariableLinkTextFormatter.format_input_usage_label(input_usage)
+                 usage_label = InputLinkFormatter.format_input_usage_label(input_usage)
                  if usage_label:
                      base += f"（{usage_label}）"
              return base
@@ -2514,7 +2514,7 @@ class CardTextGenerator:
                         scope = action.get("target_group") or action.get("scope", "NONE")
                         if normalized_from == "HAND":
                             to_zone_text = CardTextResources.get_zone_text(to_z)
-                            linked_count = VariableLinkTextFormatter.format_linked_count_token(action, "その同じ数")
+                            linked_count = InputLinkFormatter.format_linked_count_token(action, "その同じ数")
                             owner = ""
                             if scope in ["PLAYER_SELF", "SELF"]:
                                 owner = "自分の"
@@ -2598,7 +2598,7 @@ class CardTextGenerator:
 
             if input_key:
                 input_usage = str(action.get("input_value_usage") or action.get("input_usage") or "").upper()
-                link_suffix = VariableLinkTextFormatter.format_input_link_context_suffix(action)
+                link_suffix = InputLinkFormatter.format_input_link_context_suffix(action)
                 linked_target = "そのカード"
                 # 再発防止: EVENT_SOURCE を対象参照として扱う場合は明示選択文を出さない。
                 if input_key == "EVENT_SOURCE" and CardTextResources.normalize_zone_name(src_zone) == "BATTLE_ZONE":
@@ -2912,7 +2912,7 @@ class CardTextGenerator:
             # Usage label for linked inputs
             usage_label_suffix = ""
             if input_usage:
-                label = VariableLinkTextFormatter.format_input_usage_label(input_usage)
+                label = InputLinkFormatter.format_input_usage_label(input_usage)
                 if label:
                     usage_label_suffix = f"（{label}）"
 
@@ -3069,7 +3069,7 @@ class CardTextGenerator:
             # Input Usage label
             usage_label_suffix = ""
             if input_key and input_usage:
-                label = VariableLinkTextFormatter.format_input_usage_label(input_usage)
+                label = InputLinkFormatter.format_input_usage_label(input_usage)
                 if label:
                     usage_label_suffix = f"（{label}）"
             
@@ -3081,8 +3081,8 @@ class CardTextGenerator:
                 linked_cost_phrase = ""
                 max_cost_def = temp_filter.get("max_cost")
                 if is_input_linked(max_cost_def, usage="MAX_COST"):
-                    source_token = VariableLinkTextFormatter.format_linked_count_token(action, "その数")
-                    source_token = VariableLinkTextFormatter.normalize_linked_count_label(source_token)
+                    source_token = InputLinkFormatter.format_linked_count_token(action, "その数")
+                    source_token = InputLinkFormatter.normalize_linked_count_label(source_token)
                     linked_cost_phrase = f"{source_token}以下のコストの"
                 zone_phrase = ""
                 if zones:
@@ -3153,7 +3153,7 @@ class CardTextGenerator:
             # Input Usage label
             usage_label_suffix = ""
             if input_key and input_usage:
-                label = VariableLinkTextFormatter.format_input_usage_label(input_usage)
+                label = InputLinkFormatter.format_input_usage_label(input_usage)
                 if label:
                     usage_label_suffix = f"（{label}）"
 
@@ -3212,8 +3212,8 @@ class CardTextGenerator:
             linked_cost_phrase = ""
             if is_input_linked(max_cost, usage="MAX_COST"):
                 use_linked_cost = True
-                source_token = VariableLinkTextFormatter.format_linked_count_token(action, "その数")
-                source_token = VariableLinkTextFormatter.normalize_linked_count_label(source_token)
+                source_token = InputLinkFormatter.format_linked_count_token(action, "その数")
+                source_token = InputLinkFormatter.normalize_linked_count_label(source_token)
                 linked_cost_phrase = f"{source_token}以下のコストの"
 
             if use_linked_cost:
