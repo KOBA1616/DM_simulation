@@ -5,6 +5,7 @@ from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.utils import is_input_linked, get_command_amount
+from dm_toolkit.gui.editor.formatters.target_formatter import TargetFormatter
 from dm_toolkit.gui.editor.formatters.variable_link_formatter import VariableLinkTextFormatter
 from dm_toolkit.gui.editor.formatters.keyword_registry import SpecialKeywordRegistry
 import dm_toolkit.gui.editor.formatters.special_keywords # Ensure special keywords are registered
@@ -1209,24 +1210,6 @@ class CardTextGenerator:
         return any(token in trigger_text for token in ("出る時", "唱える時", "引く時", "置かれる時", "される時", "する時"))
 
     @classmethod
-    def _to_replacement_trigger_text(cls, trigger_text: str) -> str:
-        """Convert post-event trigger text (〜た時) into replacement tone (〜る時)."""
-        text = trigger_text
-        replacements = [
-            ("された時", "される時"),
-            ("置かれた時", "置かれる時"),
-            ("唱えた時", "唱える時"),
-            ("引いた時", "引く時"),
-            ("出た時", "出る時"),
-            ("した時", "する時"),
-            ("った時", "る時"),
-        ]
-        for src, dst in replacements:
-            if src in text:
-                return text.replace(src, dst)
-        return text
-
-    @classmethod
     def is_replacement_effect(cls, effect: Dict[str, Any]) -> bool:
         """Return True if the effect should be rendered as PRE/replacement timing."""
         if not isinstance(effect, dict):
@@ -1236,10 +1219,8 @@ class CardTextGenerator:
     @classmethod
     def trigger_to_japanese(cls, trigger: str, is_spell: bool = False, effect: Dict[str, Any] = None) -> str:
         """Get Japanese trigger text, applying replacement phrasing when needed."""
-        base = CardTextResources.get_trigger_text(trigger, is_spell=is_spell)
-        if effect is not None and cls.is_replacement_effect(effect):
-            return cls._to_replacement_trigger_text(base)
-        return base
+        is_pre = effect is not None and cls.is_replacement_effect(effect)
+        return CardTextResources.get_trigger_text(trigger, is_spell=is_spell, is_pre=is_pre)
 
     @classmethod
     def _format_keyword_grant_text(cls, target_str: str, key_id: str, display_text: str, duration_text: str, amount: int = None, skip_selection: bool = False) -> str:
@@ -2723,10 +2704,8 @@ class CardTextGenerator:
     @classmethod
     def trigger_to_japanese(cls, trigger: str, is_spell: bool = False, effect: Dict[str, Any] = None) -> str:
         """Get Japanese trigger text, applying replacement phrasing when needed."""
-        base = CardTextResources.get_trigger_text(trigger, is_spell=is_spell)
-        if effect is not None and cls.is_replacement_effect(effect):
-            return cls._to_replacement_trigger_text(base)
-        return base
+        is_pre = effect is not None and cls.is_replacement_effect(effect)
+        return CardTextResources.get_trigger_text(trigger, is_spell=is_spell, is_pre=is_pre)
 
     @classmethod
     def _format_keyword_grant_text(cls, target_str: str, key_id: str, display_text: str, duration_text: str, amount: int = None, skip_selection: bool = False) -> str:

@@ -373,6 +373,102 @@ class CardTextResources:
             "POST": "{scope_text}の{subject}を唱えた時",
             "PRE": "{scope_text}の{subject}を唱える時",
         },
+        "ON_OPPONENT_CREATURE_ENTER": {
+            "POST": "相手のクリーチャーが出た時",
+            "PRE": "相手のクリーチャーが出る時",
+        },
+        "ON_ATTACK": {
+            "POST": "このクリーチャーが攻撃する時",
+            "PRE": "このクリーチャーが攻撃する時",
+        },
+        "ON_ATTACK_FROM_HAND": {
+            "POST": "手札から攻撃する時",
+            "PRE": "手札から攻撃する時",
+        },
+        "ON_BLOCK": {
+            "POST": "このクリーチャーがブロックした時",
+            "PRE": "このクリーチャーがブロックする時",
+        },
+        "ON_DESTROY": {
+            "POST": "このクリーチャーが破壊された時",
+            "PRE": "このクリーチャーが破壊される時",
+        },
+        "TURN_START": {
+            "POST": "自分のターンのはじめに",
+            "PRE": "自分のターンのはじめに",
+        },
+        "ON_TURN_END": {
+            "POST": "ターンの終わりに",
+            "PRE": "ターンの終わりに",
+        },
+        "ON_BATTLE_WIN": {
+            "POST": "このクリーチャーがバトルに勝った時",
+            "PRE": "このクリーチャーがバトルに勝つ時",
+        },
+        "ON_BATTLE_LOSE": {
+            "POST": "このクリーチャーがバトルに負けた時",
+            "PRE": "このクリーチャーがバトルに負ける時",
+        },
+        "ON_DRAW": {
+            "POST": "カードを引いた時",
+            "PRE": "カードを引く時",
+        },
+        "ON_OPPONENT_DRAW": {
+            "POST": "相手がカードを引いた時",
+            "PRE": "相手がカードを引く時",
+        },
+        "ON_TAP": {
+            "POST": "このクリーチャーがタップした時",
+            "PRE": "このクリーチャーがタップする時",
+        },
+        "ON_UNTAP": {
+            "POST": "このクリーチャーがアンタップした時",
+            "PRE": "このクリーチャーがアンタップする時",
+        },
+        "AT_BREAK_SHIELD": {
+            "POST": "シールドをブレイクする時",
+            "PRE": "シールドをブレイクする時",
+        },
+        "BEFORE_BREAK_SHIELD": {
+            "POST": "シールドをブレイクする前",
+            "PRE": "シールドをブレイクする前",
+        },
+        "ON_SHIELD_ADD": {
+            "POST": "カードがシールドゾーンに置かれた時",
+            "PRE": "カードがシールドゾーンに置かれる時",
+        },
+        "ON_EXIT": {
+            "POST": "このクリーチャーがバトルゾーンを離れた時",
+            "PRE": "このクリーチャーがバトルゾーンを離れる時",
+        },
+        "ON_DISCARD": {
+            "POST": "このカードが捨てられた時",
+            "PRE": "このカードが捨てられる時",
+        },
+        "S_TRIGGER": {
+            "POST": "S・トリガー",
+            "PRE": "S・トリガー",
+        },
+        "PASSIVE_CONST": {
+            "POST": "（常在効果）",
+            "PRE": "（常在効果）",
+        },
+        "AT_ATTACK": {
+            "POST": "このクリーチャーが攻撃する時",
+            "PRE": "このクリーチャーが攻撃する時",
+        },
+        "AT_END_OF_TURN": {
+            "POST": "自分のターンの終わりに",
+            "PRE": "自分のターンの終わりに",
+        },
+        "AT_END_OF_OPPONENT_TURN": {
+            "POST": "相手のターンの終わりに",
+            "PRE": "相手のターンの終わりに",
+        },
+        "NONE": {
+            "POST": "",
+            "PRE": "",
+        },
     }
 
     # Quick stats used by condition/query UIs for common measurements
@@ -498,17 +594,35 @@ class CardTextResources:
         return cls.SCOPE_JAPANESE.get(scope, "")
     
     @classmethod
-    def get_trigger_text(cls, trigger: str, is_spell: bool = False) -> str:
+    def get_trigger_text(cls, trigger: str, is_spell: bool = False, is_pre: bool = False) -> str:
         """
         Get Japanese text for trigger event.
         
         Args:
             trigger: Trigger type string
             is_spell: If True, use spell-specific trigger text where available
+            is_pre: If True, return the replacement effect timing (PRE). Otherwise returns POST timing.
         
         Returns:
             Japanese trigger text
         """
+        timing_key = "PRE" if is_pre else "POST"
+        tmpl_set = cls.TRIGGER_COMPOSITION_TEMPLATES.get(trigger)
+
+        if tmpl_set and timing_key in tmpl_set:
+            tmpl = tmpl_set[timing_key]
+            if "{scope_text}" in tmpl or "{subject}" in tmpl:
+                if trigger == "ON_PLAY":
+                    if is_spell:
+                        return "この呪文を唱える時" if is_pre else "この呪文を唱えた時"
+                    return "このクリーチャーが出る時" if is_pre else "このクリーチャーが出た時"
+                elif trigger == "ON_OTHER_ENTER":
+                    return "他のクリーチャーが出る時" if is_pre else "他のクリーチャーが出た時"
+                elif trigger == "ON_CAST_SPELL":
+                    return "呪文を唱える時" if is_pre else "呪文を唱えた時"
+            return tmpl
+
+        # Fallback to older dicts if somehow not covered in the expanded TEMPLATES
         if is_spell and trigger in cls.SPELL_TRIGGER_JAPANESE:
             return cls.SPELL_TRIGGER_JAPANESE[trigger]
         return cls.TRIGGER_JAPANESE.get(trigger, trigger)
