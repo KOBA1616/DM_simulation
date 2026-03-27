@@ -17,9 +17,7 @@ class CommandFormatterBase:
     @classmethod
     def _resolve_target(cls, action: Dict[str, Any], is_spell: bool = False) -> tuple[str, str]:
         """
-        Helper to delegate target resolution to CardTextGenerator.
-        (Dynamically imported to avoid circular dependencies if necessary,
-         or we can use a utility class)
+        Helper to delegate target resolution to TargetFormatter.
         """
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-        return CardTextGenerator._resolve_target(action, is_spell)
+        from dm_toolkit.gui.editor.formatters.target_formatter import TargetFormatter
+        return TargetFormatter.format_target(action, is_spell)
