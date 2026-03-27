@@ -28,6 +28,9 @@ class ConditionFormatter:
             "PLAYED_WITHOUT_MANA_TARGET": cls._handle_played_without_mana,
             "MANA_CIVILIZATION_COUNT": cls._handle_mana_civ_count,
             "CARDS_MATCHING_FILTER": cls._handle_cards_matching_filter,
+            "OPPONENT_PLAYED_WITHOUT_MANA": lambda d: "相手がマナゾーンのカードをタップせずに、クリーチャーを出すか呪文を唱えた時: ",
+            "DURING_YOUR_TURN": lambda d: CardTextResources.get_condition_text("DURING_YOUR_TURN"),
+            "DURING_OPPONENT_TURN": lambda d: CardTextResources.get_condition_text("DURING_OPPONENT_TURN"),
         }
 
         handler = handlers.get(cond_type)
@@ -35,6 +38,13 @@ class ConditionFormatter:
             try:
                 text = handler(condition)
                 if text:
+                    if cond_type == "MANA_ARMED":
+                         return text + ": "
+                    elif "なら" in text:
+                         return text + ": "
+                    elif cond_type not in ("OPPONENT_PLAYED_WITHOUT_MANA", "DURING_YOUR_TURN", "DURING_OPPONENT_TURN"):
+                         # Add suffix unless it is already fully formatted by specific handlers
+                         return text + ": "
                     return text
             except Exception:
                 pass
