@@ -89,6 +89,9 @@ class CardDataManager:
         return "/".join(path_parts)
 
     def load_data(self, cards_data):
+        from dm_toolkit.gui.editor.data_migration import normalize_card_data
+        for c in cards_data:
+            normalize_card_data(c)
         self.serializer.load_data(self.model, cards_data)
 
     def get_full_data(self):

@@ -19,9 +19,9 @@ class TargetFormatter:
         Returns (target_description, unit_counter)
         """
         # Accept either new ('scope'filter') or legacy ('target_group'target_filter') keys
-        # 再発防止: target_group 優先。scope は後方互換。 TargetScopeResolver に処理を委譲。
+
         scope = TargetScopeResolver.resolve_action_scope(action)
-        filter_def = action.get("filter") or action.get('target_filter') or {}
+        filter_def = action.get('target_filter') or {}
         if not isinstance(filter_def, dict):
             # 再発防止: target_filter が None のカードでもプレビュー更新を継続する。
             filter_def = {}

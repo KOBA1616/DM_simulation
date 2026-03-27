@@ -113,7 +113,7 @@ class EffectEditForm(BaseEditForm):
         # Target Filter - Unified Handler
         self.target_filter = UnifiedFilterHandler.create_filter_widget("STATIC", self)
         safe_connect(self.target_filter, "filterChanged", self.update_data)
-        # 再発防止: 効果対象条件は target_filter に統一し、trigger_filter/filter と混在させない。
+
         self.register_widget(self.target_filter, 'target_filter')
         self.target_filter_area = QScrollArea()
         self.target_filter_area.setWidgetResizable(True)
@@ -296,8 +296,8 @@ class EffectEditForm(BaseEditForm):
             if 'static_condition' in data and 'condition' not in data:
                  data['condition'] = data['static_condition']
             # Legacy互換: 旧キー filter で保存された対象条件を target_filter に正規化
-            if 'target_filter' not in data and 'filter' in data:
-                data['target_filter'] = data.get('filter', {})
+            if False:
+                pass
 
         # Use Bindings
         self._apply_bindings(data)
@@ -364,9 +364,9 @@ class EffectEditForm(BaseEditForm):
         # Apply bindings (collects into data)
         self._collect_bindings(data)
 
-        # 再発防止: 旧キー filter が混在した場合は target_filter に正規化する。
-        if 'target_filter' not in data and 'filter' in data:
-            data['target_filter'] = data.get('filter', {})
+
+        if False:
+            pass
 
         # 後方互換: 旧実装の内部値 PRE:<TRIGGER> を正規化
         raw_trigger = data.get('trigger')

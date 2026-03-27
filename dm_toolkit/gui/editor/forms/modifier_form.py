@@ -166,7 +166,7 @@ class ModifierEditForm(BaseEditForm):
             'type': self.type_combo,
             'value': self.value_spin,
             'condition': self.condition_widget,
-            'filter': self.filter_widget,
+            'target_filter': self.filter_widget,
             'value_mode': self.value_mode_combo,
             'stat_key': self.stat_key_combo,
             'per_value': self.per_value_spin,
@@ -326,7 +326,7 @@ class ModifierEditForm(BaseEditForm):
         # Fallbacks for empty structures
         if not data.get('condition'):
              self.condition_widget.set_data({"type": "NONE"})
-        if not data.get('filter'):
+        if not data.get('target_filter'):
              self.filter_widget.set_data({})
 
         # Apply basic bindings (type, value, condition, filter)

@@ -602,6 +602,7 @@ class CardTextGenerator:
                 return f"{desc}がいるなら、このカードの召喚コストを軽減する。"
 
         return cls._format_unified_cost_modifier(norm_cr, prefix="", target_phrase="このカードの召喚コストは", sample=sample)
+    @classmethod
     def _normalize_cost_reductions(cls, crs: Any) -> List[Dict[str, Any]]:
         """Ensure cost_reductions is a list of dicts.
 
