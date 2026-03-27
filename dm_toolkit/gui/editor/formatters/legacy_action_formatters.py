@@ -5,6 +5,7 @@ from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount, is_input_linked
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+from dm_toolkit.gui.editor.formatters.text_utils import TextUtils
 from dm_toolkit.consts import MAX_COST_VALUE
 
 class LegacyActionFormatterHelper:
@@ -103,21 +104,7 @@ class LegacyActionFormatterHelper:
     @staticmethod
     def apply_conjugation(command: Dict[str, Any], text: str) -> str:
         optional = command.get("optional", False)
-        if optional:
-            if text.endswith("する。"):
-                text = text[:-3] + "してもよい。"
-            elif text.endswith("く。"):
-                text = text[:-2] + "いてもよい。"
-            elif text.endswith("す。"):
-                text = text[:-2] + "してもよい。"
-            elif text.endswith("る。"):
-                text = text[:-2] + "てもよい。"
-            elif text.endswith("う。"):
-                text = text[:-2] + "ってもよい。"
-            else:
-                if not text.endswith("てもよい。"):
-                    text = text[:-1] + "てもよい。"
-        return text
+        return TextUtils.apply_conjugation(text, optional)
 
 class BaseGenericLegacyFormatter(CommandFormatterBase):
     atype = ""

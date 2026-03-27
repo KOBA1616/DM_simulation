@@ -52,7 +52,7 @@ class ApplyModifierFormatter(CommandFormatterBase):
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
         target_str, unit = cls._resolve_target(command, ctx.is_spell)
 
-        str_param = command.get('mutation_kind') or command.get('str_val') or ''
+        str_param = command.get('mutation_kind') or command.get('str_param') or command.get('str_val') or ''
         duration_key = command.get('duration') or command.get('input_value_key', '')
         input_key = command.get('input_value_key', '')
         input_usage = command.get('input_value_usage') or command.get('input_usage')

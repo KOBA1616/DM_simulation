@@ -405,7 +405,7 @@ class SelectNumberFormatter(CommandFormatterBase):
 class SelectOptionFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+        from dm_toolkit.gui.editor.formatters.command_list_formatter import CommandListFormatter
         options = command.get('options', [])
         lines = []
         amount = command.get('amount') if command.get('amount') is not None else 1
@@ -415,13 +415,11 @@ class SelectOptionFormatter(CommandFormatterBase):
             optional = True
         suffix = '（同じものを選んでもよい）' if optional else ''
         lines.append(f'次の中から{amount}回選ぶ。{suffix}')
-        for i, opt_chain in enumerate(options):
-            parts = []
-            for a in opt_chain:
-                # Always delegate to registry-backed format_command
-                parts.append(CardTextGenerator._format_command(a, ctx))
-            chain_text = ' '.join(parts)
-            lines.append(f'> {chain_text}')
+
+        block_text = CommandListFormatter.format_block(options, ctx, bullet="> ")
+        if block_text:
+            lines.append(block_text)
+
         return '\n'.join(lines)
 
 @register_formatter("QUERY")
