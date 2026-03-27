@@ -20,11 +20,13 @@ class MekraidFormatter(CommandFormatterBase):
         look_count = command.get('look_count') if command.get('look_count') is not None else 0
         val2 = look_count if look_count > 0 else 3
         select_count = command.get('select_count', 1)
-        input_key = command.get('input_value_key', '')
         input_usage = command.get('input_value_usage') or command.get('input_usage')
 
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+
         use_token = str(val1)
-        if input_key and input_usage == 'MAX_COST':
+        if linked_text and input_usage == 'MAX_COST':
             use_token = 'その数'
         elif val1 == 0 and input_usage == 'MAX_COST':
             use_token = 'その数'
@@ -53,10 +55,13 @@ class ApplyModifierFormatter(CommandFormatterBase):
         target_str, unit = cls._resolve_target(command, ctx.is_spell)
 
         str_param = command.get('mutation_kind') or command.get('str_param') or command.get('str_val') or ''
-        duration_key = command.get('duration') or command.get('input_value_key', '')
-        input_key = command.get('input_value_key', '')
         input_usage = command.get('input_value_usage') or command.get('input_usage')
-        is_target_linked = bool(input_key) and (not input_usage or input_usage == 'TARGET')
+
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        duration_key = command.get('duration') or command.get('input_link', '') or command.get('input_value_key', '')
+
+        is_target_linked = bool(linked_text) and (not input_usage or input_usage == 'TARGET')
 
         duration_text = ''
         if duration_key:
@@ -96,10 +101,13 @@ class AddKeywordFormatter(CommandFormatterBase):
         val1 = max_cost_src if max_cost_src is not None and not isinstance(max_cost_src, dict) else get_command_amount(command, default=0)
 
         str_val = command.get('str_val', '')
-        duration_key = command.get('duration') or command.get('input_value_key', '')
-        input_key = command.get('input_value_key', '')
         input_usage = command.get('input_value_usage') or command.get('input_usage')
-        is_target_linked = bool(input_key) and (not input_usage or input_usage == 'TARGET')
+
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        duration_key = command.get('duration') or command.get('input_link', '') or command.get('input_value_key', '')
+
+        is_target_linked = bool(linked_text) and (not input_usage or input_usage == 'TARGET')
 
         duration_text = ''
         if duration_key:
@@ -193,11 +201,14 @@ class MutateFormatter(CommandFormatterBase):
 
         mkind = command.get('mutation_kind', '')
         str_param = command.get('str_val', '')
-        input_key = command.get('input_value_key', '')
         input_usage = command.get('input_value_usage') or command.get('input_usage')
-        is_target_linked = bool(input_key) and (not input_usage or input_usage == 'TARGET')
 
-        duration_key = command.get('duration') or command.get('input_value_key', '')
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        duration_key = command.get('duration') or command.get('input_link', '') or command.get('input_value_key', '')
+
+        is_target_linked = bool(linked_text) and (not input_usage or input_usage == 'TARGET')
+
         duration_text = ''
         if duration_key:
             trans = CardTextResources.get_duration_text(duration_key)

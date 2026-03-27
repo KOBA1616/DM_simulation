@@ -90,14 +90,17 @@ class ConditionFormatter:
     def _handle_compare_input(cls, d: Dict[str, Any], action: Dict[str, Any]) -> str:
         val = d.get("value", 0)
         op = d.get("op", ">=")
-        input_key = action.get("input_value_key", "")
+
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+
+        input_key = action.get("input_value_key") or action.get("input_link") or ""
         input_desc_map = {
             "spell_count": "墓地の呪文の数",
             "card_count": "カードの数",
             "creature_count": "クリーチャーの数",
             "element_count": "エレメントの数"
         }
-        input_desc = input_desc_map.get(input_key, input_key if input_key else "入力値")
+        input_desc = input_desc_map.get(input_key, InputLinkFormatter.format_input_source_label(action) or "入力値")
 
         try:
              ival = int(val)

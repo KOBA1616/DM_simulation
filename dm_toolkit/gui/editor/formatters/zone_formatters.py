@@ -13,7 +13,6 @@ from dm_toolkit.gui.i18n import tr
 class TransitionFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        input_key = command.get("input_value_key", "")
         from_z = CardTextResources.normalize_zone_name(command.get("from_zone", ""))
         to_z = CardTextResources.normalize_zone_name(command.get("to_zone", ""))
         amount = get_command_amount(command, default=0)
@@ -183,15 +182,14 @@ class ReplaceCardMoveFormatter(CommandFormatterBase):
         scope = command.get("target_group") or command.get("scope", "NONE")
         is_self_ref = scope == "SELF"
 
-        input_key = command.get("input_value_key") or command.get("input_link") or ""
-
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
 
         # Base replacement template
         t = CardTextResources.ZONE_MOVE_TEMPLATES.get("REPLACE_CARD_MOVE", "{target}を{from_zone}に置くかわりに{to_zone}に置く。")
         t = t.replace("{from_zone}", orig_zone_str).replace("{to_zone}", zone_str)
 
-        if input_key:
+        if linked_text:
             input_usage = str(command.get("input_value_usage") or command.get("input_usage") or "").upper()
             linked_target = "そのカード"
             if input_usage == "REPLACEMENT":

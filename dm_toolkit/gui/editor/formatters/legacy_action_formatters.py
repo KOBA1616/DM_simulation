@@ -15,11 +15,12 @@ class LegacyActionFormatterHelper:
 
     @staticmethod
     def handle_input_link(atype: str, command: Dict[str, Any], template: str) -> tuple[str, str]:
-        input_key = command.get("input_value_key") or command.get("input_link") or ""
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
         input_usage = command.get("input_value_usage") or command.get("input_usage")
         val1 = get_command_amount(command, default=0)
 
-        if not input_key:
+        if not linked_text:
             return template, str(val1)
 
         usage_label_suffix = ""
@@ -62,9 +63,10 @@ class LegacyActionFormatterHelper:
 
     @staticmethod
     def handle_all_selection(atype: str, command: Dict[str, Any], template: str, val1: Any) -> str:
-        input_key = command.get("input_value_key") or command.get("input_link") or ""
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
 
-        if str(val1) == "0" and not input_key:
+        if str(val1) == "0" and not linked_text:
             if atype == "DESTROY": return "{target}をすべて破壊する。"
             if atype == "TAP": return "{target}をすべてタップする。"
             if atype == "UNTAP": return "{target}をすべてアンタップする。"
@@ -182,10 +184,11 @@ class PlayFromZoneFormatter(CommandFormatterBase):
         temp_filter = action.get("filter", {}).copy()
         action["filter"] = temp_filter
 
-        input_key = action.get("input_value_key") or action.get("input_link") or ""
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+        linked_text = InputLinkFormatter.resolve_linked_value_text(action)
         input_usage = action.get("input_value_usage") or action.get("input_usage")
         usage_label_suffix = ""
-        if input_key and input_usage:
+        if linked_text and input_usage:
             label = InputLinkFormatter.format_input_usage_label(input_usage)
             if label:
                 usage_label_suffix = f"（{label}）"

@@ -142,10 +142,11 @@ class RevealCardsFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         deck_owner = "相手の" if (command.get("target_group") or command.get("scope", "NONE")) in ["OPPONENT", "PLAYER_OPPONENT"] else ""
-        input_key = command.get("input_value_key") or command.get("input_link") or ""
         look_count = command.get("look_count") if command.get("look_count") is not None else get_command_amount(command, default=0)
-        if input_key:
-            return f"{deck_owner}山札の上から、その数だけ表向きにする。"
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        if linked_text:
+            return f"{deck_owner}山札の上から、{linked_text}だけ表向きにする。"
         return f"{deck_owner}山札の上から{look_count}枚を表向きにする。"
 
 @register_formatter("COUNT_CARDS")
@@ -200,13 +201,14 @@ class ActionRestrictionFormatter(CommandFormatterBase):
         else:
             duration_str = f"{look_count}ターン" if look_count > 0 else "このターン"
 
-        input_key = command.get("input_value_key") or command.get("input_link") or ""
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
 
         if atype == 'SPELL_RESTRICTION':
             filt = command.get('filter', {}) or {}
             exact_cost = filt.get('exact_cost') if isinstance(filt, dict) else None
-            if input_key:
-                action_text = '入力値と同じコストの呪文を唱えられない'
+            if linked_text:
+                action_text = f'{linked_text}のコストの呪文を唱えられない'
             elif exact_cost is not None:
                 action_text = f'コスト{exact_cost}の呪文を唱えられない'
             else:
@@ -429,13 +431,16 @@ class QueryFormatter(CommandFormatterBase):
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
         target_str, unit = cls._resolve_target(command, ctx.is_spell)
         mode = command.get('query_mode') or ''
-        input_key = command.get("input_value_key") or command.get("input_link") or ""
+
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+
         input_usage = command.get("input_value_usage") or command.get("input_usage") or ""
         stat_name, stat_unit = CardTextResources.STAT_KEY_MAP.get(str(mode), (None, None))
 
         if stat_name:
             base = f'{stat_name}{stat_unit}を数える。'
-            if input_key:
+            if linked_text:
                 usage_label = InputLinkFormatter.format_input_usage_label(input_usage)
                 if usage_label:
                     base += f'（{usage_label}）'
@@ -507,10 +512,11 @@ class IgnoreAbilityFormatter(CommandFormatterBase):
         if types:
             type_txt = '・'.join([tr(t) for t in types])
 
-        input_key = command.get("input_value_key") or command.get("input_link") or ""
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
 
-        if input_key:
-            return f'{target_str_lock}のコスト入力値と同じ{type_txt}の能力は{duration_text}の間、無視される。'
+        if linked_text:
+            return f'{target_str_lock}のコスト{linked_text}の{type_txt}の能力は{duration_text}の間、無視される。'
         if isinstance(filt, dict) and filt.get('exact_cost') is not None:
             return f"{target_str_lock}のコスト{filt.get('exact_cost')}の{type_txt}の能力は{duration_text}の間、無視される。"
         return f'{target_str_lock}の{type_txt}の能力は{duration_text}の間、無視される。'

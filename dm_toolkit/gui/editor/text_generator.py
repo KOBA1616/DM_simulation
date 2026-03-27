@@ -271,39 +271,6 @@ class CardTextGenerator:
         return f"{adjs}の{noun}" if adjs else noun
 
     @classmethod
-    def _compute_stat_from_sample(cls, key: str, sample: List[Any]) -> Any:
-        """Compute a concrete example value for a given stat key from a sample list.
-
-        `sample` is typically a list of civilization strings or card dicts.
-        Returns an int or None if not computable.
-        """
-        if not sample:
-            return None
-
-        # Normalize sample to list of civ strings when possible
-        if key == "MANA_CIVILIZATION_COUNT":
-            civs = set()
-            for entry in sample:
-                if isinstance(entry, str):
-                    civs.add(entry)
-                elif isinstance(entry, dict):
-                    for c in entry.get('civilizations', []):
-                        civs.add(c)
-            return len(civs)
-
-        # For simple count-based stats, return the number of entries
-        count_stats = {
-            "MANA_COUNT", "CREATURE_COUNT", "SHIELD_COUNT", "HAND_COUNT",
-            "GRAVEYARD_COUNT", "BATTLE_ZONE_COUNT", "OPPONENT_MANA_COUNT",
-            "OPPONENT_CREATURE_COUNT", "OPPONENT_SHIELD_COUNT", "OPPONENT_HAND_COUNT",
-            "OPPONENT_GRAVEYARD_COUNT", "OPPONENT_BATTLE_ZONE_COUNT", "CARDS_DRAWN_THIS_TURN"
-        }
-        if key in count_stats:
-            return len(sample)
-
-        return None
-
-    @classmethod
     def _get_rc_filter_from_effects(cls, data: dict) -> dict:
         """REVOLUTION_CHANGE コマンドの target_filter を効果ノードから探して返す。
         再発防止: 最新仕様では target_filter を単一の正規入力として扱う。"""
@@ -391,7 +358,7 @@ class CardTextGenerator:
         if formatter is not None:
             try:
                 return formatter(reaction)
-            except Exception:
+            except (KeyError, TypeError, ValueError):
                 # Fallback to generic translation if formatting fails
                 return tr(rtype)
 
@@ -402,7 +369,7 @@ class CardTextGenerator:
         """Best-effort int conversion helper used by text formatting paths."""
         try:
             return int(value)
-        except Exception:
+        except (ValueError, TypeError):
             return default
 
     @classmethod
@@ -503,109 +470,124 @@ class CardTextGenerator:
         return normalized
 
     @classmethod
-    def _format_cost_reduction(cls, cr: Dict[str, Any], sample: List[Any] = None) -> str:
-        if not cr:
-            return ""
+    def _format_unified_cost_modifier(cls, mod_dict: Dict[str, Any], prefix: str = "", target_phrase: str = "このカードの召喚コストを", sample: List[Any] = None) -> str:
+        """Unified logic for COST_MODIFIER and cost_reductions."""
+        vm_raw = mod_dict.get("value_mode")
+        if not vm_raw and (mod_dict.get("stat_key") or mod_dict.get("per_value") is not None):
+            value_mode = "STAT_SCALED"
+        else:
+            value_mode = str(vm_raw or "FIXED").upper()
 
-        # Pre-normalize to the new schema
-        norm_cr = cls._normalize_cost_reduction_dict(cr)
+        cond = mod_dict.get('condition') or mod_dict.get('condition_def') or {}
+        cond_text = cls._format_condition(cond).replace(": ", "").strip("、") if cond else ""
 
-        ctype = norm_cr.get("type", "PASSIVE")
-        name = norm_cr.get("name", "")
-        if name:
-            return f"{name}"
-
-        value_mode = norm_cr.get("value_mode")
-        filter_def = norm_cr.get("filter", {})
-
-        # Describe condition (civilization, zones, races etc.)
+        filter_def = mod_dict.get("filter", {})
         cond_desc = cls._describe_simple_filter(filter_def) if filter_def else ""
 
-        # FIXED / PASSIVE simple reductions
-        if (value_mode and str(value_mode).upper() in ("FIXED", "FIXED_AMOUNT", "PASSIVE")) or norm_cr.get("value") is not None:
-            val = norm_cr.get("value")
-            if val is None:
-                # generic message
-                return tr("コスト軽減: {cond}").format(cond=cond_desc)
+        if prefix and not prefix.endswith("、"):
+             prefix += "、"
 
-            condition_text = ""
-            if "condition" in norm_cr:
-                condition_text = cls._format_condition(norm_cr["condition"]).replace(": ", "")
+        if value_mode in ("FIXED", "FIXED_AMOUNT", "PASSIVE") or mod_dict.get("value") is not None:
+             val = mod_dict.get("value")
+             if val is None:
+                  return f"{prefix}{target_phrase}修正する。"
 
-            # Example: "マナゾーンに闇の文明が2枚以上あれば、このカードの召喚コストは2少なくなる。"
-            if condition_text:
-                return f"{condition_text}、このカードの召喚コストは{val}少なくなる。"
+             verb = "少なくなる" if val > 0 and target_phrase.endswith("コストは") else "多くなる" if target_phrase.endswith("コストは") else "少なくする" if val > 0 else "多くする"
 
-            if cond_desc:
-                return f"{cond_desc}があれば、このカードの召喚コストは{val}少なくなる。"
-            return f"このカードの召喚コストは{val}少なくなる。"
+             # Fallback if the user wrote target_phrase as 'XXのコストを' vs 'XXのコストは'
+             if target_phrase.endswith("を"):
+                  verb = "少なくする" if val > 0 else "多くする"
+             elif target_phrase.endswith("は"):
+                  verb = "少なくなる" if val > 0 else "多くなる"
 
-        # STAT_SCALED style reductions
-        if value_mode and str(value_mode).upper() == "STAT_SCALED":
-            per_value = norm_cr.get("per_value")
-            increment_cost = norm_cr.get("increment_cost")
-            max_reduction = norm_cr.get("max_reduction")
-            raw_stat_key = norm_cr.get("stat_key")
+             val_abs = abs(val)
 
-            condition_text = ""
-            if "condition" in norm_cr:
-                condition_text = cls._format_condition(norm_cr["condition"]).replace(": ", "")
+             if cond_text:
+                  return f"{prefix}{cond_text}、{target_phrase}{val_abs}{verb}。"
+             if cond_desc:
+                  return f"{prefix}{cond_desc}があれば、{target_phrase}{val_abs}{verb}。"
 
-            prefix = ""
-            if condition_text:
-                prefix = f"{condition_text}、"
+             if not prefix:
+                  return f"{target_phrase}{val_abs}{verb}。"
+             else:
+                  return f"{prefix}{target_phrase}{val_abs}{verb}。"
+
+        if value_mode == "STAT_SCALED":
+            per_value = mod_dict.get("per_value", 0)
+            step_delta = mod_dict.get("value")
+            if step_delta in (None, 0):
+                step_delta = mod_dict.get("increment_cost")
+            if step_delta in (None, 0):
+                step_delta = 1
+            max_reduction = mod_dict.get("max_reduction")
+            raw_stat_key = mod_dict.get("stat_key")
+
+            pfx = prefix
+            if cond_text:
+                 pfx += f"{cond_text}、"
             elif cond_desc:
-                prefix = f"{cond_desc}があると、"
+                 pfx += f"{cond_desc}があると、"
 
-            stat_key_normalized = CardTextResources.normalize_stat_key(raw_stat_key) if raw_stat_key else raw_stat_key
-            stat_name, unit = CardTextResources.STAT_KEY_MAP.get(stat_key_normalized, (raw_stat_key, ""))
+            # Use 'を、' or 'を' properly for STAT_SCALED
+            tp = target_phrase
+            if tp.endswith("は"):
+                 tp = tp[:-1] + "を、"
+            elif tp.endswith("を"):
+                 tp = tp + "、"
 
             base = cls._format_stat_scaled_cost_text(
-                target_phrase="このカードの召喚コストを、",
+                target_phrase=tp,
                 stat_key=raw_stat_key,
                 per_value=per_value,
-                step_delta=increment_cost,
-                min_stat=norm_cr.get('min_stat', 1),
+                step_delta=step_delta,
+                min_stat=mod_dict.get('min_stat', 1),
                 max_reduction=max_reduction,
-                prefix=prefix
+                prefix=pfx
             )
 
-            # If sample provided, attempt to show example computed reduction/cost
             try:
-                stat_key = stat_key_normalized
-                stat_name, _ = CardTextResources.STAT_KEY_MAP.get(stat_key, (stat_key or "統計", ""))
-                if sample and isinstance(sample, list) and stat_key:
-                    sval = None
-                    # Prefer numeric entries via _compute_stat_from_sample
-                    sval = cls._compute_stat_from_sample(stat_key, sample)
+                stat_key_normalized = CardTextResources.normalize_stat_key(raw_stat_key) if raw_stat_key else raw_stat_key
+                stat_name, _ = CardTextResources.STAT_KEY_MAP.get(stat_key_normalized, (stat_key_normalized or "統計", ""))
+                if sample and isinstance(sample, list) and stat_key_normalized:
+                    from dm_toolkit.gui.editor.services.preview_evaluator import PreviewEvaluator
+                    sval = PreviewEvaluator.compute_stat_from_sample(stat_key_normalized, sample)
                     if sval is None:
-                        # if sample contains dicts, try key lookup
                         for s in sample:
-                            if isinstance(s, dict) and (stat_key in s or raw_stat_key in s):
+                            if isinstance(s, dict) and (stat_key_normalized in s or raw_stat_key in s):
                                 try:
-                                    sval_raw = s.get(stat_key)
+                                    sval_raw = s.get(stat_key_normalized)
                                     if sval_raw is None and raw_stat_key:
                                         sval_raw = s.get(raw_stat_key)
                                     sval = int(sval_raw)
                                     break
-                                except Exception:
+                                except (ValueError, TypeError):
                                     pass
                     if sval is not None and per_value:
-                        calc = max(0, int(sval) - int(norm_cr.get('min_stat', 1)) + 1) * int(per_value)
+                        calc = max(0, int(sval) - int(mod_dict.get('min_stat', 1)) + 1) * int(per_value)
                         if isinstance(max_reduction, int):
                             calc = min(calc, max_reduction)
                         if calc > 0:
                             base += f" （例: 現在の{stat_name}{sval} → コストを{calc}削減）"
-            except Exception:
+            except (KeyError, ValueError, TypeError):
                 pass
             return base
 
-        # Condition-based reductions (COMPARE_STAT, CARDS_MATCHING_FILTER)
+        return f"{prefix}{target_phrase}修正する。"
+
+    @classmethod
+    def _format_cost_reduction(cls, cr: Dict[str, Any], sample: List[Any] = None) -> str:
+        if not cr:
+            return ""
+
+        norm_cr = cls._normalize_cost_reduction_dict(cr)
+        name = norm_cr.get("name", "")
+        if name:
+            return f"{name}"
+
         cond = norm_cr.get('condition') or norm_cr.get('condition_def') or {}
         if isinstance(cond, dict):
             ctype = cond.get('type')
             if ctype == 'COMPARE_STAT':
-                # Use existing condition formatter to get "自分のXがYなら: " style then adapt
                 cond_text = cls._format_condition(cond).strip('、: ')
                 val = norm_cr.get('value') or norm_cr.get('reduction')
                 if val is None:
@@ -619,14 +601,7 @@ class CardTextGenerator:
                     return f"{desc}が{val}体以上いるなら、このカードの召喚コストは{norm_cr.get('value') or 'X'}少なくなる。"
                 return f"{desc}がいるなら、このカードの召喚コストを軽減する。"
 
-        # Fallback: show filter description
-        if filter_def:
-            desc = cls._describe_simple_filter(filter_def)
-            return tr("コスト軽減: {desc}").format(desc=desc)
-
-        return tr("コスト軽減")
-
-    @classmethod
+        return cls._format_unified_cost_modifier(norm_cr, prefix="", target_phrase="このカードの召喚コストは", sample=sample)
     def _normalize_cost_reductions(cls, crs: Any) -> List[Dict[str, Any]]:
         """Ensure cost_reductions is a list of dicts.
 
@@ -702,7 +677,7 @@ class CardTextGenerator:
         if formatter is not None:
             try:
                 return formatter()
-            except Exception:
+            except (KeyError, TypeError, ValueError):
                 return f"{cond_text}{scope_prefix}常在効果: {tr(mtype)}"
 
         return f"{cond_text}{scope_prefix}常在効果: {tr(mtype)}"
@@ -714,38 +689,20 @@ class CardTextGenerator:
     
     @classmethod
     def _format_cost_modifier(cls, cond: str, target: str, value: int, modifier: Dict[str, Any] = None) -> str:
-        """Format COST_MODIFIER modifier."""
-        # 再発防止: COST_MODIFIER は FIXED/STAT_SCALED の両モードを持つ。
-        # value のみで表現すると stat_key 情報が失われ、プレビュー文面が「修正する」だけになる。
-        if isinstance(modifier, dict):
-            vm_raw = modifier.get("value_mode")
-            # 再発防止: 旧データでは value_mode が欠落しても stat_key/per_value が保存されている場合がある。
-            # その場合は STAT_SCALED として扱わないと「コストを修正する。」に退化する。
-            if not vm_raw and (modifier.get("stat_key") or modifier.get("per_value") is not None):
-                value_mode = "STAT_SCALED"
-            else:
-                value_mode = str(vm_raw or "FIXED").upper()
-            if value_mode == "STAT_SCALED":
-                step_delta = modifier.get("value")
-                if step_delta in (None, 0):
-                    step_delta = modifier.get("increment_cost")
-                if step_delta in (None, 0):
-                    step_delta = 1
-                return cls._format_stat_scaled_cost_text(
-                    target_phrase=f"{cond}{target}のコストを、",
-                    stat_key=modifier.get("stat_key"),
-                    per_value=modifier.get("per_value", 0),
-                    step_delta=step_delta,
-                    min_stat=modifier.get("min_stat", 1),
-                    max_reduction=modifier.get("max_reduction"),
-                )
+        """Format COST_MODIFIER modifier. Delegates to _format_unified_cost_modifier."""
+        if not isinstance(modifier, dict):
+             if value > 0:
+                  return f"{cond}{target}のコストを{value}少なくする。"
+             elif value < 0:
+                  return f"{cond}{target}のコストを{abs(value)}多くする。"
+             return f"{cond}{target}のコストを修正する。"
 
-        if value > 0:
-            return f"{cond}{target}のコストを{value}軽減する。"
-        elif value < 0:
-            return f"{cond}{target}のコストを{abs(value)}増やす。"
-        return f"{cond}{target}のコストを修正する。"
-    
+        norm_mod = modifier.copy()
+        if "value" not in norm_mod:
+             norm_mod["value"] = value
+
+        return cls._format_unified_cost_modifier(norm_mod, prefix=cond, target_phrase=f"{target}のコストを")
+
     @classmethod
     def _format_power_modifier(cls, cond: str, target: str, value: int) -> str:
         """Format POWER_MODIFIER modifier."""

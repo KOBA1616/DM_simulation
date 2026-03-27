@@ -119,7 +119,7 @@ class TargetFormatter:
     def _format_cost_and_power(cls, filter_def: Dict[str, Any], action: Dict[str, Any], omit_cost: bool = False) -> str:
         adjectives = ""
         input_usage = action.get("input_value_usage") or action.get("input_usage")
-        has_input_key = bool(action.get("input_value_key"))
+        has_input_key = bool(action.get("input_value_key") or action.get("input_link"))
 
         # Cost
         if not omit_cost:

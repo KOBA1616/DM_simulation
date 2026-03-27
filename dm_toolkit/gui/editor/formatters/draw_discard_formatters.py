@@ -22,18 +22,11 @@ class DrawCardFormatter(CommandFormatterBase):
         # Map 'amount' to 'value1' since command dictionary uses 'amount' typically
         val1 = get_command_amount(command, default=0)
 
-        # Check input_value_key
-        input_key = command.get("input_value_key") or command.get("input_link") or ""
-
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 
-        if input_key:
-            input_label = command.get("_input_value_label", "")
-            if not input_label:
-                 input_label = InputLinkFormatter.format_input_source_label(command)
-            if input_label:
-                 val_str = f"その数"
-                 return template.replace("{value1}", val_str)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        if linked_text:
+            return template.replace("{value1}", linked_text)
 
         # Default target_str for DRAW_CARD (not using {target})
         return template.replace("{value1}", str(val1)).replace("{target}", "カード")
@@ -54,17 +47,14 @@ class DiscardFormatter(CommandFormatterBase):
         cnt = val1
         tgt = target_str
 
-        input_key = command.get("input_value_key") or command.get("input_link") or ""
-        if input_key:
-            from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-            input_label = command.get("_input_value_label", "")
-            if not input_label:
-                 input_label = InputLinkFormatter.format_input_source_label(command)
-            if input_label:
-                 cnt = f"その数"
-                 unit = "枚" # assuming cards
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 
-        if cnt == 0 and not input_key:
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        if linked_text:
+             cnt = linked_text
+             unit = "枚" # assuming cards
+
+        if cnt == 0 and not linked_text:
             if scope == "NONE":
                 return "手札をすべて捨てる。"
             else:
