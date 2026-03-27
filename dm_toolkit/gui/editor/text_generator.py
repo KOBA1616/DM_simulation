@@ -908,7 +908,7 @@ class CardTextGenerator:
         formatter_cls = CommandFormatterRegistry.get_formatter(cmd_type)
         if formatter_cls:
             # The formatter returns the template or finalized text.
-            formatted_text = formatter_cls.format(command_copy, ctx)
+            formatted_text = formatter_cls.format_with_optional(command_copy, ctx)
             return formatted_text
 
         # 再発防止: REVOLUTION_CHANGE コマンドはカードレベルの革命チェンジテキストで使用されるが、
@@ -923,7 +923,7 @@ class CardTextGenerator:
         formatter_cls = CommandFormatterRegistry.get_formatter(cmd_type)
         if formatter_cls:
             # Re-try with normalized alias.
-            formatted_text = formatter_cls.format(command_copy, ctx)
+            formatted_text = formatter_cls.format_with_optional(command_copy, ctx)
             return formatted_text
 
         # Final fallback

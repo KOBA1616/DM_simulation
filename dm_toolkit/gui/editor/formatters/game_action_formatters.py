@@ -459,6 +459,7 @@ class QueryFormatter(CommandFormatterBase):
                     base = f"{'または'.join(zone_names)}のカードの枚数を数える。"
             else:
                 base = 'カードの数を数える。'
+            input_key = command.get('input_value_key') or command.get('input_link')
             if input_key:
                 usage_label = InputLinkFormatter.format_input_usage_label(input_usage)
                 if usage_label:
@@ -472,6 +473,7 @@ class QueryFormatter(CommandFormatterBase):
             from dm_toolkit.gui.editor.text_generator import CardTextGenerator
             filter_txt = FilterTextFormatter.format_filter_text(command.get('filter', {}))
 
+            input_key = command.get('input_value_key') or command.get('input_link')
             if input_key:
                 usage_label = InputLinkFormatter.format_input_usage_label(input_usage)
                 cnt_txt = '指定数'
@@ -485,6 +487,7 @@ class QueryFormatter(CommandFormatterBase):
             return f'条件に合うカードから{sel_count}枚選ぶ。'
 
         base = f'質問: {tr(mode)}'
+        input_key = command.get('input_value_key') or command.get('input_link')
         if input_key:
             usage_label = InputLinkFormatter.format_input_usage_label(input_usage)
             if usage_label:

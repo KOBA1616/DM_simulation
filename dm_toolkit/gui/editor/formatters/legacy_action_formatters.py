@@ -5,7 +5,6 @@ from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount, is_input_linked
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-from dm_toolkit.gui.editor.formatters.text_utils import TextUtils
 from dm_toolkit.consts import MAX_COST_VALUE
 
 class LegacyActionFormatterHelper:
@@ -103,10 +102,7 @@ class LegacyActionFormatterHelper:
 
         return text
 
-    @staticmethod
-    def apply_conjugation(command: Dict[str, Any], text: str) -> str:
-        optional = command.get("optional", False)
-        return TextUtils.apply_conjugation(text, optional)
+
 
 class BaseGenericLegacyFormatter(CommandFormatterBase):
     atype = ""
@@ -122,7 +118,7 @@ class BaseGenericLegacyFormatter(CommandFormatterBase):
             template = "{target}を破壊する。"
 
         text = LegacyActionFormatterHelper.apply_replacements(command, ctx, template, val1_str, target_str, unit)
-        return LegacyActionFormatterHelper.apply_conjugation(command, text)
+        return text
 
 @register_formatter("DESTROY")
 class DestroyFormatter(BaseGenericLegacyFormatter):
@@ -278,4 +274,4 @@ class PlayFromZoneFormatter(CommandFormatterBase):
 
         text = LegacyActionFormatterHelper.apply_replacements(action, ctx, template, str(action.get("value1", 0)), target_str, unit)
 
-        return LegacyActionFormatterHelper.apply_conjugation(action, text)
+        return text

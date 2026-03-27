@@ -11,13 +11,11 @@ class DrawCardFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         up_to = bool(command.get('up_to', False))
-        optional = bool(command.get("optional", False))
-
         template = CardTextResources.ACTION_MAP.get("DRAW_CARD", "")
         if up_to:
             template = "最大{value1}枚まで引く。"
 
-        template = TextUtils.apply_conjugation(template, optional)
+
 
         # Map 'amount' to 'value1' since command dictionary uses 'amount' typically
         val1 = get_command_amount(command, default=0)
@@ -60,8 +58,6 @@ class DiscardFormatter(CommandFormatterBase):
             else:
                 return f"{tgt}をすべて捨てる。"
 
-        optional = bool(command.get("optional", False))
-
         if not tgt or tgt == "カード" or tgt == "自分のカード" or tgt == "自分の":
             tgt = "手札"
 
@@ -70,4 +66,4 @@ class DiscardFormatter(CommandFormatterBase):
         else:
             text = f"{tgt}を{cnt}{unit}捨てる。"
 
-        return TextUtils.apply_conjugation(text, optional)
+        return text

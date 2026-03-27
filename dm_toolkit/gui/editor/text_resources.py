@@ -665,6 +665,21 @@ class CardTextResources:
         """
         return cls.DURATION_TRANSLATION.get(duration_key, duration_key)
     
+
+    @classmethod
+    def get_duration_text_with_comma(cls, duration_key: str) -> str:
+        """
+        Get Japanese text for duration and append a comma if it's a known duration.
+        """
+        if not duration_key:
+            return ""
+        trans = cls.get_duration_text(duration_key)
+        if trans and trans != duration_key:
+            return trans + "、"
+        elif duration_key in cls.DURATION_TRANSLATION:
+            return cls.DURATION_TRANSLATION[duration_key] + "、"
+        return ""
+
     @classmethod
     def get_stat_key_label(cls, stat_key: str) -> str:
         """

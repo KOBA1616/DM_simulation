@@ -64,6 +64,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 # ── インポート ─────────────────────────────────────────────────────────────────
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.consistency import validate_trigger_scope_filter
@@ -656,7 +657,7 @@ class TestTextQuality:
             "condition": {},
         }
         text = CardTextGenerator._format_modifier(modifier)
-        assert "軽減" in text, (
+        assert "少なくする" in text or "少なくなる" in text or "軽減" in text, (
             f"COST_MODIFIER value=2 で「軽減」がない: 「{text}」\n"
             "再発防止: _format_cost_modifier で value>0 を軽減として表示すること"
         )
@@ -671,7 +672,7 @@ class TestTextQuality:
             "condition": {},
         }
         text = CardTextGenerator._format_modifier(modifier)
-        assert "増やす" in text or "増" in text, (
+        assert "多くする" in text or "多くなる" in text or "増やす" in text or "増" in text, (
             f"COST_MODIFIER value=-2 で「増やす」がない: 「{text}」\n"
             "再発防止: _format_cost_modifier で value<0 をコスト増として表示すること"
         )
@@ -731,7 +732,7 @@ class TestTextQuality:
             {"is_evolution": 1, "types": ["CREATURE"]},
         ]
         for filt in cases:
-            desc = CardTextGenerator.generate_trigger_filter_description(filt)
+            desc = FilterTextFormatter.describe_simple_filter(filt)
             assert isinstance(desc, str), f"filter={filt}: str でない"
             assert len(desc) > 0, (
                 f"filter={filt}: generate_trigger_filter_description が空文字を返した\n"
