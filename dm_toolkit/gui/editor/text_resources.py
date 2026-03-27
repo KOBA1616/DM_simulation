@@ -4,7 +4,7 @@ Centralized text resources for Static Abilities and Trigger Effects.
 Maps trigger types, conditions, scopes, and modifier types to Japanese text.
 """
 
-from typing import Dict, Optional, Tuple, Any
+from typing import Dict, Optional, Tuple, Any, List
 from dm_toolkit.consts import TargetScope
 from dm_toolkit.stat_keys import (
     COMPARE_STAT_EDITOR_KEYS as SHARED_COMPARE_STAT_EDITOR_KEYS,
@@ -380,6 +380,22 @@ class CardTextResources:
             "PRE": "{scope_text}の{subject}を唱える時",
         },
     }
+
+    # Used to convert standard POST trigger text to PRE/replacement tone.
+    TRIGGER_REPLACEMENT_MAP: List[Tuple[str, str]] = [
+        ("された時", "される時"),
+        ("置かれた時", "置かれる時"),
+        ("唱えた時", "唱える時"),
+        ("引いた時", "引く時"),
+        ("出た時", "出る時"),
+        ("した時", "する時"),
+        ("った時", "る時"),
+    ]
+
+    # Tokens to check if a text is already in PRE/replacement tone
+    PRE_TIMING_TOKENS: Tuple[str, ...] = (
+        "出る時", "唱える時", "引く時", "置かれる時", "される時", "する時"
+    )
 
     # Quick stats used by condition/query UIs for common measurements
     EDITOR_QUICK_STATS_KEYS: Tuple[str, ...] = SHARED_EDITOR_QUICK_STATS_KEYS

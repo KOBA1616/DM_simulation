@@ -326,47 +326,6 @@ class CardTextGenerator:
         )
 
     @classmethod
-    def _normalize_cost_reduction_dict(cls, cr: Dict[str, Any]) -> Dict[str, Any]:
-        """Normalize cost reduction dictionary to consistently use the new format.
-
-        Extracts values from legacy 'unit_cost' field into top-level properties
-        so that downstream rendering only needs to deal with one schema.
-        """
-        normalized = cr.copy()
-
-        # Merge properties from legacy unit_cost if present
-        unit_cost = normalized.get("unit_cost", {})
-        if isinstance(unit_cost, dict):
-            if "value_mode" not in normalized and "value_mode" in unit_cost:
-                normalized["value_mode"] = unit_cost.get("value_mode")
-            if "filter" not in normalized and "filter" in unit_cost:
-                normalized["filter"] = unit_cost.get("filter")
-            if "value" not in normalized and "value" in unit_cost:
-                normalized["value"] = unit_cost.get("value")
-            if "per_value" not in normalized and "per_value" in unit_cost:
-                normalized["per_value"] = unit_cost.get("per_value")
-            if "increment_cost" not in normalized and "increment_cost" in unit_cost:
-                normalized["increment_cost"] = unit_cost.get("increment_cost")
-            if "max_reduction" not in normalized and "max_reduction" in unit_cost:
-                normalized["max_reduction"] = unit_cost.get("max_reduction")
-            if "stat_key" not in normalized and "stat_key" in unit_cost:
-                normalized["stat_key"] = unit_cost.get("stat_key")
-            if "min_stat" not in normalized and "min_stat" in unit_cost:
-                normalized["min_stat"] = unit_cost.get("min_stat")
-
-        # Resolve common alias fields
-        if "value_mode" not in normalized and "mode" in normalized:
-            normalized["value_mode"] = normalized.get("mode")
-        if "value" not in normalized and "amount" in normalized:
-            normalized["value"] = normalized.get("amount")
-        if "per_value" not in normalized and "per" in normalized:
-            normalized["per_value"] = normalized.get("per")
-        if "increment_cost" not in normalized and "increment" in normalized:
-            normalized["increment_cost"] = normalized.get("increment")
-
-        return normalized
-
-    @classmethod
     def _format_unified_cost_modifier(cls, mod_dict: Dict[str, Any], prefix: str = "", target_phrase: str = "このカードの召喚コストを", sample: List[Any] = None) -> str:
         """Unified logic for COST_MODIFIER and cost_reductions."""
         vm_raw = mod_dict.get("value_mode")
@@ -476,7 +435,8 @@ class CardTextGenerator:
         if not cr:
             return ""
 
-        norm_cr = cls._normalize_cost_reduction_dict(cr)
+        from dm_toolkit.gui.editor.services.data_migration import DataMigration
+        norm_cr = DataMigration.normalize_cost_reduction_dict(cr)
         name = norm_cr.get("name", "")
         if name:
             return f"{name}"
@@ -562,100 +522,16 @@ class CardTextGenerator:
             # Final structure: 「条件」「自身の」「対象」「に〜を与える」 or 「自分の」「クリーチャー」
             full_target = FilterTextFormatter.format_scope_prefix(scope, target_str)
         
-        # Map modifier types to formatter callables to reduce branching
-        MODIFIER_FORMATTER_MAP = {
-            "COST_MODIFIER": lambda: cls._format_cost_modifier(cond_text, full_target, value, modifier=modifier),
-            "POWER_MODIFIER": lambda: cls._format_power_modifier(cond_text, full_target, value),
-            "GRANT_KEYWORD": lambda: cls._format_grant_keyword(cond_text, full_target, modifier),
-            "SET_KEYWORD": lambda: cls._format_set_keyword(cond_text, full_target, keyword),
-            "ADD_RESTRICTION": lambda: f"{cond_text}{scope_prefix}{CardTextResources.get_keyword_text(keyword)}を与える。",
-        }
-
-        formatter = MODIFIER_FORMATTER_MAP.get(mtype)
-        if formatter is not None:
-            try:
-                return formatter()
-            except (KeyError, TypeError, ValueError):
-                return f"{cond_text}{scope_prefix}常在効果: {tr(mtype)}"
-
-        return f"{cond_text}{scope_prefix}常在効果: {tr(mtype)}"
+        from dm_toolkit.gui.editor.formatters.modifier_formatters import ModifierFormatterRegistry
+        try:
+            return ModifierFormatterRegistry.format(mtype, cond_text, full_target, scope_prefix, value, modifier, cls)
+        except (KeyError, TypeError, ValueError):
+            return f"{cond_text}{scope_prefix}常在効果: {tr(mtype)}"
     
     @classmethod
     def _get_scope_prefix(cls, scope: str) -> str:
         """Get Japanese prefix for scope. Uses TargetScopeResolver."""
         return TargetScopeResolver.resolve_prefix(scope)
-    
-    @classmethod
-    def _format_cost_modifier(cls, cond: str, target: str, value: int, modifier: Dict[str, Any] = None) -> str:
-        """Format COST_MODIFIER modifier. Delegates to _format_unified_cost_modifier."""
-        if not isinstance(modifier, dict):
-             if value > 0:
-                  return f"{cond}{target}のコストを{value}少なくする。"
-             elif value < 0:
-                  return f"{cond}{target}のコストを{abs(value)}多くする。"
-             return f"{cond}{target}のコストを修正する。"
-
-        norm_mod = modifier.copy()
-        if "value" not in norm_mod:
-             norm_mod["value"] = value
-
-        return cls._format_unified_cost_modifier(norm_mod, prefix=cond, target_phrase=f"{target}のコストを")
-
-    @classmethod
-    def _format_power_modifier(cls, cond: str, target: str, value: int) -> str:
-        """Format POWER_MODIFIER modifier."""
-        sign = "+" if value >= 0 else ""
-        if value == 0:
-            return f"{cond}{target}のパワーは不変。"
-        return f"{cond}{target}のパワーを{sign}{value}する。"
-    
-    @classmethod
-    def _format_grant_keyword(cls, cond: str, target: str, modifier: Dict[str, Any]) -> str:
-        """Format GRANT_KEYWORD modifier generically using modifier settings.
-
-        Uses `modifier` fields such as `mutation_kind`str_val`, `value`, `duration`,
-        and the provided `target` (which already includes scope/filter) to build
-        a natural Japanese sentence. Handles restriction-style keywords specially
-        but in a generic way driven by the modifier values.
-        """
-        # Resolve keyword id from modifier
-        str_val = modifier.get('mutation_kind') or modifier.get('str_val', '')
-
-        if not str_val:
-            return f"{cond}{target}に能力を与える。"
-
-        keyword = CardTextResources.get_keyword_text(str_val)
-
-        # Duration text
-        duration_key = modifier.get('duration') or modifier.get('input_value_key', '')
-        duration_text = ""
-        if duration_key:
-            trans = CardTextResources.get_duration_text(duration_key)
-            if trans and trans != duration_key:
-                duration_text = trans + "、"
-            elif duration_key in CardTextResources.DURATION_TRANSLATION:
-                duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
-
-        # 再発防止: GRANT_KEYWORD は modifier_form では value、コマンド互換データでは amount に数量が入る。
-        # どちらの経路でも 0=全体、N>0=N体選択として同じ文面に正規化する。
-        # Amount / value (how many to select)
-        amt = modifier.get('value') if modifier.get('value') not in (None, 0) else modifier.get('amount', 0)
-        if not isinstance(amt, int) or amt <= 0:
-            amt = None
-
-        subject = f"{cond}{target}"
-        return cls._format_keyword_grant_text(subject, str_val, keyword, duration_text, amount=amt)
-    
-    @classmethod
-    def _format_set_keyword(cls, cond: str, target: str, str_val: str) -> str:
-        """Format SET_KEYWORD modifier. Uses CardTextResources."""
-        if str_val:
-            # Use CardTextResources for keyword translation
-            keyword = CardTextResources.get_keyword_text(str_val)
-            result = f"{cond}{target}は「{keyword}」を得る。"
-            return result
-        # Fallback: if str_val is empty, show a more helpful message
-        return f"{cond}{target}は能力を得る。"
     
 
     @classmethod
@@ -939,22 +815,13 @@ class CardTextGenerator:
         """Best-effort check whether trigger text is already in PRE/replacement tone."""
         if not trigger_text:
             return False
-        return any(token in trigger_text for token in ("出る時", "唱える時", "引く時", "置かれる時", "される時", "する時"))
+        return any(token in trigger_text for token in CardTextResources.PRE_TIMING_TOKENS)
 
     @classmethod
     def _to_replacement_trigger_text(cls, trigger_text: str) -> str:
         """Convert post-event trigger text (〜た時) into replacement tone (〜る時)."""
         text = trigger_text
-        replacements = [
-            ("された時", "される時"),
-            ("置かれた時", "置かれる時"),
-            ("唱えた時", "唱える時"),
-            ("引いた時", "引く時"),
-            ("出た時", "出る時"),
-            ("した時", "する時"),
-            ("った時", "る時"),
-        ]
-        for src, dst in replacements:
+        for src, dst in CardTextResources.TRIGGER_REPLACEMENT_MAP:
             if src in text:
                 return text.replace(src, dst)
         return text
@@ -1065,30 +932,7 @@ class CardTextGenerator:
     @classmethod
     def _format_condition(cls, condition: Dict[str, Any]) -> str:
         from dm_toolkit.gui.editor.formatters.condition_formatter import ConditionFormatter
-        from dm_toolkit.gui.editor.text_resources import CardTextResources
-        text = ConditionFormatter.format_condition_text(condition)
-        if text:
-            if condition.get("type", "NONE") == "MANA_ARMED":
-                 return text + ": "
-            elif "なら" in text:
-                 return text + ": "
-            elif condition.get("type") == "OPPONENT_PLAYED_WITHOUT_MANA":
-                 return "相手がマナゾーンのカードをタップせずに、クリーチャーを出すか呪文を唱えた時: "
-            elif condition.get("type") == "DURING_YOUR_TURN":
-                 return CardTextResources.get_condition_text("DURING_YOUR_TURN")
-            elif condition.get("type") == "DURING_OPPONENT_TURN":
-                 return CardTextResources.get_condition_text("DURING_OPPONENT_TURN")
-            else:
-                 return text + ": "
-
-        if condition.get("type") == "OPPONENT_PLAYED_WITHOUT_MANA":
-            return "相手がマナゾーンのカードをタップせずに、クリーチャーを出すか呪文を唱えた時: "
-        if condition.get("type") == "DURING_YOUR_TURN":
-            return CardTextResources.get_condition_text("DURING_YOUR_TURN")
-        if condition.get("type") == "DURING_OPPONENT_TURN":
-            return CardTextResources.get_condition_text("DURING_OPPONENT_TURN")
-
-        return ""
+        return ConditionFormatter.format_condition_text(condition)
 
     @classmethod
     def trigger_to_japanese(cls, trigger: str, is_spell: bool = False, effect: Dict[str, Any] = None) -> str:
