@@ -27,3 +27,16 @@ def get_command_amount(command: Dict[str, Any], default: int = 1) -> Any:
         return filter_def["count"]
 
     return default
+
+def get_command_max_cost(command: Dict[str, Any], default: Any = None) -> Any:
+    """
+    Safely extract the max_cost from a command dictionary or its target_filter.
+    """
+    max_cost_src = command.get('max_cost')
+    if max_cost_src is None and 'target_filter' in command:
+        max_cost_src = (command.get('target_filter') or {}).get('max_cost')
+
+    if max_cost_src is not None and not isinstance(max_cost_src, dict):
+        return max_cost_src
+
+    return default

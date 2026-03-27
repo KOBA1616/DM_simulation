@@ -3,7 +3,7 @@ from dm_toolkit.gui.editor.formatters.command_formatter_base import CommandForma
 from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
-from dm_toolkit.gui.editor.formatters.utils import get_command_amount
+from dm_toolkit.gui.editor.formatters.utils import get_command_amount, get_command_max_cost
 import dm_toolkit.consts as consts
 from dm_toolkit.gui.i18n import tr
 
@@ -13,10 +13,8 @@ class MekraidFormatter(CommandFormatterBase):
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        max_cost_src = command.get('max_cost')
-        if max_cost_src is None and 'target_filter' in command:
-            max_cost_src = (command.get('target_filter') or {}).get('max_cost')
-        val1 = max_cost_src if max_cost_src is not None and not isinstance(max_cost_src, dict) else get_command_amount(command, default=0)
+        max_cost_src = get_command_max_cost(command)
+        val1 = max_cost_src if max_cost_src is not None else get_command_amount(command, default=0)
         look_count = command.get('look_count') if command.get('look_count') is not None else 0
         val2 = look_count if look_count > 0 else 3
         select_count = command.get('select_count', 1)
@@ -63,13 +61,7 @@ class ApplyModifierFormatter(CommandFormatterBase):
 
         is_target_linked = bool(linked_text) and (not input_usage or input_usage == 'TARGET')
 
-        duration_text = ''
-        if duration_key:
-            trans = CardTextResources.get_duration_text(duration_key)
-            if trans and trans != duration_key:
-                duration_text = trans + '、'
-            elif duration_key in CardTextResources.DURATION_TRANSLATION:
-                duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + '、'
+        duration_text = CardTextResources.get_duration_text_with_comma(duration_key)
 
         effect_text = CardTextResources.get_keyword_text(str_param) if str_param else '（効果）'
         if isinstance(effect_text, str):
@@ -95,10 +87,8 @@ class AddKeywordFormatter(CommandFormatterBase):
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
         target_str, unit = cls._resolve_target(command, ctx.is_spell)
-        max_cost_src = command.get('max_cost')
-        if max_cost_src is None and 'target_filter' in command:
-            max_cost_src = (command.get('target_filter') or {}).get('max_cost')
-        val1 = max_cost_src if max_cost_src is not None and not isinstance(max_cost_src, dict) else get_command_amount(command, default=0)
+        max_cost_src = get_command_max_cost(command)
+        val1 = max_cost_src if max_cost_src is not None else get_command_amount(command, default=0)
 
         str_val = command.get('str_val', '')
         input_usage = command.get('input_value_usage') or command.get('input_usage')
@@ -109,13 +99,7 @@ class AddKeywordFormatter(CommandFormatterBase):
 
         is_target_linked = bool(linked_text) and (not input_usage or input_usage == 'TARGET')
 
-        duration_text = ''
-        if duration_key:
-            trans = CardTextResources.get_duration_text(duration_key)
-            if trans and trans != duration_key:
-                duration_text = trans + '、'
-            elif duration_key in CardTextResources.DURATION_TRANSLATION:
-                duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + '、'
+        duration_text = CardTextResources.get_duration_text_with_comma(duration_key)
 
         keyword = CardTextResources.get_keyword_text(str_val)
 
@@ -194,10 +178,8 @@ class MutateFormatter(CommandFormatterBase):
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
         target_str, unit = cls._resolve_target(command, ctx.is_spell)
-        max_cost_src = command.get('max_cost')
-        if max_cost_src is None and 'target_filter' in command:
-            max_cost_src = (command.get('target_filter') or {}).get('max_cost')
-        val1 = max_cost_src if max_cost_src is not None and not isinstance(max_cost_src, dict) else get_command_amount(command, default=0)
+        max_cost_src = get_command_max_cost(command)
+        val1 = max_cost_src if max_cost_src is not None else get_command_amount(command, default=0)
 
         mkind = command.get('mutation_kind', '')
         str_param = command.get('str_val', '')
@@ -209,13 +191,7 @@ class MutateFormatter(CommandFormatterBase):
 
         is_target_linked = bool(linked_text) and (not input_usage or input_usage == 'TARGET')
 
-        duration_text = ''
-        if duration_key:
-            trans = CardTextResources.get_duration_text(duration_key)
-            if trans and trans != duration_key:
-                duration_text = trans + '、'
-            elif duration_key in CardTextResources.DURATION_TRANSLATION:
-                duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + '、'
+        duration_text = CardTextResources.get_duration_text_with_comma(duration_key)
 
         lookup_key = mkind
         if isinstance(mkind, str):
@@ -237,10 +213,8 @@ class MutateFormatter(CommandFormatterBase):
 class SummonTokenFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        max_cost_src = command.get('max_cost')
-        if max_cost_src is None and 'target_filter' in command:
-            max_cost_src = (command.get('target_filter') or {}).get('max_cost')
-        val1 = max_cost_src if max_cost_src is not None and not isinstance(max_cost_src, dict) else get_command_amount(command, default=0)
+        max_cost_src = get_command_max_cost(command)
+        val1 = max_cost_src if max_cost_src is not None else get_command_amount(command, default=0)
         token_id = command.get('token_id') if command.get('token_id') is not None else ''
         count = val1 if val1 > 0 else 1
         token_name = 'トークン'
@@ -256,10 +230,8 @@ class SummonTokenFormatter(CommandFormatterBase):
 class RegisterDelayedEffectFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        max_cost_src = command.get('max_cost')
-        if max_cost_src is None and 'target_filter' in command:
-            max_cost_src = (command.get('target_filter') or {}).get('max_cost')
-        val1 = max_cost_src if max_cost_src is not None and not isinstance(max_cost_src, dict) else get_command_amount(command, default=0)
+        max_cost_src = get_command_max_cost(command)
+        val1 = max_cost_src if max_cost_src is not None else get_command_amount(command, default=0)
         str_val = command.get('str_val', '')
         effect_text = CardTextResources.get_delayed_effect_text(str_val)
         if effect_text == str_val:

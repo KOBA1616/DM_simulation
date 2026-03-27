@@ -42,13 +42,7 @@ class GrantKeywordFormatter(ModifierFormatterBase):
         keyword = CardTextResources.get_keyword_text(str_val)
 
         duration_key = modifier.get('duration') or modifier.get('input_value_key', '')
-        duration_text = ""
-        if duration_key:
-            trans = CardTextResources.get_duration_text(duration_key)
-            if trans and trans != duration_key:
-                duration_text = trans + "、"
-            elif duration_key in CardTextResources.DURATION_TRANSLATION:
-                duration_text = CardTextResources.DURATION_TRANSLATION[duration_key] + "、"
+        duration_text = CardTextResources.get_duration_text_with_comma(duration_key)
 
         amt = modifier.get('value') if modifier.get('value') not in (None, 0) else modifier.get('amount', 0)
         if not isinstance(amt, int) or amt <= 0:

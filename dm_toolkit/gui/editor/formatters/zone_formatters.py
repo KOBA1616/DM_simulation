@@ -33,6 +33,7 @@ class TransitionFormatter(CommandFormatterBase):
                 template = CardTextResources.ZONE_MOVE_TEMPLATES.get("DEFAULT", "{target}を{from_z}から{to_z}へ移動する。")
 
         # Adjust template for up_to and all
+        input_key = command.get('input_value_key') or command.get('input_link')
         is_all = (amount == 0 and not input_key)
 
         if is_all:
@@ -94,7 +95,7 @@ class TransitionFormatter(CommandFormatterBase):
         template = template.replace("{amount}", str(amount))
 
         text = LegacyActionFormatterHelper.apply_replacements(command, ctx, template, str(amount), target_str, unit)
-        return LegacyActionFormatterHelper.apply_conjugation(command, text)
+        return text
 
 @register_formatter("MOVE_CARD")
 class MoveCardFormatter(CommandFormatterBase):
@@ -119,9 +120,8 @@ class RevealToBufferFormatter(CommandFormatterBase):
         src_zone = tr(command.get("from_zone", "DECK"))
         val1 = get_command_amount(command, default=0)
         amt = val1 if val1 > 0 else 1
-        optional = bool(command.get("optional", False))
         text = f"{src_zone}から{amt}枚を表向きにしてバッファに置く。"
-        return TextUtils.apply_conjugation(text, optional)
+        return text
 
 @register_formatter("MOVE_BUFFER_TO_ZONE")
 class MoveBufferToZoneFormatter(CommandFormatterBase):
@@ -157,16 +157,14 @@ class MoveBufferToZoneFormatter(CommandFormatterBase):
             if val1 > 0 and up_to:
                  qty_part = f"最大{val1}枚"
 
-            optional = bool(command.get("optional", False))
             text = f"その中から、{civ_part}{type_part}を{qty_part}選び、{to_zone}に加える。"
-            return TextUtils.apply_conjugation(text, optional)
+            return text
         else:
             qty_part = f"{val1}枚" if val1 > 0 else "すべて"
             if val1 > 0 and up_to:
                 qty_part = f"最大{val1}枚"
-            optional = bool(command.get("optional", False))
             text = f"その中から、{qty_part}を{to_zone}に加える。"
-            return TextUtils.apply_conjugation(text, optional)
+            return text
 
 @register_formatter("REPLACE_CARD_MOVE")
 class ReplaceCardMoveFormatter(CommandFormatterBase):
