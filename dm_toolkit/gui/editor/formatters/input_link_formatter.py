@@ -105,3 +105,32 @@ class InputLinkFormatter:
         if not parts:
             return ""
         return f"（{' / '.join(parts)}）"
+
+    @classmethod
+    def resolve_linked_value_text(cls, command: Dict[str, Any], default: str = "") -> str:
+        """Resolve the linked value text for a given command.
+
+        Returns a string like 'その数' or 'そのコストと同じ' if the command has an input link,
+        otherwise returns the default string provided.
+        """
+        input_key = str(command.get("input_value_key") or command.get("input_link") or "")
+        if not input_key:
+            return default
+
+        # Try to resolve a specific label if it was saved during UI editing
+        input_label = command.get("_input_value_label", "")
+        if not input_label:
+             input_label = cls.format_input_source_label(command)
+
+        usage = str(command.get("input_usage") or command.get("input_value_usage") or "").upper()
+
+        if usage in ("COST", "MAX_COST"):
+             return "そのコスト以下"
+        elif usage in ("POWER", "MAX_POWER"):
+             return "そのパワー以下"
+
+        # fallback for count/amount
+        if input_label:
+            return "その数"
+
+        return default

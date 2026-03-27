@@ -24,11 +24,11 @@ class CastSpellFormatter(CommandFormatterBase):
         mega_burst_prefix = "このクリーチャーがバトルゾーンから離れて、" if is_mega_last_burst else ""
         cast_phrase = CardTextGenerator._format_cast_spell_cost_phrase(action)
 
-        input_key = action.get("input_value_key") or action.get("input_link") or ""
         input_usage = str(action.get("input_value_usage") or action.get("input_usage") or "").upper()
 
         usage_label_suffix = ""
-        if input_key and input_usage:
+        linked_text = InputLinkFormatter.resolve_linked_value_text(action)
+        if linked_text and input_usage:
             label = InputLinkFormatter.format_input_usage_label(input_usage)
             if label:
                 usage_label_suffix = f"（{label}）"
@@ -83,14 +83,10 @@ class AddManaFormatter(CommandFormatterBase):
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         val1 = get_command_amount(command, default=0)
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-        input_key = command.get("input_value_key") or command.get("input_link") or ""
 
-        if input_key:
-             input_label = command.get("_input_value_label", "")
-             if not input_label:
-                 input_label = InputLinkFormatter.format_input_source_label(command)
-             if input_label:
-                 return f"自分の山札の上から、その数だけタップしてマナゾーンに置く。"
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        if linked_text:
+             return f"自分の山札の上から、{linked_text}だけタップしてマナゾーンに置く。"
         return f"自分の山札の上から{val1}枚をタップしてマナゾーンに置く。"
 
 @register_formatter("CHOICE")
