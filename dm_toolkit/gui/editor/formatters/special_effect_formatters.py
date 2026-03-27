@@ -17,7 +17,8 @@ class MekraidFormatter(CommandFormatterBase):
         if max_cost_src is None and 'target_filter' in command:
             max_cost_src = (command.get('target_filter') or {}).get('max_cost')
         val1 = max_cost_src if max_cost_src is not None and not isinstance(max_cost_src, dict) else get_command_amount(command, default=0)
-        val2 = command.get('look_count') if command.get('look_count') is not None else command.get('value2', 3)
+        look_count = command.get('look_count') if command.get('look_count') is not None else 0
+        val2 = look_count if look_count > 0 else 3
         select_count = command.get('select_count', 1)
         input_key = command.get('input_value_key', '')
         input_usage = command.get('input_value_usage') or command.get('input_usage')
@@ -29,18 +30,20 @@ class MekraidFormatter(CommandFormatterBase):
             use_token = 'その数'
 
         count_str = '1体' if select_count == 1 else f'{select_count}体まで'
-        return f'メクレイド{use_token}（自分の山札の上から{val2}枚を見る。その中からコスト{use_token}以下のクリーチャーを{count_str}、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）'
+        template = CardTextResources.SPECIAL_EFFECT_TEMPLATES.get("MEKRAID", "")
+        return template.format(use_token=use_token, val2=val2, count_str=count_str)
 
 @register_formatter("FRIEND_BURST")
 class FriendBurstFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        str_val = command.get('str_param') or command.get('str_val', '')
+        str_val = command.get('str_val', '')
         if not str_val:
             races = command.get('filter', {}).get('races', [])
             if races:
                 str_val = races[0]
-        return f'＜{str_val}＞のフレンド・バースト（このクリーチャーが出た時、自分の他の{str_val}・クリーチャーを1体タップしてもよい。そうしたら、このクリーチャーの呪文側をバトルゾーンに置いたまま、コストを支払わずに唱える。）'
+        template = CardTextResources.SPECIAL_EFFECT_TEMPLATES.get("FRIEND_BURST", "")
+        return template.format(str_val=str_val)
 
 @register_formatter("APPLY_MODIFIER")
 class ApplyModifierFormatter(CommandFormatterBase):
@@ -49,7 +52,7 @@ class ApplyModifierFormatter(CommandFormatterBase):
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
         target_str, unit = cls._resolve_target(command, ctx.is_spell)
 
-        str_param = command.get('str_param') or command.get('str_val') or command.get('mutation_kind') or ''
+        str_param = command.get('mutation_kind') or command.get('str_val') or ''
         duration_key = command.get('duration') or command.get('input_value_key', '')
         input_key = command.get('input_value_key', '')
         input_usage = command.get('input_value_usage') or command.get('input_usage')
@@ -68,8 +71,6 @@ class ApplyModifierFormatter(CommandFormatterBase):
             effect_text = effect_text.strip() or '（効果）'
 
         amt = command.get('amount')
-        if amt is None:
-            amt = command.get('value1')
 
         if str_param == 'COST':
             amt_val = amt if isinstance(amt, int) else 0
@@ -94,7 +95,7 @@ class AddKeywordFormatter(CommandFormatterBase):
             max_cost_src = (command.get('target_filter') or {}).get('max_cost')
         val1 = max_cost_src if max_cost_src is not None and not isinstance(max_cost_src, dict) else get_command_amount(command, default=0)
 
-        str_val = command.get('str_val') or command.get('str_param', '')
+        str_val = command.get('str_val', '')
         duration_key = command.get('duration') or command.get('input_value_key', '')
         input_key = command.get('input_value_key', '')
         input_usage = command.get('input_value_usage') or command.get('input_usage')
@@ -187,7 +188,7 @@ class MutateFormatter(CommandFormatterBase):
         val1 = max_cost_src if max_cost_src is not None and not isinstance(max_cost_src, dict) else get_command_amount(command, default=0)
 
         mkind = command.get('mutation_kind', '')
-        str_param = command.get('str_param') or command.get('str_val', '')
+        str_param = command.get('str_val', '')
         input_key = command.get('input_value_key', '')
         input_usage = command.get('input_value_usage') or command.get('input_usage')
         is_target_linked = bool(input_key) and (not input_usage or input_usage == 'TARGET')
@@ -225,7 +226,7 @@ class SummonTokenFormatter(CommandFormatterBase):
         if max_cost_src is None and 'target_filter' in command:
             max_cost_src = (command.get('target_filter') or {}).get('max_cost')
         val1 = max_cost_src if max_cost_src is not None and not isinstance(max_cost_src, dict) else get_command_amount(command, default=0)
-        token_id = command.get('token_id') if command.get('token_id') is not None else command.get('str_val', '')
+        token_id = command.get('token_id') if command.get('token_id') is not None else ''
         count = val1 if val1 > 0 else 1
         token_name = 'トークン'
         if token_id:
@@ -244,7 +245,7 @@ class RegisterDelayedEffectFormatter(CommandFormatterBase):
         if max_cost_src is None and 'target_filter' in command:
             max_cost_src = (command.get('target_filter') or {}).get('max_cost')
         val1 = max_cost_src if max_cost_src is not None and not isinstance(max_cost_src, dict) else get_command_amount(command, default=0)
-        str_val = command.get('str_param') or command.get('str_val', '')
+        str_val = command.get('str_val', '')
         effect_text = CardTextResources.get_delayed_effect_text(str_val)
         if effect_text == str_val:
             duration = val1 if val1 > 0 else 1

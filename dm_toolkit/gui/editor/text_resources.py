@@ -338,6 +338,12 @@ class CardTextResources:
     # 再発防止: compare_stat 候補は dm_toolkit.stat_keys を単一ソースとして参照する。
     COMPARE_STAT_EDITOR_KEYS: Tuple[str, ...] = SHARED_COMPARE_STAT_EDITOR_KEYS
 
+    # Special Effect Templates for abilities that have hardcoded explanation texts
+    SPECIAL_EFFECT_TEMPLATES: Dict[str, str] = {
+        "MEKRAID": "メクレイド{use_token}（自分の山札の上から{val2}枚を見る。その中からコスト{use_token}以下のクリーチャーを{count_str}、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）",
+        "FRIEND_BURST": "＜{str_val}＞のフレンド・バースト（このクリーチャーが出た時、自分の他の{str_val}・クリーチャーを1体タップしてもよい。そうしたら、このクリーチャーの呪文側をバトルゾーンに置いたまま、コストを支払わずに唱える。）"
+    }
+
     # Command aliases for natural language rendering
     COMMAND_ALIASES: Dict[str, str] = {
         "POWER_MOD": "MODIFY_POWER",
