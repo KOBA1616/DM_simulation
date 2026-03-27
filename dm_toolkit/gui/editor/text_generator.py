@@ -153,9 +153,10 @@ class CardTextGenerator:
         # 再発防止: キーワードフラグ未同期でも、RC コマンド条件を本文へ反映する。
         rc_line_exists = any("革命チェンジ" in line for line in special_kw_lines)
         if not rc_line_exists:
-            rc_cond = cls._get_rc_filter_from_effects(data)
+            from dm_toolkit.gui.editor.formatters.special_keywords import RevolutionChangeFormatter
+            rc_cond = RevolutionChangeFormatter.get_rc_filter_from_effects(data)
             if isinstance(rc_cond, dict) and rc_cond:
-                lines.append(f"■ 革命チェンジ：{cls._format_revolution_change_text(rc_cond)}")
+                lines.append(f"■ 革命チェンジ：{RevolutionChangeFormatter.format_revolution_change_text(rc_cond)}")
 
         # 2.5 Cost Reductions
         cost_reductions = cls._normalize_cost_reductions(data.get("cost_reductions", []))
@@ -179,11 +180,12 @@ class CardTextGenerator:
             if not cmds:
                 return False
             special_seen = False
+            from dm_toolkit.gui.editor.formatters.special_keywords import RevolutionChangeFormatter
             for cmd in cmds:
                 if not isinstance(cmd, dict):
                     continue
                 ctype = cmd.get("type")
-                if cls._is_revolution_change_command(cmd):
+                if RevolutionChangeFormatter.is_revolution_change_command(cmd):
                     special_seen = True
                 elif ctype == "MEKRAID" or ctype == "FRIEND_BURST":
                     special_seen = True
@@ -231,111 +233,6 @@ class CardTextGenerator:
         if not civs:
             return "無色"
         return "/".join([CardTextResources.get_civilization_text(c) for c in civs])
-
-    @classmethod
-    def _format_revolution_change_text(cls, cond: Dict[str, Any]) -> str:
-        """Format REVOLUTION_CHANGE condition summary text from filter definition."""
-        parts: List[str] = []
-
-        civs = cond.get("civilizations", []) or []
-        if civs:
-            parts.append(cls._format_civs(civs))
-
-        min_cost = cond.get("min_cost", 0)
-        max_cost = cond.get("max_cost", MAX_COST_VALUE)
-        if is_input_linked(min_cost):
-            parts.append("コストその数以上")
-        elif is_input_linked(max_cost):
-            parts.append("コストその数以下")
-        else:
-            if isinstance(min_cost, int) and isinstance(max_cost, int):
-                has_min = min_cost > 0
-                has_max = max_cost > 0 and max_cost not in (MAX_COST_VALUE,)
-                if has_min and has_max and min_cost != max_cost:
-                    parts.append(f"コスト{min_cost}～{max_cost}")
-                elif has_min:
-                    parts.append(f"コスト{min_cost}以上")
-                elif has_max:
-                    parts.append(f"コスト{max_cost}以下")
-
-        races = cond.get("races", []) or []
-        noun = "/".join(races) if races else "クリーチャー"
-
-        is_evo = cond.get("is_evolution")
-        if is_evo is True:
-            noun = "進化" + noun
-        elif is_evo is False:
-            parts.append("進化以外の")
-
-        adjs = "の".join(parts)
-        return f"{adjs}の{noun}" if adjs else noun
-
-    @classmethod
-    def _get_rc_filter_from_effects(cls, data: dict) -> dict:
-        """REVOLUTION_CHANGE コマンドの target_filter を効果ノードから探して返す。
-        再発防止: 最新仕様では target_filter を単一の正規入力として扱う。"""
-        for eff in data.get("effects", []):
-            for cmd in (eff.get("commands", []) if isinstance(eff, dict) else []):
-                if not isinstance(cmd, dict):
-                    continue
-                if cls._is_revolution_change_command(cmd):
-                    tf = cmd.get("target_filter")
-                    if tf and isinstance(tf, dict):
-                        return tf
-        return {}
-
-    @classmethod
-    def _is_revolution_change_command(cls, cmd: Dict[str, Any]) -> bool:
-        """Return True only for the current REVOLUTION_CHANGE command type."""
-        return cmd.get("type") == "REVOLUTION_CHANGE"
-
-    @classmethod
-    def _describe_simple_filter(cls, filter_def: Dict[str, Any]) -> str:
-        civs = filter_def.get("civilizations", [])
-        races = filter_def.get("races", [])
-        types = filter_def.get("types", [])
-        min_cost = filter_def.get("min_cost", 0)
-        max_cost = filter_def.get("max_cost", MAX_COST_VALUE)
-        exact_cost = filter_def.get("exact_cost")
-        cost_ref = filter_def.get("cost_ref")
-
-        adjectives = []
-        if civs:
-            adjectives.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
-
-        # Handle cost filtering
-        if cost_ref:
-            adjectives.append("選択した数字と同じコスト")
-        elif exact_cost is not None:
-            adjectives.append(f"コスト{exact_cost}")
-        else:
-            cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
-            if cost_text:
-                adjectives.append(cost_text)
-
-        adj_str = "の".join(adjectives)
-        if adj_str:
-            adj_str += "の"
-
-        # 再発防止: types が空のときに「クリーチャー」をデフォルトにしない。
-        #   フィルターでタイプ未指定は「カード」(全タイプ対象)。
-        #   CREATURE のみ指定時だけ「クリーチャー」、SPELL のみなら「呪文」、
-        #   複数タイプ指定時は "/" 区切り、races 指定があればそれを優先する。
-        if CardType.ELEMENT.value in types:
-            noun_str = "エレメント"
-        elif CardType.SPELL.value in types and CardType.CREATURE.value not in types:
-            noun_str = "呪文"
-        elif CardType.CREATURE.value in types:
-            noun_str = "クリーチャー"
-        elif types:
-            noun_str = "/".join(tr(t) for t in types if t)
-        else:
-            noun_str = "カード"  # タイプ未指定は全タイプ対象
-
-        if races:
-            noun_str = "/".join(races)
-
-        return adj_str + noun_str
 
     @classmethod
     def _format_reaction(cls, reaction: Dict[str, Any]) -> str:
@@ -482,7 +379,7 @@ class CardTextGenerator:
         cond_text = cls._format_condition(cond).replace(": ", "").strip("、") if cond else ""
 
         filter_def = mod_dict.get("filter", {})
-        cond_desc = cls._describe_simple_filter(filter_def) if filter_def else ""
+        cond_desc = FilterTextFormatter.describe_simple_filter(filter_def) if filter_def else ""
 
         if prefix and not prefix.endswith("、"):
              prefix += "、"
@@ -595,7 +492,7 @@ class CardTextGenerator:
                 return f"{cond_text}の時、このカードの召喚コストを{val}少なくする。"
             elif ctype == 'CARDS_MATCHING_FILTER':
                 f = cond.get('filter', {}) or {}
-                desc = cls._describe_simple_filter(f)
+                desc = FilterTextFormatter.describe_simple_filter(f)
                 val = cond.get('value') or cond.get('count') or None
                 if val:
                     return f"{desc}が{val}体以上いるなら、このカードの召喚コストは{norm_cr.get('value') or 'X'}少なくなる。"
@@ -1150,8 +1047,9 @@ class CardTextGenerator:
         # 再発防止: REVOLUTION_CHANGE コマンドはカードレベルの革命チェンジテキストで使用されるが、
         # コマンドエディタ等で単独表示する場合のために直接テキストを返す。
         if cmd_type == "REVOLUTION_CHANGE":
+            from dm_toolkit.gui.editor.formatters.special_keywords import RevolutionChangeFormatter
             tf = command.get("target_filter") or command.get("filter") or {}
-            cond_text = cls._format_revolution_change_text(tf) if tf else "クリーチャー"
+            cond_text = RevolutionChangeFormatter.format_revolution_change_text(tf) if tf else "クリーチャー"
             return f"革命チェンジ：{cond_text}"
 
         cmd_type = CardTextResources.normalize_command_alias(cmd_type)

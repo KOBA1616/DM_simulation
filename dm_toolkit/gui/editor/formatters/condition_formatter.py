@@ -141,8 +141,8 @@ class ConditionFormatter:
         count = d.get("count", 1)
         op = d.get("op", ">=")
 
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-        desc = CardTextGenerator._describe_simple_filter(filter_def)
+        from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
+        desc = FilterTextFormatter.describe_simple_filter(filter_def)
         zones = filter_def.get("zone", [])
 
         zone_text = ""
