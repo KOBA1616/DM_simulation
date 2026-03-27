@@ -15,9 +15,9 @@ class CommandFormatterBase:
         raise NotImplementedError("Subclasses must implement format()")
 
     @classmethod
-    def _resolve_target(cls, action: Dict[str, Any], is_spell: bool = False) -> tuple[str, str]:
+    def _resolve_target(cls, action: Dict[str, Any], is_spell: bool = False, **kwargs) -> tuple[str, str]:
         """
         Helper to delegate target resolution to TargetFormatter.
         """
         from dm_toolkit.gui.editor.formatters.target_formatter import TargetFormatter
-        return TargetFormatter.format_target(action, is_spell)
+        return TargetFormatter.format_target(action, is_spell, **kwargs)

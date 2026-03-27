@@ -456,11 +456,11 @@ class EffectEditForm(BaseEditForm):
                 self.trigger_filter_desc_label.setText("")
                 return
             
-            # Import CardTextGenerator for description generation
-            from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+            # Import TargetFormatter for description generation
+            from dm_toolkit.gui.editor.formatters.target_formatter import TargetFormatter
             
-            desc = CardTextGenerator.generate_trigger_filter_description(trigger_filter)
-            if desc:
+            desc = TargetFormatter.format_modifier_target(trigger_filter)
+            if desc and desc != "対象" and desc != "このクリーチャー":
                 self.trigger_filter_desc_label.setText(tr("📋 条件: {desc}").format(desc=desc))
             else:
                 self.trigger_filter_desc_label.setText("")

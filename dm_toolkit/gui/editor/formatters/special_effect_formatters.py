@@ -125,8 +125,9 @@ class AddKeywordFormatter(CommandFormatterBase):
 
         return CardTextGenerator._format_keyword_grant_text(target_str, str_val, keyword, duration_text, amt, skip_selection=is_target_linked)
 
-@register_formatter("MUTATE")
-class MutateFormatter(CommandFormatterBase):
+class MutationFormatter:
+    """Formatter specifically for handling mutation kinds. Extracted from CardTextGenerator."""
+
     @classmethod
     def _mutate_tap(cls, target_str: str, val1: int, unit: str, duration_text: str, str_param: str, is_target_linked: bool) -> str:
         if val1 == 0:
@@ -178,6 +179,9 @@ class MutateFormatter(CommandFormatterBase):
         consts.MutationKind.ADD_MODIFIER: _mutate_add_passive.__func__,
         consts.MutationKind.ADD_COST_MODIFIER: _mutate_add_cost.__func__,
     }
+
+@register_formatter("MUTATE")
+class MutateFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
@@ -210,10 +214,10 @@ class MutateFormatter(CommandFormatterBase):
                 except Exception:
                     lookup_key = mkind
 
-        handler = cls.MUTATE_KIND_HANDLERS.get(lookup_key)
+        handler = MutationFormatter.MUTATE_KIND_HANDLERS.get(lookup_key)
         if handler:
             try:
-                return handler(cls, target_str, val1, unit, duration_text, str_param, is_target_linked)
+                return handler(MutationFormatter, target_str, val1, unit, duration_text, str_param, is_target_linked)
             except Exception:
                 return f'状態変更({tr(mkind)}): {target_str} (値:{val1})'
         return f'状態変更({tr(mkind)}): {target_str} (値:{val1})'
