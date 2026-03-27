@@ -67,6 +67,33 @@ if "ELEMENT" not in CARD_TYPES:
 # =============================================================================
 # Unified scope constants for both trigger effects and static abilities.
 # Replaces the separate PLAYER_SELF/PLAYER_OPPONENT (triggers) and SELF/OPPONENT (statics).
+class Zone(str, Enum):
+    BATTLE_ZONE = "BATTLE_ZONE"
+    MANA_ZONE = "MANA_ZONE"
+    HAND = "HAND"
+    GRAVEYARD = "GRAVEYARD"
+    SHIELD_ZONE = "SHIELD_ZONE"
+    DECK = "DECK"
+    DECK_BOTTOM = "DECK_BOTTOM"
+    DECK_TOP = "DECK_TOP"
+    NONE = "NONE"
+
+class CardType(str, Enum):
+    CREATURE = "CREATURE"
+    SPELL = "SPELL"
+    ELEMENT = "ELEMENT"
+    CARD = "CARD"
+    EVOLUTION_CREATURE = "EVOLUTION_CREATURE"
+    CROSS_GEAR = "CROSS_GEAR"
+    PSYCHIC_CREATURE = "PSYCHIC_CREATURE"
+    GR_CREATURE = "GR_CREATURE"
+    TAMASEED = "TAMASEED"
+    CASTLE = "CASTLE"
+
+class TimingMode(str, Enum):
+    PRE = "PRE"
+    POST = "POST"
+
 class TargetScope:
     """
     Unified target scope constants.

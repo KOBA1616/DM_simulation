@@ -212,7 +212,16 @@ class PlayFromZoneFormatter(CommandFormatterBase):
         scope = action.get("target_group") or action.get("scope", "NONE")
         if scope in ["PLAYER_SELF", "SELF"]: action["scope"] = "NONE"
 
-        target_str, unit = cls._resolve_target(action, ctx.is_spell)
+        use_linked_cost = False
+        max_cost = temp_filter.get("max_cost")
+        if is_input_linked(max_cost, usage="MAX_COST"):
+            use_linked_cost = True
+
+        omit_cost = False
+        if use_linked_cost and action.get("value1", 0) == 0:
+            omit_cost = True
+
+        target_str, unit = cls._resolve_target(action, ctx.is_spell, omit_cost=omit_cost)
         count = temp_filter.get("count")
         count_text = ""
         if isinstance(count, int) and count > 0:
@@ -235,17 +244,14 @@ class PlayFromZoneFormatter(CommandFormatterBase):
         if is_free:
             verb = f"コストを支払わずに{verb}"
 
-        use_linked_cost = False
-        max_cost = temp_filter.get("max_cost")
         linked_cost_phrase = ""
-        if is_input_linked(max_cost, usage="MAX_COST"):
-            use_linked_cost = True
+        if use_linked_cost:
             source_token = InputLinkFormatter.format_linked_count_token(action, "その数")
             source_token = InputLinkFormatter.normalize_linked_count_label(source_token)
             linked_cost_phrase = f"{source_token}以下のコストの"
 
         if use_linked_cost:
-            if target_str.startswith("コストその数以下の"):
+            if not omit_cost and target_str.startswith("コストその数以下の"):
                 target_str = target_str.replace("コストその数以下の", "", 1)
             if linked_cost_phrase and not target_str.startswith(linked_cost_phrase):
                 target_str = linked_cost_phrase + target_str
@@ -255,16 +261,18 @@ class PlayFromZoneFormatter(CommandFormatterBase):
             else:
                 template = "{target}を" + count_text + verb + f"。{usage_label_suffix}"
         else:
-            if action.get("source_zone"):
-                template = "{source_zone}からコスト{value1}以下の{target}を" + count_text + verb + f"。{usage_label_suffix}"
+            if action.get("value1", 0) == 0:
+                # If value1 is 0 and not linked cost, fallback to just "{target}を..."
+                if action.get("source_zone"):
+                    template = "{source_zone}から{target}を" + count_text + verb + f"。{usage_label_suffix}"
+                else:
+                    template = "{target}を" + count_text + verb + f"。{usage_label_suffix}"
             else:
-                template = "コスト{value1}以下の{target}を" + count_text + verb + f"。{usage_label_suffix}"
+                if action.get("source_zone"):
+                    template = "{source_zone}からコスト{value1}以下の{target}を" + count_text + verb + f"。{usage_label_suffix}"
+                else:
+                    template = "コスト{value1}以下の{target}を" + count_text + verb + f"。{usage_label_suffix}"
 
         text = LegacyActionFormatterHelper.apply_replacements(action, ctx, template, str(action.get("value1", 0)), target_str, unit)
-
-        if action.get("value1", 0) == 0:
-            max_cost_val = action.get("filter", {}).get("max_cost")
-            if isinstance(max_cost_val, dict) and max_cost_val.get("input_value_usage") == "MAX_COST":
-                text = text.replace("コスト0以下の", "")
 
         return LegacyActionFormatterHelper.apply_conjugation(action, text)

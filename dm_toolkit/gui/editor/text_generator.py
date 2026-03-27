@@ -10,7 +10,7 @@ from dm_toolkit.gui.editor.formatters.keyword_registry import SpecialKeywordRegi
 from dm_toolkit.gui.editor.formatters.target_scope_resolver import TargetScopeResolver
 import dm_toolkit.gui.editor.formatters.special_keywords # Ensure special keywords are registered
 from dm_toolkit import consts
-from dm_toolkit.consts import MAX_COST_VALUE, MAX_POWER_VALUE
+from dm_toolkit.consts import Zone, CardType, TimingMode, TargetScope, MAX_COST_VALUE, MAX_POWER_VALUE
 
 class CardTextGenerator:
     """
@@ -60,7 +60,7 @@ class CardTextGenerator:
         civs = cls._format_civs(civs_data)
 
         # Use CardTextResources for translation
-        raw_type = data.get("type", "CREATURE")
+        raw_type = data.get("type", CardType.CREATURE.value)
         type_str = CardTextResources.get_card_type_text(raw_type)
         races = " / ".join(data.get("races", []))
 
@@ -354,11 +354,11 @@ class CardTextGenerator:
         #   フィルターでタイプ未指定は「カード」(全タイプ対象)。
         #   CREATURE のみ指定時だけ「クリーチャー」、SPELL のみなら「呪文」、
         #   複数タイプ指定時は "/" 区切り、races 指定があればそれを優先する。
-        if "ELEMENT" in types:
+        if CardType.ELEMENT.value in types:
             noun_str = "エレメント"
-        elif "SPELL" in types and "CREATURE" not in types:
+        elif CardType.SPELL.value in types and CardType.CREATURE.value not in types:
             noun_str = "呪文"
-        elif "CREATURE" in types:
+        elif CardType.CREATURE.value in types:
             noun_str = "クリーチャー"
         elif types:
             noun_str = "/".join(tr(t) for t in types if t)
@@ -678,7 +678,8 @@ class CardTextGenerator:
         if scope == "NONE" and not filter_def:
             target_str = "このクリーチャー"
         else:
-            target_str = cls._format_modifier_target(effective_filter) if effective_filter else "対象"
+            from dm_toolkit.gui.editor.formatters.target_formatter import TargetFormatter
+            target_str = TargetFormatter.format_modifier_target(effective_filter) if effective_filter else "対象"
         
         # Avoid redundancy like "自身のこのクリーチャー"
         if scope == "NONE" and target_str == "このクリーチャー":
@@ -801,127 +802,6 @@ class CardTextGenerator:
         # Fallback: if str_val is empty, show a more helpful message
         return f"{cond}{target}は能力を得る。"
     
-    @classmethod
-    def _format_modifier_target(cls, filter_def: Dict[str, Any]) -> str:
-        """Format target description from filter with comprehensive support."""
-        if not filter_def:
-            return "対象"
-        
-        owner = filter_def.get("owner", "")
-        if owner == "NONE" and not filter_def.get("zones") and not filter_def.get("types"):
-            return "このクリーチャー"
-
-        zones = filter_def.get("zones", [])
-        types = filter_def.get("types", [])
-        civs = filter_def.get("civilizations", [])
-        races = filter_def.get("races", [])
-        owner = filter_def.get("owner", "")  # Will NOT apply prefix here (handled in _format_modifier)
-        min_cost = filter_def.get("min_cost", 0)
-        max_cost = filter_def.get("max_cost", MAX_COST_VALUE)
-        min_power = filter_def.get("min_power", 0)
-        max_power = filter_def.get("max_power", MAX_POWER_VALUE)
-        is_tapped = filter_def.get("is_tapped")
-        is_blocker = filter_def.get("is_blocker")
-        is_evolution = filter_def.get("is_evolution")
-        
-        parts = []
-        
-        # Zone prefix
-        if zones:
-            zone_names = []
-            for z in zones:
-                if z == "BATTLE_ZONE":
-                    zone_names.append("バトルゾーン")
-                elif z == "MANA_ZONE":
-                    zone_names.append("マナゾーン")
-                elif z == "HAND":
-                    zone_names.append("手札")
-                elif z == "GRAVEYARD":
-                    zone_names.append("墓地")
-                else:
-                    zone_names.append(tr(z))
-            
-            if len(zone_names) == 1:
-                # Single zone: "手札の" or "バトルゾーンの"
-                parts.append(zone_names[0] + "の")
-            else:
-                # Multiple zones: "手札または墓地から"
-                parts.append("または".join(zone_names) + "から")
-        
-        # Civilization adjective
-        if civs:
-            parts.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]) + "の")
-        
-        # Race adjective
-        if races:
-            parts.append("/".join(races) + "の")
-        
-        # Cost range
-        exact_cost = filter_def.get("exact_cost")
-        cost_ref = filter_def.get("cost_ref")
-        
-        if cost_ref:
-            parts.append("選択した数字と同じコストの")
-        elif exact_cost is not None:
-            parts.append(f"コスト{exact_cost}の")
-        else:
-            cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
-            if cost_text:
-                parts.append(cost_text + "の")
-        
-        # Power range
-        power_text = FilterTextFormatter.format_range_text(min_power, max_power, unit="パワー", min_usage="MIN_POWER", max_usage="MAX_POWER", linked_token="その数")
-        if power_text:
-            parts.append(power_text + "の")
-        
-        # Type noun
-        type_noun = "カード"
-        if types:
-            if len(types) == 1:
-                if types[0] == "CREATURE":
-                    type_noun = "クリーチャー"
-                elif types[0] == "SPELL":
-                    type_noun = "呪文"
-                elif types[0] == "ELEMENT":
-                    type_noun = "エレメント"
-            else:
-                type_words = []
-                if "CREATURE" in types:
-                    type_words.append("クリーチャー")
-                if "SPELL" in types:
-                    type_words.append("呪文")
-                if "ELEMENT" in types:
-                    type_words.append("エレメント")
-                if type_words:
-                    type_noun = "/".join(type_words)
-        
-        # Flags
-        flag_parts = []
-        if is_tapped == 1:
-            flag_parts.append("タップ状態の")
-        elif is_tapped == 0:
-            flag_parts.append("アンタップ状態の")
-        
-        if is_blocker == 1:
-            flag_parts.append("ブロッカーの")
-        elif is_blocker == 0:
-            flag_parts.append("ブロッカー以外の")
-        
-        if is_evolution == 1:
-            flag_parts.append("進化クリーチャーの")
-        elif is_evolution == 0:
-            flag_parts.append("進化以外の")
-        
-        if flag_parts:
-            parts.extend(flag_parts)
-        
-        # Combine all parts
-        result = "".join(parts) + type_noun
-        
-        # Cleanup
-        result = result.replace("のの", "の").replace("、の", "の")
-        
-        return result if result else "対象"
 
     @classmethod
     def _format_effect(cls, effect: Dict[str, Any], ctx: TextGenerationContext) -> str:
@@ -1023,7 +903,7 @@ class CardTextGenerator:
         scope: str,
         trigger_type: str,
         trigger_filter: Dict[str, Any] = None,
-        timing_mode: str = "POST",
+        timing_mode: str = TimingMode.POST.value,
     ) -> str:
         """
         Apply scope prefix to trigger text (e.g., "ON_CAST_SPELL" + "OPPONENT" -> "相手が呪文を唱えた時").
@@ -1073,21 +953,21 @@ class CardTextGenerator:
             flags = f.get("flags", [])
 
             # Noun resolution
-            noun = "クリーチャー" if default_type == "CREATURE" else ("呪文" if default_type == "SPELL" else "カード")
+            noun = "クリーチャー" if default_type == CardType.CREATURE.value else ("呪文" if default_type == CardType.SPELL.value else "カード")
             if types:
-                if "ELEMENT" in types:
+                if CardType.ELEMENT.value in types:
                     noun = "エレメント"
-                elif "SPELL" in types:
+                elif CardType.SPELL.value in types:
                     noun = "呪文"
-                elif "CREATURE" in types:
+                elif CardType.CREATURE.value in types:
                     noun = "クリーチャー"
-                elif "CARD" in types:
+                elif CardType.CARD.value in types:
                     noun = "カード"
 
             adjs: List[str] = []
             
             # Zone conditions (if specified, generally not mentioned in trigger text but may appear)
-            if zones and "BATTLE_ZONE" not in zones:
+            if zones and Zone.BATTLE_ZONE.value not in zones:
                 zone_names = []
                 for z in zones:
                     zone_text = CardTextResources.normalize_zone_name(z)
@@ -1168,11 +1048,11 @@ class CardTextGenerator:
         tmpl_set = CardTextResources.TRIGGER_COMPOSITION_TEMPLATES.get(trigger_type)
         if tmpl_set:
             timing_key = str(timing_mode or "").upper()
-            if timing_key not in ("PRE", "POST"):
-                timing_key = "PRE" if cls._looks_like_pre_timing(trigger_text) else "POST"
-            tmpl = tmpl_set.get(timing_key) or tmpl_set.get("POST")
+            if timing_key not in (TimingMode.PRE.value, TimingMode.POST.value):
+                timing_key = TimingMode.PRE.value if cls._looks_like_pre_timing(trigger_text) else TimingMode.POST.value
+            tmpl = tmpl_set.get(timing_key) or tmpl_set.get(TimingMode.POST.value)
             if tmpl:
-                default_type = "SPELL" if trigger_type == "ON_CAST_SPELL" else "CREATURE"
+                default_type = CardType.SPELL.value if trigger_type == "ON_CAST_SPELL" else CardType.CREATURE.value
                 subject = _compose_subject_from_filter(default_type)
                 return tmpl.format(scope_text=scope_text, subject=subject)
 
@@ -1193,11 +1073,11 @@ class CardTextGenerator:
     def _resolve_effect_timing_mode(cls, effect: Dict[str, Any]) -> str:
         """Normalize effect timing mode for text composition."""
         if not isinstance(effect, dict):
-            return "POST"
+            return TimingMode.POST.value
         mode = str(effect.get("timing_mode", "") or "").upper()
-        if mode in ("PRE", "POST"):
+        if mode in (TimingMode.PRE.value, TimingMode.POST.value):
             return mode
-        return "PRE" if cls.is_replacement_effect(effect) else "POST"
+        return TimingMode.PRE.value if cls.is_replacement_effect(effect) else TimingMode.POST.value
 
     @classmethod
     def _looks_like_pre_timing(cls, trigger_text: str) -> bool:
@@ -1229,7 +1109,7 @@ class CardTextGenerator:
         """Return True if the effect should be rendered as PRE/replacement timing."""
         if not isinstance(effect, dict):
             return False
-        return effect.get("mode") == "REPLACEMENT" or effect.get("timing_mode") == "PRE"
+        return effect.get("mode") == "REPLACEMENT" or effect.get("timing_mode") == TimingMode.PRE.value
 
     @classmethod
     def trigger_to_japanese(cls, trigger: str, is_spell: bool = False, effect: Dict[str, Any] = None) -> str:
@@ -1276,60 +1156,6 @@ class CardTextGenerator:
             return f"{duration_text}{target_str}を{amount}体選び、「{display_text}」を与える。"
         # amount=0 またの未指定 → 対象すべてに適用（選択文なし）
         return f"{duration_text}{target_str}に「{display_text}」を与える。"
-
-    # --- MUTATE handlers moved to class methods for reuse and reduced branching ---
-
-    @classmethod
-    def _mutate_tap(cls, target_str: str, val1: int, unit: str, duration_text: str, str_param: str, is_target_linked: bool) -> str:
-        if val1 == 0:
-            return f"{target_str}をすべてタップする。"
-        return f"{target_str}を{val1}{unit}選び、タップする。"
-
-    @classmethod
-    def _mutate_untap(cls, target_str: str, val1: int, unit: str, duration_text: str, str_param: str, is_target_linked: bool) -> str:
-        if val1 == 0:
-            return f"{target_str}をすべてアンタップする。"
-        return f"{target_str}を{val1}{unit}選び、アンタップする。"
-
-    @classmethod
-    def _mutate_power(cls, target_str: str, val1: int, unit: str, duration_text: str, str_param: str, is_target_linked: bool) -> str:
-        sign = "+" if val1 >= 0 else ""
-        return f"{duration_text}{target_str}のパワーを{sign}{val1}する。"
-
-    @classmethod
-    def _mutate_add_keyword(cls, target_str: str, val1: int, unit: str, duration_text: str, str_param: str, is_target_linked: bool) -> str:
-        keyword = CardTextResources.get_keyword_text(str_param)
-        return cls._format_keyword_grant_text(target_str, str_param, keyword, duration_text, val1, skip_selection=is_target_linked)
-
-    @classmethod
-    def _mutate_remove_keyword(cls, target_str: str, val1: int, unit: str, duration_text: str, str_param: str, is_target_linked: bool) -> str:
-        keyword = CardTextResources.get_keyword_text(str_param)
-        return f"{duration_text}{target_str}の「{keyword}」を無視する。"
-
-    @classmethod
-    def _mutate_add_passive(cls, target_str: str, val1: int, unit: str, duration_text: str, str_param: str, is_target_linked: bool) -> str:
-        if str_param:
-            kw = CardTextResources.get_keyword_text(str_param)
-            return f"{duration_text}{target_str}に「{kw}」を与える。"
-        return f"{duration_text}{target_str}にパッシブ効果を与える。"
-
-    @classmethod
-    def _mutate_add_cost(cls, target_str: str, val1: int, unit: str, duration_text: str, str_param: str, is_target_linked: bool) -> str:
-        return f"{duration_text}{target_str}にコスト修正を追加する。"
-
-    # Mapping table for mutation kinds -> handler methods
-    MUTATE_KIND_HANDLERS = {
-        consts.MutationKind.TAP: _mutate_tap.__func__,
-        consts.MutationKind.UNTAP: _mutate_untap.__func__,
-        consts.MutationKind.POWER_MOD: _mutate_power.__func__,
-        consts.MutationKind.GIVE_POWER: _mutate_power.__func__,
-        consts.MutationKind.ADD_KEYWORD: _mutate_add_keyword.__func__,
-        consts.MutationKind.GIVE_ABILITY: _mutate_add_keyword.__func__,
-        consts.MutationKind.REMOVE_KEYWORD: _mutate_remove_keyword.__func__,
-        consts.MutationKind.ADD_PASSIVE_EFFECT: _mutate_add_passive.__func__,
-        consts.MutationKind.ADD_MODIFIER: _mutate_add_passive.__func__,
-        consts.MutationKind.ADD_COST_MODIFIER: _mutate_add_cost.__func__,
-    }
 
     @classmethod
     def _format_command(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
@@ -1454,9 +1280,6 @@ class CardTextGenerator:
         # amount=0 またの未指定 → 対象すべてに適用（選択文なし）
         return f"{duration_text}{target_str}に「{display_text}」を与える。"
 
-    # --- MUTATE handlers moved to class methods for reuse and reduced branching ---
-
-
     @classmethod
     def _format_cast_spell_cost_phrase(cls, action: Dict[str, Any]) -> str:
         """Return the cost phrase used by CAST_SPELL preview text."""
@@ -1500,113 +1323,3 @@ class CardTextGenerator:
         """
         from dm_toolkit.gui.editor.formatters.context_merger import ContextMerger
         return ContextMerger.merge(raw_items, formatted_texts)
-    @classmethod
-    def generate_trigger_filter_description(cls, trigger_filter: Dict[str, Any]) -> str:
-        """
-        Generate detailed Japanese description of trigger filter conditions.
-        
-        Args:
-            trigger_filter: Filter definition dictionary
-        
-        Returns:
-            Detailed Japanese description of filter (可: "コスト3以上の呪文" など)
-        """
-        if not trigger_filter:
-            return ""
-        
-        descriptions = []
-        
-        # Type conditions
-        types = trigger_filter.get("types", [])
-        if types:
-            type_names = []
-            for t in types:
-                if t == "CREATURE":
-                    type_names.append("クリーチャー")
-                elif t == "SPELL":
-                    type_names.append("呪文")
-                elif t == "ELEMENT":
-                    type_names.append("エレメント")
-                elif t == "CARD":
-                    type_names.append("カード")
-            if type_names:
-                descriptions.append("/".join(type_names))
-        
-        # Civilization conditions
-        civs = trigger_filter.get("civilizations", [])
-        if civs:
-            civ_names = [CardTextResources.get_civilization_text(c) for c in civs]
-            descriptions.append("/".join([c for c in civ_names if c]))
-        
-        # Race conditions
-        races = trigger_filter.get("races", [])
-        if races:
-            descriptions.append("/".join(races))
-        
-        # Cost conditions
-        exact_cost = trigger_filter.get("exact_cost")
-        cost_ref = trigger_filter.get("cost_ref")
-        min_cost = trigger_filter.get("min_cost", 0)
-        max_cost = trigger_filter.get("max_cost", MAX_COST_VALUE)
-        
-        if cost_ref:
-            descriptions.append("コスト【選択数字】")
-        elif exact_cost is not None:
-            descriptions.append(f"コスト{exact_cost}")
-        else:
-            cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="【入力値】")
-            if cost_text:
-                descriptions.append(cost_text)
-        
-        # Power conditions
-        min_power = trigger_filter.get("min_power", 0)
-        max_power = trigger_filter.get("max_power", MAX_POWER_VALUE)
-        power_max_ref = trigger_filter.get("power_max_ref")
-        
-        if power_max_ref:
-            descriptions.append("パワー【入力値】以下")
-        else:
-            power_text = FilterTextFormatter.format_range_text(min_power, max_power, unit="パワー", min_usage="MIN_POWER", max_usage="MAX_POWER", linked_token="【入力値】")
-            if power_text:
-                descriptions.append(power_text)
-        
-        # Tapped/Untapped state
-        is_tapped = trigger_filter.get("is_tapped")
-        if is_tapped == 1:
-            descriptions.append("(タップ状態)")
-        elif is_tapped == 0:
-            descriptions.append("(アンタップ状態)")
-        
-        # Blocker status
-        is_blocker = trigger_filter.get("is_blocker")
-        if is_blocker == 1:
-            descriptions.append("(ブロッカー)")
-        elif is_blocker == 0:
-            descriptions.append("(ブロッカー以外)")
-        
-        # Evolution status
-        is_evolution = trigger_filter.get("is_evolution")
-        if is_evolution == 1:
-            descriptions.append("(進化)")
-        elif is_evolution == 0:
-            descriptions.append("(進化以外)")
-        
-        # Summoning sickness
-        is_summoning_sick = trigger_filter.get("is_summoning_sick")
-        if is_summoning_sick == 1:
-            descriptions.append("(召喚酔い)")
-        elif is_summoning_sick == 0:
-            descriptions.append("(召喚酔い解除)")
-        
-        # Zone conditions (if not BATTLE_ZONE)
-        zones = trigger_filter.get("zones", [])
-        if zones and "BATTLE_ZONE" not in zones:
-            zone_names = []
-            for z in zones:
-                zone_text = CardTextResources.normalize_zone_name(z)
-                if zone_text:
-                    zone_names.append(zone_text)
-            if zone_names:
-                descriptions.append("[" + "/".join(zone_names) + "]")
-        
-        return "、".join(descriptions) if descriptions else ""

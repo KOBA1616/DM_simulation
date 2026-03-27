@@ -4,7 +4,7 @@ from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
 from dm_toolkit.gui.editor.formatters.utils import is_input_linked
 from dm_toolkit.gui.editor.formatters.target_scope_resolver import TargetScopeResolver
-from dm_toolkit.consts import MAX_COST_VALUE, MAX_POWER_VALUE
+from dm_toolkit.consts import Zone, CardType, TimingMode, TargetScope, MAX_COST_VALUE, MAX_POWER_VALUE
 
 class TargetFormatter:
     """
@@ -13,7 +13,7 @@ class TargetFormatter:
     """
 
     @classmethod
-    def format_target(cls, action: Dict[str, Any], is_spell: bool = False) -> Tuple[str, str]:
+    def format_target(cls, action: Dict[str, Any], is_spell: bool = False, omit_cost: bool = False) -> Tuple[str, str]:
         """
         Attempt to describe the target based on scope, filter, etc.
         Returns (target_description, unit_counter)
@@ -30,9 +30,9 @@ class TargetFormatter:
         # Handle Trigger Source targeting
         if filter_def.get('is_trigger_source'):
             types = filter_def.get('types', [])
-            if 'SPELL' in types:
+            if CardType.SPELL.value in types:
                 return ("その呪文", "枚")
-            elif 'CARD' in types:
+            elif CardType.CARD.value in types:
                 return ("そのカード", "枚")
             return ("そのクリーチャー", "体")
 
@@ -49,7 +49,7 @@ class TargetFormatter:
             types = filter_def.get("types", [])
 
             adjectives = cls._format_attributes(filter_def, action)
-            adjectives += cls._format_cost_and_power(filter_def, action)
+            adjectives += cls._format_cost_and_power(filter_def, action, omit_cost=omit_cost)
 
             if filter_def.get("is_tapped", None) is True: adjectives = "タップされている" + adjectives
             elif filter_def.get("is_tapped", None) is False: adjectives = "アンタップされている" + adjectives
@@ -69,7 +69,7 @@ class TargetFormatter:
             if not prefix:
                 target_desc = FilterTextFormatter.format_scope_prefix(effective_scope, target_desc)
 
-            if "SHIELD_ZONE" in zones and (not types or "CARD" in types):
+            if Zone.SHIELD_ZONE.value in zones and (not types or CardType.CARD.value in types):
                 target_desc = target_desc.replace("シールドゾーンのカード", "シールド")
                 unit = "つ"
 
@@ -116,23 +116,24 @@ class TargetFormatter:
         return prefix, effective_scope
 
     @classmethod
-    def _format_cost_and_power(cls, filter_def: Dict[str, Any], action: Dict[str, Any]) -> str:
+    def _format_cost_and_power(cls, filter_def: Dict[str, Any], action: Dict[str, Any], omit_cost: bool = False) -> str:
         adjectives = ""
         input_usage = action.get("input_value_usage") or action.get("input_usage")
         has_input_key = bool(action.get("input_value_key"))
 
         # Cost
-        min_cost = filter_def.get("min_cost", 0)
-        max_cost = filter_def.get("max_cost", MAX_COST_VALUE)
+        if not omit_cost:
+            min_cost = filter_def.get("min_cost", 0)
+            max_cost = filter_def.get("max_cost", MAX_COST_VALUE)
 
-        if is_input_linked(min_cost, usage="MIN_COST") or (has_input_key and input_usage == "MIN_COST"):
-            adjectives += "コストその数以上の"
-        elif is_input_linked(max_cost, usage="MAX_COST") or (has_input_key and input_usage == "MAX_COST"):
-            adjectives += "コストその数以下の"
-        else:
-            cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
-            if cost_text:
-                adjectives += cost_text + "の"
+            if is_input_linked(min_cost, usage="MIN_COST") or (has_input_key and input_usage == "MIN_COST"):
+                adjectives += "コストその数以上の"
+            elif is_input_linked(max_cost, usage="MAX_COST") or (has_input_key and input_usage == "MAX_COST"):
+                adjectives += "コストその数以下の"
+            else:
+                cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
+                if cost_text:
+                    adjectives += cost_text + "の"
 
         # Power
         min_power = filter_def.get("min_power", 0)
@@ -174,49 +175,49 @@ class TargetFormatter:
         unit = "枚"
 
         # 1. Determine Zone Noun
-        if "BATTLE_ZONE" in zones: zone_noun = "バトルゾーン"
-        elif "MANA_ZONE" in zones: zone_noun = "マナゾーン"
-        elif "HAND" in zones: zone_noun = "手札"
-        elif "SHIELD_ZONE" in zones: zone_noun = "シールドゾーン"
-        elif "GRAVEYARD" in zones: zone_noun = "墓地"
-        elif "DECK" in zones: zone_noun = "山札"
+        if Zone.BATTLE_ZONE.value in zones: zone_noun = "バトルゾーン"
+        elif Zone.MANA_ZONE.value in zones: zone_noun = "マナゾーン"
+        elif Zone.HAND.value in zones: zone_noun = "手札"
+        elif Zone.SHIELD_ZONE.value in zones: zone_noun = "シールドゾーン"
+        elif Zone.GRAVEYARD.value in zones: zone_noun = "墓地"
+        elif Zone.DECK.value in zones: zone_noun = "山札"
 
         # 2. Determine Generic Type Noun
-        if "ELEMENT" in types:
+        if CardType.ELEMENT.value in types:
             type_noun = "エレメント"
             unit = "体"
-        elif "CREATURE" in types:
+        elif CardType.CREATURE.value in types:
             type_noun = "クリーチャー"
             unit = "体"
-        elif "SPELL" in types:
+        elif CardType.SPELL.value in types:
             type_noun = "呪文"
         elif "CROSS_GEAR" in types:
             type_noun = "クロスギア"
-        elif "CARD" in types:
+        elif CardType.CARD.value in types:
             type_noun = "カード"
             unit = "枚"
         elif len(types) > 1:
             # Join multiple types (e.g., Creature/Spell)
             type_words = []
-            if "CREATURE" in types: type_words.append("クリーチャー")
-            if "SPELL" in types: type_words.append("呪文")
-            if "ELEMENT" in types: type_words.append("エレメント")
+            if CardType.CREATURE.value in types: type_words.append("クリーチャー")
+            if CardType.SPELL.value in types: type_words.append("呪文")
+            if CardType.ELEMENT.value in types: type_words.append("エレメント")
             if "CROSS_GEAR" in types: type_words.append("クロスギア")
             if type_words: type_noun = "/".join(type_words)
 
         # 3. Zone-specific Overrides
-        if "BATTLE_ZONE" in zones:
-            if "CREATURE" in types or not types:
+        if Zone.BATTLE_ZONE.value in zones:
+            if CardType.CREATURE.value in types or not types:
                 type_noun = "クリーチャー"
                 unit = "体"
-            if "ELEMENT" in types: # Explicit Element override for BZ if needed
+            if CardType.ELEMENT.value in types: # Explicit Element override for BZ if needed
                 type_noun = "エレメント"
                 unit = "枚"
-        elif "SHIELD_ZONE" in zones:
+        elif Zone.SHIELD_ZONE.value in zones:
             type_noun = "カード"
             unit = "つ"
-        elif "GRAVEYARD" in zones:
-            if "CREATURE" in types:
+        elif Zone.GRAVEYARD.value in zones:
+            if CardType.CREATURE.value in types:
                 type_noun = "クリーチャー"
                 unit = "体"
 
@@ -225,3 +226,125 @@ class TargetFormatter:
             zone_noun = ""
 
         return zone_noun, type_noun, unit
+
+    @classmethod
+    def format_modifier_target(cls, filter_def: Dict[str, Any]) -> str:
+        """Format target description from filter with comprehensive support."""
+        if not filter_def:
+            return "対象"
+
+        owner = filter_def.get("owner", "")
+        if owner == "NONE" and not filter_def.get("zones") and not filter_def.get("types"):
+            return "このクリーチャー"
+
+        zones = filter_def.get("zones", [])
+        types = filter_def.get("types", [])
+        civs = filter_def.get("civilizations", [])
+        races = filter_def.get("races", [])
+        owner = filter_def.get("owner", "")  # Will NOT apply prefix here (handled in _format_modifier)
+        min_cost = filter_def.get("min_cost", 0)
+        max_cost = filter_def.get("max_cost", MAX_COST_VALUE)
+        min_power = filter_def.get("min_power", 0)
+        max_power = filter_def.get("max_power", MAX_POWER_VALUE)
+        is_tapped = filter_def.get("is_tapped")
+        is_blocker = filter_def.get("is_blocker")
+        is_evolution = filter_def.get("is_evolution")
+
+        parts = []
+
+        # Zone prefix
+        if zones:
+            zone_names = []
+            for z in zones:
+                if z == Zone.BATTLE_ZONE.value:
+                    zone_names.append("バトルゾーン")
+                elif z == Zone.MANA_ZONE.value:
+                    zone_names.append("マナゾーン")
+                elif z == Zone.HAND.value:
+                    zone_names.append("手札")
+                elif z == Zone.GRAVEYARD.value:
+                    zone_names.append("墓地")
+                else:
+                    zone_names.append(tr(z))
+
+            if len(zone_names) == 1:
+                # Single zone: "手札の" or "バトルゾーンの"
+                parts.append(zone_names[0] + "の")
+            else:
+                # Multiple zones: "手札または墓地から"
+                parts.append("または".join(zone_names) + "から")
+
+        # Civilization adjective
+        if civs:
+            parts.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]) + "の")
+
+        # Race adjective
+        if races:
+            parts.append("/".join(races) + "の")
+
+        # Cost range
+        exact_cost = filter_def.get("exact_cost")
+        cost_ref = filter_def.get("cost_ref")
+
+        if cost_ref:
+            parts.append("選択した数字と同じコストの")
+        elif exact_cost is not None:
+            parts.append(f"コスト{exact_cost}の")
+        else:
+            cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
+            if cost_text:
+                parts.append(cost_text + "の")
+
+        # Power range
+        power_text = FilterTextFormatter.format_range_text(min_power, max_power, unit="パワー", min_usage="MIN_POWER", max_usage="MAX_POWER", linked_token="その数")
+        if power_text:
+            parts.append(power_text + "の")
+
+        # Type noun
+        type_noun = "カード"
+        if types:
+            if len(types) == 1:
+                if types[0] == CardType.CREATURE.value:
+                    type_noun = "クリーチャー"
+                elif types[0] == CardType.SPELL.value:
+                    type_noun = "呪文"
+                elif types[0] == CardType.ELEMENT.value:
+                    type_noun = "エレメント"
+            else:
+                type_words = []
+                if CardType.CREATURE.value in types:
+                    type_words.append("クリーチャー")
+                if CardType.SPELL.value in types:
+                    type_words.append("呪文")
+                if CardType.ELEMENT.value in types:
+                    type_words.append("エレメント")
+                if type_words:
+                    type_noun = "/".join(type_words)
+
+        # Flags
+        flag_parts = []
+        if is_tapped == 1:
+            flag_parts.append("タップ状態の")
+        elif is_tapped == 0:
+            flag_parts.append("アンタップ状態の")
+
+        if is_blocker == 1:
+            flag_parts.append("ブロッカーの")
+        elif is_blocker == 0:
+            flag_parts.append("ブロッカー以外の")
+
+        if is_evolution == 1:
+            flag_parts.append("進化クリーチャーの")
+        elif is_evolution == 0:
+            flag_parts.append("進化以外の")
+
+        if flag_parts:
+            parts.extend(flag_parts)
+
+        # Combine all parts
+        result = "".join(parts) + type_noun
+
+        # Cleanup
+        result = result.replace("のの", "の").replace("、の", "の")
+
+        return result if result else "対象"
