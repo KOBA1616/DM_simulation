@@ -10,6 +10,7 @@ from PyQt6.QtCore import Qt, QRect
 from PyQt6.QtGui import QFont, QColor, QPainter, QPen
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+from dm_toolkit.gui.editor.formatters.card_layout_builder import CardLayoutBuilder
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor import normalize
 from dm_toolkit.gui.styles.civ_colors import CIV_COLORS_FOREGROUND, CIV_COLORS_BACKGROUND
@@ -307,7 +308,7 @@ class CardPreviewWidget(QWidget):
 
         self.current_data = data
         if self.raw_text_preview.isVisible():
-            full_text = CardTextGenerator.generate_text(data)
+            full_text = CardLayoutBuilder.build_text(data)
             # Generate canonical summaries for preview (CIR) to help detect action/command mismatches
             cir_lines = []
             effects = data.get('effects', []) or data.get('triggers', []) or []
@@ -370,13 +371,13 @@ class CardPreviewWidget(QWidget):
                            sort_keys=True, ensure_ascii=False, default=str).encode()
             ).hexdigest()
         except Exception:
-            return CardTextGenerator.generate_body_text_lines(data, include_twinpact=include_twinpact)
+            return CardLayoutBuilder.build_body_text_lines(data, include_twinpact=include_twinpact)
 
         if key not in self._body_text_cache:
             # キャッシュが肥大化しないよう上限を設ける（例: 最大50エントリ）
             if len(self._body_text_cache) >= 50:
                 self._body_text_cache.clear()
-            self._body_text_cache[key] = CardTextGenerator.generate_body_text_lines(
+            self._body_text_cache[key] = CardLayoutBuilder.build_body_text_lines(
                 data, include_twinpact=include_twinpact
             )
         return self._body_text_cache[key]

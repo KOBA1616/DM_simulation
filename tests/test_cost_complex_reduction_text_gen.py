@@ -29,7 +29,7 @@ def test_complex_reduction_with_cards_matching_filter():
                 "type": "PASSIVE",
                 "condition": {
                     "type": "CARDS_MATCHING_FILTER",
-                    "filter": {
+                    "target_filter": {
                         "civilizations": ["DARKNESS"]
                     },
                     "count": 3,
@@ -51,7 +51,7 @@ def test_complex_reduction_with_stat_scaled():
                 "type": "PASSIVE",
                 "condition": {
                     "type": "CARDS_MATCHING_FILTER",
-                    "filter": {
+                    "target_filter": {
                         "civilizations": ["LIGHT"]
                     },
                     "count": 1,

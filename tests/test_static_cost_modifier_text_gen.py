@@ -14,7 +14,7 @@ def test_static_cost_modifier_stat_scaled_uses_stat_key_label() -> None:
                 "min_stat": 0,
                 "max_reduction": 3,
                 "value": 1,
-                "scope": "SELF",
+                "scope": "SELF", "target_filter": {},
             }
         ],
     }
@@ -37,7 +37,7 @@ def test_static_cost_modifier_stat_scaled_threshold_phrase_is_explicit() -> None
                 "per_value": 2,
                 "min_stat": 1,
                 "value": 1,
-                "scope": "SELF",
+                "scope": "SELF", "target_filter": {},
             }
         ],
     }
@@ -59,7 +59,7 @@ def test_static_cost_modifier_stat_scaled_zero_value_does_not_fallback_to_generi
                 "stat_key": "CARDS_DRAWN_THIS_TURN",
                 "per_value": 1,
                 "value": 0,
-                "scope": "SELF",
+                "scope": "SELF", "target_filter": {},
             }
         ],
     }
@@ -82,7 +82,7 @@ def test_static_cost_modifier_legacy_without_value_mode_is_inferred_stat_scaled(
                 "per_value": 1,
                 "min_stat": 0,
                 "value": 0,
-                "scope": "ALL",
+                "scope": "ALL", "target_filter": {},
             }
         ],
     }
@@ -102,7 +102,7 @@ def test_static_cost_modifier_fixed_keeps_existing_style() -> None:
                 "type": "COST_MODIFIER",
                 "value_mode": "FIXED",
                 "value": 2,
-                "scope": "SELF",
+                "scope": "SELF", "target_filter": {},
             }
         ],
     }

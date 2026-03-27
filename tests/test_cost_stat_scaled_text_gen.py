@@ -15,7 +15,7 @@ def test_cost_reduction_stat_scaled():
                 "increment_cost": 1,
                 "min_stat": 1,
                 "max_reduction": 4,
-                "unit_cost": {"filter": {"civilizations": ["DARKNESS"]}},
+                "unit_cost": {"target_filter": {"civilizations": ["DARKNESS"]}},
             }
         ],
     }

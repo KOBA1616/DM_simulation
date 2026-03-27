@@ -16,7 +16,7 @@ def test_cost_reduction_passive_fixed():
                 },
                 "value_mode": "FIXED",
                 "value": 2,
-                "unit_cost": {"filter": {"civilizations": ["DARKNESS"], "min_cost": 0}},
+                "unit_cost": {"target_filter": {"civilizations": ["DARKNESS"], "min_cost": 0}},
             }
         ],
     }
