@@ -6,6 +6,7 @@ from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount
 from dm_toolkit.gui.editor.formatters.legacy_action_formatters import LegacyActionFormatterHelper
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+from dm_toolkit.gui.editor.formatters.text_utils import TextUtils
 from dm_toolkit.gui.i18n import tr
 
 @register_formatter("TRANSITION")
@@ -120,8 +121,8 @@ class RevealToBufferFormatter(CommandFormatterBase):
         val1 = get_command_amount(command, default=0)
         amt = val1 if val1 > 0 else 1
         optional = bool(command.get("optional", False))
-        verb = "置いてもよい。" if optional else "置く。"
-        return f"{src_zone}から{amt}枚を表向きにしてバッファに{verb}"
+        text = f"{src_zone}から{amt}枚を表向きにしてバッファに置く。"
+        return TextUtils.apply_conjugation(text, optional)
 
 @register_formatter("MOVE_BUFFER_TO_ZONE")
 class MoveBufferToZoneFormatter(CommandFormatterBase):
@@ -158,15 +159,15 @@ class MoveBufferToZoneFormatter(CommandFormatterBase):
                  qty_part = f"最大{val1}枚"
 
             optional = bool(command.get("optional", False))
-            verb = "加えてもよい。" if optional else "加える。"
-            return f"その中から、{civ_part}{type_part}を{qty_part}選び、{to_zone}に{verb}"
+            text = f"その中から、{civ_part}{type_part}を{qty_part}選び、{to_zone}に加える。"
+            return TextUtils.apply_conjugation(text, optional)
         else:
             qty_part = f"{val1}枚" if val1 > 0 else "すべて"
             if val1 > 0 and up_to:
                 qty_part = f"最大{val1}枚"
             optional = bool(command.get("optional", False))
-            verb = "加えてもよい。" if optional else "加える。"
-            return f"その中から、{qty_part}を{to_zone}に{verb}"
+            text = f"その中から、{qty_part}を{to_zone}に加える。"
+            return TextUtils.apply_conjugation(text, optional)
 
 @register_formatter("REPLACE_CARD_MOVE")
 class ReplaceCardMoveFormatter(CommandFormatterBase):

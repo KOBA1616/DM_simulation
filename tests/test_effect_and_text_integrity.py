@@ -1034,7 +1034,7 @@ class TestCppTextConsistency:
         assert isinstance(text, str)
         assert "スピードアタッカー" in text or "speed" in text.lower(), (
             f"APPLY_MODIFIER SPEED_ATTACKER でキーワードテキストが含まれない: 「{text}」\n"
-            "再発防止: _format_special_effect_command の APPLY_MODIFIER ケースを確認すること"
+            "再発防止: ApplyModifierFormatter のケースを確認すること"
         )
 
     def test_apply_modifier_blocker_generates_text(self) -> None:
