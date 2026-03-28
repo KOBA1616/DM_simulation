@@ -4,12 +4,12 @@ from dm_toolkit.gui.i18n import tr
 
 class ModifierFormatterBase:
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any) -> str:
+    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any, ctx: Any = None) -> str:
         raise NotImplementedError
 
 class CostModifierFormatter(ModifierFormatterBase):
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any) -> str:
+    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any, ctx: Any = None) -> str:
         if not isinstance(modifier, dict):
             if value > 0:
                 return f"{cond}{target}のコストを{value}少なくする。"
@@ -21,11 +21,11 @@ class CostModifierFormatter(ModifierFormatterBase):
         if "value" not in norm_mod:
              norm_mod["value"] = value
 
-        return text_gen_cls._format_unified_cost_modifier(norm_mod, prefix=cond, target_phrase=f"{target}のコストを")
+        return text_gen_cls._format_unified_cost_modifier(norm_mod, prefix=cond, target_phrase=f"{target}のコストを", ctx=ctx)
 
 class PowerModifierFormatter(ModifierFormatterBase):
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any) -> str:
+    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any, ctx: Any = None) -> str:
         sign = "+" if value >= 0 else ""
         if value == 0:
             return f"{cond}{target}のパワーは不変。"
@@ -33,7 +33,7 @@ class PowerModifierFormatter(ModifierFormatterBase):
 
 class GrantKeywordFormatter(ModifierFormatterBase):
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any) -> str:
+    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any, ctx: Any = None) -> str:
         str_val = modifier.get('mutation_kind') or modifier.get('str_val', '')
 
         if not str_val:
@@ -53,7 +53,7 @@ class GrantKeywordFormatter(ModifierFormatterBase):
 
 class SetKeywordFormatter(ModifierFormatterBase):
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any) -> str:
+    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any, ctx: Any = None) -> str:
         str_val = modifier.get("mutation_kind", "") or modifier.get("str_val", "")
         if str_val:
             keyword = CardTextResources.get_keyword_text(str_val)
@@ -62,7 +62,7 @@ class SetKeywordFormatter(ModifierFormatterBase):
 
 class AddRestrictionFormatter(ModifierFormatterBase):
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any) -> str:
+    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any, ctx: Any = None) -> str:
         keyword = modifier.get("mutation_kind", "") or modifier.get("str_val", "")
         return f"{cond}{scope_prefix}{CardTextResources.get_keyword_text(keyword)}を与える。"
 
@@ -79,10 +79,10 @@ class ModifierFormatterRegistry:
         return cls._registry.get(mtype)
 
     @classmethod
-    def format(cls, mtype: str, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any) -> str:
+    def format(cls, mtype: str, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any, ctx: Any = None) -> str:
         formatter = cls.get_formatter(mtype)
         if formatter:
-            return formatter.format(cond, target, scope_prefix, value, modifier, text_gen_cls)
+            return formatter.format(cond, target, scope_prefix, value, modifier, text_gen_cls, ctx)
         return f"{cond}{scope_prefix}常在効果: {tr(mtype)}"
 
 # Register default formatters

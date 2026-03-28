@@ -113,9 +113,13 @@ class BreakShieldFormatter(CommandFormatterBase):
         tgt = target_str
         if tgt in ("", "カード", "自分のカード", "それ"):
             tgt = "シールド"
-        if not command.get("target_group") and not command.get("scope") or (command.get("target_group") or command.get("scope")) == "NONE":
-            if "相手" not in tgt:
-                tgt = "相手の" + tgt
+
+        scope = TargetScopeResolver.resolve_action_scope(command)
+        if scope == "NONE":
+            prefix = TargetScopeResolver.resolve_prefix("OPPONENT")
+            if not tgt.startswith(prefix):
+                tgt = prefix + tgt
+
         return f"{tgt}を{count}つブレイクする。"
 
 @register_formatter("ADD_SHIELD")

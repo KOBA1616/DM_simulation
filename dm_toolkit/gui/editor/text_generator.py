@@ -37,11 +37,7 @@ class CardTextGenerator:
         lines.append(cls.generate_body_text_lines(data, include_twinpact=False, ctx=ctx)) # Don't recurse here, handle manually
 
         # 4. Twinpact (Spell Side)
-        spell_side = data.get("spell_side")
-        if spell_side and include_twinpact:
-            lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
-            spell_ctx = TextGenerationContext(spell_side, sample)
-            lines.append(cls.generate_text(spell_side, ctx=spell_ctx))
+        cls._append_twinpact_text(data, include_twinpact, ctx, lines)
 
         return "\n".join(lines)
 
@@ -92,13 +88,18 @@ class CardTextGenerator:
             lines.append(body_text)
 
         # 4. Twinpact (Spell Side)
+        cls._append_twinpact_text(data, include_twinpact, ctx, lines)
+
+        return "\n".join(lines)
+
+    @classmethod
+    def _append_twinpact_text(cls, data: Dict[str, Any], include_twinpact: bool, ctx: TextGenerationContext, lines: List[str]) -> None:
+        """Helper to append Twinpact separator and spell-side text to lines."""
         spell_side = data.get("spell_side")
         if spell_side and include_twinpact:
             lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
-            spell_ctx = TextGenerationContext(spell_side, ctx.sample)
+            spell_ctx = TextGenerationContext(spell_side, ctx.sample, getattr(ctx, "evaluated_stats", {}))
             lines.append(cls.generate_text(spell_side, ctx=spell_ctx))
-
-        return "\n".join(lines)
 
     @classmethod
     def generate_body_text(cls, data: Dict[str, Any], sample: List[Any] = None, ctx: TextGenerationContext = None) -> str:
@@ -161,7 +162,7 @@ class CardTextGenerator:
         # 2.5 Cost Reductions
         cost_reductions = cls._normalize_cost_reductions(data.get("cost_reductions", []))
         for cr in cost_reductions:
-            text = cls._format_cost_reduction(cr, sample=ctx.sample)
+            text = cls._format_cost_reduction(cr, ctx=ctx)
             if text:
                 lines.append(f"■ {text}")
 
@@ -326,8 +327,9 @@ class CardTextGenerator:
         )
 
     @classmethod
-    def _format_unified_cost_modifier(cls, mod_dict: Dict[str, Any], prefix: str = "", target_phrase: str = "このカードの召喚コストを", sample: List[Any] = None) -> str:
+    def _format_unified_cost_modifier(cls, mod_dict: Dict[str, Any], prefix: str = "", target_phrase: str = "このカードの召喚コストを", ctx: TextGenerationContext = None) -> str:
         """Unified logic for COST_MODIFIER and cost_reductions."""
+        sample = ctx.sample if ctx else None
         vm_raw = mod_dict.get("value_mode")
         if not vm_raw and (mod_dict.get("stat_key") or mod_dict.get("per_value") is not None):
             value_mode = "STAT_SCALED"
@@ -405,8 +407,7 @@ class CardTextGenerator:
                 stat_key_normalized = CardTextResources.normalize_stat_key(raw_stat_key) if raw_stat_key else raw_stat_key
                 stat_name, _ = CardTextResources.STAT_KEY_MAP.get(stat_key_normalized, (stat_key_normalized or "統計", ""))
                 if sample and isinstance(sample, list) and stat_key_normalized:
-                    from dm_toolkit.gui.editor.services.preview_evaluator import PreviewEvaluator
-                    sval = PreviewEvaluator.compute_stat_from_sample(stat_key_normalized, sample)
+                    sval = ctx.evaluated_stats.get(stat_key_normalized) if ctx and hasattr(ctx, 'evaluated_stats') else None
                     if sval is None:
                         for s in sample:
                             if isinstance(s, dict) and (stat_key_normalized in s or raw_stat_key in s):
@@ -431,7 +432,7 @@ class CardTextGenerator:
         return f"{prefix}{target_phrase}修正する。"
 
     @classmethod
-    def _format_cost_reduction(cls, cr: Dict[str, Any], sample: List[Any] = None) -> str:
+    def _format_cost_reduction(cls, cr: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         if not cr:
             return ""
 
@@ -458,7 +459,7 @@ class CardTextGenerator:
                     return f"{desc}が{val}体以上いるなら、このカードの召喚コストは{norm_cr.get('value') or 'X'}少なくなる。"
                 return f"{desc}がいるなら、このカードの召喚コストを軽減する。"
 
-        return cls._format_unified_cost_modifier(norm_cr, prefix="", target_phrase="このカードの召喚コストは", sample=sample)
+        return cls._format_unified_cost_modifier(norm_cr, prefix="", target_phrase="このカードの召喚コストは", ctx=ctx)
     @classmethod
     def _normalize_cost_reductions(cls, crs: Any) -> List[Dict[str, Any]]:
         """Ensure cost_reductions is a list of dicts.
@@ -478,7 +479,7 @@ class CardTextGenerator:
         return []
 
     @classmethod
-    def _format_modifier(cls, modifier: Dict[str, Any], sample: List[Any] = None) -> str:
+    def _format_modifier(cls, modifier: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         """Format a static ability (Modifier) with comprehensive support for all types and conditions."""
         from dm_toolkit.consts import TargetScope
         
@@ -524,7 +525,7 @@ class CardTextGenerator:
         
         from dm_toolkit.gui.editor.formatters.modifier_formatters import ModifierFormatterRegistry
         try:
-            return ModifierFormatterRegistry.format(mtype, cond_text, full_target, scope_prefix, value, modifier, cls)
+            return ModifierFormatterRegistry.format(mtype, cond_text, full_target, scope_prefix, value, modifier, cls, ctx)
         except (KeyError, TypeError, ValueError):
             return f"{cond_text}{scope_prefix}常在効果: {tr(mtype)}"
     
@@ -547,7 +548,7 @@ class CardTextGenerator:
             if effect_type in ("COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD", "ADD_RESTRICTION"):
                 # Verify it's not a triggered effect
                 if trigger == "NONE" or trigger not in effect:
-                    return cls._format_modifier(effect, sample=ctx.sample)
+                    return cls._format_modifier(effect, ctx=ctx)
         
         trigger = effect.get("trigger", "NONE")
         trigger_scope = effect.get("trigger_scope", "NONE")
@@ -979,26 +980,6 @@ class CardTextGenerator:
             return f"{duration_text}{target_str}を{amount}体選び、「{display_text}」を与える。"
         # amount=0 またの未指定 → 対象すべてに適用（選択文なし）
         return f"{duration_text}{target_str}に「{display_text}」を与える。"
-
-    @classmethod
-    def _format_cast_spell_cost_phrase(cls, action: Dict[str, Any]) -> str:
-        """Return the cost phrase used by CAST_SPELL preview text."""
-        play_flags = action.get("play_flags")
-        explicit_cost = action.get("cost")
-
-        is_free = True
-        if isinstance(play_flags, bool):
-            is_free = play_flags
-        elif isinstance(play_flags, list):
-            is_free = "FREE" in play_flags or "COST_FREE" in play_flags
-        elif explicit_cost not in (None, 0):
-            is_free = False
-
-        if is_free:
-            return "コストを支払わずに唱える"
-        if isinstance(explicit_cost, int) and explicit_cost > 0:
-            return f"コスト{explicit_cost}を支払って唱える"
-        return "コストを支払って唱える"
 
     @classmethod
     def _format_selection_quantity(cls, count: Any, unit: str) -> str:
