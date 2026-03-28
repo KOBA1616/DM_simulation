@@ -14,7 +14,7 @@ class CardLayoutBuilder:
     @classmethod
     def build_text(cls, data: Dict[str, Any], include_twinpact: bool = True, sample: List[Any] = None, ctx: TextGenerationContext = None) -> str:
         """
-        Generate the full text for a card including name, cost, type, keywords, and effects.
+        Generate the full text for a card, seamlessly joining its faces (e.g. Twinpact).
         """
         if not data:
             return ""
@@ -33,14 +33,26 @@ class CardLayoutBuilder:
         if body_text:
             lines.append(body_text)
 
-        # 3. Twinpact (Spell Side)
-        spell_side = data.get("spell_side")
-        if spell_side and include_twinpact:
-            lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
-            spell_ctx = TextGenerationContext(spell_side, ctx.sample)
-            lines.append(cls.build_text(spell_side, include_twinpact=False, ctx=spell_ctx))
+        # 3. Secondary Faces (Twinpact, etc.)
+        if include_twinpact:
+            cls._append_secondary_faces(data, ctx, lines)
 
         return "\n".join(lines)
+
+    @classmethod
+    def _append_secondary_faces(cls, data: Dict[str, Any], ctx: TextGenerationContext, lines: List[str]) -> None:
+        """
+        Appends any secondary faces (Twinpact spell side, hyperspatial flip side, etc.)
+        to the given layout lines.
+        """
+        # Handle Twinpact
+        spell_side = data.get("spell_side")
+        if spell_side:
+            lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
+            # Preserve dynamic preview stats context if available
+            eval_stats = getattr(ctx, "evaluated_stats", {})
+            spell_ctx = TextGenerationContext(spell_side, ctx.sample, evaluated_stats=eval_stats)
+            lines.append(cls.build_text(spell_side, include_twinpact=False, ctx=spell_ctx))
 
     @classmethod
     def build_header_lines(cls, data: Dict[str, Any]) -> List[str]:
@@ -76,6 +88,7 @@ class CardLayoutBuilder:
     def build_body_text_lines(cls, data: Dict[str, Any], include_twinpact: bool = True, sample: List[Any] = None, ctx: TextGenerationContext = None) -> str:
         """
         Generates just the body text (keywords, effects, etc.) without the header.
+        Seamlessly links secondary faces (Twinpact).
         """
         lines = []
         if ctx is None:
@@ -86,11 +99,8 @@ class CardLayoutBuilder:
         if body_text:
             lines.append(body_text)
 
-        spell_side = data.get("spell_side")
-        if spell_side and include_twinpact:
-            lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
-            spell_ctx = TextGenerationContext(spell_side, ctx.sample)
-            lines.append(cls.build_text(spell_side, include_twinpact=False, ctx=spell_ctx))
+        if include_twinpact:
+            cls._append_secondary_faces(data, ctx, lines)
 
         return "\n".join(lines)
 

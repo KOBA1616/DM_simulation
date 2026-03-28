@@ -19,7 +19,7 @@ class CardTextGenerator:
     """
 
     @classmethod
-    def generate_text(cls, data: Dict[str, Any], include_twinpact: bool = True, sample: List[Any] = None, ctx: TextGenerationContext = None) -> str:
+    def generate_text(cls, data: Dict[str, Any], sample: List[Any] = None, ctx: TextGenerationContext = None) -> str:
         """
         Generate the full text for a card including name, cost, type, keywords, and effects.
         """
@@ -35,10 +35,7 @@ class CardTextGenerator:
         lines.extend(cls.generate_header_lines(data))
 
         # 2. Body (Keywords, Effects, etc.)
-        lines.append(cls.generate_body_text_lines(data, include_twinpact=False, ctx=ctx)) # Don't recurse here, handle manually
-
-        # 4. Twinpact (Spell Side)
-        cls._append_twinpact_text(data, include_twinpact, ctx, lines)
+        lines.append(cls.generate_body_text_lines(data, ctx=ctx))
 
         return "\n".join(lines)
 
@@ -75,7 +72,7 @@ class CardTextGenerator:
         return lines
 
     @classmethod
-    def generate_body_text_lines(cls, data: Dict[str, Any], include_twinpact: bool = True, sample: List[Any] = None, ctx: TextGenerationContext = None) -> str:
+    def generate_body_text_lines(cls, data: Dict[str, Any], sample: List[Any] = None, ctx: TextGenerationContext = None) -> str:
         """
         Generates just the body text (keywords, effects, etc.) without the header.
         """
@@ -88,19 +85,7 @@ class CardTextGenerator:
         if body_text:
             lines.append(body_text)
 
-        # 4. Twinpact (Spell Side)
-        cls._append_twinpact_text(data, include_twinpact, ctx, lines)
-
         return "\n".join(lines)
-
-    @classmethod
-    def _append_twinpact_text(cls, data: Dict[str, Any], include_twinpact: bool, ctx: TextGenerationContext, lines: List[str]) -> None:
-        """Helper to append Twinpact separator and spell-side text to lines."""
-        spell_side = data.get("spell_side")
-        if spell_side and include_twinpact:
-            lines.append("\n" + "=" * 20 + " 呪文側 " + "=" * 20 + "\n")
-            spell_ctx = TextGenerationContext(spell_side, ctx.sample, getattr(ctx, "evaluated_stats", {}))
-            lines.append(cls.generate_text(spell_side, ctx=spell_ctx))
 
     @classmethod
     def generate_body_text(cls, data: Dict[str, Any], sample: List[Any] = None, ctx: TextGenerationContext = None) -> str:
@@ -152,13 +137,15 @@ class CardTextGenerator:
         if special_kw_lines:
             lines.extend(special_kw_lines)
 
-        # 再発防止: キーワードフラグ未同期でも、RC コマンド条件を本文へ反映する。
-        rc_line_exists = any("革命チェンジ" in line for line in special_kw_lines)
-        if not rc_line_exists:
-            from dm_toolkit.gui.editor.formatters.special_keywords import RevolutionChangeFormatter
-            rc_cond = RevolutionChangeFormatter.get_rc_filter_from_effects(data)
-            if isinstance(rc_cond, dict) and rc_cond:
-                lines.append(f"■ 革命チェンジ：{RevolutionChangeFormatter.format_revolution_change_text(rc_cond)}")
+        # Allow special keywords to provide unbound text if their flags are omitted
+        # but they still have an effect command on the card (e.g. Revolution Change)
+        for kw_id, formatter_cls in SpecialKeywordRegistry._formatters.items():
+            if not keywords.get(kw_id):
+                unbound_lines = formatter_cls.get_unbound_text(data)
+                for ul in unbound_lines:
+                    # Only add if not somehow generated previously
+                    if not any(ul in line for line in special_kw_lines):
+                        lines.append(f"■ {ul}")
 
         # 2.5 Cost Reductions
         cost_reductions = cls._normalize_cost_reductions(data.get("cost_reductions", []))
@@ -178,55 +165,38 @@ class CardTextGenerator:
         effects = data.get("effects", [])
 
         def _is_special_only_effect(eff: Dict[str, Any]) -> bool:
-            cmds = eff.get("commands", []) or []
-            if not cmds:
-                return False
-            special_seen = False
-            from dm_toolkit.gui.editor.formatters.special_keywords import RevolutionChangeFormatter
-            for cmd in cmds:
-                if not isinstance(cmd, dict):
-                    continue
-                ctype = cmd.get("type")
-                if RevolutionChangeFormatter.is_revolution_change_command(cmd):
-                    special_seen = True
-                elif ctype == "MEKRAID" or ctype == "FRIEND_BURST":
-                    special_seen = True
-                elif ctype == "CAST_SPELL" and cmd.get("str_param") == "SPELL_SIDE":
-                    # Use data directly to ensure safety
-                    if data.get("keywords", {}).get("mega_last_burst"):
-                        special_seen = True
-                    else:
-                        return False
-                else:
-                    # Found a non-special command -> not special-only
-                    return False
-            # All commands were special
-            return special_seen
+            for _, formatter_cls in SpecialKeywordRegistry._formatters.items():
+                if formatter_cls.is_special_only_effect(eff, data):
+                    return True
+            return False
 
-        for effect in effects:
+        for i, effect in enumerate(effects):
             if _is_special_only_effect(effect):
                 continue
-            text = cls._format_effect(effect, ctx)
-            if text:
-                lines.append(f"■ {text}")
+            with ctx.error_reporter.path_segment(f"effects[{i}]"):
+                text = cls._format_effect(effect, ctx)
+                if text:
+                    lines.append(f"■ {text}")
 
         # 3.1 Static Abilities (常在効果)
         # Process static_abilities array which contains Modifier objects
         static_abilities = data.get("static_abilities", [])
-        for static_ability in static_abilities:
+        for i, static_ability in enumerate(static_abilities):
             if static_ability and isinstance(static_ability, dict):
-                text = cls._format_effect(static_ability, ctx)
-                if text:
-                    lines.append(f"■ {text}")
+                with ctx.error_reporter.path_segment(f"static_abilities[{i}]"):
+                    text = cls._format_effect(static_ability, ctx)
+                    if text:
+                        lines.append(f"■ {text}")
 
         # 3.5 Metamorph Abilities (Ultra Soul Cross, etc.)
         metamorphs = data.get("metamorph_abilities", [])
         if metamorphs:
             lines.append("【追加能力】")
-            for effect in metamorphs:
-                text = cls._format_effect(effect, ctx)
-                if text:
-                    lines.append(f"■ {text}")
+            for i, effect in enumerate(metamorphs):
+                with ctx.error_reporter.path_segment(f"metamorph_abilities[{i}]"):
+                    text = cls._format_effect(effect, ctx)
+                    if text:
+                        lines.append(f"■ {text}")
 
         return "\n".join(lines)
 
@@ -244,11 +214,7 @@ class CardTextGenerator:
 
         formatter = CardTextResources.REACTION_TEXT_MAP.get(rtype)
         if formatter is not None:
-            try:
-                return formatter(reaction)
-            except (KeyError, TypeError, ValueError):
-                # Fallback to generic translation if formatting fails
-                return tr(rtype)
+            return formatter(reaction)
 
         return tr(rtype)
 
@@ -295,7 +261,12 @@ class CardTextGenerator:
         scope = TargetScope.normalize(scope)
         
         # Build condition prefix（条件がある場合）
-        cond_text = cls._format_condition(condition)
+        if ctx and hasattr(ctx, "error_reporter"):
+            with ctx.error_reporter.path_segment("condition"):
+                cond_text = cls._format_condition(condition, ctx)
+        else:
+            cond_text = cls._format_condition(condition, ctx)
+
         if cond_text and not cond_text.endswith("、"):
             cond_text += "、"
         
@@ -323,10 +294,8 @@ class CardTextGenerator:
             full_target = FilterTextFormatter.format_scope_prefix(scope, target_str)
         
         from dm_toolkit.gui.editor.formatters.modifier_formatters import ModifierFormatterRegistry
-        try:
-            return ModifierFormatterRegistry.format(mtype, cond_text, full_target, scope_prefix, value, modifier, cls, ctx)
-        except (KeyError, TypeError, ValueError):
-            return f"{cond_text}{scope_prefix}常在効果: {tr(mtype)}"
+
+        return ModifierFormatterRegistry.format(mtype, cond_text, full_target, scope_prefix, value, modifier, cls, ctx)
     
     @classmethod
     def _get_scope_prefix(cls, scope: str) -> str:
@@ -369,7 +338,11 @@ class CardTextGenerator:
                 timing_mode=timing_mode,
             )
 
-        cond_text = cls._format_condition(condition)
+        if ctx and hasattr(ctx, "error_reporter"):
+            with ctx.error_reporter.path_segment("condition"):
+                cond_text = cls._format_condition(condition, ctx)
+        else:
+            cond_text = cls._format_condition(condition, ctx)
         cond_type = condition.get("type", "NONE")
 
         # Refined natural language logic
@@ -391,25 +364,26 @@ class CardTextGenerator:
         # We now expect 'commands' to be the sole source of truth.
         commands = effect.get("commands", [])
         output_label_map: Dict[str, str] = {}
-        for command in commands:
-            command_for_text = copy.deepcopy(command) if isinstance(command, dict) else command
-            if isinstance(command_for_text, dict):
-                in_key = str(command_for_text.get("input_value_key") or "")
-                saved_label = str(command_for_text.get("_input_value_label") or "").strip()
-                mapped_label = output_label_map.get(in_key, "") if in_key else ""
-                # 再発防止: 連鎖コマンドの入力ラベルは generic "クエリ結果" より
-                # 推論済みのクエリ/出力ラベルを優先して自然文を生成する。
-                if mapped_label and (not saved_label or "クエリ結果" in saved_label or saved_label.startswith("Step ")):
-                    command_for_text["_input_value_label"] = mapped_label
+        for i, command in enumerate(commands):
+            with ctx.error_reporter.path_segment(f"commands[{i}]"):
+                command_for_text = copy.deepcopy(command) if isinstance(command, dict) else command
+                if isinstance(command_for_text, dict):
+                    in_key = str(command_for_text.get("input_value_key") or "")
+                    saved_label = str(command_for_text.get("_input_value_label") or "").strip()
+                    mapped_label = output_label_map.get(in_key, "") if in_key else ""
+                    # 再発防止: 連鎖コマンドの入力ラベルは generic "クエリ結果" より
+                    # 推論済みのクエリ/出力ラベルを優先して自然文を生成する。
+                    if mapped_label and (not saved_label or "クエリ結果" in saved_label or saved_label.startswith("Step ")):
+                        command_for_text["_input_value_label"] = mapped_label
 
-                out_key = str(command_for_text.get("output_value_key") or "")
-                if out_key:
-                    inferred_label = InputLinkFormatter.infer_output_value_label(command_for_text)
-                    if inferred_label:
-                        output_label_map[out_key] = inferred_label
+                    out_key = str(command_for_text.get("output_value_key") or "")
+                    if out_key:
+                        inferred_label = InputLinkFormatter.infer_output_value_label(command_for_text)
+                        if inferred_label:
+                            output_label_map[out_key] = inferred_label
 
-            raw_items.append(command_for_text)
-            action_texts.append(cls._format_command(command_for_text, ctx))
+                raw_items.append(command_for_text)
+                action_texts.append(cls._format_command(command_for_text, ctx))
 
         # Try to merge common sequential patterns for more natural language
         full_action_text = cls._merge_action_texts(raw_items, action_texts)
@@ -698,10 +672,11 @@ class CardTextGenerator:
         # 再発防止: REVOLUTION_CHANGE コマンドはカードレベルの革命チェンジテキストで使用されるが、
         # コマンドエディタ等で単独表示する場合のために直接テキストを返す。
         if cmd_type == "REVOLUTION_CHANGE":
-            from dm_toolkit.gui.editor.formatters.special_keywords import RevolutionChangeFormatter
-            tf = command.get("target_filter") or command.get("filter") or {}
-            cond_text = RevolutionChangeFormatter.format_revolution_change_text(tf) if tf else "クリーチャー"
-            return f"革命チェンジ：{cond_text}"
+            formatter_cls = SpecialKeywordRegistry.get_formatter("revolution_change")
+            if formatter_cls and hasattr(formatter_cls, "format_revolution_change_text"):
+                tf = command.get("target_filter") or command.get("filter") or {}
+                cond_text = formatter_cls.format_revolution_change_text(tf) if tf else "クリーチャー"
+                return f"革命チェンジ：{cond_text}"
 
         cmd_type = CardTextResources.normalize_command_alias(cmd_type)
         formatter_cls = CommandFormatterRegistry.get_formatter(cmd_type)
@@ -714,9 +689,9 @@ class CardTextGenerator:
         return f"({tr(cmd_type)})"
 
     @classmethod
-    def _format_condition(cls, condition: Dict[str, Any]) -> str:
+    def _format_condition(cls, condition: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         from dm_toolkit.gui.editor.formatters.condition_formatter import ConditionFormatter
-        return ConditionFormatter.format_condition_text(condition)
+        return ConditionFormatter.format_condition_text(condition, ctx)
 
     @classmethod
     def _format_selection_quantity(cls, count: Any, unit: str) -> str:

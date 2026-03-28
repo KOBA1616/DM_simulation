@@ -17,6 +17,27 @@ class RevolutionChangeFormatter(SpecialKeywordFormatterBase):
         return kw_str
 
     @classmethod
+    def get_unbound_text(cls, card_data: Dict[str, Any]) -> List[str]:
+        lines = []
+        kw_str = CardTextResources.get_keyword_text("revolution_change")
+        cond = cls.get_rc_filter_from_effects(card_data)
+        if cond and isinstance(cond, dict):
+            lines.append(f"{kw_str}：{cls.format_revolution_change_text(cond)}")
+        return lines
+
+    @classmethod
+    def is_special_only_effect(cls, effect: Dict[str, Any], card_data: Dict[str, Any]) -> bool:
+        cmds = effect.get("commands", []) or []
+        if not cmds:
+            return False
+        for cmd in cmds:
+            if not isinstance(cmd, dict):
+                continue
+            if not cls.is_revolution_change_command(cmd):
+                return False
+        return True
+
+    @classmethod
     def format_revolution_change_text(cls, cond: Dict[str, Any]) -> str:
         """Format REVOLUTION_CHANGE condition summary text from filter definition."""
         parts: List[str] = []
@@ -79,6 +100,18 @@ class FriendBurstFormatter(SpecialKeywordFormatterBase):
                 return f"{kw_str}：{'/'.join(races)}"
         return kw_str
 
+    @classmethod
+    def is_special_only_effect(cls, effect: Dict[str, Any], card_data: Dict[str, Any]) -> bool:
+        cmds = effect.get("commands", []) or []
+        if not cmds:
+            return False
+        for cmd in cmds:
+            if not isinstance(cmd, dict):
+                continue
+            if cmd.get("type") != "FRIEND_BURST":
+                return False
+        return True
+
 @register_special_keyword("mekraid")
 class MekraidFormatter(SpecialKeywordFormatterBase):
     @classmethod
@@ -86,3 +119,37 @@ class MekraidFormatter(SpecialKeywordFormatterBase):
         # MEKRAID is separated into the special keywords section.
         # It has no extra formatting here, just the keyword text.
         return CardTextResources.get_keyword_text(keyword_id)
+
+    @classmethod
+    def is_special_only_effect(cls, effect: Dict[str, Any], card_data: Dict[str, Any]) -> bool:
+        cmds = effect.get("commands", []) or []
+        if not cmds:
+            return False
+        for cmd in cmds:
+            if not isinstance(cmd, dict):
+                continue
+            if cmd.get("type") != "MEKRAID":
+                return False
+        return True
+
+@register_special_keyword("mega_last_burst")
+class MegaLastBurstFormatter(SpecialKeywordFormatterBase):
+    @classmethod
+    def format(cls, keyword_id: str, card_data: Dict[str, Any]) -> str:
+        kw_str = CardTextResources.get_keyword_text(keyword_id)
+        return kw_str + "（このクリーチャーが手札、マナゾーン、または墓地に置かれた時、このカードの呪文側をコストを支払わずに唱えてもよい）"
+
+    @classmethod
+    def is_special_only_effect(cls, effect: Dict[str, Any], card_data: Dict[str, Any]) -> bool:
+        cmds = effect.get("commands", []) or []
+        if not cmds:
+            return False
+        if not card_data.get("keywords", {}).get("mega_last_burst"):
+            return False
+        for cmd in cmds:
+            if not isinstance(cmd, dict):
+                continue
+            ctype = cmd.get("type")
+            if ctype != "CAST_SPELL" or cmd.get("str_param") != "SPELL_SIDE":
+                return False
+        return True
