@@ -1,34 +1,5 @@
 from typing import Dict, Any, List, Callable
 
-class ContextMerger:
-    """Rule-based engine for merging consecutive actions into natural Japanese sentences."""
-
-    RULES: List[Dict[str, Any]] = []
-
-    @classmethod
-    def register_rule(cls, condition_fn: Callable[[List[Dict[str, Any]]], bool],
-                      merge_fn: Callable[[List[Dict[str, Any]], List[str]], str]):
-        """Register a pattern matching rule."""
-        cls.RULES.append({
-            "condition": condition_fn,
-            "merge": merge_fn
-        })
-
-    @classmethod
-    def merge(cls, raw_items: List[Dict[str, Any]], formatted_texts: List[str]) -> str:
-        """
-        Iterate over registered rules. If a rule's condition matches the sequence,
-        apply its merge function. Defaults to simply joining with spaces if no rules match.
-        """
-        if not formatted_texts:
-            return ""
-
-        for rule in cls.RULES:
-            if rule["condition"](raw_items):
-                return rule["merge"](raw_items, formatted_texts)
-
-        return " ".join([t for t in formatted_texts if t]).strip()
-
 # --- Common helper predicates for pattern matching ---
 
 def is_draw_item(it: Dict[str, Any]) -> bool:
@@ -78,9 +49,6 @@ def merge_spell_then_replace(items: List[Dict[str, Any]], texts: List[str]) -> s
             merged = merged.rstrip('。') + '、' + rest
     return merged
 
-ContextMerger.register_rule(cond_spell_then_replace, merge_spell_then_replace)
-
-
 def cond_draw_then_bottom(items: List[Dict[str, Any]]) -> bool:
     return len(items) >= 2 and is_draw_item(items[0]) and is_deck_bottom_move(items[1])
 
@@ -94,4 +62,32 @@ def merge_draw_then_bottom(items: List[Dict[str, Any]], texts: List[str]) -> str
             merged = merged.rstrip('。') + '、' + rest
     return merged
 
-ContextMerger.register_rule(cond_draw_then_bottom, merge_draw_then_bottom)
+
+class ContextMerger:
+    """Rule-based engine for merging consecutive actions into natural Japanese sentences."""
+
+    RULES: List[Dict[str, Any]] = [
+        {
+            "condition": cond_spell_then_replace,
+            "merge": merge_spell_then_replace
+        },
+        {
+            "condition": cond_draw_then_bottom,
+            "merge": merge_draw_then_bottom
+        }
+    ]
+
+    @classmethod
+    def merge(cls, raw_items: List[Dict[str, Any]], formatted_texts: List[str]) -> str:
+        """
+        Iterate over registered rules. If a rule's condition matches the sequence,
+        apply its merge function. Defaults to simply joining with spaces if no rules match.
+        """
+        if not formatted_texts:
+            return ""
+
+        for rule in cls.RULES:
+            if rule["condition"](raw_items):
+                return rule["merge"](raw_items, formatted_texts)
+
+        return " ".join([t for t in formatted_texts if t]).strip()

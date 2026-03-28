@@ -3,7 +3,7 @@ from dm_toolkit.gui.editor.formatters.command_formatter_base import CommandForma
 from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
-from dm_toolkit.gui.editor.formatters.utils import get_command_amount, is_input_linked
+from dm_toolkit.gui.editor.formatters.utils import get_command_amount
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from dm_toolkit.consts import MAX_COST_VALUE
 
@@ -186,7 +186,7 @@ class PlayFromZoneFormatter(CommandFormatterBase):
             max_cost = command.get("max_cost")
             if max_cost is None:
                 max_cost = temp_filter.get("max_cost", MAX_COST_VALUE)
-            if is_input_linked(max_cost):
+            if InputLinkFormatter.is_input_linked(max_cost):
                 pass
             elif max_cost < MAX_COST_VALUE:
                 action["value1"] = max_cost
@@ -201,7 +201,7 @@ class PlayFromZoneFormatter(CommandFormatterBase):
 
         use_linked_cost = False
         max_cost = temp_filter.get("max_cost")
-        if is_input_linked(max_cost, usage="MAX_COST"):
+        if InputLinkFormatter.is_input_linked(max_cost, usage="MAX_COST"):
             use_linked_cost = True
 
         omit_cost = False

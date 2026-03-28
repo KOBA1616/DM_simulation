@@ -1,9 +1,24 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 
 class InputLinkFormatter:
     """Formatter for resolving and generating text related to input variable linking."""
+
+    @classmethod
+    def is_input_linked(cls, val: Any, usage: Optional[str] = None) -> bool:
+        """
+        Check if a value represents an input-linked variable.
+        Usually represented as a dict with 'input_value_usage' or 'input_link'.
+        If 'usage' is provided, it checks if it matches that specific usage.
+        """
+        if not isinstance(val, dict):
+            return False
+
+        if usage is not None:
+            return val.get("input_value_usage") == usage
+
+        return "input_value_usage" in val or "input_link" in val
 
     @classmethod
     def format_input_link_text(cls, command: Dict[str, Any], atype: str) -> str:

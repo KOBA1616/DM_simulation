@@ -4,7 +4,7 @@ Centralized text resources for Static Abilities and Trigger Effects.
 Maps trigger types, conditions, scopes, and modifier types to Japanese text.
 """
 
-from typing import Dict, Optional, Tuple, Any, List
+from typing import Dict, Optional, Tuple, Any, List, Callable
 from dm_toolkit.consts import TargetScope
 from dm_toolkit.stat_keys import (
     COMPARE_STAT_EDITOR_KEYS as SHARED_COMPARE_STAT_EDITOR_KEYS,
@@ -18,6 +18,18 @@ class CardTextResources:
     Used by TextGenerator, FormEditors, and UI components.
     """
     
+    # Reaction mappings
+    REACTION_TEXT_MAP: Dict[str, Callable[[Dict[str, Any]], str]] = {
+        "NINJA_STRIKE": lambda r: f"ニンジャ・ストライク {r.get('cost', 0)}",
+        "STRIKE_BACK": lambda r: "ストライク・バック",
+        "COUNTER_ATTACK": lambda r: f"カウンター・アタック {r.get('cost', 0)}",
+        "REVOLUTION_0_TRIGGER": lambda r: "革命0トリガー",
+        # Additional mappings to reduce branching (added 2026-03-14)
+        "SHIELD_TRIGGER": lambda r: "シールド・トリガー",
+        "RETURN_ATTACK": lambda r: f"リターン・アタック {r.get('cost', 0)}",
+        "ON_DEFEND": lambda r: "守りのトリガー",
+    }
+
     # Condition Japanese mapping (shared by both STATIC and TRIGGER contexts)
     CONDITION_JAPANESE: Dict[str, str] = {
         "NONE": "",

@@ -4,7 +4,7 @@ from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
-from dm_toolkit.gui.editor.formatters.utils import is_input_linked, get_command_amount
+from dm_toolkit.gui.editor.formatters.utils import get_command_amount
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from dm_toolkit.gui.editor.formatters.keyword_registry import SpecialKeywordRegistry
 from dm_toolkit.gui.editor.formatters.target_scope_resolver import TargetScopeResolver
@@ -240,19 +240,8 @@ class CardTextGenerator:
         if not reaction:
             return ""
         rtype = reaction.get("type", "NONE")
-        # Reduce branching by using a mapping for known reaction types.
-        REACTION_TEXT_MAP = {
-            "NINJA_STRIKE": lambda r: f"ニンジャ・ストライク {r.get('cost', 0)}",
-            "STRIKE_BACK": lambda r: "ストライク・バック",
-            "COUNTER_ATTACK": lambda r: f"カウンター・アタック {r.get('cost', 0)}",
-            "REVOLUTION_0_TRIGGER": lambda r: "革命0トリガー",
-            # Additional mappings to reduce branching (added 2026-03-14)
-            "SHIELD_TRIGGER": lambda r: "シールド・トリガー",
-            "RETURN_ATTACK": lambda r: f"リターン・アタック {r.get('cost', 0)}",
-            "ON_DEFEND": lambda r: "守りのトリガー",
-        }
 
-        formatter = REACTION_TEXT_MAP.get(rtype)
+        formatter = CardTextResources.REACTION_TEXT_MAP.get(rtype)
         if formatter is not None:
             try:
                 return formatter(reaction)
@@ -719,9 +708,9 @@ class CardTextGenerator:
             elif exact_cost is not None:
                 adjs.append(f"コスト{exact_cost}")
             else:
-                if is_input_linked(min_cost, usage="MIN_COST"):
+                if InputLinkFormatter.is_input_linked(min_cost, usage="MIN_COST"):
                     adjs.append("コストその数以上")
-                elif is_input_linked(max_cost, usage="MAX_COST"):
+                elif InputLinkFormatter.is_input_linked(max_cost, usage="MAX_COST"):
                     adjs.append("コストその数以下")
                 else:
                     if min_cost > 0 and max_cost < MAX_COST_VALUE:
@@ -734,9 +723,9 @@ class CardTextGenerator:
             # Power conditions
             if power_max_ref:
                 adjs.append("パワーその数以下")
-            elif is_input_linked(min_power, usage="MIN_POWER"):
+            elif InputLinkFormatter.is_input_linked(min_power, usage="MIN_POWER"):
                 adjs.append("パワーその数以上")
-            elif is_input_linked(max_power, usage="MAX_POWER"):
+            elif InputLinkFormatter.is_input_linked(max_power, usage="MAX_POWER"):
                 adjs.append("パワーその数以下")
             else:
                 if min_power > 0 and max_power < MAX_POWER_VALUE:

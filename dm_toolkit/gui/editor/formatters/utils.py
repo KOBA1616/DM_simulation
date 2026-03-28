@@ -1,19 +1,5 @@
 from typing import Dict, Any, Optional
 
-def is_input_linked(val: Any, usage: Optional[str] = None) -> bool:
-    """
-    Check if a value represents an input-linked variable.
-    Usually represented as a dict with 'input_value_usage' or 'input_link'.
-    If 'usage' is provided, it checks if it matches that specific usage.
-    """
-    if not isinstance(val, dict):
-        return False
-
-    if usage is not None:
-        return val.get("input_value_usage") == usage
-
-    return "input_value_usage" in val or "input_link" in val
-
 def get_command_amount(command: Dict[str, Any], default: int = 1) -> Any:
     """
     Safely extract the amount/quantity from a command dictionary.

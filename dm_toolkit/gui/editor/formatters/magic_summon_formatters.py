@@ -4,7 +4,7 @@ from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-from dm_toolkit.gui.editor.formatters.utils import is_input_linked, get_command_amount
+from dm_toolkit.gui.editor.formatters.utils import get_command_amount
 from dm_toolkit.consts import MAX_COST_VALUE
 
 @register_formatter("CAST_SPELL")
@@ -58,7 +58,7 @@ class CastSpellFormatter(CommandFormatterBase):
             zones = temp_filter.get("zones", [])
             linked_cost_phrase = ""
             max_cost_def = temp_filter.get("max_cost")
-            if is_input_linked(max_cost_def, usage="MAX_COST"):
+            if InputLinkFormatter.is_input_linked(max_cost_def, usage="MAX_COST"):
                 source_token = InputLinkFormatter.format_linked_count_token(action, "その数")
                 source_token = InputLinkFormatter.normalize_linked_count_label(source_token)
                 linked_cost_phrase = f"{source_token}以下のコストの"
