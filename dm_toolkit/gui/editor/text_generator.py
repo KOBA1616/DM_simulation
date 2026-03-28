@@ -4,7 +4,7 @@ from typing import Dict, Any, List, Tuple
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
-from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
+from dm_toolkit.gui.editor.formatters.context import TextGenerationContext, TextGenerationResult
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from dm_toolkit.gui.editor.formatters.keyword_registry import SpecialKeywordRegistry
@@ -12,6 +12,7 @@ from dm_toolkit.gui.editor.formatters.target_scope_resolver import TargetScopeRe
 import dm_toolkit.gui.editor.formatters.special_keywords # Ensure special keywords are registered
 from dm_toolkit import consts
 from dm_toolkit.consts import Zone, CardType, TimingMode, TargetScope, MAX_COST_VALUE, MAX_POWER_VALUE
+from dm_toolkit.gui.editor.data_migration import normalize_card_data
 
 class CardTextGenerator:
     """
@@ -22,9 +23,22 @@ class CardTextGenerator:
     def generate_text(cls, data: Dict[str, Any], sample: List[Any] = None, ctx: TextGenerationContext = None) -> str:
         """
         Generate the full text for a card including name, cost, type, keywords, and effects.
+        Returns a string for the complete output.
+        """
+        res = cls.generate(data, sample, ctx)
+        return res.text
+
+    @classmethod
+    def generate(cls, data: Dict[str, Any], sample: List[Any] = None, ctx: TextGenerationContext = None) -> TextGenerationResult:
+        """
+        Generate the full text for a card including name, cost, type, keywords, and effects.
+        Returns a TextGenerationResult struct holding text and semantic metadata.
         """
         if not data:
-            return ""
+            return TextGenerationResult("", {})
+
+        # Normalize data to current schema before processing
+        data = normalize_card_data(data)
 
         if ctx is None:
             ctx = TextGenerationContext(data, sample)
@@ -37,7 +51,7 @@ class CardTextGenerator:
         # 2. Body (Keywords, Effects, etc.)
         lines.append(cls.generate_body_text_lines(data, ctx=ctx))
 
-        return "\n".join(lines)
+        return TextGenerationResult("\n".join(lines), ctx.metadata)
 
     @classmethod
     def generate_header_lines(cls, data: Dict[str, Any]) -> List[str]:
@@ -662,6 +676,16 @@ class CardTextGenerator:
         # Check the formatter registry
         from dm_toolkit.gui.editor.formatters.command_registry import CommandFormatterRegistry
         import dm_toolkit.gui.editor.formatters # Initialize registry
+
+        # Metadata extraction
+        if cmd_type == "SELECT_TARGET":
+            ctx.metadata["targets"] = True
+        elif cmd_type in ["DRAW", "DRAW_CARD"]:
+            ctx.metadata["draws"] = True
+        elif cmd_type == "DISCARD":
+            ctx.metadata["discards"] = True
+        elif cmd_type == "DESTROY":
+            ctx.metadata["destroys"] = True
 
         formatter_cls = CommandFormatterRegistry.get_formatter(cmd_type)
         if formatter_cls:

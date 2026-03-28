@@ -470,6 +470,13 @@
         "MAX_POWER": "最大パワーとして使用",
         "MIN_POWER": "最小パワーとして使用"
     },
+    "CONJUGATION_RULES": {
+        "する。": "してもよい。",
+        "く。": "いてもよい。",
+        "す。": "してもよい。",
+        "る。": "てもよい。",
+        "う。": "ってもよい。"
+    },
     "ZONE_MOVE_TEMPLATES": {
         "BATTLE_ZONE|GRAVEYARD": "{from_z}の{target}を{amount}{unit}{to_z}に置く。",
         "BATTLE_ZONE|MANA_ZONE": "{from_z}の{target}を{amount}{unit}{to_z}に置く。",

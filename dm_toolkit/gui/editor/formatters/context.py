@@ -18,9 +18,23 @@ class TextGenerationContext:
         # Will be set during formatting for context-aware AST input-link resolution
         self.current_commands_list: Optional[List[Dict[str, Any]]] = None
 
+        # Metadata extraction logic
+        self.metadata = {
+            "targets": False,
+            "draws": False,
+            "discards": False,
+            "destroys": False,
+        }
+
         from dm_toolkit.gui.editor.formatters.error_reporter import ErrorReporter
         self.error_reporter = ErrorReporter()
 
     @property
     def data(self) -> Dict[str, Any]:
         return self.card_data
+
+class TextGenerationResult:
+    """Holds the generated text and semantic metadata about the card's effects."""
+    def __init__(self, text: str, metadata: Dict[str, bool]):
+        self.text = text
+        self.metadata = metadata
