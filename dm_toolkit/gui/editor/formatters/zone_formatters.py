@@ -4,7 +4,6 @@ from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount
-from dm_toolkit.gui.editor.formatters.legacy_action_formatters import LegacyActionFormatterHelper
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from dm_toolkit.gui.editor.formatters.text_utils import TextUtils
 from dm_toolkit.gui.i18n import tr
@@ -94,7 +93,29 @@ class TransitionFormatter(CommandFormatterBase):
 
         template = template.replace("{amount}", str(amount))
 
-        text = LegacyActionFormatterHelper.apply_replacements(command, ctx, template, str(amount), target_str, unit)
+        text = template
+        val2 = command.get("value2", 0)
+        str_val = command.get("str_param") or command.get("str_val", "")
+        dest_zone = command.get("destination_zone", "")
+        zone_str = CardTextResources.get_zone_text(dest_zone) if dest_zone else "どこか"
+        src_zone = command.get("source_zone", "")
+        src_str = CardTextResources.get_zone_text(src_zone) if src_zone else ""
+
+        text = text.replace("{value1}", str(amount))
+        text = text.replace("{value2}", str(val2))
+        text = text.replace("{str_val}", str(str_val))
+        text = text.replace("{target}", target_str)
+        text = text.replace("{unit}", unit)
+        text = text.replace("{zone}", zone_str)
+        text = text.replace("{source_zone}", src_str)
+
+        if "{filter}" in text:
+            text = text.replace("{filter}", target_str)
+
+        if "{result}" in text:
+            from dm_toolkit.gui.i18n import tr
+            res = command.get("result", "")
+            text = text.replace("{result}", tr(res))
         return text
 
 @register_formatter("MOVE_CARD")

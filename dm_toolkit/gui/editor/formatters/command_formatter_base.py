@@ -25,9 +25,9 @@ class CommandFormatterBase:
         return TextUtils.apply_conjugation(text, optional)
 
     @classmethod
-    def _resolve_target(cls, action: Dict[str, Any], is_spell: bool = False, **kwargs) -> tuple[str, str]:
+    def _resolve_target(cls, action: Dict[str, Any], is_spell: bool = False, default_self_noun: str = "", **kwargs) -> tuple[str, str]:
         """
         Helper to delegate target resolution to TargetFormatter.
         """
         from dm_toolkit.gui.editor.formatters.target_formatter import TargetFormatter
-        return TargetFormatter.format_target(action, is_spell, **kwargs)
+        return TargetFormatter.format_target(action, is_spell, default_self_noun=default_self_noun, **kwargs)

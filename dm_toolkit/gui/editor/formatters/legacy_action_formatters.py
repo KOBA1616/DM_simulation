@@ -7,138 +7,127 @@ from dm_toolkit.gui.editor.formatters.utils import get_command_amount, is_input_
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from dm_toolkit.consts import MAX_COST_VALUE
 
-class LegacyActionFormatterHelper:
-    @staticmethod
-    def get_base_template(atype: str) -> str:
-        return CardTextResources.ACTION_MAP.get(atype, "")
-
-    @staticmethod
-    def handle_input_link(atype: str, command: Dict[str, Any], template: str) -> tuple[str, str]:
-        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
-        input_usage = command.get("input_value_usage") or command.get("input_usage")
-        val1 = get_command_amount(command, default=0)
-
-        if not linked_text:
-            return template, str(val1)
-
-        usage_label_suffix = ""
-        if input_usage:
-            label = InputLinkFormatter.format_input_usage_label(input_usage)
-            if label:
-                usage_label_suffix = f"（{label}）"
-
-        up_to_flag = bool(command.get('up_to', False))
-
-        if atype == "DESTROY":
-            if up_to_flag:
-                template = f"{{target}}をその同じ数だけまで選び、破壊する。{usage_label_suffix}"
-            else:
-                template = f"{{target}}をその同じ数だけ破壊する。{usage_label_suffix}"
-        elif atype == "TAP":
-            if up_to_flag:
-                template = f"{{target}}をその同じ数だけまで選び、タップする。{usage_label_suffix}"
-            else:
-                template = f"{{target}}をその同じ数だけ選び、タップする。{usage_label_suffix}"
-        elif atype == "UNTAP":
-            if up_to_flag:
-                template = f"{{target}}をその同じ数だけまで選び、アンタップする。{usage_label_suffix}"
-            else:
-                template = f"{{target}}をその同じ数だけ選び、アンタップする。{usage_label_suffix}"
-        elif atype == "RETURN_TO_HAND":
-            if up_to_flag:
-                template = f"{{target}}をその同じ数だけまで選び、手札に戻す。{usage_label_suffix}"
-            else:
-                template = f"{{target}}をその同じ数だけ選び、手札に戻す。{usage_label_suffix}"
-        elif atype == "SEND_TO_MANA":
-            if up_to_flag:
-                template = f"{{target}}をその同じ数だけまで選び、マナゾーンに置く。{usage_label_suffix}"
-            else:
-                template = f"{{target}}をその同じ数だけ選び、マナゾーンに置く。{usage_label_suffix}"
-        else:
-            val1 = "その数"
-
-        return template, str(val1)
-
-    @staticmethod
-    def handle_all_selection(atype: str, command: Dict[str, Any], template: str, val1: Any) -> str:
-        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
-
-        if str(val1) == "0" and not linked_text:
-            if atype == "DESTROY": return "{target}をすべて破壊する。"
-            if atype == "TAP": return "{target}をすべてタップする。"
-            if atype == "UNTAP": return "{target}をすべてアンタップする。"
-            if atype == "RETURN_TO_HAND": return "{target}をすべて手札に戻す。"
-            if atype == "SEND_TO_MANA": return "{target}をすべてマナゾーンに置く。"
-
-        return template
-
-    @staticmethod
-    def apply_replacements(command: Dict[str, Any], ctx: TextGenerationContext, template: str, val1: str, target_str: str, unit: str) -> str:
-        val2 = command.get("value2", 0)
-        str_val = command.get("str_param") or command.get("str_val", "")
-
-        dest_zone = command.get("destination_zone", "")
-        zone_str = CardTextResources.get_zone_text(dest_zone) if dest_zone else "どこか"
-        src_zone = command.get("source_zone", "")
-        src_str = CardTextResources.get_zone_text(src_zone) if src_zone else ""
-
-        text = template.replace("{value1}", str(val1))
-        text = text.replace("{value2}", str(val2))
-        text = text.replace("{str_val}", str(str_val))
-        text = text.replace("{target}", target_str)
-        text = text.replace("{unit}", unit)
-        text = text.replace("{zone}", zone_str)
-        text = text.replace("{source_zone}", src_str)
-
-        if "{filter}" in text:
-            text = text.replace("{filter}", target_str)
-
-        if "{result}" in text:
-            from dm_toolkit.gui.i18n import tr
-            res = command.get("result", "")
-            text = text.replace("{result}", tr(res))
-
-        return text
-
-
 
 class BaseGenericLegacyFormatter(CommandFormatterBase):
     atype = ""
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        template = LegacyActionFormatterHelper.get_base_template(cls.atype)
-        target_str, unit = cls._resolve_target(command, ctx.is_spell)
-        template, val1_str = LegacyActionFormatterHelper.handle_input_link(cls.atype, command, template)
-        template = LegacyActionFormatterHelper.handle_all_selection(cls.atype, command, template, val1_str)
+        # Default fallback - should be overridden by child classes
+        return ""
 
-        # Override template for DESTROY if targeting trigger source
-        if cls.atype == "DESTROY" and command.get('filter', {}).get('is_trigger_source'):
-            template = "{target}を破壊する。"
+    @classmethod
+    def _get_val_str(cls, command: Dict[str, Any]) -> str:
+        # helper to get val str and usage label
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        if linked_text:
+            return "その数"
+        return str(get_command_amount(command, default=0))
 
-        text = LegacyActionFormatterHelper.apply_replacements(command, ctx, template, val1_str, target_str, unit)
-        return text
+    @classmethod
+    def _get_usage_label(cls, command: Dict[str, Any]) -> str:
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        if not linked_text:
+            return ""
+        input_usage = command.get("input_value_usage") or command.get("input_usage")
+        if input_usage:
+            label = InputLinkFormatter.format_input_usage_label(input_usage)
+            if label:
+                return f"（{label}）"
+        return ""
+
 
 @register_formatter("DESTROY")
 class DestroyFormatter(BaseGenericLegacyFormatter):
     atype = "DESTROY"
+    @classmethod
+    def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
+        target_str, unit = cls._resolve_target(command, ctx.is_spell)
+        val_str = cls._get_val_str(command)
+        usage_label = cls._get_usage_label(command)
+
+        if command.get('filter', {}).get('is_trigger_source'):
+            return f"{target_str}を破壊する。"
+
+        if val_str == "0":
+            return f"{target_str}をすべて破壊する。"
+
+        if val_str == "その数":
+            link_phrase = InputLinkFormatter.format_input_link_text(command, cls.atype)
+            return f"{target_str}を{link_phrase}破壊する。{usage_label}"
+
+        return f"{target_str}を{val_str}{unit}破壊する。{usage_label}"
 
 @register_formatter("TAP")
 class TapFormatter(BaseGenericLegacyFormatter):
     atype = "TAP"
+    @classmethod
+    def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
+        target_str, unit = cls._resolve_target(command, ctx.is_spell)
+        val_str = cls._get_val_str(command)
+        usage_label = cls._get_usage_label(command)
+
+        if val_str == "0":
+            return f"{target_str}をすべてタップする。"
+
+        if val_str == "その数":
+            link_phrase = InputLinkFormatter.format_input_link_text(command, cls.atype)
+            return f"{target_str}を{link_phrase}タップする。{usage_label}"
+
+        return f"{target_str}を{val_str}{unit}選び、タップする。{usage_label}"
 
 @register_formatter("UNTAP")
 class UntapFormatter(BaseGenericLegacyFormatter):
     atype = "UNTAP"
+    @classmethod
+    def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
+        target_str, unit = cls._resolve_target(command, ctx.is_spell)
+        val_str = cls._get_val_str(command)
+        usage_label = cls._get_usage_label(command)
+
+        if val_str == "0":
+            return f"{target_str}をすべてアンタップする。"
+
+        if val_str == "その数":
+            link_phrase = InputLinkFormatter.format_input_link_text(command, cls.atype)
+            return f"{target_str}を{link_phrase}アンタップする。{usage_label}"
+
+        return f"{target_str}を{val_str}{unit}選び、アンタップする。{usage_label}"
 
 @register_formatter("RETURN_TO_HAND")
 class ReturnToHandFormatter(BaseGenericLegacyFormatter):
     atype = "RETURN_TO_HAND"
+    @classmethod
+    def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
+        target_str, unit = cls._resolve_target(command, ctx.is_spell)
+        val_str = cls._get_val_str(command)
+        usage_label = cls._get_usage_label(command)
+
+        if val_str == "0":
+            return f"{target_str}をすべて手札に戻す。"
+
+        if val_str == "その数":
+            link_phrase = InputLinkFormatter.format_input_link_text(command, cls.atype)
+            return f"{target_str}を{link_phrase}手札に戻す。{usage_label}"
+
+        return f"{target_str}を{val_str}{unit}選び、手札に戻す。{usage_label}"
 
 @register_formatter("SEND_TO_MANA")
 class SendToManaFormatter(BaseGenericLegacyFormatter):
     atype = "SEND_TO_MANA"
+    @classmethod
+    def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
+        target_str, unit = cls._resolve_target(command, ctx.is_spell)
+        val_str = cls._get_val_str(command)
+        usage_label = cls._get_usage_label(command)
+
+        if val_str == "0":
+            return f"{target_str}をすべてマナゾーンに置く。"
+
+        if val_str == "その数":
+            link_phrase = InputLinkFormatter.format_input_link_text(command, cls.atype)
+            return f"{target_str}を{link_phrase}マナゾーンに置く。{usage_label}"
+
+        return f"{target_str}を{val_str}{unit}選び、マナゾーンに置く。{usage_label}"
 
 @register_formatter("COST_REDUCTION")
 class CostReductionFormatter(BaseGenericLegacyFormatter):
@@ -146,13 +135,13 @@ class CostReductionFormatter(BaseGenericLegacyFormatter):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-        text = super().format(command, ctx)
-        target_str, _ = cls._resolve_target(command, ctx.is_spell)
 
-        if target_str == "カード" or target_str == "自分のカード":
-            replacement = "この呪文" if ctx.is_spell else "このクリーチャー"
-            text = text.replace("カード", replacement)
-            text = text.replace("自分のカード", replacement)
+        default_noun = "この呪文" if ctx.is_spell else "このクリーチャー"
+        target_str, unit = cls._resolve_target(command, ctx.is_spell, default_self_noun=default_noun)
+        val_str = cls._get_val_str(command)
+        usage_label = cls._get_usage_label(command)
+
+        text = f"{target_str}のコストを{val_str}少なくする。ただし、コストは0以下にはならない。"
 
         cond = command.get("condition", {})
         if cond:
@@ -168,9 +157,8 @@ class GrantKeywordFormatter(BaseGenericLegacyFormatter):
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         str_val = command.get("str_param") or command.get("str_val", "")
         keyword = CardTextResources.get_keyword_text(str_val)
-        command_copy = command.copy()
-        command_copy["str_val"] = keyword
-        return super().format(command_copy, ctx)
+        target_str, unit = cls._resolve_target(command, ctx.is_spell)
+        return f"{target_str}に「{keyword}」を与える。"
 
 @register_formatter("PLAY_FROM_ZONE")
 class PlayFromZoneFormatter(CommandFormatterBase):
@@ -255,23 +243,24 @@ class PlayFromZoneFormatter(CommandFormatterBase):
             if linked_cost_phrase and not target_str.startswith(linked_cost_phrase):
                 target_str = linked_cost_phrase + target_str
 
-            if action.get("source_zone"):
-                template = "{source_zone}から{target}を" + count_text + verb + f"。{usage_label_suffix}"
+        val1 = action.get("value1", 0)
+        source_zone = action.get("source_zone")
+        zone_str = CardTextResources.get_zone_text(source_zone) if source_zone else ""
+
+        if use_linked_cost:
+            if source_zone:
+                return f"{zone_str}から{target_str}を{count_text}{verb}。{usage_label_suffix}"
             else:
-                template = "{target}を" + count_text + verb + f"。{usage_label_suffix}"
+                return f"{target_str}を{count_text}{verb}。{usage_label_suffix}"
         else:
-            if action.get("value1", 0) == 0:
-                # If value1 is 0 and not linked cost, fallback to just "{target}を..."
-                if action.get("source_zone"):
-                    template = "{source_zone}から{target}を" + count_text + verb + f"。{usage_label_suffix}"
+            if val1 == 0:
+                if source_zone:
+                    return f"{zone_str}から{target_str}を{count_text}{verb}。{usage_label_suffix}"
                 else:
-                    template = "{target}を" + count_text + verb + f"。{usage_label_suffix}"
+                    return f"{target_str}を{count_text}{verb}。{usage_label_suffix}"
             else:
-                if action.get("source_zone"):
-                    template = "{source_zone}からコスト{value1}以下の{target}を" + count_text + verb + f"。{usage_label_suffix}"
+                if source_zone:
+                    return f"{zone_str}からコスト{val1}以下の{target_str}を{count_text}{verb}。{usage_label_suffix}"
                 else:
-                    template = "コスト{value1}以下の{target}を" + count_text + verb + f"。{usage_label_suffix}"
+                    return f"コスト{val1}以下の{target_str}を{count_text}{verb}。{usage_label_suffix}"
 
-        text = LegacyActionFormatterHelper.apply_replacements(action, ctx, template, str(action.get("value1", 0)), target_str, unit)
-
-        return text

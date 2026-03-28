@@ -13,7 +13,7 @@ class TargetFormatter:
     """
 
     @classmethod
-    def format_target(cls, action: Dict[str, Any], is_spell: bool = False, omit_cost: bool = False) -> Tuple[str, str]:
+    def format_target(cls, action: Dict[str, Any], is_spell: bool = False, omit_cost: bool = False, default_self_noun: str = "") -> Tuple[str, str]:
         """
         Attempt to describe the target based on scope, filter, etc.
         Returns (target_description, unit_counter)
@@ -39,7 +39,7 @@ class TargetFormatter:
         if atype == "DISCARD" and scope == "NONE":
             scope = "PLAYER_SELF"
         if atype == "COST_REDUCTION" and not filter_def and scope == "NONE":
-            target = "この呪文" if is_spell else "このクリーチャー"
+            target = default_self_noun if default_self_noun else ("この呪文" if is_spell else "このクリーチャー")
             return (target, "枚")
 
         prefix, effective_scope = cls._resolve_scope(scope, filter_def)
@@ -98,6 +98,9 @@ class TargetFormatter:
                     target_desc = FilterTextFormatter.format_scope_prefix(scope, target_desc)
 
         if not target_desc: target_desc = "カード"
+
+        if target_desc == "カード" and effective_scope in ["NONE", ""] and default_self_noun:
+            target_desc = default_self_noun
 
         return target_desc, unit
 
@@ -254,25 +257,10 @@ class TargetFormatter:
 
         # Zone prefix
         if zones:
-            zone_names = []
-            for z in zones:
-                if z == Zone.BATTLE_ZONE.value:
-                    zone_names.append("バトルゾーン")
-                elif z == Zone.MANA_ZONE.value:
-                    zone_names.append("マナゾーン")
-                elif z == Zone.HAND.value:
-                    zone_names.append("手札")
-                elif z == Zone.GRAVEYARD.value:
-                    zone_names.append("墓地")
-                else:
-                    zone_names.append(tr(z))
-
-            if len(zone_names) == 1:
-                # Single zone: "手札の" or "バトルゾーンの"
-                parts.append(zone_names[0] + "の")
+            if len(zones) == 1:
+                parts.append(CardTextResources.format_zones_list(zones) + "の")
             else:
-                # Multiple zones: "手札または墓地から"
-                parts.append("または".join(zone_names) + "から")
+                parts.append(CardTextResources.format_zones_list(zones, joiner="または") + "から")
 
         # Civilization adjective
         if civs:
