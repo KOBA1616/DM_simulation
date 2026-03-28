@@ -1,4 +1,5 @@
 from typing import List
+from dm_toolkit.gui.editor.text_resources import CardTextResources
 
 class TextUtils:
     """Utility class for handling common Japanese punctuation and verb conjugations."""
@@ -7,22 +8,18 @@ class TextUtils:
     def apply_conjugation(text: str, optional: bool = False) -> str:
         """
         Applies standard conjugation to the end of a sentence based on the `optional` flag.
-        Handles replacing '。' with 'てもよい。' etc.
+        Handles replacing '。' with 'てもよい。' etc. using data-driven rules.
         """
         if not optional:
             return text
 
-        if text.endswith("する。"):
-            return text[:-3] + "してもよい。"
-        elif text.endswith("く。"):
-            return text[:-2] + "いてもよい。"
-        elif text.endswith("す。"):
-            return text[:-2] + "してもよい。"
-        elif text.endswith("る。"):
-            return text[:-2] + "てもよい。"
-        elif text.endswith("う。"):
-            return text[:-2] + "ってもよい。"
-        elif not text.endswith("てもよい。"):
+        rules = CardTextResources.CONJUGATION_RULES
+
+        for suffix, conjugated_suffix in rules.items():
+            if text.endswith(suffix):
+                return text[:-len(suffix)] + conjugated_suffix
+
+        if not text.endswith("てもよい。"):
             return text[:-1] + "てもよい。"
 
         return text

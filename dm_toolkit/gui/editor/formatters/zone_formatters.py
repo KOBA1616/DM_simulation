@@ -23,13 +23,26 @@ class TransitionFormatter(CommandFormatterBase):
         template = CardTextResources.ZONE_MOVE_TEMPLATES.get(template_key, "")
 
         if not template:
-            # Try generic to_z template if specific from->to not found
-            if to_z == "GRAVEYARD":
-                template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
-            elif to_z == "DECK_BOTTOM":
-                template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
-            else:
-                template = CardTextResources.ZONE_MOVE_TEMPLATES.get("DEFAULT", "{target}を{from_z}から{to_z}へ移動する。")
+            # Try generic to_z template if specific from->to not found (wildcard matching)
+            # In text_resources.py, `|` separated keys are split into tuples (e.g. ("*", "GRAVEYARD"))
+            template = CardTextResources.ZONE_MOVE_TEMPLATES.get(("*", to_z), "")
+            if not template:
+                template = CardTextResources.ZONE_MOVE_TEMPLATES.get((from_z, "*"), "")
+
+            if not template:
+                # If still not found, check for a string key like "*|GRAVEYARD" just in case the JSON was modified
+                # but text_resources didn't load it correctly, though the dict split handles it.
+                template = CardTextResources.ZONE_MOVE_TEMPLATES.get(f"*|{to_z}", "")
+                if not template:
+                    template = CardTextResources.ZONE_MOVE_TEMPLATES.get(f"{from_z}|*", "")
+
+                if not template:
+                    if to_z == "GRAVEYARD":
+                        template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                    elif to_z == "DECK_BOTTOM":
+                        template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
+                    else:
+                        template = CardTextResources.ZONE_MOVE_TEMPLATES.get("DEFAULT", "{target}を{from_z}から{to_z}へ移動する。")
 
         # Adjust template for up_to and all
         input_key = command.get('input_value_key') or command.get('input_link')

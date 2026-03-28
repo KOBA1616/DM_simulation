@@ -82,6 +82,8 @@ class CardTextResourcesMeta(type):
     def ZONE_MOVE_TEMPLATES(cls): cls.load_resources(); return cls._ZONE_MOVE_TEMPLATES
     @property
     def TRANSITION_ALIASES(cls): cls.load_resources(); return cls._TRANSITION_ALIASES
+    @property
+    def CONJUGATION_RULES(cls): cls.load_resources(); return cls._data.get("CONJUGATION_RULES", {})
 
 class CardTextResources(metaclass=CardTextResourcesMeta):
     """
@@ -156,7 +158,12 @@ class CardTextResources(metaclass=CardTextResourcesMeta):
         cls.load_resources()
         if is_spell and trigger in cls._data.get("SPELL_TRIGGER_JAPANESE", {}):
             return cls._data["SPELL_TRIGGER_JAPANESE"][trigger]
-        return cls._data.get("TRIGGER_JAPANESE", {}).get(trigger, trigger)
+
+        triggers = cls._data.get("TRIGGER_JAPANESE", {})
+        if trigger in triggers:
+            return triggers[trigger]
+
+        return f"[UNKNOWN_TRIGGER: {trigger}]"
     
     @classmethod
     def get_modifier_type_text(cls, modifier_type: str) -> str:
@@ -181,7 +188,10 @@ class CardTextResources(metaclass=CardTextResourcesMeta):
     def get_zone_text(cls, zone: str) -> str:
         cls.load_resources()
         z = cls.normalize_zone_name(zone)
-        return cls._data.get("ZONE_JAPANESE", {}).get(z, z)
+        zones = cls._data.get("ZONE_JAPANESE", {})
+        if z in zones:
+            return zones[z]
+        return f"[UNKNOWN_ZONE: {z}]"
     
     @classmethod
     def get_civilization_text(cls, civ: str) -> str:
