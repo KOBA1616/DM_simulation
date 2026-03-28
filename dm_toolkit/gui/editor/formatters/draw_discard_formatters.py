@@ -49,7 +49,7 @@ class DiscardFormatter(CommandFormatterBase):
         up_to = bool(command.get('up_to', False))
         val1 = get_command_amount(command, default=0)
 
-        target_str, unit = cls._resolve_target(command, ctx.is_spell)
+        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
         cnt = val1
         tgt = target_str
 

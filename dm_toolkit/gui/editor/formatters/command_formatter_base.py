@@ -16,7 +16,7 @@ class CommandFormatterBase:
         raise NotImplementedError("Subclasses must implement format()")
 
     @classmethod
-    def format_with_optional(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
+    def format_with_optional(cls, command: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         """
         Formats the command and automatically applies optional conjugation if needed.
         """

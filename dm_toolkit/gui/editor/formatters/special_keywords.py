@@ -153,3 +153,27 @@ class MegaLastBurstFormatter(SpecialKeywordFormatterBase):
             if ctype != "CAST_SPELL" or cmd.get("str_param") != "SPELL_SIDE":
                 return False
         return True
+
+@register_special_keyword("power_attacker")
+class PowerAttackerFormatter(SpecialKeywordFormatterBase):
+    @classmethod
+    def format(cls, keyword_id: str, card_data: Dict[str, Any]) -> str:
+        kw_str = CardTextResources.get_keyword_text(keyword_id)
+        bonus = card_data.get("power_attacker_bonus", 0)
+        if bonus > 0:
+            kw_str += f" +{bonus}"
+        return kw_str
+
+@register_special_keyword("hyper_energy")
+class HyperEnergyFormatter(SpecialKeywordFormatterBase):
+    @classmethod
+    def format(cls, keyword_id: str, card_data: Dict[str, Any]) -> str:
+        kw_str = CardTextResources.get_keyword_text(keyword_id)
+        return kw_str + "（このクリーチャーを召喚する時、コストが異なる自分のクリーチャーを好きな数タップしてもよい、こうしてタップしたクリーチャー1体につき、このクリーチャーの召喚コストを2少なくする、ただし、コストは0以下にならない。）"
+
+@register_special_keyword("just_diver")
+class JustDiverFormatter(SpecialKeywordFormatterBase):
+    @classmethod
+    def format(cls, keyword_id: str, card_data: Dict[str, Any]) -> str:
+        kw_str = CardTextResources.get_keyword_text(keyword_id)
+        return kw_str + "（このクリーチャーが出た時、次の自分のターンのはじめまで、このクリーチャーは相手に選ばれず、攻撃されない）"
