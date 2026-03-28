@@ -18,6 +18,9 @@ class TextGenerationContext:
         # Will be set during formatting for context-aware AST input-link resolution
         self.current_commands_list: Optional[List[Dict[str, Any]]] = None
 
+        from dm_toolkit.gui.editor.formatters.error_reporter import ErrorReporter
+        self.error_reporter = ErrorReporter()
+
     @property
     def data(self) -> Dict[str, Any]:
         return self.card_data

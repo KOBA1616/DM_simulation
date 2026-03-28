@@ -1,4 +1,4 @@
-from typing import Dict, Any, Type, Optional
+from typing import Dict, Any, Type, Optional, List
 
 class SpecialKeywordFormatterBase:
     """Base interface for special keyword text generation."""
@@ -11,6 +11,23 @@ class SpecialKeywordFormatterBase:
         or empty string if it shouldn't be rendered.
         """
         raise NotImplementedError
+
+    @classmethod
+    def get_unbound_text(cls, card_data: Dict[str, Any]) -> List[str]:
+        """
+        Returns additional text lines for a special keyword that might exist on a card
+        without being strictly defined in the `keywords` flag dict (e.g. effects based).
+        Used by the main text generator to ensure critical keywords are displayed.
+        """
+        return []
+
+    @classmethod
+    def is_special_only_effect(cls, effect: Dict[str, Any], card_data: Dict[str, Any]) -> bool:
+        """
+        Determine if the given effect node exists purely to realize this special keyword.
+        If it does, the main generator can choose to skip generic formatting for it.
+        """
+        return False
 
 class SpecialKeywordRegistry:
     """Registry for special keyword text formatters."""

@@ -1,83 +1,46 @@
 from typing import Dict, Any, List
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.gui.editor.formatters.condition_registry import ConditionFormatterRegistry, register_condition, ConditionFormatterStrategy
+from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 
-class ConditionFormatter:
-    """Formatter for logic and effect conditions."""
-
+@register_condition("MANA_ARMED")
+class ManaArmedConditionFormatter(ConditionFormatterStrategy):
     @classmethod
-    def format_condition_text(cls, condition: Dict[str, Any], action: Dict[str, Any] = None) -> str:
-        """
-        Formats a condition dictionary into Japanese text.
-        Merges logic from legacy `_format_condition` and `_format_logic_command`.
-        `action` context may be provided for commands like COMPARE_INPUT.
-        """
-        if not condition:
-            return ""
-
-        cond_type = condition.get("type", "NONE")
-
-        # Dispatch table
-        handlers = {
-            "MANA_ARMED": cls._handle_mana_armed,
-            "SHIELD_COUNT": cls._handle_shield_count,
-            "CIVILIZATION_MATCH": cls._handle_civ_match,
-            "OPPONENT_DRAW_COUNT": cls._handle_opponent_draw_count,
-            "COMPARE_STAT": cls._handle_compare_stat,
-            "COMPARE_INPUT": lambda d: cls._handle_compare_input(d, action or {}),
-            "PLAYED_WITHOUT_MANA_TARGET": cls._handle_played_without_mana,
-            "MANA_CIVILIZATION_COUNT": cls._handle_mana_civ_count,
-            "CARDS_MATCHING_FILTER": cls._handle_cards_matching_filter,
-            "OPPONENT_PLAYED_WITHOUT_MANA": lambda d: "相手がマナゾーンのカードをタップせずに、クリーチャーを出すか呪文を唱えた時: ",
-            "DURING_YOUR_TURN": lambda d: CardTextResources.get_condition_text("DURING_YOUR_TURN"),
-            "DURING_OPPONENT_TURN": lambda d: CardTextResources.get_condition_text("DURING_OPPONENT_TURN"),
-        }
-
-        handler = handlers.get(cond_type)
-        if handler:
-            try:
-                text = handler(condition)
-                if text:
-                    if cond_type == "MANA_ARMED":
-                         return text + ": "
-                    elif "なら" in text:
-                         return text + ": "
-                    elif cond_type not in ("OPPONENT_PLAYED_WITHOUT_MANA", "DURING_YOUR_TURN", "DURING_OPPONENT_TURN"):
-                         # Add suffix unless it is already fully formatted by specific handlers
-                         return text + ": "
-                    return text
-            except Exception:
-                pass
-
-        return ""
-
-    @classmethod
-    def _handle_mana_armed(cls, d: Dict[str, Any]) -> str:
+    def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         val = d.get("value", 0)
         civ_raw = d.get("str_val", "")
         civ = tr(civ_raw)
         return f"マナ武装 {val} ({civ})"
 
+@register_condition("SHIELD_COUNT")
+class ShieldCountConditionFormatter(ConditionFormatterStrategy):
     @classmethod
-    def _handle_shield_count(cls, d: Dict[str, Any]) -> str:
+    def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         val = d.get("value", 0)
         op = d.get("op", ">=")
         op_text = "以上" if op == ">=" else "以下" if op == "<=" else ""
-        if op == "=" or op == "==":
+        if op in ("=", "=="):
             op_text = ""
         return f"自分のシールドが{val}つ{op_text}なら"
 
+@register_condition("CIVILIZATION_MATCH")
+class CivilizationMatchConditionFormatter(ConditionFormatterStrategy):
     @classmethod
-    def _handle_civ_match(cls, d: Dict[str, Any]) -> str:
+    def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         return "マナゾーンに同じ文明があれば"
 
+@register_condition("OPPONENT_DRAW_COUNT")
+class OpponentDrawCountConditionFormatter(ConditionFormatterStrategy):
     @classmethod
-    def _handle_opponent_draw_count(cls, d: Dict[str, Any]) -> str:
+    def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         val = d.get("value", 0)
         return f"相手がカードを{val}枚目以上引いたなら"
 
+@register_condition("COMPARE_STAT")
+class CompareStatConditionFormatter(ConditionFormatterStrategy):
     @classmethod
-    def _handle_compare_stat(cls, d: Dict[str, Any]) -> str:
+    def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         key = d.get("stat_key", "")
         op = d.get("op", "=")
         val = d.get("value", 0)
@@ -86,7 +49,7 @@ class ConditionFormatter:
             op_text = f"{val}{unit}以上"
         elif op == "<=":
             op_text = f"{val}{unit}以下"
-        elif op == "=" or op == "==":
+        elif op in ("=", "=="):
             op_text = f"{val}{unit}"
         elif op == ">":
             op_text = f"{val}{unit}より多い"
@@ -96,8 +59,13 @@ class ConditionFormatter:
             op_text = f"{val}{unit}"
         return f"自分の{stat_name}が{op_text}なら"
 
+@register_condition("COMPARE_INPUT")
+class CompareInputConditionFormatter(ConditionFormatterStrategy):
     @classmethod
-    def _handle_compare_input(cls, d: Dict[str, Any], action: Dict[str, Any]) -> str:
+    def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
+        # action is no longer passed as a separate param, we use ctx to pull input references if needed.
+        # However, for compatibility we extract it from `d` or `ctx` safely.
+        action = d if d.get("input_link") or d.get("input_value_key") else {}
         val = d.get("value", 0)
         op = d.get("op", ">=")
 
@@ -112,19 +80,13 @@ class ConditionFormatter:
         }
         input_desc = input_desc_map.get(input_key, InputLinkFormatter.format_input_source_label(action) or "入力値")
 
-        try:
-             ival = int(val)
-        except Exception:
-             ival = val
+        ival = int(val) if isinstance(val, (int, str)) and str(val).isdigit() else val
 
         if op == ">=":
-             try:
-                 op_text = f"{ival + 1}以上"
-             except Exception:
-                 op_text = f"{val}以上"
+             op_text = f"{ival + 1}以上" if isinstance(ival, int) else f"{val}以上"
         elif op == "<=":
              op_text = f"{val}以下"
-        elif op == "=" or op == "==":
+        elif op in ("=", "=="):
              op_text = f"{val}"
         elif op == ">":
              op_text = f"{val}より多い"
@@ -134,19 +96,25 @@ class ConditionFormatter:
              op_text = f"{val}"
         return f"{input_desc}が{op_text}なら"
 
+@register_condition("PLAYED_WITHOUT_MANA_TARGET")
+class PlayedWithoutManaTargetConditionFormatter(ConditionFormatterStrategy):
     @classmethod
-    def _handle_played_without_mana(cls, d: Dict[str, Any]) -> str:
+    def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         return "指定した対象をコストを支払わずに出していれば"
 
+@register_condition("MANA_CIVILIZATION_COUNT")
+class ManaCivilizationCountConditionFormatter(ConditionFormatterStrategy):
     @classmethod
-    def _handle_mana_civ_count(cls, d: Dict[str, Any]) -> str:
+    def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         val = d.get("value", 0)
         op = d.get("op", ">=")
-        op_text = "以上" if op == ">=" else "以下" if op == "<=" else "と同じ" if op == "=" or op == "==" else ""
+        op_text = "以上" if op == ">=" else "以下" if op == "<=" else "と同じ" if op in ("=", "==") else ""
         return f"自分のマナゾーンにある文明の数が{val}{op_text}なら"
 
+@register_condition("CARDS_MATCHING_FILTER")
+class CardsMatchingFilterConditionFormatter(ConditionFormatterStrategy):
     @classmethod
-    def _handle_cards_matching_filter(cls, d: Dict[str, Any]) -> str:
+    def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         filter_def = d.get("filter", {})
         count = d.get("count", 1)
         op = d.get("op", ">=")
@@ -184,7 +152,7 @@ class ConditionFormatter:
             op_text = f"{count}{unit}以上"
         elif op == "<=":
             op_text = f"{count}{unit}以下"
-        elif op == "=" or op == "==":
+        elif op in ("=", "=="):
             op_text = f"{count}{unit}"
         elif op == ">":
             op_text = f"{count}{unit}より多く"
@@ -194,3 +162,49 @@ class ConditionFormatter:
         verb = "いる" if unit == "体" else "ある"
 
         return f"{zone_text}{desc}が{op_text}{verb}なら"
+
+@register_condition("OPPONENT_PLAYED_WITHOUT_MANA")
+class OpponentPlayedWithoutManaConditionFormatter(ConditionFormatterStrategy):
+    @classmethod
+    def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
+        return "相手がマナゾーンのカードをタップせずに、クリーチャーを出すか呪文を唱えた時: "
+
+@register_condition("DURING_YOUR_TURN")
+class DuringYourTurnConditionFormatter(ConditionFormatterStrategy):
+    @classmethod
+    def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
+        return CardTextResources.get_condition_text("DURING_YOUR_TURN")
+
+@register_condition("DURING_OPPONENT_TURN")
+class DuringOpponentTurnConditionFormatter(ConditionFormatterStrategy):
+    @classmethod
+    def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
+        return CardTextResources.get_condition_text("DURING_OPPONENT_TURN")
+
+class ConditionFormatter:
+    """Formatter for logic and effect conditions."""
+
+    @classmethod
+    def format_condition_text(cls, condition: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
+        """
+        Formats a condition dictionary into Japanese text using Strategy Pattern.
+        """
+        if not condition:
+            return ""
+
+        cond_type = condition.get("type", "NONE")
+
+        formatter_cls = ConditionFormatterRegistry.get_formatter(cond_type)
+        if formatter_cls:
+            text = formatter_cls.format(condition, ctx)
+            if text:
+                if cond_type == "MANA_ARMED":
+                     return text + ": "
+                elif "なら" in text:
+                     return text + ": "
+                elif cond_type not in ("OPPONENT_PLAYED_WITHOUT_MANA", "DURING_YOUR_TURN", "DURING_OPPONENT_TURN"):
+                     # Add suffix unless it is already fully formatted by specific handlers
+                     return text + ": "
+                return text
+
+        return ""
