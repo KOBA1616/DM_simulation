@@ -1,9 +1,5 @@
-# -*- coding: utf-8 -*-
-"""
-Centralized text resources for Static Abilities and Trigger Effects.
-Maps trigger types, conditions, scopes, and modifier types to Japanese text.
-"""
-
+import json
+import os
 from typing import Dict, Optional, Tuple, Any, List, Callable
 from dm_toolkit.consts import TargetScope
 from dm_toolkit.stat_keys import (
@@ -11,725 +7,239 @@ from dm_toolkit.stat_keys import (
     EDITOR_QUICK_STATS_KEYS as SHARED_EDITOR_QUICK_STATS_KEYS,
 )
 
+class CardTextResourcesMeta(type):
+    _data = {}
+    _ZONE_MOVE_TEMPLATES = {}
+    _TRANSITION_ALIASES = {}
 
-class CardTextResources:
+    def load_resources(cls) -> None:
+        if cls._data: return
+        filepath = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "..", "resources", "text_resources.json"
+        )
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                cls._data = json.load(f)
+
+            for k, v in cls._data.get("ZONE_MOVE_TEMPLATES", {}).items():
+                if "|" in k:
+                    parts = k.split("|", 1)
+                    cls._ZONE_MOVE_TEMPLATES[(parts[0], parts[1])] = v
+                else:
+                    cls._ZONE_MOVE_TEMPLATES[k] = v
+            for k, v in cls._data.get("TRANSITION_ALIASES", {}).items():
+                if "|" in k:
+                    parts = k.split("|", 1)
+                    cls._TRANSITION_ALIASES[(parts[0], parts[1])] = v
+                else:
+                    cls._TRANSITION_ALIASES[k] = v
+        except Exception as e:
+            print(f"Failed to load text_resources.json: {e}")
+            cls._data = {}
+
+    @property
+    def CONDITION_JAPANESE(cls): cls.load_resources(); return cls._data.get("CONDITION_JAPANESE", {})
+    @property
+    def CONDITION_TYPE_LABELS(cls): cls.load_resources(); return cls._data.get("CONDITION_TYPE_LABELS", {})
+    @property
+    def SCOPE_JAPANESE(cls): cls.load_resources(); return cls._data.get("SCOPE_JAPANESE", {})
+    @property
+    def TRIGGER_JAPANESE(cls): cls.load_resources(); return cls._data.get("TRIGGER_JAPANESE", {})
+    @property
+    def SPELL_TRIGGER_JAPANESE(cls): cls.load_resources(); return cls._data.get("SPELL_TRIGGER_JAPANESE", {})
+    @property
+    def MODIFIER_TYPE_JAPANESE(cls): cls.load_resources(); return cls._data.get("MODIFIER_TYPE_JAPANESE", {})
+    @property
+    def KEYWORD_TRANSLATION(cls): cls.load_resources(); return cls._data.get("KEYWORD_TRANSLATION", {})
+    @property
+    def DELAYED_EFFECT_TRANSLATION(cls): cls.load_resources(); return cls._data.get("DELAYED_EFFECT_TRANSLATION", {})
+    @property
+    def DURATION_TRANSLATION(cls): cls.load_resources(); return cls._data.get("DURATION_TRANSLATION", {})
+    @property
+    def ZONE_JAPANESE(cls): cls.load_resources(); return cls._data.get("ZONE_JAPANESE", {})
+    @property
+    def CIVILIZATION_JAPANESE(cls): cls.load_resources(); return cls._data.get("CIVILIZATION_JAPANESE", {})
+    @property
+    def CARD_TYPE_JAPANESE(cls): cls.load_resources(); return cls._data.get("CARD_TYPE_JAPANESE", {})
+    @property
+    def PHASE_MAP(cls): cls.load_resources(); return {int(k): v for k, v in cls._data.get("PHASE_MAP", {}).items()}
+    @property
+    def ACTION_MAP(cls): cls.load_resources(); return cls._data.get("ACTION_MAP", {})
+    @property
+    def SPECIAL_EFFECT_TEMPLATES(cls): cls.load_resources(); return cls._data.get("SPECIAL_EFFECT_TEMPLATES", {})
+    @property
+    def COMMAND_ALIASES(cls): cls.load_resources(); return cls._data.get("COMMAND_ALIASES", {})
+    @property
+    def TRIGGER_COMPOSITION_TEMPLATES(cls): cls.load_resources(); return cls._data.get("TRIGGER_COMPOSITION_TEMPLATES", {})
+    @property
+    def STAT_KEY_MAP(cls): cls.load_resources(); return cls._data.get("STAT_KEY_MAP", {})
+    @property
+    def STAT_KEY_ALIASES(cls): cls.load_resources(); return cls._data.get("STAT_KEY_ALIASES", {})
+    @property
+    def INPUT_USAGE_LABELS(cls): cls.load_resources(); return cls._data.get("INPUT_USAGE_LABELS", {})
+    @property
+    def ZONE_MOVE_TEMPLATES(cls): cls.load_resources(); return cls._ZONE_MOVE_TEMPLATES
+    @property
+    def TRANSITION_ALIASES(cls): cls.load_resources(); return cls._TRANSITION_ALIASES
+
+class CardTextResources(metaclass=CardTextResourcesMeta):
     """
     Centralized Japanese text resource library for card abilities.
     Used by TextGenerator, FormEditors, and UI components.
+    Loads data dynamically from JSON file for pure data-driven mappings.
     """
     
-    # Reaction mappings
+    # These contain logic/lambdas or specific tuples, kept in Python
     REACTION_TEXT_MAP: Dict[str, Callable[[Dict[str, Any]], str]] = {
         "NINJA_STRIKE": lambda r: f"ニンジャ・ストライク {r.get('cost', 0)}",
         "STRIKE_BACK": lambda r: "ストライク・バック",
         "COUNTER_ATTACK": lambda r: f"カウンター・アタック {r.get('cost', 0)}",
         "REVOLUTION_0_TRIGGER": lambda r: "革命0トリガー",
-        # Additional mappings to reduce branching (added 2026-03-14)
         "SHIELD_TRIGGER": lambda r: "シールド・トリガー",
         "RETURN_ATTACK": lambda r: f"リターン・アタック {r.get('cost', 0)}",
         "ON_DEFEND": lambda r: "守りのトリガー",
     }
-
-    # Condition Japanese mapping (shared by both STATIC and TRIGGER contexts)
-    CONDITION_JAPANESE: Dict[str, str] = {
-        "NONE": "",
-        "DURING_YOUR_TURN": "自分のターン中、",
-        "DURING_OPPONENT_TURN": "相手のターン中、",
-        "OPPONENT_DRAW_COUNT": "相手がカードを引いた時、"
-    }
     
-    # IF判定用の条件タイプの日本語化（GUIエディタ用）
-    CONDITION_TYPE_LABELS: Dict[str, str] = {
-        "NONE": "なし",
-        "MANA_ARMED": "マナ武装",
-        "SHIELD_COUNT": "シールド枚数",
-        "CIVILIZATION_MATCH": "文明一致",
-        "OPPONENT_PLAYED_WITHOUT_MANA": "相手がマナなしでプレイ",
-        "PLAYED_WITHOUT_MANA_TARGET": "指定対象が踏み倒しで出ていれば",
-        "OPPONENT_DRAW_COUNT": "相手のドロー枚数",
-        "DURING_YOUR_TURN": "自分のターン中",
-        "DURING_OPPONENT_TURN": "相手のターン中",
-        "FIRST_ATTACK": "初回攻撃",
-        "EVENT_FILTER_MATCH": "イベントフィルター一致",
-        "COMPARE_STAT": "統計値比較",
-        "COMPARE_INPUT": "入力値比較",
-        "CARDS_MATCHING_FILTER": "フィルター一致カード数",
-        "DECK_EMPTY": "デッキ切れ",
-        "MANA_CIVILIZATION_COUNT": "マナゾーン文明数",
-        "HAND_COUNT": "手札枚数",
-        "BATTLE_ZONE_COUNT": "バトルゾーンカード数",
-        "GRAVEYARD_COUNT": "墓地カード数",
-        "CUSTOM": "カスタム"
-    }
-    
-    # Scope/Owner Japanese mapping (STATIC ability context)
-    # Now using TargetScope constants for consistency
-    SCOPE_JAPANESE: Dict[str, str] = {
-        TargetScope.SELF: "自分の",
-        TargetScope.OPPONENT: "相手の",
-        TargetScope.ALL: "",
-        "NONE": "自身の",
-        # Legacy support
-        "SELF": "自分の",
-        "OPPONENT": "相手の",
-        "ALL": "",
-        "PLAYER_SELF": "自分",
-        "PLAYER_OPPONENT": "相手",
-        "ALL_PLAYERS": "両プレイヤー",
-    }
-    
-    # Trigger event Japanese mapping
-    TRIGGER_JAPANESE: Dict[str, str] = {
-        # Current TriggerType set
-        "ON_PLAY": "このクリーチャーが出た時",
-        "ON_OTHER_ENTER": "他のクリーチャーが出た時",
-        "ON_OPPONENT_CREATURE_ENTER": "相手のクリーチャーが出た時",
-        "ON_ATTACK": "このクリーチャーが攻撃する時",
-        # 再発防止: 旧トリガー ON_ATTACK_FROM_HAND を使う既存データ互換のため翻訳を維持する。
-        "ON_ATTACK_FROM_HAND": "手札から攻撃する時",
-        "ON_BLOCK": "このクリーチャーがブロックした時",
-        "ON_DESTROY": "このクリーチャーが破壊された時",
-        "TURN_START": "自分のターンのはじめに",
-        "ON_TURN_END": "ターンの終わりに",
-        "ON_BATTLE_WIN": "このクリーチャーがバトルに勝った時",
-        "ON_BATTLE_LOSE": "このクリーチャーがバトルに負けた時",
-        "ON_DRAW": "カードを引いた時",
-        "ON_OPPONENT_DRAW": "相手がカードを引いた時",
-        "ON_TAP": "このクリーチャーがタップした時",
-        "ON_UNTAP": "このクリーチャーがアンタップした時",
-        "ON_CAST_SPELL": "呪文を唱えた時",
-        "AT_BREAK_SHIELD": "シールドをブレイクする時",
-        "BEFORE_BREAK_SHIELD": "シールドをブレイクする前",
-        "ON_SHIELD_ADD": "カードがシールドゾーンに置かれた時",
-        "ON_EXIT": "このクリーチャーがバトルゾーンを離れた時",
-        "ON_DISCARD": "このカードが捨てられた時",
-        "S_TRIGGER": "S・トリガー",
-        "PASSIVE_CONST": "（常在効果）",
-
-        # Legacy aliases kept for backward compatibility
-        "AT_ATTACK": "このクリーチャーが攻撃する時",
-        "AT_END_OF_TURN": "自分のターンの終わりに",
-        "AT_END_OF_OPPONENT_TURN": "相手のターンの終わりに",
-        "NONE": ""
-    }
-    
-    # Spell-specific trigger mapping
-    SPELL_TRIGGER_JAPANESE: Dict[str, str] = {
-        "ON_PLAY": "この呪文を唱えた時",
-        "ON_OTHER_ENTER": "他のクリーチャーが出た時",
-        # Other triggers remain same as creature
-    }
-    
-    # Modifier type Japanese mapping
-    MODIFIER_TYPE_JAPANESE: Dict[str, str] = {
-        "NONE": "なし",
-        "COST_MODIFIER": "コスト軽減",
-        "POWER_MODIFIER": "パワー修正",
-        "GRANT_KEYWORD": "キーワード付与",
-        "SET_KEYWORD": "キーワード設定",
-        "ADD_RESTRICTION": "制限追加"
-    }
-    
-    # Keyword Japanese mapping
-    KEYWORD_TRANSLATION: Dict[str, str] = {
-        # Lowercase versions (original)
-        "speed_attacker": "スピードアタッカー",
-        "blocker": "ブロッカー",
-        "slayer": "スレイヤー",
-        "double_breaker": "W・ブレイカー",
-        "triple_breaker": "T・ブレイカー",
-        "world_breaker": "ワールド・ブレイカー",
-        "shield_trigger": "S・トリガー",
-        "evolution": "進化",
-        "just_diver": "ジャストダイバー",
-        "mach_fighter": "マッハファイター",
-        "g_strike": "G・ストライク",
-        "hyper_energy": "ハイパーエナジー",
-        "shield_burn": "シールド焼却",
-        "revolution_change": "革命チェンジ",
-        "mekraid": "メクレイド",
-        "friend_burst": "フレンド・バースト",
-        "untap_in": "タップして出る",
-        "meta_counter_play": "メタカウンター",
-        "power_attacker": "パワーアタッカー",
-        "g_zero": "G・ゼロ",
-        "ex_life": "EXライフ",
-        "mega_last_burst": "メガ・ラスト・バースト",
-        "unblockable": "ブロックされない",
-        "no_choice": "選ばれない",
-        "attacker": "アタッカー",
-        "s_trigger": "S・トリガー",
-        
-        # Uppercase versions (for compatibility)
-        "SPEED_ATTACKER": "スピードアタッカー",
-        "BLOCKER": "ブロッカー",
-        "SLAYER": "スレイヤー",
-        "DOUBLE_BREAKER": "W・ブレイカー",
-        "TRIPLE_BREAKER": "T・ブレイカー",
-        "WORLD_BREAKER": "ワールド・ブレイカー",
-        "SHIELD_TRIGGER": "S・トリガー",
-        "EVOLUTION": "進化",
-        "JUST_DIVER": "ジャストダイバー",
-        "MACH_FIGHTER": "マッハファイター",
-        "G_STRIKE": "G・ストライク",
-        "HYPER_ENERGY": "ハイパーエナジー",
-        "SHIELD_BURN": "シールド焼却",
-        "REVOLUTION_CHANGE": "革命チェンジ",
-        "MEKRAID": "メクレイド",
-        "FRIEND_BURST": "フレンド・バースト",
-        "UNTAP_IN": "タップして出る",
-        "META_COUNTER_PLAY": "メタカウンター",
-        "POWER_ATTACKER": "パワーアタッカー",
-        "G_ZERO": "G・ゼロ",
-        "EX_LIFE": "EXライフ",
-        "MEGA_LAST_BURST": "メガ・ラスト・バースト",
-        "UNBLOCKABLE": "ブロックされない",
-        "NO_CHOICE": "選ばれない",
-        "ATTACKER": "アタッカー",
-        "S_TRIGGER": "S・トリガー",
-        "CANNOT_ATTACK": "攻撃できない",
-        "CANNOT_BLOCK": "ブロックできない",
-        "CANNOT_ATTACK_OR_BLOCK": "攻撃またはブロックできない",
-        # New phrasing: cannot attack and cannot block (both)
-        "CANNOT_ATTACK_AND_BLOCK": "攻撃もブロックもできない",
-        "CANNOT_LEAVE_BATTLE": "バトルゾーンを離れない",
-            "SUPER_SOUL_X": "超魂X",
-        "TARGET_RESTRICTION": "対象制限",
-        "SPELL_RESTRICTION": "呪文制限",
-        "IGNORE_ABILITY": "能力無視",
-        "TARGET_THIS_CANNOT_SELECT": "このクリーチャーを対象として選択できない",
-        "TARGET_THIS_FORCE_SELECT": "可能ならこのクリーチャーを選択する"
-    }
-
-    # Delayed Effect ID Japanese mapping
-    DELAYED_EFFECT_TRANSLATION: Dict[str, str] = {
-        "AT_END_OF_TURN_DESTROY": "このターンの終わりに、このクリーチャーを破壊する",
-        "AT_END_OF_TURN_RETURN_TO_HAND": "このターンの終わりに、このクリーチャーを手札に戻す",
-        "AT_END_OF_TURN_UNTAP": "このターンの終わりに、このクリーチャーをアンタップする",
-        "AT_START_OF_TURN_DRAW": "次の自分のターンのはじめに、カードを1枚引く",
-        "AT_ATTACK_END_UNTAP": "攻撃の終わりに、このクリーチャーをアンタップする"
-    }
-
-    # Duration Text Mapping (Added)
-    DURATION_TRANSLATION: Dict[str, str] = {
-        "PERMANENT": "常に",
-        "THIS_TURN": "このターン",
-        "UNTIL_END_OF_OPPONENT_TURN": "次の相手のターンの終わりまで",
-        "UNTIL_START_OF_OPPONENT_TURN": "次の相手のターンのはじめまで",
-        "UNTIL_END_OF_YOUR_TURN": "次の自分のターンの終わりまで",
-        "UNTIL_START_OF_YOUR_TURN": "次の自分のターンのはじめまで",
-        "DURING_OPPONENT_TURN": "次の相手のターン中"
-    }
-    
-    # Zone Japanese mapping
-    ZONE_JAPANESE: Dict[str, str] = {
-        "HAND": "手札",
-        "DECK": "山札",
-        "DECK_TOP": "山札の上",
-        "DECK_BOTTOM": "山札の下",
-        "BATTLE_ZONE": "バトルゾーン",
-        "MANA_ZONE": "マナゾーン",
-        "SHIELD_ZONE": "シールドゾーン",
-        "GRAVEYARD": "墓地",
-        "BUFFER": "バッファ",
-        "UNDER_CARD": "カードの下"
-    }
-    
-    # Civilization Japanese mapping
-    CIVILIZATION_JAPANESE: Dict[str, str] = {
-        "LIGHT": "光",
-        "WATER": "水",
-        "DARKNESS": "闇",
-        "FIRE": "火",
-        "NATURE": "自然",
-        "ZERO": "ゼロ",
-        "MULTICOLOR": "多色"
-    }
-    
-    # Card type Japanese mapping
-    CARD_TYPE_JAPANESE: Dict[str, str] = {
-        "CREATURE": "クリーチャー",
-        "SPELL": "呪文",
-        "CROSS_GEAR": "クロスギア",
-        "CASTLE": "城",
-        "EVOLUTION_CREATURE": "進化クリーチャー",
-        "NEO_CREATURE": "NEOクリーチャー",
-        "PSYCHIC_CREATURE": "サイキック・クリーチャー",
-        "PSYCHIC_SUPER_CREATURE": "サイキック・スーパー・クリーチャー",
-        "DRAGHEART_CREATURE": "ドラグハート・クリーチャー",
-        "DRAGHEART_WEAPON": "ドラグハート・ウエポン",
-        "DRAGHEART_FORTRESS": "ドラグハート・フォートレス",
-        "AURA": "オーラ",
-        "FIELD": "フィールド",
-        "D2_FIELD": "D2フィールド"
-    }
-
-    PHASE_MAP: Dict[int, str] = {
-        0: "ターン開始",
-        1: "ドロー",
-        2: "マナ",
-        3: "メイン",
-        4: "攻撃",
-        5: "ブロック",
-        6: "ターン終了"
-    }
-
-    ACTION_MAP: Dict[str, str] = {
-        "DRAW_CARD": "カードを{value1}枚引く。",
-        "ADD_MANA": "自分の山札の上から{value1}枚をマナゾーンに置く。",
-        "DESTROY": "{target}を{value1}{unit}破壊する。",
-        "TAP": "{target}を{value1}{unit}選び、タップする。",
-        "UNTAP": "{target}を{value1}{unit}選び、アンタップする。",
-        "RETURN_TO_HAND": "{target}を{value1}{unit}選び、手札に戻す。",
-        "SEND_TO_MANA": "{target}を{value1}{unit}選び、マナゾーンに置く。",
-        "MODIFY_POWER": "{target}のパワーを{value1}する。",
-        "BREAK_SHIELD": "相手のシールドを{value1}つブレイクする。",
-        "LOOK_AND_ADD": "自分の山札の上から{value1}枚を見る。その中から{value2}枚を手札に加え、残りを{zone}に置く。",
-        "SEARCH_DECK_BOTTOM": "自分の山札の下から{value1}枚を見る。",
-        "SEARCH_DECK": "自分の山札を見る。その中から{filter}を1枚選び、{zone}に置く。その後、山札をシャッフルする。",
-        "MEKRAID": "メクレイド{value1}",
-        "DISCARD": "手札を{value1}枚捨てる。",
-        "PLAY_FROM_ZONE": "{source_zone}からコスト{value1}以下の{target}をプレイしてもよい。",
-        "COUNT_CARDS": "{filter}の数を数える。",
-        "GET_GAME_STAT": "（{str_val}を参照）",
-        "REVEAL_CARDS": "山札の上から{value1}枚を表向きにする。",
-        "SHUFFLE_DECK": "山札をシャッフルする。",
-        "ADD_SHIELD": "山札の上から{value1}枚をシールド化する。",
-        "SEND_SHIELD_TO_GRAVE": "相手のシールドを{value1}つ選び、墓地に置く。",
-        "SEND_TO_DECK_BOTTOM": "{target}を{value1}枚、山札の下に置く。",
-        "CAST_SPELL": "コストを支払わずに唱える。",
-        "PUT_CREATURE": "{target}を{value1}{unit}バトルゾーンに出す。",
-        "GRANT_KEYWORD": "{target}に「{str_val}」を与える。",
-        "MOVE_CARD": "{target}を{zone}に置く。",
-        "REPLACE_CARD_MOVE": "{target}を{from_zone}に置くかわりに{to_zone}に置く。",
-        "COST_REFERENCE": "",
-        "SUMMON_TOKEN": "「{str_val}」を{value1}体出す。",
-        "RESET_INSTANCE": "{target}の状態をリセットする（アンタップ等）。",
-        "REGISTER_DELAYED_EFFECT": "「{str_val}」の効果を{value1}ターン登録する。",
-        "FRIEND_BURST": "{str_val}のフレンド・バースト",
-        "MOVE_TO_UNDER_CARD": "{target}を{value1}{unit}選び、カードの下に置く。",
-        "SELECT_NUMBER": "数字を1つ選ぶ。",
-        "DECLARE_NUMBER": "{value1}～{value2}の数字を1つ宣言する。",
-        "COST_REDUCTION": "{target}のコストを{value1}少なくする。ただし、コストは0以下にはならない。",
-        "LOOK_TO_BUFFER": "{source_zone}から{value1}枚を見る（バッファへ）。",
-        "REVEAL_TO_BUFFER": "{source_zone}から{value1}枚を表向きにしてバッファに置く。",
-        "SELECT_FROM_BUFFER": "バッファから{value1}枚選ぶ（{filter}）。",
-        "PLAY_FROM_BUFFER": "バッファからプレイする。",
-        "MOVE_BUFFER_TO_ZONE": "見た{filter}{zone}に置く。",  # フィルター有=暗黙的選択, フィルター無=SELECT_FROM_BUFFER 依存
-        "MOVE_BUFFER_REMAIN_TO_ZONE": "残りを{zone}に置く。",
-        "SELECT_OPTION": "{filter}から{value1}枚選ぶ。",
-        "LOCK_SPELL": "相手は呪文を唱えられない。",
-        "SPELL_RESTRICTION": "相手は呪文を唱えられない。",
-        "CANNOT_PUT_CREATURE": "相手はクリーチャーを出せない。",
-        "CANNOT_SUMMON_CREATURE": "相手はクリーチャーを召喚できない。",
-        "PLAYER_CANNOT_ATTACK": "相手は攻撃できない。",
-        "IGNORE_ABILITY": "{filter}の能力を無視する。",
-        "REPLACE_CARD_MOVE": "{target}を{from_zone}に置くかわりに{to_zone}に置く。",
-        "REPLACE_MOVE_CARD": "（置換移動）",
-        "APPLY_MODIFIER": "効果を付与する。",
-        "MEASURE_COUNT": "{target}の数を数える。",
-        "SHIELD_TRIGGER": "S・トリガー",
-        "FLOW": "進行制御: {str_val}",
-        "QUERY": "質問: {str_val}",
-        "STAT": "統計更新: {str_val}",
-
-        # --- IF/IF_ELSE/ELSE Control Flow ---
-        "IF": "（条件判定: {condition_detail}）",
-        "IF_ELSE": "（条件分岐: {condition_detail}...）",
-        "ELSE": "（そうでなければ）",
-
-        # --- Generalized Commands (Mapped to natural text if encountered in Card Data) ---
-        "TRANSITION": "{target}を{from_zone}から{to_zone}へ移動する。", # Fallback
-        "MUTATE": "{target}の状態を変更する。", # Fallback
-        "FLOW": "進行制御: {str_param}",
-        "QUERY": "クエリ発行: {query_mode}",
-        "ATTACH": "{target}を{base_target}の下に重ねる。",
-        "GAME_RESULT": "ゲームを終了する（{result}）。",
-    }
-
-    # 再発防止: compare_stat 候補は dm_toolkit.stat_keys を単一ソースとして参照する。
     COMPARE_STAT_EDITOR_KEYS: Tuple[str, ...] = SHARED_COMPARE_STAT_EDITOR_KEYS
-
-    # Special Effect Templates for abilities that have hardcoded explanation texts
-    SPECIAL_EFFECT_TEMPLATES: Dict[str, str] = {
-        "MEKRAID": "メクレイド{use_token}（自分の山札の上から{val2}枚を見る。その中からコスト{use_token}以下のクリーチャーを{count_str}、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）",
-        "FRIEND_BURST": "＜{str_val}＞のフレンド・バースト（このクリーチャーが出た時、自分の他の{str_val}・クリーチャーを1体タップしてもよい。そうしたら、このクリーチャーの呪文側をバトルゾーンに置いたまま、コストを支払わずに唱える。）"
-    }
-
-    # Command aliases for natural language rendering
-    COMMAND_ALIASES: Dict[str, str] = {
-        "POWER_MOD": "MODIFY_POWER",
-        "MANA_CHARGE": "SEND_TO_MANA",
-        "CHOICE": "SELECT_OPTION",
-    }
-
-    # Zone movement text templates organized by (from_zone, to_zone) pairs
-    ZONE_MOVE_TEMPLATES: Dict[Any, str] = {
-        ("BATTLE_ZONE", "GRAVEYARD"): "{from_z}の{target}を{amount}{unit}{to_z}に置く。",
-        ("BATTLE_ZONE", "MANA_ZONE"): "{from_z}の{target}を{amount}{unit}{to_z}に置く。",
-        ("BATTLE_ZONE", "HAND"): "{from_z}の{target}を{amount}{unit}{to_z}に戻す。",
-        ("HAND", "MANA_ZONE"): "{from_z}の{target}を{amount}{unit}{to_z}に置く。",
-        ("DECK", "HAND"): "{from_z}から{target}を{amount}{unit}選び、{to_z}に加える。",
-        ("GRAVEYARD", "HAND"): "{from_z}の{target}を{amount}{unit}{to_z}に戻す。",
-        ("GRAVEYARD", "BATTLE_ZONE"): "{from_z}の{target}を{amount}{unit}{to_z}に出す。",
-        "DEFAULT": "{target}を{from_z}から{to_z}へ移動する。",
-    }
-
-    # Trigger text templates organized by trigger type and timing mode.
-    # 再発防止: タイミング(PRE/POST)・スコープ・トリガータイプを
-    # 1か所で変数的に組み立て、個別分岐の散在による文面不一致を防ぐ。
-    TRIGGER_COMPOSITION_TEMPLATES: Dict[str, Dict[str, str]] = {
-        "ON_PLAY": {
-            "POST": "{scope_text}の{subject}がバトルゾーンに出た時",
-            "PRE": "{scope_text}の{subject}がバトルゾーンに出る時",
-        },
-        "ON_OTHER_ENTER": {
-            "POST": "{scope_text}の他の{subject}がバトルゾーンに出た時",
-            "PRE": "{scope_text}の他の{subject}がバトルゾーンに出る時",
-        },
-        "ON_CAST_SPELL": {
-            "POST": "{scope_text}の{subject}を唱えた時",
-            "PRE": "{scope_text}の{subject}を唱える時",
-        },
-    }
-
-    # Used to convert standard POST trigger text to PRE/replacement tone.
-    TRIGGER_REPLACEMENT_MAP: List[Tuple[str, str]] = [
-        ("された時", "される時"),
-        ("置かれた時", "置かれる時"),
-        ("唱えた時", "唱える時"),
-        ("引いた時", "引く時"),
-        ("出た時", "出る時"),
-        ("した時", "する時"),
-        ("った時", "る時"),
-    ]
-
-    # Tokens to check if a text is already in PRE/replacement tone
-    PRE_TIMING_TOKENS: Tuple[str, ...] = (
-        "出る時", "唱える時", "引く時", "置かれる時", "される時", "する時"
-    )
-
-    # Quick stats used by condition/query UIs for common measurements
     EDITOR_QUICK_STATS_KEYS: Tuple[str, ...] = SHARED_EDITOR_QUICK_STATS_KEYS
 
-    # 再発防止: COMPARE_STAT_EDITOR_KEYS に追加したキーは必ずここへ翻訳を追加すること。
-    STAT_KEY_MAP: Dict[str, Tuple[str, str]] = {
-        "MANA_COUNT": ("マナゾーンのカード", "枚"),
-        "CREATURE_COUNT": ("クリーチャー", "体"),
-        "SHIELD_COUNT": ("シールド", "つ"),
-        "HAND_COUNT": ("手札", "枚"),
-        "GRAVEYARD_COUNT": ("墓地のカード", "枚"),
-        "BATTLE_ZONE_COUNT": ("バトルゾーンのカード", "枚"),
-        "MY_MANA_COUNT": ("自分のマナゾーンのカード", "枚"),
-        "MY_HAND_COUNT": ("自分の手札", "枚"),
-        "MY_SHIELD_COUNT": ("自分のシールド", "つ"),
-        "MY_BATTLE_ZONE_COUNT": ("自分のバトルゾーンのカード", "枚"),
-        "SUMMON_COUNT_THIS_TURN": ("このターンに召喚したクリーチャー数", "体"),
-        "DESTROY_COUNT_THIS_TURN": ("このターンに破壊されたクリーチャー数", "体"),
-        "OPPONENT_MANA_COUNT": ("相手のマナゾーンのカード", "枚"),
-        "OPPONENT_CREATURE_COUNT": ("相手のクリーチャー", "体"),
-        "OPPONENT_SHIELD_COUNT": ("相手のシールド", "つ"),
-        "OPPONENT_HAND_COUNT": ("相手の手札", "枚"),
-        "OPPONENT_GRAVEYARD_COUNT": ("相手の墓地のカード", "枚"),
-        "OPPONENT_BATTLE_ZONE_COUNT": ("相手のバトルゾーンのカード", "枚"),
-        "CARDS_DRAWN_THIS_TURN": ("このターンに引いたカード", "枚"),
-        "SPELL_CAST_THIS_TURN": ("このターンに唱えた呪文", "回"),
-        "MANA_CIVILIZATION_COUNT": ("マナゾーンの文明数", ""),
-        "MANA_SET_THIS_TURN": ("このターンにマナに置かれたカード数", "枚"),
-        "SHIELD_BREAK_ATTEMPT_THIS_TURN": ("このターンに行われたシールド割りの試行回数", "回"),
-        "SHIELD_BREAK_RESOLVED_THIS_TURN": ("このターンに実際にシールドが割れた回数", "回"),
-        "ATTACKED_THIS_TURN": ("このターンに攻撃した回数", "回"),
-        "MY_ATTACKED_THIS_TURN": ("自分がこのターンに攻撃した回数", "回"),
-        "OPPONENT_ATTACKED_THIS_TURN": ("相手がこのターンに攻撃した回数", "回"),
-        # Cost reduction preview legacy/sample keys
-        "TOTAL_POWER": ("自分のバトルゾーンの合計パワー", ""),
-        "ALL_TOTAL_POWER": ("バトルゾーンの合計パワー", ""),
-        "OPPONENT_TOTAL_POWER": ("相手のバトルゾーンの合計パワー", ""),
-        "MANA_COST_TOTAL": ("マナゾーンの合計コスト", ""),
-        "GRAVEYARD_COST_TOTAL": ("墓地の合計コスト", ""),
-        "SHIELD_COST_TOTAL": ("シールドの合計コスト", ""),
-        "CARDS_IN_BATTLE": ("自分のバトルゾーンのカード", "枚"),
-        "TOTAL_TAP": ("タップしている自分のカード", "枚"),
-        "BOARD_COUNT": ("自分の場のカード", "枚"),
-        "SELF_POWER": ("このクリーチャーのパワー", ""),
-        "ENEMY_CREATURES": ("相手のクリーチャー", "体"),
-        "OPPONENT_HAND": ("相手の手札", "枚"),
-    }
+    TRIGGER_REPLACEMENT_MAP: List[Tuple[str, str]] = [
+        ("した時", "する時"),
+        ("された時", "される時"),
+        ("出た時", "出る時"),
+        ("置かれた時", "置かれる時"),
+        ("ブレイクした時", "ブレイクする時"),
+        ("ターンの終わりに", "ターンの終わりに"),
+        ("ターンの始めに", "ターンの始めに"),
+        ("攻撃の終わりに", "攻撃の終わりに"),
+    ]
 
-    # 再発防止: 実行系と表示系でキー名が揺れる別名をここで正規化する。
-    # 追加時は C++ 側の同義キー解決 (pipeline/condition) も同時に確認すること。
-    STAT_KEY_ALIASES: Dict[str, str] = {
-        "SPELL_CAST_COUNT_THIS_TURN": "SPELL_CAST_THIS_TURN",
-        "MY_CREATURE_COUNT": "MY_BATTLE_ZONE_COUNT",
-        "OPPONENT_CREATURE_COUNT": "OPPONENT_CREATURE_COUNT",
-        # Legacy editor sample keys mapped to canonical counters where possible
-        "CARDS_IN_BATTLE": "BATTLE_ZONE_COUNT",
-        "OPPONENT_HAND": "OPPONENT_HAND_COUNT",
-        "ENEMY_CREATURES": "OPPONENT_CREATURE_COUNT",
-    }
+    PRE_TIMING_TOKENS: Tuple[str, ...] = (
+        "される時", "する時", "出る時", "置かれる時",
+        "離れる時", "唱える時", "召喚する時",
+        "破壊される時", "勝つ時", "負ける時",
+        "引く時", "捨てる時"
+    )
 
-    # Short aliases for natural language rendering of common zone transitions
-    TRANSITION_ALIASES: Dict[Tuple[str, str], str] = {
-        ("BATTLE_ZONE", "GRAVEYARD"): "破壊",
-        ("HAND", "GRAVEYARD"): "捨てる",
-        ("BATTLE_ZONE", "HAND"): "手札に戻す",
-        ("DECK", "MANA_ZONE"): "マナチャージ",
-        ("SHIELD_ZONE", "GRAVEYARD"): "シールド焼却",
-        ("BATTLE_ZONE", "DECK"): "山札に戻す"
-    }
-
-    # Hint labels for how a linked input value is consumed by a subsequent step
-    INPUT_USAGE_LABELS: Dict[str, str] = {
-        "COST": "コストとして使用",
-        "MAX_COST": "最大コストとして使用",
-        "MIN_COST": "最小コストとして使用",
-        "AMOUNT": "枚数として使用",
-        "COUNT": "枚数として使用",
-        "SELECTION": "選択数として使用",
-        "TARGET_COUNT": "対象数として使用",
-        "POWER": "パワーとして使用",
-        "MAX_POWER": "最大パワーとして使用",
-        "MIN_POWER": "最小パワーとして使用",
-    }
-    
     @classmethod
     def format_zones_list(cls, zones: List[str], joiner: str = "、または") -> str:
-        """Translate and join a list of zone names."""
-        if not zones:
-            return ""
+        if not zones: return ""
         zone_names = []
         for z in zones:
             if z == "HAND": zone_names.append("手札")
             elif z == "GRAVEYARD": zone_names.append("墓地")
-            elif z == "MANA": zone_names.append("マナゾーン")
-            elif z == "MANA_ZONE": zone_names.append("マナゾーン")
+            elif z in ("MANA", "MANA_ZONE"): zone_names.append("マナゾーン")
             elif z == "DECK": zone_names.append("山札")
-            elif z == "SHIELD": zone_names.append("シールドゾーン")
-            elif z == "SHIELD_ZONE": zone_names.append("シールドゾーン")
+            elif z in ("SHIELD", "SHIELD_ZONE"): zone_names.append("シールドゾーン")
             elif z == "BATTLE_ZONE": zone_names.append("バトルゾーン")
             else: zone_names.append(cls.get_zone_text(z))
         return joiner.join(zone_names)
 
     @classmethod
     def get_condition_text(cls, condition_type: str) -> str:
-        """
-        Get Japanese text for condition type.
-        
-        Args:
-            condition_type: Condition type string (e.g., "DURING_YOUR_TURN")
-        
-        Returns:
-            Japanese condition text, or original string if not found
-        """
-        return cls.CONDITION_JAPANESE.get(condition_type, condition_type)
+        cls.load_resources()
+        return cls._data.get("CONDITION_JAPANESE", {}).get(condition_type, condition_type)
     
     @classmethod
     def get_condition_type_label(cls, condition_type: str) -> str:
-        """
-        Get Japanese label for condition type (for GUI editor).
-        
-        Args:
-            condition_type: Condition type string (e.g., "OPPONENT_DRAW_COUNT")
-        
-        Returns:
-            Japanese condition type label, or original string if not found
-        """
-        return cls.CONDITION_TYPE_LABELS.get(condition_type, condition_type)
+        cls.load_resources()
+        return cls._data.get("CONDITION_TYPE_LABELS", {}).get(condition_type, condition_type)
     
     @classmethod
     def get_scope_text(cls, scope: str) -> str:
-        """
-        Get Japanese text for scope/owner.
-        
-        Args:
-            scope: Scope string (SELF, OPPONENT, ALL)
-        
-        Returns:
-            Japanese scope prefix, or empty string if not found
-        """
-        return cls.SCOPE_JAPANESE.get(scope, "")
+        cls.load_resources()
+        return cls._data.get("SCOPE_JAPANESE", {}).get(scope, "")
     
     @classmethod
     def get_trigger_text(cls, trigger: str, is_spell: bool = False) -> str:
-        """
-        Get Japanese text for trigger event.
-        
-        Args:
-            trigger: Trigger type string
-            is_spell: If True, use spell-specific trigger text where available
-        
-        Returns:
-            Japanese trigger text
-        """
-        if is_spell and trigger in cls.SPELL_TRIGGER_JAPANESE:
-            return cls.SPELL_TRIGGER_JAPANESE[trigger]
-        return cls.TRIGGER_JAPANESE.get(trigger, trigger)
+        cls.load_resources()
+        if is_spell and trigger in cls._data.get("SPELL_TRIGGER_JAPANESE", {}):
+            return cls._data["SPELL_TRIGGER_JAPANESE"][trigger]
+        return cls._data.get("TRIGGER_JAPANESE", {}).get(trigger, trigger)
     
     @classmethod
     def get_modifier_type_text(cls, modifier_type: str) -> str:
-        """
-        Get Japanese text for modifier type.
-        
-        Args:
-            modifier_type: Modifier type string
-        
-        Returns:
-            Japanese modifier type text
-        """
-        return cls.MODIFIER_TYPE_JAPANESE.get(modifier_type, modifier_type)
+        cls.load_resources()
+        return cls._data.get("MODIFIER_TYPE_JAPANESE", {}).get(modifier_type, modifier_type)
     
     @classmethod
     def get_keyword_text(cls, keyword: str) -> str:
-        """
-        Get Japanese text for keyword.
-        
-        Args:
-            keyword: Keyword string (case-insensitive lookup)
-        
-        Returns:
-            Japanese keyword text, or original string if not found
-        """
-        # Try exact match first
-        if keyword in cls.KEYWORD_TRANSLATION:
-            return cls.KEYWORD_TRANSLATION[keyword]
-        # Try lowercase match
-        if keyword.lower() in cls.KEYWORD_TRANSLATION:
-            return cls.KEYWORD_TRANSLATION[keyword.lower()]
-        # Try uppercase match
-        if keyword.upper() in cls.KEYWORD_TRANSLATION:
-            return cls.KEYWORD_TRANSLATION[keyword.upper()]
+        cls.load_resources()
+        kw = cls._data.get("KEYWORD_TRANSLATION", {})
+        if keyword in kw: return kw[keyword]
+        if keyword.lower() in kw: return kw[keyword.lower()]
+        if keyword.upper() in kw: return kw[keyword.upper()]
         return keyword
 
     @classmethod
     def get_delayed_effect_text(cls, effect_id: str) -> str:
-        """
-        Get Japanese text for delayed effect ID.
-
-        Args:
-            effect_id: Effect ID string
-
-        Returns:
-            Japanese text, or original string if not found
-        """
-        return cls.DELAYED_EFFECT_TRANSLATION.get(effect_id, effect_id)
+        cls.load_resources()
+        return cls._data.get("DELAYED_EFFECT_TRANSLATION", {}).get(effect_id, effect_id)
     
     @classmethod
     def get_zone_text(cls, zone: str) -> str:
-        """
-        Get Japanese text for zone, normalizing short names first.
-        
-        Args:
-            zone: Zone string
-        
-        Returns:
-            Japanese zone text
-        """
+        cls.load_resources()
         z = cls.normalize_zone_name(zone)
-        # Assuming `tr` isn't available directly here, but UI layer calls `tr` if needed,
-        # or we just rely on the static ZONE_JAPANESE dict since this is specifically a resource.
-        # Fallback to returning the normalized key if not found in dict.
-        # In `text_generator.py` there was a fallback to `tr(z)`.
-        # For full separation, `text_generator` may call `tr` on the result of this function
-        # if the result is still an English key.
-        return cls.ZONE_JAPANESE.get(z, z)
+        return cls._data.get("ZONE_JAPANESE", {}).get(z, z)
     
     @classmethod
     def get_civilization_text(cls, civ: str) -> str:
-        """
-        Get Japanese text for civilization.
-        
-        Args:
-            civ: Civilization string
-        
-        Returns:
-            Japanese civilization text
-        """
-        return cls.CIVILIZATION_JAPANESE.get(civ, civ)
+        cls.load_resources()
+        return cls._data.get("CIVILIZATION_JAPANESE", {}).get(civ, civ)
     
     @classmethod
     def get_card_type_text(cls, card_type: str) -> str:
-        """
-        Get Japanese text for card type.
-        
-        Args:
-            card_type: Card type string
-        
-        Returns:
-            Japanese card type text
-        """
-        return cls.CARD_TYPE_JAPANESE.get(card_type, card_type)
+        cls.load_resources()
+        return cls._data.get("CARD_TYPE_JAPANESE", {}).get(card_type, card_type)
 
     @classmethod
     def normalize_zone_name(cls, zone: str) -> str:
-        """Normalize short zone names to full names used in UI and JSON."""
-        if not zone:
-            return ""
-
+        if not zone: return ""
         z = str(zone).split(".")[-1].upper()
         zone_map = {
-            "BATTLE": "BATTLE_ZONE",
-            "MANA": "MANA_ZONE",
-            "SHIELD": "SHIELD_ZONE",
-            "BATTLE_ZONE": "BATTLE_ZONE",
-            "MANA_ZONE": "MANA_ZONE",
-            "SHIELD_ZONE": "SHIELD_ZONE",
-            "HAND": "HAND",
-            "GRAVEYARD": "GRAVEYARD",
-            "DECK": "DECK",
-            "DECK_TOP": "DECK_TOP",
-            "DECK_BOTTOM": "DECK_BOTTOM",
-            "BUFFER": "BUFFER",
-            "UNDER_CARD": "UNDER_CARD",
+            "BATTLE": "BATTLE_ZONE", "MANA": "MANA_ZONE", "SHIELD": "SHIELD_ZONE",
+            "BATTLE_ZONE": "BATTLE_ZONE", "MANA_ZONE": "MANA_ZONE", "SHIELD_ZONE": "SHIELD_ZONE",
+            "HAND": "HAND", "GRAVEYARD": "GRAVEYARD", "DECK": "DECK",
+            "DECK_TOP": "DECK_TOP", "DECK_BOTTOM": "DECK_BOTTOM",
+            "BUFFER": "BUFFER", "UNDER_CARD": "UNDER_CARD",
         }
         return zone_map.get(z, z)
 
     @classmethod
     def normalize_command_alias(cls, command_type: str) -> str:
-        """Normalize a command type string handling known aliases."""
-        return cls.COMMAND_ALIASES.get(command_type, command_type)
+        cls.load_resources()
+        return cls._data.get("COMMAND_ALIASES", {}).get(command_type, command_type)
 
     @classmethod
     def get_duration_text(cls, duration_key: str) -> str:
-        """
-        Get Japanese text for duration.
-        """
-        return cls.DURATION_TRANSLATION.get(duration_key, duration_key)
-    
+        cls.load_resources()
+        return cls._data.get("DURATION_TRANSLATION", {}).get(duration_key, duration_key)
 
     @classmethod
     def get_duration_text_with_comma(cls, duration_key: str) -> str:
-        """
-        Get Japanese text for duration and append a comma if it's a known duration.
-        """
-        if not duration_key:
-            return ""
+        if not duration_key: return ""
         trans = cls.get_duration_text(duration_key)
         if trans and trans != duration_key:
             return trans + "、"
-        elif duration_key in cls.DURATION_TRANSLATION:
-            return cls.DURATION_TRANSLATION[duration_key] + "、"
+        cls.load_resources()
+        dt = cls._data.get("DURATION_TRANSLATION", {})
+        if duration_key in dt:
+            return dt[duration_key] + "、"
         return ""
 
     @classmethod
     def get_stat_key_label(cls, stat_key: str) -> str:
-        """
-        Get Japanese label for stat key (for GUI editor).
-        
-        Args:
-            stat_key: Stat key string (e.g., "MY_SHIELD_COUNT")
-        
-        Returns:
-            Japanese stat key label with unit
-        """
+        cls.load_resources()
         normalized = cls.normalize_stat_key(stat_key)
-        if normalized in cls.STAT_KEY_MAP:
-            name, unit = cls.STAT_KEY_MAP[normalized]
+        sm = cls._data.get("STAT_KEY_MAP", {})
+        if normalized in sm:
+            name, unit = sm[normalized]
             return f"{name}（{unit}）" if unit else name
         return normalized
 
     @classmethod
     def normalize_stat_key(cls, stat_key: str) -> str:
-        """Normalize stat key aliases used across query/condition/cost preview paths."""
-        if not isinstance(stat_key, str):
-            return str(stat_key)
-        return cls.STAT_KEY_ALIASES.get(stat_key, stat_key)
+        cls.load_resources()
+        if not isinstance(stat_key, str): return str(stat_key)
+        return cls._data.get("STAT_KEY_ALIASES", {}).get(stat_key, stat_key)

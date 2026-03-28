@@ -4,7 +4,7 @@ from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount
-from dm_toolkit.gui.editor.formatters.target_scope_resolver import TargetScopeResolver
+from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
 from dm_toolkit.gui.i18n import tr
@@ -114,9 +114,9 @@ class BreakShieldFormatter(CommandFormatterBase):
         if tgt in ("", "カード", "自分のカード", "それ"):
             tgt = "シールド"
 
-        scope = TargetScopeResolver.resolve_action_scope(command)
+        scope = TargetResolutionService.resolve_action_scope(command)
         if scope == "NONE":
-            prefix = TargetScopeResolver.resolve_prefix("OPPONENT")
+            prefix = TargetResolutionService.resolve_prefix("OPPONENT")
             if not tgt.startswith(prefix):
                 tgt = prefix + tgt
 
@@ -148,7 +148,7 @@ class RevealCardsFormatter(CommandFormatterBase):
         deck_owner = "相手の" if (command.get("target_group") or command.get("scope", "NONE")) in ["OPPONENT", "PLAYER_OPPONENT"] else ""
         look_count = command.get("look_count") if command.get("look_count") is not None else get_command_amount(command, default=0)
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
         if linked_text:
             return f"{deck_owner}山札の上から、{linked_text}だけ表向きにする。"
         return f"{deck_owner}山札の上から{look_count}枚を表向きにする。"
@@ -168,7 +168,7 @@ class LockSpellFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         scope = command.get("target_group") or command.get("scope", "NONE")
-        noun = TargetScopeResolver.resolve_noun(scope)
+        noun = TargetResolutionService.resolve_noun(scope)
         if noun:
             player_str = noun
         else:
@@ -192,7 +192,7 @@ class ActionRestrictionFormatter(CommandFormatterBase):
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         atype = command.get("type") or command.get("name") or "NONE"
         scope = command.get("target_group") or command.get("scope", "NONE")
-        noun = TargetScopeResolver.resolve_noun(scope)
+        noun = TargetResolutionService.resolve_noun(scope)
         if noun:
             player_str = noun
         else:
@@ -206,7 +206,7 @@ class ActionRestrictionFormatter(CommandFormatterBase):
             duration_str = f"{look_count}ターン" if look_count > 0 else "このターン"
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
 
         if atype == 'SPELL_RESTRICTION':
             filt = command.get('filter', {}) or {}
@@ -437,7 +437,7 @@ class QueryFormatter(CommandFormatterBase):
         mode = command.get('query_mode') or ''
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
 
         input_usage = command.get("input_value_usage") or command.get("input_usage") or ""
         stat_name, stat_unit = CardTextResources.STAT_KEY_MAP.get(str(mode), (None, None))
@@ -502,8 +502,8 @@ class QueryFormatter(CommandFormatterBase):
 class IgnoreAbilityFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        scope = TargetScopeResolver.resolve_action_scope(command)
-        target_str_lock = TargetScopeResolver.resolve_noun(scope)
+        scope = TargetResolutionService.resolve_action_scope(command)
+        target_str_lock = TargetResolutionService.resolve_noun(scope)
         if not target_str_lock:
             target_str_lock, _ = cls._resolve_target(command, ctx.is_spell)
 
@@ -520,7 +520,7 @@ class IgnoreAbilityFormatter(CommandFormatterBase):
             type_txt = '・'.join([tr(t) for t in types])
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
 
         if linked_text:
             return f'{target_str_lock}のコスト{linked_text}の{type_txt}の能力は{duration_text}の間、無視される。'

@@ -1,0 +1,491 @@
+{
+    "CONDITION_JAPANESE": {
+        "NONE": "",
+        "DURING_YOUR_TURN": "自分のターン中、",
+        "DURING_OPPONENT_TURN": "相手のターン中、",
+        "OPPONENT_DRAW_COUNT": "相手がカードを引いた時、"
+    },
+    "CONDITION_TYPE_LABELS": {
+        "NONE": "なし",
+        "MANA_ARMED": "マナ武装",
+        "SHIELD_COUNT": "シールド枚数",
+        "CIVILIZATION_MATCH": "文明一致",
+        "OPPONENT_PLAYED_WITHOUT_MANA": "相手がマナなしでプレイ",
+        "PLAYED_WITHOUT_MANA_TARGET": "指定対象が踏み倒しで出ていれば",
+        "OPPONENT_DRAW_COUNT": "相手のドロー枚数",
+        "DURING_YOUR_TURN": "自分のターン中",
+        "DURING_OPPONENT_TURN": "相手のターン中",
+        "FIRST_ATTACK": "初回攻撃",
+        "EVENT_FILTER_MATCH": "イベントフィルター一致",
+        "COMPARE_STAT": "統計値比較",
+        "COMPARE_INPUT": "入力値比較",
+        "CARDS_MATCHING_FILTER": "フィルター一致カード数",
+        "DECK_EMPTY": "デッキ切れ",
+        "MANA_CIVILIZATION_COUNT": "マナゾーン文明数",
+        "HAND_COUNT": "手札枚数",
+        "BATTLE_ZONE_COUNT": "バトルゾーンカード数",
+        "GRAVEYARD_COUNT": "墓地カード数",
+        "CUSTOM": "カスタム"
+    },
+    "SCOPE_JAPANESE": {
+        "SELF": "自分の",
+        "OPPONENT": "相手の",
+        "ALL": "",
+        "NONE": "自身の",
+        "PLAYER_SELF": "自分",
+        "PLAYER_OPPONENT": "相手",
+        "ALL_PLAYERS": "両プレイヤー"
+    },
+    "TRIGGER_JAPANESE": {
+        "ON_PLAY": "このクリーチャーが出た時",
+        "ON_OTHER_ENTER": "他のクリーチャーが出た時",
+        "ON_OPPONENT_CREATURE_ENTER": "相手のクリーチャーが出た時",
+        "ON_ATTACK": "このクリーチャーが攻撃する時",
+        "ON_ATTACK_FROM_HAND": "手札から攻撃する時",
+        "ON_BLOCK": "このクリーチャーがブロックした時",
+        "ON_DESTROY": "このクリーチャーが破壊された時",
+        "TURN_START": "自分のターンのはじめに",
+        "ON_TURN_END": "ターンの終わりに",
+        "ON_BATTLE_WIN": "このクリーチャーがバトルに勝った時",
+        "ON_BATTLE_LOSE": "このクリーチャーがバトルに負けた時",
+        "ON_DRAW": "カードを引いた時",
+        "ON_OPPONENT_DRAW": "相手がカードを引いた時",
+        "ON_TAP": "このクリーチャーがタップした時",
+        "ON_UNTAP": "このクリーチャーがアンタップした時",
+        "ON_CAST_SPELL": "呪文を唱えた時",
+        "AT_BREAK_SHIELD": "シールドをブレイクする時",
+        "BEFORE_BREAK_SHIELD": "シールドをブレイクする前",
+        "ON_SHIELD_ADD": "カードがシールドゾーンに置かれた時",
+        "ON_EXIT": "このクリーチャーがバトルゾーンを離れた時",
+        "ON_DISCARD": "このカードが捨てられた時",
+        "S_TRIGGER": "S・トリガー",
+        "PASSIVE_CONST": "（常在効果）",
+        "AT_ATTACK": "このクリーチャーが攻撃する時",
+        "AT_END_OF_TURN": "自分のターンの終わりに",
+        "AT_END_OF_OPPONENT_TURN": "相手のターンの終わりに",
+        "NONE": ""
+    },
+    "SPELL_TRIGGER_JAPANESE": {
+        "ON_PLAY": "この呪文を唱えた時",
+        "ON_OTHER_ENTER": "他のクリーチャーが出た時"
+    },
+    "MODIFIER_TYPE_JAPANESE": {
+        "NONE": "なし",
+        "COST_MODIFIER": "コスト軽減",
+        "POWER_MODIFIER": "パワー修正",
+        "GRANT_KEYWORD": "キーワード付与",
+        "SET_KEYWORD": "キーワード設定",
+        "ADD_RESTRICTION": "制限追加"
+    },
+    "KEYWORD_TRANSLATION": {
+        "speed_attacker": "スピードアタッカー",
+        "blocker": "ブロッカー",
+        "slayer": "スレイヤー",
+        "double_breaker": "W・ブレイカー",
+        "triple_breaker": "T・ブレイカー",
+        "world_breaker": "ワールド・ブレイカー",
+        "shield_trigger": "S・トリガー",
+        "evolution": "進化",
+        "just_diver": "ジャストダイバー",
+        "mach_fighter": "マッハファイター",
+        "g_strike": "G・ストライク",
+        "hyper_energy": "ハイパーエナジー",
+        "shield_burn": "シールド焼却",
+        "revolution_change": "革命チェンジ",
+        "mekraid": "メクレイド",
+        "friend_burst": "フレンド・バースト",
+        "untap_in": "タップして出る",
+        "meta_counter_play": "メタカウンター",
+        "power_attacker": "パワーアタッカー",
+        "g_zero": "G・ゼロ",
+        "ex_life": "EXライフ",
+        "mega_last_burst": "メガ・ラスト・バースト",
+        "unblockable": "ブロックされない",
+        "no_choice": "選ばれない",
+        "attacker": "アタッカー",
+        "s_trigger": "S・トリガー",
+        "SPEED_ATTACKER": "スピードアタッカー",
+        "BLOCKER": "ブロッカー",
+        "SLAYER": "スレイヤー",
+        "DOUBLE_BREAKER": "W・ブレイカー",
+        "TRIPLE_BREAKER": "T・ブレイカー",
+        "WORLD_BREAKER": "ワールド・ブレイカー",
+        "SHIELD_TRIGGER": "S・トリガー",
+        "EVOLUTION": "進化",
+        "JUST_DIVER": "ジャストダイバー",
+        "MACH_FIGHTER": "マッハファイター",
+        "G_STRIKE": "G・ストライク",
+        "HYPER_ENERGY": "ハイパーエナジー",
+        "SHIELD_BURN": "シールド焼却",
+        "REVOLUTION_CHANGE": "革命チェンジ",
+        "MEKRAID": "メクレイド",
+        "FRIEND_BURST": "フレンド・バースト",
+        "UNTAP_IN": "タップして出る",
+        "META_COUNTER_PLAY": "メタカウンター",
+        "POWER_ATTACKER": "パワーアタッカー",
+        "G_ZERO": "G・ゼロ",
+        "EX_LIFE": "EXライフ",
+        "MEGA_LAST_BURST": "メガ・ラスト・バースト",
+        "UNBLOCKABLE": "ブロックされない",
+        "NO_CHOICE": "選ばれない",
+        "ATTACKER": "アタッカー",
+        "S_TRIGGER": "S・トリガー",
+        "CANNOT_ATTACK": "攻撃できない",
+        "CANNOT_BLOCK": "ブロックできない",
+        "CANNOT_ATTACK_OR_BLOCK": "攻撃またはブロックできない",
+        "CANNOT_ATTACK_AND_BLOCK": "攻撃もブロックもできない",
+        "CANNOT_LEAVE_BATTLE": "バトルゾーンを離れない",
+        "SUPER_SOUL_X": "超魂X",
+        "TARGET_RESTRICTION": "対象制限",
+        "SPELL_RESTRICTION": "呪文制限",
+        "IGNORE_ABILITY": "能力無視",
+        "TARGET_THIS_CANNOT_SELECT": "このクリーチャーを対象として選択できない",
+        "TARGET_THIS_FORCE_SELECT": "可能ならこのクリーチャーを選択する"
+    },
+    "DELAYED_EFFECT_TRANSLATION": {
+        "AT_END_OF_TURN_DESTROY": "このターンの終わりに、このクリーチャーを破壊する",
+        "AT_END_OF_TURN_RETURN_TO_HAND": "このターンの終わりに、このクリーチャーを手札に戻す",
+        "AT_END_OF_TURN_UNTAP": "このターンの終わりに、このクリーチャーをアンタップする",
+        "AT_START_OF_TURN_DRAW": "次の自分のターンのはじめに、カードを1枚引く",
+        "AT_ATTACK_END_UNTAP": "攻撃の終わりに、このクリーチャーをアンタップする"
+    },
+    "DURATION_TRANSLATION": {
+        "PERMANENT": "常に",
+        "THIS_TURN": "このターン",
+        "UNTIL_END_OF_OPPONENT_TURN": "次の相手のターンの終わりまで",
+        "UNTIL_START_OF_OPPONENT_TURN": "次の相手のターンのはじめまで",
+        "UNTIL_END_OF_YOUR_TURN": "次の自分のターンの終わりまで",
+        "UNTIL_START_OF_YOUR_TURN": "次の自分のターンのはじめまで",
+        "DURING_OPPONENT_TURN": "次の相手のターン中"
+    },
+    "ZONE_JAPANESE": {
+        "HAND": "手札",
+        "DECK": "山札",
+        "DECK_TOP": "山札の上",
+        "DECK_BOTTOM": "山札の下",
+        "BATTLE_ZONE": "バトルゾーン",
+        "MANA_ZONE": "マナゾーン",
+        "SHIELD_ZONE": "シールドゾーン",
+        "GRAVEYARD": "墓地",
+        "BUFFER": "バッファ",
+        "UNDER_CARD": "カードの下"
+    },
+    "CIVILIZATION_JAPANESE": {
+        "LIGHT": "光",
+        "WATER": "水",
+        "DARKNESS": "闇",
+        "FIRE": "火",
+        "NATURE": "自然",
+        "ZERO": "ゼロ",
+        "MULTICOLOR": "多色"
+    },
+    "CARD_TYPE_JAPANESE": {
+        "CREATURE": "クリーチャー",
+        "SPELL": "呪文",
+        "CROSS_GEAR": "クロスギア",
+        "CASTLE": "城",
+        "EVOLUTION_CREATURE": "進化クリーチャー",
+        "NEO_CREATURE": "NEOクリーチャー",
+        "PSYCHIC_CREATURE": "サイキック・クリーチャー",
+        "PSYCHIC_SUPER_CREATURE": "サイキック・スーパー・クリーチャー",
+        "DRAGHEART_CREATURE": "ドラグハート・クリーチャー",
+        "DRAGHEART_WEAPON": "ドラグハート・ウエポン",
+        "DRAGHEART_FORTRESS": "ドラグハート・フォートレス",
+        "AURA": "オーラ",
+        "FIELD": "フィールド",
+        "D2_FIELD": "D2フィールド"
+    },
+    "PHASE_MAP": {
+        "0": "ターン開始",
+        "1": "ドロー",
+        "2": "マナ",
+        "3": "メイン",
+        "4": "攻撃",
+        "5": "ブロック",
+        "6": "ターン終了"
+    },
+    "ACTION_MAP": {
+        "DRAW_CARD": "カードを{value1}枚引く。",
+        "ADD_MANA": "自分の山札の上から{value1}枚をマナゾーンに置く。",
+        "DESTROY": "{target}を{value1}{unit}破壊する。",
+        "TAP": "{target}を{value1}{unit}選び、タップする。",
+        "UNTAP": "{target}を{value1}{unit}選び、アンタップする。",
+        "RETURN_TO_HAND": "{target}を{value1}{unit}選び、手札に戻す。",
+        "SEND_TO_MANA": "{target}を{value1}{unit}選び、マナゾーンに置く。",
+        "MODIFY_POWER": "{target}のパワーを{value1}する。",
+        "BREAK_SHIELD": "相手のシールドを{value1}つブレイクする。",
+        "LOOK_AND_ADD": "自分の山札の上から{value1}枚を見る。その中から{value2}枚を手札に加え、残りを{zone}に置く。",
+        "SEARCH_DECK_BOTTOM": "自分の山札の下から{value1}枚を見る。",
+        "SEARCH_DECK": "自分の山札を見る。その中から{filter}を1枚選び、{zone}に置く。その後、山札をシャッフルする。",
+        "MEKRAID": "メクレイド{value1}",
+        "DISCARD": "手札を{value1}枚捨てる。",
+        "PLAY_FROM_ZONE": "{source_zone}からコスト{value1}以下の{target}をプレイしてもよい。",
+        "COUNT_CARDS": "{filter}の数を数える。",
+        "GET_GAME_STAT": "（{str_val}を参照）",
+        "REVEAL_CARDS": "山札の上から{value1}枚を表向きにする。",
+        "SHUFFLE_DECK": "山札をシャッフルする。",
+        "ADD_SHIELD": "山札の上から{value1}枚をシールド化する。",
+        "SEND_SHIELD_TO_GRAVE": "相手のシールドを{value1}つ選び、墓地に置く。",
+        "SEND_TO_DECK_BOTTOM": "{target}を{value1}枚、山札の下に置く。",
+        "CAST_SPELL": "コストを支払わずに唱える。",
+        "PUT_CREATURE": "{target}を{value1}{unit}バトルゾーンに出す。",
+        "GRANT_KEYWORD": "{target}に「{str_val}」を与える。",
+        "MOVE_CARD": "{target}を{zone}に置く。",
+        "REPLACE_CARD_MOVE": "{target}を{from_zone}に置くかわりに{to_zone}に置く。",
+        "COST_REFERENCE": "",
+        "SUMMON_TOKEN": "「{str_val}」を{value1}体出す。",
+        "RESET_INSTANCE": "{target}の状態をリセットする（アンタップ等）。",
+        "REGISTER_DELAYED_EFFECT": "「{str_val}」の効果を{value1}ターン登録する。",
+        "FRIEND_BURST": "{str_val}のフレンド・バースト",
+        "MOVE_TO_UNDER_CARD": "{target}を{value1}{unit}選び、カードの下に置く。",
+        "SELECT_NUMBER": "数字を1つ選ぶ。",
+        "DECLARE_NUMBER": "{value1}～{value2}の数字を1つ宣言する。",
+        "COST_REDUCTION": "{target}のコストを{value1}少なくする。ただし、コストは0以下にはならない。",
+        "LOOK_TO_BUFFER": "{source_zone}から{value1}枚を見る（バッファへ）。",
+        "REVEAL_TO_BUFFER": "{source_zone}から{value1}枚を表向きにしてバッファに置く。",
+        "SELECT_FROM_BUFFER": "バッファから{value1}枚選ぶ（{filter}）。",
+        "PLAY_FROM_BUFFER": "バッファからプレイする。",
+        "MOVE_BUFFER_TO_ZONE": "見た{filter}{zone}に置く。",
+        "MOVE_BUFFER_REMAIN_TO_ZONE": "残りを{zone}に置く。",
+        "SELECT_OPTION": "{filter}から{value1}枚選ぶ。",
+        "LOCK_SPELL": "相手は呪文を唱えられない。",
+        "SPELL_RESTRICTION": "相手は呪文を唱えられない。",
+        "CANNOT_PUT_CREATURE": "相手はクリーチャーを出せない。",
+        "CANNOT_SUMMON_CREATURE": "相手はクリーチャーを召喚できない。",
+        "PLAYER_CANNOT_ATTACK": "相手は攻撃できない。",
+        "IGNORE_ABILITY": "{filter}の能力を無視する。",
+        "REPLACE_MOVE_CARD": "（置換移動）",
+        "APPLY_MODIFIER": "効果を付与する。",
+        "MEASURE_COUNT": "{target}の数を数える。",
+        "SHIELD_TRIGGER": "S・トリガー",
+        "FLOW": "進行制御: {str_param}",
+        "QUERY": "クエリ発行: {query_mode}",
+        "STAT": "統計更新: {str_val}",
+        "IF": "（条件判定: {condition_detail}）",
+        "IF_ELSE": "（条件分岐: {condition_detail}...）",
+        "ELSE": "（そうでなければ）",
+        "TRANSITION": "{target}を{from_zone}から{to_zone}へ移動する。",
+        "MUTATE": "{target}の状態を変更する。",
+        "ATTACH": "{target}を{base_target}の下に重ねる。",
+        "GAME_RESULT": "ゲームを終了する（{result}）。"
+    },
+    "SPECIAL_EFFECT_TEMPLATES": {
+        "MEKRAID": "メクレイド{use_token}（自分の山札の上から{val2}枚を見る。その中からコスト{use_token}以下のクリーチャーを{count_str}、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）",
+        "FRIEND_BURST": "＜{str_val}＞のフレンド・バースト（このクリーチャーが出た時、自分の他の{str_val}・クリーチャーを1体タップしてもよい。そうしたら、このクリーチャーの呪文側をバトルゾーンに置いたまま、コストを支払わずに唱える。）"
+    },
+    "COMMAND_ALIASES": {
+        "POWER_MOD": "MODIFY_POWER",
+        "MANA_CHARGE": "SEND_TO_MANA",
+        "CHOICE": "SELECT_OPTION"
+    },
+    "TRIGGER_COMPOSITION_TEMPLATES": {
+        "ON_PLAY": {
+            "POST": "{scope_text}の{subject}がバトルゾーンに出た時",
+            "PRE": "{scope_text}の{subject}がバトルゾーンに出る時"
+        },
+        "ON_OTHER_ENTER": {
+            "POST": "{scope_text}の他の{subject}がバトルゾーンに出た時",
+            "PRE": "{scope_text}の他の{subject}がバトルゾーンに出る時"
+        },
+        "ON_CAST_SPELL": {
+            "POST": "{scope_text}の{subject}を唱えた時",
+            "PRE": "{scope_text}の{subject}を唱える時"
+        }
+    },
+    "STAT_KEY_MAP": {
+        "MANA_COUNT": [
+            "マナゾーンのカード",
+            "枚"
+        ],
+        "CREATURE_COUNT": [
+            "クリーチャー",
+            "体"
+        ],
+        "SHIELD_COUNT": [
+            "シールド",
+            "つ"
+        ],
+        "HAND_COUNT": [
+            "手札",
+            "枚"
+        ],
+        "GRAVEYARD_COUNT": [
+            "墓地のカード",
+            "枚"
+        ],
+        "BATTLE_ZONE_COUNT": [
+            "バトルゾーンのカード",
+            "枚"
+        ],
+        "MY_MANA_COUNT": [
+            "自分のマナゾーンのカード",
+            "枚"
+        ],
+        "MY_HAND_COUNT": [
+            "自分の手札",
+            "枚"
+        ],
+        "MY_SHIELD_COUNT": [
+            "自分のシールド",
+            "つ"
+        ],
+        "MY_BATTLE_ZONE_COUNT": [
+            "自分のバトルゾーンのカード",
+            "枚"
+        ],
+        "SUMMON_COUNT_THIS_TURN": [
+            "このターンに召喚したクリーチャー数",
+            "体"
+        ],
+        "DESTROY_COUNT_THIS_TURN": [
+            "このターンに破壊されたクリーチャー数",
+            "体"
+        ],
+        "OPPONENT_MANA_COUNT": [
+            "相手のマナゾーンのカード",
+            "枚"
+        ],
+        "OPPONENT_CREATURE_COUNT": [
+            "相手のクリーチャー",
+            "体"
+        ],
+        "OPPONENT_SHIELD_COUNT": [
+            "相手のシールド",
+            "つ"
+        ],
+        "OPPONENT_HAND_COUNT": [
+            "相手の手札",
+            "枚"
+        ],
+        "OPPONENT_GRAVEYARD_COUNT": [
+            "相手の墓地のカード",
+            "枚"
+        ],
+        "OPPONENT_BATTLE_ZONE_COUNT": [
+            "相手のバトルゾーンのカード",
+            "枚"
+        ],
+        "CARDS_DRAWN_THIS_TURN": [
+            "このターンに引いたカード",
+            "枚"
+        ],
+        "SPELL_CAST_THIS_TURN": [
+            "このターンに唱えた呪文",
+            "回"
+        ],
+        "MANA_CIVILIZATION_COUNT": [
+            "マナゾーンの文明数",
+            ""
+        ],
+        "MANA_SET_THIS_TURN": [
+            "このターンにマナに置かれたカード数",
+            "枚"
+        ],
+        "SHIELD_BREAK_ATTEMPT_THIS_TURN": [
+            "このターンに行われたシールド割りの試行回数",
+            "回"
+        ],
+        "SHIELD_BREAK_RESOLVED_THIS_TURN": [
+            "このターンに実際にシールドが割れた回数",
+            "回"
+        ],
+        "ATTACKED_THIS_TURN": [
+            "このターンに攻撃した回数",
+            "回"
+        ],
+        "MY_ATTACKED_THIS_TURN": [
+            "自分がこのターンに攻撃した回数",
+            "回"
+        ],
+        "OPPONENT_ATTACKED_THIS_TURN": [
+            "相手がこのターンに攻撃した回数",
+            "回"
+        ],
+        "TOTAL_POWER": [
+            "自分のバトルゾーンの合計パワー",
+            ""
+        ],
+        "ALL_TOTAL_POWER": [
+            "バトルゾーンの合計パワー",
+            ""
+        ],
+        "OPPONENT_TOTAL_POWER": [
+            "相手のバトルゾーンの合計パワー",
+            ""
+        ],
+        "MANA_COST_TOTAL": [
+            "マナゾーンの合計コスト",
+            ""
+        ],
+        "GRAVEYARD_COST_TOTAL": [
+            "墓地の合計コスト",
+            ""
+        ],
+        "SHIELD_COST_TOTAL": [
+            "シールドの合計コスト",
+            ""
+        ],
+        "CARDS_IN_BATTLE": [
+            "自分のバトルゾーンのカード",
+            "枚"
+        ],
+        "TOTAL_TAP": [
+            "タップしている自分のカード",
+            "枚"
+        ],
+        "BOARD_COUNT": [
+            "自分の場のカード",
+            "枚"
+        ],
+        "SELF_POWER": [
+            "このクリーチャーのパワー",
+            ""
+        ],
+        "ENEMY_CREATURES": [
+            "相手のクリーチャー",
+            "体"
+        ],
+        "OPPONENT_HAND": [
+            "相手の手札",
+            "枚"
+        ]
+    },
+    "STAT_KEY_ALIASES": {
+        "SPELL_CAST_COUNT_THIS_TURN": "SPELL_CAST_THIS_TURN",
+        "MY_CREATURE_COUNT": "MY_BATTLE_ZONE_COUNT",
+        "OPPONENT_CREATURE_COUNT": "OPPONENT_CREATURE_COUNT",
+        "CARDS_IN_BATTLE": "BATTLE_ZONE_COUNT",
+        "OPPONENT_HAND": "OPPONENT_HAND_COUNT",
+        "ENEMY_CREATURES": "OPPONENT_CREATURE_COUNT"
+    },
+    "INPUT_USAGE_LABELS": {
+        "COST": "コストとして使用",
+        "MAX_COST": "最大コストとして使用",
+        "MIN_COST": "最小コストとして使用",
+        "AMOUNT": "枚数として使用",
+        "COUNT": "枚数として使用",
+        "SELECTION": "選択数として使用",
+        "TARGET_COUNT": "対象数として使用",
+        "POWER": "パワーとして使用",
+        "MAX_POWER": "最大パワーとして使用",
+        "MIN_POWER": "最小パワーとして使用"
+    },
+    "ZONE_MOVE_TEMPLATES": {
+        "BATTLE_ZONE|GRAVEYARD": "{from_z}の{target}を{amount}{unit}{to_z}に置く。",
+        "BATTLE_ZONE|MANA_ZONE": "{from_z}の{target}を{amount}{unit}{to_z}に置く。",
+        "BATTLE_ZONE|HAND": "{from_z}の{target}を{amount}{unit}{to_z}に戻す。",
+        "HAND|MANA_ZONE": "{from_z}の{target}を{amount}{unit}{to_z}に置く。",
+        "DECK|HAND": "{from_z}から{target}を{amount}{unit}選び、{to_z}に加える。",
+        "GRAVEYARD|HAND": "{from_z}の{target}を{amount}{unit}{to_z}に戻す。",
+        "GRAVEYARD|BATTLE_ZONE": "{from_z}の{target}を{amount}{unit}{to_z}に出す。",
+        "DEFAULT": "{target}を{from_z}から{to_z}へ移動する。"
+    },
+    "TRANSITION_ALIASES": {
+        "BATTLE_ZONE|GRAVEYARD": "破壊",
+        "HAND|GRAVEYARD": "捨てる",
+        "BATTLE_ZONE|HAND": "手札に戻す",
+        "DECK|MANA_ZONE": "マナチャージ",
+        "SHIELD_ZONE|GRAVEYARD": "シールド焼却",
+        "BATTLE_ZONE|DECK": "山札に戻す"
+    }
+}

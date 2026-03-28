@@ -15,6 +15,9 @@ class TextGenerationContext:
         self.is_spell: bool = self.card_data.get("type", "CREATURE") == "SPELL"
         self.has_mega_last_burst: bool = self.card_data.get("keywords", {}).get("mega_last_burst", False)
 
+        # Will be set during formatting for context-aware AST input-link resolution
+        self.current_commands_list: Optional[List[Dict[str, Any]]] = None
+
     @property
     def data(self) -> Dict[str, Any]:
         return self.card_data

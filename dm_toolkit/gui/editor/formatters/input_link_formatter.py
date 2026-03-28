@@ -21,11 +21,34 @@ class InputLinkFormatter:
         return "input_value_usage" in val or "input_link" in val
 
     @classmethod
-    def format_input_link_text(cls, command: Dict[str, Any], atype: str) -> str:
-        """Centralized generation of 'その数' or 'その同じ数' phrase based on input linked tokens."""
-        linked_text = cls.resolve_linked_value_text(command)
+    def format_input_link_text(cls, command: Dict[str, Any], atype: str, context_commands: Optional[List[Dict[str, Any]]] = None) -> str:
+        """Centralized generation of 'その数' or 'その同じ数' phrase based on AST input linked tokens."""
+        if context_commands:
+            from dm_toolkit.gui.editor.formatters.input_link_ast import InputLinkASTBuilder
+            input_key = str(command.get("input_value_key") or command.get("input_link") or "")
+            producer = InputLinkASTBuilder.find_producer(context_commands, input_key) if input_key else None
+            if producer:
+                # Use semantic knowledge from the producer node for better text
+                ctype = producer.atype
+                if ctype == "DRAW_CARD":
+                    linked_text = "その引いた枚数と同じ数だけ"
+                elif ctype == "DISCARD":
+                    linked_text = "その捨てた枚数と同じ数だけ"
+                elif ctype in ("DECLARE_NUMBER", "SELECT_NUMBER"):
+                    linked_text = "その選択した数だけ"
+                else:
+                    linked_text = cls.resolve_linked_value_text(command)
+            else:
+                linked_text = cls.resolve_linked_value_text(command)
+        else:
+            linked_text = cls.resolve_linked_value_text(command)
+
         if not linked_text:
             return ""
+
+        # Avoid double "だけ" if semantic knowledge provided it
+        if "だけ" in linked_text:
+            return linked_text
 
         up_to_flag = bool(command.get('up_to', False))
 
@@ -144,22 +167,47 @@ class InputLinkFormatter:
         return f"（{' / '.join(parts)}）"
 
     @classmethod
-    def resolve_linked_value_text(cls, command: Dict[str, Any], default: str = "") -> str:
+    def resolve_linked_value_text(cls, command: Dict[str, Any], default: str = "", context_commands: Optional[List[Dict[str, Any]]] = None) -> str:
         """Resolve the linked value text for a given command.
 
         Returns a string like 'その数' or 'そのコストと同じ' if the command has an input link,
-        otherwise returns the default string provided.
+        otherwise returns the default string provided. AST is used if context_commands is given.
         """
         input_key = str(command.get("input_value_key") or command.get("input_link") or "")
         if not input_key:
             return default
 
-        # Try to resolve a specific label if it was saved during UI editing
+        usage = str(command.get("input_usage") or command.get("input_value_usage") or "").upper()
+
+        # Context-aware resolution using AST
+        if context_commands:
+            from dm_toolkit.gui.editor.formatters.input_link_ast import InputLinkASTBuilder
+            producer = InputLinkASTBuilder.find_producer(context_commands, input_key)
+            if producer:
+                ctype = producer.atype
+
+                # Check how it's used
+                if usage in ("COST", "MAX_COST"):
+                    if ctype == "DRAW_CARD":
+                        return "その引いた枚数と同じコスト以下"
+                    return "そのコスト以下"
+                elif usage in ("POWER", "MAX_POWER"):
+                    if ctype == "DRAW_CARD":
+                        return "その引いた枚数と同じパワー以下"
+                    return "そのパワー以下"
+
+                # Fallbacks if usage is AMOUNT/COUNT or generic
+                if ctype == "DRAW_CARD":
+                    return "その引いた枚数"
+                elif ctype == "DISCARD":
+                    return "その捨てた枚数"
+                elif ctype in ("DECLARE_NUMBER", "SELECT_NUMBER"):
+                    return "その選択した数"
+
+        # Static fallback
         input_label = command.get("_input_value_label", "")
         if not input_label:
              input_label = cls.format_input_source_label(command)
-
-        usage = str(command.get("input_usage") or command.get("input_value_usage") or "").upper()
 
         if usage in ("COST", "MAX_COST"):
              return "そのコスト以下"
