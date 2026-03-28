@@ -37,12 +37,7 @@ class TransitionFormatter(CommandFormatterBase):
                     template = CardTextResources.ZONE_MOVE_TEMPLATES.get(f"{from_z}|*", "")
 
                 if not template:
-                    if to_z == "GRAVEYARD":
-                        template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
-                    elif to_z == "DECK_BOTTOM":
-                        template = "{from_z}の{target}を{amount}{unit}{to_z}に置く。"
-                    else:
-                        template = CardTextResources.ZONE_MOVE_TEMPLATES.get("DEFAULT", "{target}を{from_z}から{to_z}へ移動する。")
+                    template = CardTextResources.ZONE_MOVE_TEMPLATES.get("DEFAULT", "{target}を{from_z}から{to_z}へ移動する。")
 
         # Adjust template for up_to and all
         input_key = command.get('input_value_key') or command.get('input_link')

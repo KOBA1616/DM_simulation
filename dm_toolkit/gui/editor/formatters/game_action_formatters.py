@@ -422,7 +422,7 @@ class SelectOptionFormatter(CommandFormatterBase):
         suffix = '（同じものを選んでもよい）' if optional else ''
         lines.append(f'次の中から{amount}回選ぶ。{suffix}')
 
-        block_text = CommandListFormatter.format_block(options, ctx, bullet="> ")
+        block_text = CommandListFormatter.format_block(options, ctx)
         if block_text:
             lines.append(block_text)
 

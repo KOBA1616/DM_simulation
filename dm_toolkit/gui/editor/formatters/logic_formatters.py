@@ -26,10 +26,17 @@ class IfFormatter(CommandFormatterBase):
         cond_text = LogicFormatterUtils.get_cond_text(command, "もし条件を満たすなら")
 
         if_true_cmds = command.get('if_true', [])
-        actions_text = CommandListFormatter.format_list(if_true_cmds, ctx, joiner="、")
+
+        original_indent = getattr(ctx, 'indent_level', 0)
+        ctx.indent_level = original_indent + 1
+        actions_text = CommandListFormatter.format_list(if_true_cmds, ctx, joiner="、", use_tree=True)
+        ctx.indent_level = original_indent
 
         if actions_text:
-            return f'{cond_text}、{actions_text}'
+            if "\n" in actions_text or (getattr(ctx, 'indent_level', 0) > 0 and len(if_true_cmds) > 1):
+                return f'{cond_text}、次を行う。\n{actions_text}'
+            else:
+                return f'{cond_text}、{actions_text}'
         else:
             return f'（{cond_text}）'
 
@@ -43,16 +50,29 @@ class IfElseFormatter(CommandFormatterBase):
         if_true_cmds = command.get('if_true', [])
         if_false_cmds = command.get('if_false', [])
 
-        true_actions_text = CommandListFormatter.format_list(if_true_cmds, ctx, joiner="、")
-        false_actions_text = CommandListFormatter.format_list(if_false_cmds, ctx, joiner="、")
+        original_indent = getattr(ctx, 'indent_level', 0)
+        ctx.indent_level = original_indent + 1
+        true_actions_text = CommandListFormatter.format_list(if_true_cmds, ctx, joiner="、", use_tree=True)
+        false_actions_text = CommandListFormatter.format_list(if_false_cmds, ctx, joiner="、", use_tree=True)
+        ctx.indent_level = original_indent
 
         result_parts = []
         if true_actions_text:
-            result_parts.append(f'{cond_text}、{true_actions_text}')
+            if "\n" in true_actions_text or len(if_true_cmds) > 1:
+                result_parts.append(f'{cond_text}、次を行う。\n' + true_actions_text)
+            else:
+                result_parts.append(f'{cond_text}、{true_actions_text}')
+
         if false_actions_text:
-            result_parts.append(f'そうでなければ、{false_actions_text}')
+            if "\n" in false_actions_text or len(if_false_cmds) > 1:
+                result_parts.append(f'そうでなければ、次を行う。\n' + false_actions_text)
+            else:
+                result_parts.append(f'そうでなければ、\n' + false_actions_text if '\n' in false_actions_text or false_actions_text.strip().startswith('・') else f'そうでなければ、{false_actions_text}')
 
         if result_parts:
+            # If using tree format, join with newlines instead of circles
+            if "\n" in true_actions_text or "\n" in false_actions_text:
+                return '\n'.join(result_parts)
             return '。'.join(result_parts) + '。'
         else:
             return f'（条件分岐: {cond_text}）'

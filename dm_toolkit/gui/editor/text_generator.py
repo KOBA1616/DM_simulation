@@ -8,7 +8,7 @@ from dm_toolkit.gui.editor.formatters.context import TextGenerationContext, Text
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from dm_toolkit.gui.editor.formatters.keyword_registry import SpecialKeywordRegistry
-from dm_toolkit.gui.editor.formatters.target_scope_resolver import TargetScopeResolver
+from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService as TargetScopeResolver
 import dm_toolkit.gui.editor.formatters.special_keywords # Ensure special keywords are registered
 from dm_toolkit import consts
 from dm_toolkit.consts import Zone, CardType, TimingMode, TargetScope, MAX_COST_VALUE, MAX_POWER_VALUE
@@ -686,6 +686,26 @@ class CardTextGenerator:
             ctx.metadata["discards"] = True
         elif cmd_type == "DESTROY":
             ctx.metadata["destroys"] = True
+        elif cmd_type == "ADD_SHIELD":
+            ctx.metadata["shields_added"] = True
+        elif cmd_type == "BREAK_SHIELD":
+            ctx.metadata["shields_broken"] = True
+        elif cmd_type in ["ADD_MANA", "SEND_TO_MANA", "MANA_CHARGE"]:
+            ctx.metadata["mana_charged"] = True
+        elif cmd_type == "APPLY_COST_MODIFIER":
+            ctx.metadata["costs_reduced"] = True
+        elif cmd_type == "APPLY_MODIFIER":
+            modifier = command_ro.get("modifier", {})
+            if modifier.get("type") == "GRANT_KEYWORD":
+                kw = modifier.get("keyword", "")
+                if kw == "speed_attacker":
+                    ctx.metadata["grants_speed_attacker"] = True
+                elif kw == "blocker":
+                    ctx.metadata["grants_blocker"] = True
+        elif cmd_type == "TRANSITION":
+            to_z = command_ro.get("to_zone", "")
+            if to_z == "HAND":
+                ctx.metadata["returns_to_hand"] = True
 
         formatter_cls = CommandFormatterRegistry.get_formatter(cmd_type)
         if formatter_cls:

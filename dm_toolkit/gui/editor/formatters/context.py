@@ -17,6 +17,7 @@ class TextGenerationContext:
 
         # Will be set during formatting for context-aware AST input-link resolution
         self.current_commands_list: Optional[List[Dict[str, Any]]] = None
+        self.indent_level: int = 0
 
         # Metadata extraction logic
         self.metadata = {
@@ -24,6 +25,13 @@ class TextGenerationContext:
             "draws": False,
             "discards": False,
             "destroys": False,
+            "shields_added": False,
+            "shields_broken": False,
+            "mana_charged": False,
+            "costs_reduced": False,
+            "grants_speed_attacker": False,
+            "grants_blocker": False,
+            "returns_to_hand": False
         }
 
         from dm_toolkit.gui.editor.formatters.error_reporter import ErrorReporter
