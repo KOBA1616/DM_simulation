@@ -1,5 +1,29 @@
 from typing import Dict, Any, Optional
 
+def get_command_amount_with_fallback(command: Dict[str, Any], default: int = 1) -> Any:
+    """
+    Safely extract the amount/quantity from a command dictionary.
+    Prioritizes 'look_count', then uses get_command_amount().
+    If the final extracted value is less than or equal to 0, it falls back to the default value.
+    """
+    amount = command.get("look_count")
+    if amount is not None:
+        try:
+            if int(amount) <= 0:
+                return default
+            return amount
+        except ValueError:
+            return amount
+
+    amount = get_command_amount(command, default=0)
+    try:
+        if int(amount) <= 0:
+            return default
+    except ValueError:
+        pass
+
+    return amount
+
 def get_command_amount(command: Dict[str, Any], default: int = 1) -> Any:
     """
     Safely extract the amount/quantity from a command dictionary.

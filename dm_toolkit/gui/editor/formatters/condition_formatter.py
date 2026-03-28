@@ -3,6 +3,7 @@ from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.formatters.condition_registry import ConditionFormatterRegistry, register_condition, ConditionFormatterStrategy
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
+from dm_toolkit.gui.editor.formatters.text_utils import TextUtils
 
 @register_condition("MANA_ARMED")
 class ManaArmedConditionFormatter(ConditionFormatterStrategy):
@@ -19,9 +20,7 @@ class ShieldCountConditionFormatter(ConditionFormatterStrategy):
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         val = d.get("value", 0)
         op = d.get("op", ">=")
-        op_text = "以上" if op == ">=" else "以下" if op == "<=" else ""
-        if op in ("=", "=="):
-            op_text = ""
+        op_text = TextUtils.format_comparison_operator(op, "")
         return f"自分のシールドが{val}つ{op_text}なら"
 
 @register_condition("CIVILIZATION_MATCH")
@@ -45,18 +44,13 @@ class CompareStatConditionFormatter(ConditionFormatterStrategy):
         op = d.get("op", "=")
         val = d.get("value", 0)
         stat_name, unit = CardTextResources.STAT_KEY_MAP.get(key, (key, ""))
-        if op == ">=":
-            op_text = f"{val}{unit}以上"
-        elif op == "<=":
-            op_text = f"{val}{unit}以下"
-        elif op in ("=", "=="):
-            op_text = f"{val}{unit}"
-        elif op == ">":
-            op_text = f"{val}{unit}より多い"
-        elif op == "<":
-            op_text = f"{val}{unit}より少ない"
-        else:
-            op_text = f"{val}{unit}"
+
+        # `TextUtils.format_comparison_operator` yields things like "1以上".
+        # We need "1枚以上" (val + unit + suffix)
+        op_text = TextUtils.format_comparison_operator(op, f"{val}{unit}")
+        # Custom logic for stat comparisons might expect "より少ない", replace "未満" if it's there.
+        op_text = op_text.replace("未満", "より少ない")
+
         return f"自分の{stat_name}が{op_text}なら"
 
 @register_condition("COMPARE_INPUT")
@@ -82,18 +76,15 @@ class CompareInputConditionFormatter(ConditionFormatterStrategy):
 
         ival = int(val) if isinstance(val, (int, str)) and str(val).isdigit() else val
 
+        # Special logic: for some ops (like >= with an incremented ival), we adapt the value first
         if op == ">=":
-             op_text = f"{ival + 1}以上" if isinstance(ival, int) else f"{val}以上"
-        elif op == "<=":
-             op_text = f"{val}以下"
-        elif op in ("=", "=="):
-             op_text = f"{val}"
-        elif op == ">":
-             op_text = f"{val}より多い"
-        elif op == "<":
-             op_text = f"{val}より少ない"
+             val_str = f"{ival + 1}" if isinstance(ival, int) else f"{val}"
         else:
-             op_text = f"{val}"
+             val_str = f"{val}"
+
+        op_text = TextUtils.format_comparison_operator(op, val_str)
+        op_text = op_text.replace("未満", "より少ない")
+
         return f"{input_desc}が{op_text}なら"
 
 @register_condition("PLAYED_WITHOUT_MANA_TARGET")
@@ -147,17 +138,8 @@ class CardsMatchingFilterConditionFormatter(ConditionFormatterStrategy):
         else:
             unit = "枚"
 
-        op_text = ""
-        if op == ">=":
-            op_text = f"{count}{unit}以上"
-        elif op == "<=":
-            op_text = f"{count}{unit}以下"
-        elif op in ("=", "=="):
-            op_text = f"{count}{unit}"
-        elif op == ">":
-            op_text = f"{count}{unit}より多く"
-        elif op == "<":
-            op_text = f"{count}{unit}未満"
+        op_text = TextUtils.format_comparison_operator(op, f"{count}{unit}")
+        op_text = op_text.replace("より多い", "より多く")
 
         verb = "いる" if unit == "体" else "ある"
 

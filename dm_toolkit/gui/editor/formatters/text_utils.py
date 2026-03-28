@@ -1,8 +1,25 @@
-from typing import List
+from typing import List, Any
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 
 class TextUtils:
     """Utility class for handling common Japanese punctuation and verb conjugations."""
+
+    @staticmethod
+    def format_comparison_operator(op: str, value: Any) -> str:
+        """
+        Formats a comparison operator and value into Japanese text.
+        """
+        if op == ">=":
+            return f"{value}以上"
+        elif op == "<=":
+            return f"{value}以下"
+        elif op in ("=", "=="):
+            return f"{value}"
+        elif op == ">":
+            return f"{value}より多い"
+        elif op == "<":
+            return f"{value}未満"
+        return f"{value}"
 
     @staticmethod
     def apply_conjugation(text: str, optional: bool = False) -> str:

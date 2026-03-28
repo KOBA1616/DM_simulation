@@ -11,6 +11,12 @@ from dm_toolkit.gui.i18n import tr
 @register_formatter("TRANSITION")
 class TransitionFormatter(CommandFormatterBase):
     @classmethod
+    def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
+        to_z = command.get("to_zone", "")
+        if to_z == "HAND":
+            ctx.metadata["returns_to_hand"] = True
+
+    @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         from_z = CardTextResources.normalize_zone_name(command.get("from_zone", ""))
         to_z = CardTextResources.normalize_zone_name(command.get("to_zone", ""))

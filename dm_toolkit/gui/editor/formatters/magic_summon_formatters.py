@@ -92,6 +92,10 @@ class PlayFromBufferFormatter(CommandFormatterBase):
 @register_formatter("ADD_MANA")
 class AddManaFormatter(CommandFormatterBase):
     @classmethod
+    def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
+        ctx.metadata["mana_charged"] = True
+
+    @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         val1 = get_command_amount(command, default=0)
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator

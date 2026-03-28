@@ -283,6 +283,10 @@ class CardTextGenerator:
 
         if cond_text and not cond_text.endswith("、"):
             cond_text += "、"
+
+        from dm_toolkit.gui.editor.formatters.modifier_formatters import ModifierFormatterRegistry
+        if mtype:
+            ModifierFormatterRegistry.update_metadata(mtype, modifier, ctx)
         
         # Build scope prefix（SCALEが SELF/OPPONENTの場合）
         scope_prefix = cls._get_scope_prefix(scope)
@@ -677,38 +681,10 @@ class CardTextGenerator:
         from dm_toolkit.gui.editor.formatters.command_registry import CommandFormatterRegistry
         import dm_toolkit.gui.editor.formatters # Initialize registry
 
-        # Metadata extraction
-        if cmd_type == "SELECT_TARGET":
-            ctx.metadata["targets"] = True
-        elif cmd_type in ["DRAW", "DRAW_CARD"]:
-            ctx.metadata["draws"] = True
-        elif cmd_type == "DISCARD":
-            ctx.metadata["discards"] = True
-        elif cmd_type == "DESTROY":
-            ctx.metadata["destroys"] = True
-        elif cmd_type == "ADD_SHIELD":
-            ctx.metadata["shields_added"] = True
-        elif cmd_type == "BREAK_SHIELD":
-            ctx.metadata["shields_broken"] = True
-        elif cmd_type in ["ADD_MANA", "SEND_TO_MANA", "MANA_CHARGE"]:
-            ctx.metadata["mana_charged"] = True
-        elif cmd_type == "APPLY_COST_MODIFIER":
-            ctx.metadata["costs_reduced"] = True
-        elif cmd_type == "APPLY_MODIFIER":
-            modifier = command_ro.get("modifier", {})
-            if modifier.get("type") == "GRANT_KEYWORD":
-                kw = modifier.get("keyword", "")
-                if kw == "speed_attacker":
-                    ctx.metadata["grants_speed_attacker"] = True
-                elif kw == "blocker":
-                    ctx.metadata["grants_blocker"] = True
-        elif cmd_type == "TRANSITION":
-            to_z = command_ro.get("to_zone", "")
-            if to_z == "HAND":
-                ctx.metadata["returns_to_hand"] = True
-
         formatter_cls = CommandFormatterRegistry.get_formatter(cmd_type)
         if formatter_cls:
+            if hasattr(formatter_cls, "update_metadata"):
+                formatter_cls.update_metadata(command_ro, ctx)
             # The formatter returns the template or finalized text.
             formatted_text = formatter_cls.format_with_optional(command_ro, ctx)
             return formatted_text
@@ -725,6 +701,8 @@ class CardTextGenerator:
         cmd_type = CardTextResources.normalize_command_alias(cmd_type)
         formatter_cls = CommandFormatterRegistry.get_formatter(cmd_type)
         if formatter_cls:
+            if hasattr(formatter_cls, "update_metadata"):
+                formatter_cls.update_metadata(command_ro, ctx)
             # Re-try with normalized alias.
             formatted_text = formatter_cls.format_with_optional(command_ro, ctx)
             return formatted_text

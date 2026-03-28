@@ -9,6 +9,11 @@ class ModifierFormatterBase:
 
 class CostModifierFormatter(ModifierFormatterBase):
     @classmethod
+    def update_metadata(cls, command: Dict[str, Any], ctx: Any) -> None:
+        if ctx:
+            ctx.metadata["costs_reduced"] = True
+
+    @classmethod
     def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], text_gen_cls: Any, ctx: Any = None) -> str:
         if not isinstance(modifier, dict):
             if value > 0:
@@ -69,6 +74,12 @@ class AddRestrictionFormatter(ModifierFormatterBase):
 
 class ModifierFormatterRegistry:
     _registry: Dict[str, Type[ModifierFormatterBase]] = {}
+
+    @classmethod
+    def update_metadata(cls, mtype: str, command: Dict[str, Any], ctx: Any) -> None:
+        formatter = cls.get_formatter(mtype)
+        if formatter and hasattr(formatter, "update_metadata"):
+            formatter.update_metadata(command, ctx)
 
     @classmethod
     def register(cls, mtype: str, formatter: Type[ModifierFormatterBase]) -> None:
