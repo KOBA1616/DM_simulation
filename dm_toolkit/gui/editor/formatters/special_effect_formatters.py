@@ -48,6 +48,16 @@ class FriendBurstFormatter(CommandFormatterBase):
 @register_formatter("APPLY_MODIFIER")
 class ApplyModifierFormatter(CommandFormatterBase):
     @classmethod
+    def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
+        modifier = command.get("modifier", {})
+        if modifier.get("type") == "GRANT_KEYWORD":
+            kw = modifier.get("keyword", "")
+            if kw == "speed_attacker":
+                ctx.metadata["grants_speed_attacker"] = True
+            elif kw == "blocker":
+                ctx.metadata["grants_blocker"] = True
+
+    @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
         target_str, unit = cls._resolve_target(command, ctx.is_spell)

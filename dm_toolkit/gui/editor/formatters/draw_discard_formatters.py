@@ -9,6 +9,10 @@ from dm_toolkit.gui.editor.formatters.text_utils import TextUtils
 @register_formatter("DRAW_CARD")
 class DrawCardFormatter(CommandFormatterBase):
     @classmethod
+    def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
+        ctx.metadata["draws"] = True
+
+    @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         up_to = bool(command.get('up_to', False))
         template = CardTextResources.ACTION_MAP.get("DRAW_CARD", "")
@@ -31,6 +35,10 @@ class DrawCardFormatter(CommandFormatterBase):
 
 @register_formatter("DISCARD")
 class DiscardFormatter(CommandFormatterBase):
+    @classmethod
+    def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
+        ctx.metadata["discards"] = True
+
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         scope = command.get("target_group") or command.get("scope", "NONE")
