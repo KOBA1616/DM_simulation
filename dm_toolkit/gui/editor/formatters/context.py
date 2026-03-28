@@ -6,9 +6,10 @@ class TextGenerationContext:
     Replaces the need to pass `is_spell`, `card_mega_last_burst`, and `sample` flags
     everywhere.
     """
-    def __init__(self, card_data: Dict[str, Any], sample: Optional[List[Any]] = None):
+    def __init__(self, card_data: Dict[str, Any], sample: Optional[List[Any]] = None, evaluated_stats: Optional[Dict[str, Any]] = None):
         self.card_data: Dict[str, Any] = card_data or {}
         self.sample: Optional[List[Any]] = sample
+        self.evaluated_stats: Dict[str, Any] = evaluated_stats or {}
 
         # Derived properties
         self.is_spell: bool = self.card_data.get("type", "CREATURE") == "SPELL"

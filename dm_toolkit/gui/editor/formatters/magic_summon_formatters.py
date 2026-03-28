@@ -10,6 +10,26 @@ from dm_toolkit.consts import MAX_COST_VALUE
 @register_formatter("CAST_SPELL")
 class CastSpellFormatter(CommandFormatterBase):
     @classmethod
+    def _format_cast_spell_cost_phrase(cls, action: Dict[str, Any]) -> str:
+        """Return the cost phrase used by CAST_SPELL preview text."""
+        play_flags = action.get("play_flags")
+        explicit_cost = action.get("cost")
+
+        is_free = True
+        if isinstance(play_flags, bool):
+            is_free = play_flags
+        elif isinstance(play_flags, list):
+            is_free = "FREE" in play_flags or "COST_FREE" in play_flags
+        elif explicit_cost not in (None, 0):
+            is_free = False
+
+        if is_free:
+            return "コストを支払わずに唱える"
+        if isinstance(explicit_cost, int) and explicit_cost > 0:
+            return f"コスト{explicit_cost}を支払って唱える"
+        return "コストを支払って唱える"
+
+    @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
 
@@ -22,7 +42,7 @@ class CastSpellFormatter(CommandFormatterBase):
 
         is_mega_last_burst = action.get("is_mega_last_burst", False) or action.get("mega_last_burst", False) or ctx.has_mega_last_burst
         mega_burst_prefix = "このクリーチャーがバトルゾーンから離れて、" if is_mega_last_burst else ""
-        cast_phrase = CardTextGenerator._format_cast_spell_cost_phrase(action)
+        cast_phrase = cls._format_cast_spell_cost_phrase(action)
 
         input_usage = str(action.get("input_value_usage") or action.get("input_usage") or "").upper()
 
