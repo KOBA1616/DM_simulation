@@ -48,7 +48,7 @@ def get_condition_form_fields(cond_type: str):
 TARGET_SCOPES = TARGET_SCOPES
 
 # Use `DURATION_TYPES` from consts as the canonical duration options.
-DURATION_OPTIONS = DURATION_TYPES
+
 
 def register_all_schemas():
     """
@@ -208,7 +208,7 @@ def register_all_schemas():
         FieldSchema("mutation_kind", tr("Mutation Type"), FieldType.SELECT, options=MUTATION_KINDS_FOR_MUTATE),
         FieldSchema("amount", tr("Value (Power)"), FieldType.INT, default=0),
         FieldSchema("str_param", tr("Extra Param"), FieldType.STRING),
-        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_TYPES),
         f_links_in
     ]))
 
@@ -219,7 +219,7 @@ def register_all_schemas():
         FieldSchema("explicit_self", tr("This Card"), FieldType.BOOL, default=False),
         # Keyword stored in str_val for text generation compatibility
         FieldSchema("str_val", tr("Keyword"), FieldType.SELECT, options=MUTATION_TYPES, default=None),
-        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS, default=None),
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_TYPES, default=None),
         # 再発防止: amount=0 は「すべて」，amount>0 は「N体選び」。widget_hint="hidden" は削除して UI から設定可能にする。
         FieldSchema("amount", tr("Count (0 = all)"), FieldType.INT, default=0, min_value=0),
         f_links_in
@@ -231,7 +231,7 @@ def register_all_schemas():
         f_filter,
         FieldSchema("str_param", tr("Effect ID"), FieldType.SELECT, options=APPLY_MODIFIER_OPTIONS),
         FieldSchema("amount", tr("Value"), FieldType.INT, default=1),
-        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_TYPES),
         f_links_in
     ]))
 
@@ -386,36 +386,36 @@ def register_all_schemas():
     ]))
 
     # Others
-    # 再発防止: 制限コマンドの持続期間は APPLY_MODIFIER と同様 SELECT 式 (DURATION_OPTIONS) で統一する。
+    # 再発防止: 制限コマンドの持続期間は APPLY_MODIFIER と同様 SELECT 式 (DURATION_TYPES) で統一する。
     #   amount (INT) は引数の混入を招くため廃止。duration フィールド単一に統一。
     #   SPELL_RESTRICTION のコスト制限は f_filter の Stats Filter 内の exact_cost デ 指定する。
     register_schema(CommandSchema("LOCK_SPELL", [
         f_target, # Target player
         f_filter,
-        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_TYPES)
     ]))
 
     # Player Restrictions
     register_schema(CommandSchema("SPELL_RESTRICTION", [
         f_target,
         f_filter,  # Stats Filter 内の exact_cost / min_cost / max_cost で射程コストを指定可能
-        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_TYPES),
         f_links_in
     ]))
     register_schema(CommandSchema("CANNOT_PUT_CREATURE", [
         f_target,
         f_filter,
-        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_TYPES)
     ]))
     register_schema(CommandSchema("CANNOT_SUMMON_CREATURE", [
         f_target,
         f_filter,
-        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_TYPES)
     ]))
     register_schema(CommandSchema("PLAYER_CANNOT_ATTACK", [
         f_target,
         f_filter,
-        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS)
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_TYPES)
     ]))
 
     # Ability Ignore
@@ -424,7 +424,7 @@ def register_all_schemas():
     register_schema(CommandSchema("IGNORE_ABILITY", [
         f_target,
         f_filter,
-        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_OPTIONS),
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_TYPES),
         f_links_in
     ]))
 
