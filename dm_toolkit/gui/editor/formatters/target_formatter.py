@@ -2,7 +2,7 @@ from typing import Dict, Any, Tuple
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
-from dm_toolkit.gui.editor.formatters.utils import is_input_linked
+from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from dm_toolkit.gui.editor.formatters.target_scope_resolver import TargetScopeResolver
 from dm_toolkit.consts import Zone, CardType, TimingMode, TargetScope, MAX_COST_VALUE, MAX_POWER_VALUE
 
@@ -129,9 +129,9 @@ class TargetFormatter:
             min_cost = filter_def.get("min_cost", 0)
             max_cost = filter_def.get("max_cost", MAX_COST_VALUE)
 
-            if is_input_linked(min_cost, usage="MIN_COST") or (has_input_key and input_usage == "MIN_COST"):
+            if InputLinkFormatter.is_input_linked(min_cost, usage="MIN_COST") or (has_input_key and input_usage == "MIN_COST"):
                 adjectives += "コストその数以上の"
-            elif is_input_linked(max_cost, usage="MAX_COST") or (has_input_key and input_usage == "MAX_COST"):
+            elif InputLinkFormatter.is_input_linked(max_cost, usage="MAX_COST") or (has_input_key and input_usage == "MAX_COST"):
                 adjectives += "コストその数以下の"
             else:
                 cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
@@ -142,9 +142,9 @@ class TargetFormatter:
         min_power = filter_def.get("min_power", 0)
         max_power = filter_def.get("max_power", MAX_POWER_VALUE)
 
-        if is_input_linked(min_power, usage="MIN_POWER") or (has_input_key and input_usage == "MIN_POWER"):
+        if InputLinkFormatter.is_input_linked(min_power, usage="MIN_POWER") or (has_input_key and input_usage == "MIN_POWER"):
             adjectives += "パワーその数以上の"
-        elif is_input_linked(max_power, usage="MAX_POWER") or (has_input_key and input_usage == "MAX_POWER"):
+        elif InputLinkFormatter.is_input_linked(max_power, usage="MAX_POWER") or (has_input_key and input_usage == "MAX_POWER"):
             adjectives += "パワーその数以下の"
         else:
             power_text = FilterTextFormatter.format_range_text(min_power, max_power, unit="パワー", min_usage="MIN_POWER", max_usage="MAX_POWER", linked_token="その数")

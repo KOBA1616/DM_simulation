@@ -2,7 +2,7 @@ from typing import Dict, Any, List
 from dm_toolkit.gui.editor.formatters.keyword_registry import SpecialKeywordFormatterBase, register_special_keyword
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.consts import MAX_COST_VALUE
-from dm_toolkit.gui.editor.formatters.utils import is_input_linked
+from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 
 @register_special_keyword("revolution_change")
 class RevolutionChangeFormatter(SpecialKeywordFormatterBase):
@@ -25,9 +25,9 @@ class RevolutionChangeFormatter(SpecialKeywordFormatterBase):
             parts.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
         min_cost = cond.get("min_cost", 0)
         max_cost = cond.get("max_cost", MAX_COST_VALUE)
-        if is_input_linked(min_cost):
+        if InputLinkFormatter.is_input_linked(min_cost):
             parts.append("コストその数以上")
-        elif is_input_linked(max_cost):
+        elif InputLinkFormatter.is_input_linked(max_cost):
             parts.append("コストその数以下")
         else:
             if isinstance(min_cost, int) and isinstance(max_cost, int):
