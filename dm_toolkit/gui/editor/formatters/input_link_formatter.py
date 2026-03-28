@@ -6,6 +6,28 @@ class InputLinkFormatter:
     """Formatter for resolving and generating text related to input variable linking."""
 
     @classmethod
+    def format_input_link_text(cls, command: Dict[str, Any], atype: str) -> str:
+        """Centralized generation of 'その数' or 'その同じ数' phrase based on input linked tokens."""
+        linked_text = cls.resolve_linked_value_text(command)
+        if not linked_text:
+            return ""
+
+        up_to_flag = bool(command.get('up_to', False))
+
+        # When an input value defines the count of targets to affect:
+        if atype in ("DESTROY", "TAP", "UNTAP", "RETURN_TO_HAND", "SEND_TO_MANA"):
+            if up_to_flag:
+                if atype == "DESTROY":
+                    return "その同じ数だけまで選び、"
+                return "その同じ数だけまで選び、"
+            else:
+                if atype == "DESTROY":
+                    return "その同じ数だけ"
+                return "その同じ数だけ選び、"
+
+        return "その数"
+
+    @classmethod
     def format_input_usage_label(cls, usage: Any) -> str:
         """Return a short label indicating how an input value is used."""
         if usage is None:

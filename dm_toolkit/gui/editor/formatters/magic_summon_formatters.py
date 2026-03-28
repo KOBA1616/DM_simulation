@@ -45,15 +45,7 @@ class CastSpellFormatter(CommandFormatterBase):
 
             zone_phrase = ""
             if zones:
-                zone_names = []
-                for z in zones:
-                    if z == "HAND": zone_names.append("手札")
-                    elif z == "GRAVEYARD": zone_names.append("墓地")
-                    elif z == "MANA": zone_names.append("マナゾーン")
-                    elif z == "DECK": zone_names.append("山札")
-                    elif z == "SHIELD": zone_names.append("シールドゾーン")
-                    else: zone_names.append(CardTextResources.get_zone_text(z))
-                zone_phrase = "、または".join(zone_names) + "から"
+                zone_phrase = CardTextResources.format_zones_list(zones) + "から"
 
             val1 = action.get("value1", 0)
             if not val1 and "count" in temp_filter:
