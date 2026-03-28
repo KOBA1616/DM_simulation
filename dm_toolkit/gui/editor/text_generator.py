@@ -311,8 +311,8 @@ class CardTextGenerator:
         if scope == "NONE" and not filter_def:
             target_str = "このクリーチャー"
         else:
-            from dm_toolkit.gui.editor.formatters.target_formatter import TargetFormatter
-            target_str = TargetFormatter.format_modifier_target(effective_filter) if effective_filter else "対象"
+            from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
+            target_str = TargetResolutionService.format_modifier_target(effective_filter) if effective_filter else "対象"
         
         # Avoid redundancy like "自身のこのクリーチャー"
         if scope == "NONE" and target_str == "このクリーチャー":
@@ -729,10 +729,11 @@ class CardTextGenerator:
     def _resolve_target(cls, action: Dict[str, Any], is_spell: bool = False) -> Tuple[str, str]:
         """
         Attempt to describe the target based on scope, filter, etc.
-        Delegates to TargetFormatter for logic extraction.
+        Delegates to TargetResolutionService for logic extraction.
         Returns (target_description, unit_counter)
         """
-        return TargetFormatter.format_target(action, is_spell)
+        from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
+        return TargetResolutionService.format_target(action, is_spell)
 
     @classmethod
     def _merge_action_texts(cls, raw_items: List[Dict[str, Any]], formatted_texts: List[str]) -> str:

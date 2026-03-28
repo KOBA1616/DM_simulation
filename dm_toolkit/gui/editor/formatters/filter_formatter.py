@@ -2,7 +2,7 @@ from typing import Dict, Any, List, Optional
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-from dm_toolkit.gui.editor.formatters.target_scope_resolver import TargetScopeResolver
+from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
 from dm_toolkit import consts
 
 class FilterTextFormatter:
@@ -51,11 +51,11 @@ class FilterTextFormatter:
         if not scope or scope == "NONE" or scope == "ALL":
             return text
 
-        scope_text = TargetScopeResolver.resolve_prefix(scope)
+        scope_text = TargetResolutionService.resolve_prefix(scope)
         if not scope_text:
             return text
 
-        noun = TargetScopeResolver.resolve_noun(scope)
+        noun = TargetResolutionService.resolve_noun(scope)
 
         scope_variants = []
         if noun:

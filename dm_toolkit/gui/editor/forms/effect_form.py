@@ -457,9 +457,9 @@ class EffectEditForm(BaseEditForm):
                 return
             
             # Import TargetFormatter for description generation
-            from dm_toolkit.gui.editor.formatters.target_formatter import TargetFormatter
+            from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
             
-            desc = TargetFormatter.format_modifier_target(trigger_filter)
+            desc = TargetResolutionService.format_modifier_target(trigger_filter)
             if desc and desc != "対象" and desc != "このクリーチャー":
                 self.trigger_filter_desc_label.setText(tr("📋 条件: {desc}").format(desc=desc))
             else:

@@ -47,7 +47,7 @@ class CastSpellFormatter(CommandFormatterBase):
         input_usage = str(action.get("input_value_usage") or action.get("input_usage") or "").upper()
 
         usage_label_suffix = ""
-        linked_text = InputLinkFormatter.resolve_linked_value_text(action)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(action, context_commands=ctx.current_commands_list)
         if linked_text and input_usage:
             label = InputLinkFormatter.format_input_usage_label(input_usage)
             if label:
@@ -96,7 +96,7 @@ class AddManaFormatter(CommandFormatterBase):
         val1 = get_command_amount(command, default=0)
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
 
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
         if linked_text:
              return f"自分の山札の上から、{linked_text}だけタップしてマナゾーンに置く。"
         return f"自分の山札の上から{val1}枚をタップしてマナゾーンに置く。"

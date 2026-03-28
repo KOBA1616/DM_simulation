@@ -202,7 +202,7 @@ class ReplaceCardMoveFormatter(CommandFormatterBase):
         is_self_ref = scope == "SELF"
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
 
         # Base replacement template
         t = CardTextResources.ZONE_MOVE_TEMPLATES.get("REPLACE_CARD_MOVE", "{target}を{from_zone}に置くかわりに{to_zone}に置く。")

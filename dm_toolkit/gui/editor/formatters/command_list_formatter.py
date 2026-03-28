@@ -10,12 +10,20 @@ class CommandListFormatter:
         Formats a list of commands and joins them with the specified joiner.
         """
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+
+        # Save old list for nested restorations, and set the new context
+        old_list = ctx.current_commands_list
+        ctx.current_commands_list = commands
+
         texts = []
         for cmd in commands:
             if isinstance(cmd, dict):
                 cmd_text = CardTextGenerator._format_command(cmd, ctx)
                 if cmd_text:
                     texts.append(cmd_text)
+
+        # Restore old context
+        ctx.current_commands_list = old_list
         return joiner.join(texts)
 
     @staticmethod

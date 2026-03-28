@@ -22,7 +22,7 @@ class DrawCardFormatter(CommandFormatterBase):
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
         if linked_text:
             return template.replace("{value1}", linked_text)
 
@@ -47,7 +47,7 @@ class DiscardFormatter(CommandFormatterBase):
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
         if linked_text:
              cnt = linked_text
              unit = "枚" # assuming cards

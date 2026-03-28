@@ -21,7 +21,7 @@ class MekraidFormatter(CommandFormatterBase):
         input_usage = command.get('input_value_usage') or command.get('input_usage')
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
 
         use_token = str(val1)
         if linked_text and input_usage == 'MAX_COST':
@@ -56,7 +56,7 @@ class ApplyModifierFormatter(CommandFormatterBase):
         input_usage = command.get('input_value_usage') or command.get('input_usage')
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
         duration_key = command.get('duration') or command.get('input_link', '') or command.get('input_value_key', '')
 
         is_target_linked = bool(linked_text) and (not input_usage or input_usage == 'TARGET')
@@ -94,7 +94,7 @@ class AddKeywordFormatter(CommandFormatterBase):
         input_usage = command.get('input_value_usage') or command.get('input_usage')
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
         duration_key = command.get('duration') or command.get('input_link', '') or command.get('input_value_key', '')
 
         is_target_linked = bool(linked_text) and (not input_usage or input_usage == 'TARGET')
@@ -186,7 +186,7 @@ class MutateFormatter(CommandFormatterBase):
         input_usage = command.get('input_value_usage') or command.get('input_usage')
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
         duration_key = command.get('duration') or command.get('input_link', '') or command.get('input_value_key', '')
 
         is_target_linked = bool(linked_text) and (not input_usage or input_usage == 'TARGET')
