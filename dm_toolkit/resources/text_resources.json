@@ -290,6 +290,10 @@
     "ON_CAST_SPELL": {
       "POST": "{scope_text}の{subject}を唱えた時",
       "PRE": "{scope_text}の{subject}を唱える時"
+    },
+    "ON_SHIELD_ADD": {
+      "POST": "{subject}が{scope_text}のシールドゾーンに置かれた時",
+      "PRE": "{subject}が{scope_text}のシールドゾーンに置かれる時"
     }
   },
   "STAT_KEY_MAP": {
