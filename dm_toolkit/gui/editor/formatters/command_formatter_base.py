@@ -24,10 +24,25 @@ class CommandFormatterBase:
         optional = bool(command.get("optional", False))
         return TextUtils.apply_conjugation(text, optional)
 
+
     @classmethod
-    def _resolve_target(cls, action: Dict[str, Any], is_spell: bool = False, default_self_noun: str = "", **kwargs) -> tuple[str, str]:
+    def _resolve_player_noun(cls, command: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
+        """
+        Helper to centrally resolve the player noun for a command.
+        Uses target_group or scope, falls back to standard target resolution.
+        """
+        from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
+        scope = command.get("target_group") or command.get("scope", "NONE")
+        noun = TargetResolutionService.resolve_noun(scope)
+        if noun:
+            return noun
+        target_str, _ = cls._resolve_target(command, ctx)
+        return target_str
+
+    @classmethod
+    def _resolve_target(cls, action: Dict[str, Any], ctx: TextGenerationContext = None, default_self_noun: str = "", **kwargs) -> tuple[str, str]:
         """
         Helper to delegate target resolution to TargetFormatter.
         """
         from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
-        return TargetResolutionService.format_target(action, is_spell, default_self_noun=default_self_noun, **kwargs)
+        return TargetResolutionService.format_target(action, ctx, default_self_noun=default_self_noun, **kwargs)

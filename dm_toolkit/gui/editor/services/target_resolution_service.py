@@ -39,11 +39,12 @@ class TargetResolutionService:
         return text if text else default
 
     @classmethod
-    def format_target(cls, action: Dict[str, Any], is_spell: bool = False, omit_cost: bool = False, default_self_noun: str = "") -> Tuple[str, str]:
+    def format_target(cls, action: Dict[str, Any], ctx: "TextGenerationContext" = None, omit_cost: bool = False, default_self_noun: str = "") -> Tuple[str, str]:
         """
         Attempt to describe the target based on scope, filter, etc.
         Returns (target_description, unit_counter)
         """
+        is_spell = getattr(ctx, "is_spell", False) if ctx else False
         scope = cls.resolve_action_scope(action)
         filter_def = action.get('target_filter') or {}
         if not isinstance(filter_def, dict):
@@ -344,38 +345,52 @@ class TargetResolutionService:
 
     @classmethod
     def _determine_noun(cls, zones: list, types: list, atype: str) -> Tuple[str, str, str]:
+        # Data-driven priority mapping for zones
+        ZONE_PRIORITY = [
+            (Zone.BATTLE_ZONE.value, "バトルゾーン"),
+            (Zone.MANA_ZONE.value, "マナゾーン"),
+            (Zone.HAND.value, "手札"),
+            (Zone.SHIELD_ZONE.value, "シールドゾーン"),
+            (Zone.GRAVEYARD.value, "墓地"),
+            (Zone.DECK.value, "山札")
+        ]
+
+        # Data-driven priority mapping for card types -> (noun, unit)
+        TYPE_PRIORITY = [
+            (CardType.ELEMENT.value, "エレメント", "体"),
+            (CardType.CREATURE.value, "クリーチャー", "体"),
+            (CardType.SPELL.value, "呪文", "枚"),
+            ("CROSS_GEAR", "クロスギア", "枚"),
+            (CardType.CARD.value, "カード", "枚")
+        ]
+
         zone_noun = ""
         type_noun = "カード"
         unit = "枚"
 
-        if Zone.BATTLE_ZONE.value in zones: zone_noun = "バトルゾーン"
-        elif Zone.MANA_ZONE.value in zones: zone_noun = "マナゾーン"
-        elif Zone.HAND.value in zones: zone_noun = "手札"
-        elif Zone.SHIELD_ZONE.value in zones: zone_noun = "シールドゾーン"
-        elif Zone.GRAVEYARD.value in zones: zone_noun = "墓地"
-        elif Zone.DECK.value in zones: zone_noun = "山札"
+        # Resolve primary zone
+        for z_val, z_noun in ZONE_PRIORITY:
+            if z_val in zones:
+                zone_noun = z_noun
+                break
 
-        if CardType.ELEMENT.value in types:
-            type_noun = "エレメント"
-            unit = "体"
-        elif CardType.CREATURE.value in types:
-            type_noun = "クリーチャー"
-            unit = "体"
-        elif CardType.SPELL.value in types:
-            type_noun = "呪文"
-        elif "CROSS_GEAR" in types:
-            type_noun = "クロスギア"
-        elif CardType.CARD.value in types:
-            type_noun = "カード"
-            unit = "枚"
-        elif len(types) > 1:
-            type_words = []
-            if CardType.CREATURE.value in types: type_words.append("クリーチャー")
-            if CardType.SPELL.value in types: type_words.append("呪文")
-            if CardType.ELEMENT.value in types: type_words.append("エレメント")
-            if "CROSS_GEAR" in types: type_words.append("クロスギア")
-            if type_words: type_noun = "/".join(type_words)
+        # Resolve primary types
+        matched_types = []
+        for t_val, t_noun, t_unit in TYPE_PRIORITY:
+            if t_val in types:
+                matched_types.append((t_noun, t_unit))
 
+        if matched_types:
+            if len(types) > 1 and len(matched_types) > 1:
+                # E.g. "クリーチャー/呪文"
+                type_noun = "/".join([noun for noun, _ in matched_types])
+                # Unit defaults to "枚" for mixed unless they are all "体"
+                if all(u == "体" for _, u in matched_types):
+                    unit = "体"
+            else:
+                type_noun, unit = matched_types[0]
+
+        # Contextual Overrides
         if Zone.BATTLE_ZONE.value in zones:
             if CardType.CREATURE.value in types or not types:
                 type_noun = "クリーチャー"

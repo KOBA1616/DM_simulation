@@ -570,14 +570,14 @@ class CardTextGenerator:
         return f"1{unit}"
 
     @classmethod
-    def _resolve_target(cls, action: Dict[str, Any], is_spell: bool = False) -> Tuple[str, str]:
+    def _resolve_target(cls, action: Dict[str, Any], ctx: "TextGenerationContext" = None) -> Tuple[str, str]:
         """
         Attempt to describe the target based on scope, filter, etc.
         Delegates to TargetResolutionService for logic extraction.
         Returns (target_description, unit_counter)
         """
         from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
-        return TargetResolutionService.format_target(action, is_spell)
+        return TargetResolutionService.format_target(action, ctx)
 
     @classmethod
     def _merge_action_texts(cls, raw_items: List[Dict[str, Any]], formatted_texts: List[str]) -> str:
