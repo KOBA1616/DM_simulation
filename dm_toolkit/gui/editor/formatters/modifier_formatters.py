@@ -1,5 +1,6 @@
 from typing import Dict, Any, Callable, Type
 from dm_toolkit.gui.editor.text_resources import CardTextResources
+from dm_toolkit.gui.editor.formatters.metadata_flags import SemanticMetadataFlags
 from dm_toolkit.gui.i18n import tr
 
 class ModifierFormatterBase:
@@ -11,7 +12,7 @@ class CostModifierFormatter(ModifierFormatterBase):
     @classmethod
     def update_metadata(cls, command: Dict[str, Any], ctx: Any) -> None:
         if ctx:
-            ctx.metadata["costs_reduced"] = True
+            ctx.metadata[SemanticMetadataFlags.COSTS_REDUCED.value] = True
 
     @classmethod
     def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
@@ -60,31 +61,38 @@ class CharacteristicModifierBase(ModifierFormatterBase):
         if not isinstance(amt, int) or amt <= 0:
             amt = None
 
-        subject = f"{cond}{target}"
+        subject = f"{target}"
+
+        # Determine duration placement
+        if duration_text and not duration_text.endswith("、"):
+            duration_text += "、"
+
+        prefix = f"{cond}{duration_text}"
 
         # Determine the action based on behavior
         if behavior == CharacteristicModifierType.GRANT:
             if not str_val:
-                return f"{cond}{target}に能力を与える。"
+                return f"{prefix}{target}に能力を与える。"
             from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-            return CardTextGenerator._format_keyword_grant_text(subject, str_val, keyword, duration_text, amount=amt)
+            # Pass an empty duration_text since we handle it in prefix
+            return CardTextGenerator._format_keyword_grant_text(subject, str_val, keyword, "", amount=amt, cond_prefix=prefix)
 
         elif behavior == CharacteristicModifierType.SET:
             if keyword:
-                return f"{cond}{target}は「{keyword}」を得る。"
-            return f"{cond}{target}は能力を得る。"
+                return f"{prefix}{target}は「{keyword}」を得る。"
+            return f"{prefix}{target}は能力を得る。"
 
         elif behavior == CharacteristicModifierType.REMOVE:
             if keyword:
-                return f"{cond}{target}は「{keyword}」を失う。"
-            return f"{cond}{target}から能力を失わせる。"
+                return f"{prefix}{target}は「{keyword}」を失う。"
+            return f"{prefix}{target}から能力を失わせる。"
 
         elif behavior == CharacteristicModifierType.RESTRICT:
             if keyword:
-                return f"{cond}{scope_prefix}{keyword}を与える。"
-            return f"{cond}{scope_prefix}制限を与える。"
+                return f"{prefix}{scope_prefix}{keyword}を与える。"
+            return f"{prefix}{scope_prefix}制限を与える。"
 
-        return f"{cond}{target}の能力を変更する。"
+        return f"{prefix}{target}の能力を変更する。"
 
 class GrantKeywordFormatter(CharacteristicModifierBase):
     @classmethod
