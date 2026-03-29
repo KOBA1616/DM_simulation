@@ -13,7 +13,7 @@ from dm_toolkit.gui.i18n import tr
 class LookAndAddFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         look_count = get_command_amount_with_fallback(command, default=1)
         add_count = command.get("add_count") if command.get("add_count") is not None else 0
 
@@ -39,7 +39,7 @@ class LookAndAddFormatter(CommandFormatterBase):
 class SearchDeckFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         look_count = get_command_amount_with_fallback(command, default=1)
 
         dest_zone = command.get("destination_zone", "HAND")
@@ -85,7 +85,7 @@ class PutCreatureFormatter(CommandFormatterBase):
 
         action_local["filter"] = filter_local
         action_local["target_filter"] = filter_local
-        put_target_str, put_unit = cls._resolve_target(action_local, getattr(ctx, "is_spell", False))
+        put_target_str, put_unit = cls._resolve_target(action_local, ctx)
 
         return f"{src_text}{put_target_str}を{count}{put_unit}バトルゾーンに出す。"
 
@@ -111,7 +111,7 @@ class BreakShieldFormatter(CommandFormatterBase):
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         look_count = get_command_amount_with_fallback(command, default=1)
         count = look_count
         tgt = target_str
@@ -134,7 +134,7 @@ class AddShieldFormatter(CommandFormatterBase):
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         look_count = get_command_amount_with_fallback(command, default=1)
         amt = look_count
         if "山札" in target_str or target_str == "カード":
@@ -158,7 +158,7 @@ class DestroyFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         from dm_toolkit.gui.editor.text_resources import CardTextResources
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         val1 = command.get("look_count") if command.get("look_count") is not None else get_command_amount_with_fallback(command, default=0)
 
         # テンプレートでなく、直接処理してしまうか、あるいは TextResources のテンプレートを利用する。
@@ -184,7 +184,7 @@ class RevealCardsFormatter(CommandFormatterBase):
 class CountCardsFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         if not target_str or target_str == "カード":
             from dm_toolkit.gui.i18n import tr
             return f"({tr('COUNT_CARDS')})"
@@ -194,19 +194,11 @@ class CountCardsFormatter(CommandFormatterBase):
 class LockSpellFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        scope = command.get("target_group") or command.get("scope", "NONE")
-        noun = TargetResolutionService.resolve_noun(scope)
-        if noun:
-            player_str = noun
-        else:
-            player_str, _ = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        player_str = cls._resolve_player_noun(command, ctx)
 
         look_count = get_command_amount_with_fallback(command, default=1)
         duration_key = command.get("duration", "") or ""
-        if duration_key:
-            duration_str = CardTextResources.get_duration_text(duration_key)
-        else:
-            duration_str = f"{look_count}ターン" if look_count > 0 else "このターン"
+        duration_str = CardTextResources.get_duration_text(duration_key, look_count)
 
         return f"{player_str}は{duration_str}の間、呪文を唱えられない。"
 
@@ -218,19 +210,11 @@ class ActionRestrictionFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         atype = command.get("type") or command.get("name") or "NONE"
-        scope = command.get("target_group") or command.get("scope", "NONE")
-        noun = TargetResolutionService.resolve_noun(scope)
-        if noun:
-            player_str = noun
-        else:
-            player_str, _ = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        player_str = cls._resolve_player_noun(command, ctx)
 
         look_count = get_command_amount_with_fallback(command, default=1)
         duration_key = command.get("duration", "") or ""
-        if duration_key:
-            duration_str = CardTextResources.get_duration_text(duration_key)
-        else:
-            duration_str = f"{look_count}ターン" if look_count > 0 else "このターン"
+        duration_str = CardTextResources.get_duration_text(duration_key, look_count)
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
         linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
@@ -342,14 +326,14 @@ class DeclareReactionFormatter(CommandFormatterBase):
 class AttachFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         return f'{target_str}をカードの下に重ねる。'
 
 @register_formatter("MOVE_TO_UNDER_CARD")
 class MoveToUnderCardFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         look_count = get_command_amount_with_fallback(command, default=1)
         amount = look_count
         if amount == 1:
@@ -360,7 +344,7 @@ class MoveToUnderCardFormatter(CommandFormatterBase):
 class ResetInstanceFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         return f'{target_str}の状態を初期化する（効果を無視する）。'
 
 @register_formatter("SELECT_TARGET")
@@ -371,7 +355,7 @@ class SelectTargetFormatter(CommandFormatterBase):
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         val1 = get_command_amount_with_fallback(command, default=1)
         amount = val1
         return f'{target_str}を{amount}{unit}選ぶ。'
@@ -387,7 +371,7 @@ class CostReferenceFormatter(CommandFormatterBase):
 class SendShieldToGraveFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         look_count = get_command_amount_with_fallback(command, default=1)
         amt = look_count
         scope = command.get("target_group") or command.get("scope", "NONE")
@@ -407,7 +391,7 @@ class SearchDeckBottomFormatter(CommandFormatterBase):
 class SendToDeckBottomFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         val1 = get_command_amount_with_fallback(command, default=1)
         amount = val1
         amt = val1
@@ -417,14 +401,14 @@ class SendToDeckBottomFormatter(CommandFormatterBase):
 class ResolveBattleFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         return f'{target_str}とバトルさせる。'
 
 @register_formatter("MODIFY_POWER")
 class ModifyPowerFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         val = command.get('amount', 0)
         sign = '+' if val >= 0 else ''
         return f'{target_str}のパワーを{sign}{val}する。'
@@ -465,7 +449,7 @@ class QueryFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         mode = command.get('query_mode') or ''
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
@@ -534,14 +518,11 @@ class QueryFormatter(CommandFormatterBase):
 class IgnoreAbilityFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        scope = TargetResolutionService.resolve_action_scope(command)
-        target_str_lock = TargetResolutionService.resolve_noun(scope)
-        if not target_str_lock:
-            target_str_lock, _ = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str_lock = cls._resolve_player_noun(command, ctx)
 
         look_count = get_command_amount_with_fallback(command, default=1)
         duration_key = command.get('duration', '') or ''
-        duration_text = CardTextResources.get_duration_text(duration_key) if duration_key else f'{look_count}ターン' if look_count > 0 else 'このターン'
+        duration_text = CardTextResources.get_duration_text(duration_key, look_count)
 
         filt = command.get('filter', {}) or {}
         types = []

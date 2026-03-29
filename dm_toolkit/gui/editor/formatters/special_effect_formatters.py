@@ -60,7 +60,7 @@ class ApplyModifierFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
 
         str_param = command.get('mutation_kind') or command.get('str_param') or command.get('str_val') or ''
         input_usage = command.get('input_value_usage') or command.get('input_usage')
@@ -96,7 +96,7 @@ class AddKeywordFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         max_cost_src = get_command_max_cost(command)
         val1 = max_cost_src if max_cost_src is not None else get_command_amount(command, default=0)
 
@@ -187,7 +187,7 @@ class MutateFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         max_cost_src = get_command_max_cost(command)
         val1 = max_cost_src if max_cost_src is not None else get_command_amount(command, default=0)
 

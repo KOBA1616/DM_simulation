@@ -222,14 +222,20 @@ class CardTextResources(metaclass=CardTextResourcesMeta):
         return cls._data.get("COMMAND_ALIASES", {}).get(command_type, command_type)
 
     @classmethod
-    def get_duration_text(cls, duration_key: str) -> str:
+    def get_duration_text(cls, duration_key: str, look_count: int = 1) -> str:
         cls.load_resources()
-        return cls._data.get("DURATION_TRANSLATION", {}).get(duration_key, duration_key)
+        dt = cls._data.get("DURATION_TRANSLATION", {})
+        if duration_key in dt:
+            return dt[duration_key]
+        if duration_key:
+            return duration_key
+        # Centralized Fallback logic
+        return f"{look_count}ターン" if look_count > 0 else "このターン"
 
     @classmethod
-    def get_duration_text_with_comma(cls, duration_key: str) -> str:
+    def get_duration_text_with_comma(cls, duration_key: str, look_count: int = 1) -> str:
         if not duration_key: return ""
-        trans = cls.get_duration_text(duration_key)
+        trans = cls.get_duration_text(duration_key, look_count)
         if trans and trans != duration_key:
             return trans + "、"
         cls.load_resources()

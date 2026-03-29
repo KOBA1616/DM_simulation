@@ -23,7 +23,7 @@ class TransitionFormatter(CommandFormatterBase):
         amount = get_command_amount(command, default=0)
         up_to_flag = bool(command.get('up_to', False))
 
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
 
         template_key = (from_z, to_z)
         template = CardTextResources.ZONE_MOVE_TEMPLATES.get(template_key, "")
@@ -232,7 +232,7 @@ class ReplaceCardMoveFormatter(CommandFormatterBase):
             return f"その後、{t}"
 
         amount = get_command_amount(command, default=0)
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
 
         if is_self_ref:
              t = t.replace("{target}", "このカード")

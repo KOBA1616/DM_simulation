@@ -76,7 +76,7 @@ class CastSpellFormatter(CommandFormatterBase):
             elif linked_cost_phrase:
                 return f"{mega_burst_prefix}{zone_phrase}{linked_cost_phrase}呪文を{cast_phrase}。{usage_label_suffix}"
 
-        target_str, unit = cls._resolve_target(action, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(action, ctx)
         if target_str == "" or target_str == "カード":
             return f"{mega_burst_prefix}カードを{cast_phrase}。{usage_label_suffix}"
         else:
@@ -86,7 +86,7 @@ class CastSpellFormatter(CommandFormatterBase):
 class PlayFromBufferFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
+        target_str, unit = cls._resolve_target(command, ctx)
         return f"選んだカード（{target_str}）を使う。"
 
 @register_formatter("ADD_MANA")

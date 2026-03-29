@@ -111,6 +111,15 @@ class CardsMatchingFilterConditionFormatter(ConditionFormatterStrategy):
         op = d.get("op", ">=")
 
         from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
+
+        # Check if the filter specifies ONLY civilization.
+        civs = filter_def.get("civilization", [])
+        if isinstance(civs, str):
+            civs = [civs]
+
+        # Ensure no other filtering keys are used (including zone and owner, which would make it specific cards)
+        only_civs = civs and not any(bool(filter_def.get(k)) for k in filter_def if k != "civilization")
+
         desc = FilterTextFormatter.describe_simple_filter(filter_def)
         zones = filter_def.get("zone", [])
 
@@ -125,18 +134,20 @@ class CardsMatchingFilterConditionFormatter(ConditionFormatterStrategy):
 
         if desc.endswith("の"):
             desc = desc[:-1]
-        if not desc:
-            desc = "カード"
 
-        if desc in ("闇", "光", "火", "水", "自然"):
-            desc = desc + "の文明"
-        elif desc in ("闇のカード", "光のカード", "火のカード", "水のカード", "自然のカード"):
-            desc = desc.replace("のカード", "の文明")
+        if only_civs:
+            civ_names = "・".join([CardTextResources.get_civilization_text(c) for c in civs])
+            desc = civ_names + "の文明"
+        elif not desc:
+            desc = "カード"
 
         if "CREATURE" in filter_def.get("card_type", []) or "Demon Command" in desc or "クリーチャー" in desc:
             unit = "体"
         else:
             unit = "枚"
+
+        if desc.endswith("の文明"):
+            unit = "つ"
 
         op_text = TextUtils.format_comparison_operator(op, f"{count}{unit}")
         op_text = op_text.replace("より多い", "より多く")
