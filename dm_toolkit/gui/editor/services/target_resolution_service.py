@@ -2,11 +2,81 @@ from typing import Dict, Any, Tuple
 from dm_toolkit.consts import TargetScope, CardType, Zone, MAX_COST_VALUE, MAX_POWER_VALUE
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 
+
 class TargetResolutionService:
     """
     Unified pipeline for resolving TargetScope and TargetFilters into Japanese phrases.
     Replaces disjointed usage of TargetScopeResolver and TargetFormatter.
     """
+
+    @classmethod
+    def build_subject(cls, filter_def: Dict[str, Any], **kwargs) -> Tuple[str, str]:
+        if not filter_def:
+            if kwargs.get("is_modifier"): return "対象", ""
+            return "カード", "枚"
+
+        zones = filter_def.get("zones", [])
+        types = filter_def.get("types", [])
+        atype = kwargs.get("action_type", "")
+        zone_noun, type_noun, unit = cls._determine_noun(zones, types, atype)
+
+        is_trigger = kwargs.get("is_trigger", False)
+        is_modifier = kwargs.get("is_modifier", False)
+
+        if is_trigger and kwargs.get("default_type"):
+            default_type = kwargs["default_type"]
+            if default_type == CardType.CREATURE.value and not types:
+                type_noun = "クリーチャー"
+                unit = "体"
+            elif default_type == CardType.SPELL.value and not types:
+                type_noun = "呪文"
+                unit = "枚"
+
+        attrs = cls.build_attribute_list(
+            filter_def,
+            omit_cost=kwargs.get("omit_cost", False),
+            input_usage=kwargs.get("input_usage", ""),
+            has_input_key=kwargs.get("has_input_key", False),
+            is_modifier=is_modifier,
+            is_trigger=is_trigger
+        )
+
+        parts = []
+
+        if is_modifier:
+            if zones:
+                if len(zones) == 1: parts.append(CardTextResources.format_zones_list(zones) + "の")
+                else: parts.append(CardTextResources.format_zones_list(zones, joiner="または") + "から")
+        elif is_trigger:
+            if zones and Zone.BATTLE_ZONE.value not in zones:
+                parts.append(CardTextResources.format_zones_list(zones, joiner="、または") + "の")
+        else:
+            if zone_noun: parts.append(zone_noun + "の")
+
+        if attrs:
+            if is_trigger: parts.append("の".join(attrs) + "の")
+            else:
+                adjectives = "の".join(attrs)
+                parts.append(adjectives + "の")
+
+        parts.append(type_noun)
+        target_desc = "".join(parts)
+
+        if is_modifier:
+            target_desc = target_desc.replace("のの", "の").replace("、の", "の")
+            if not target_desc: target_desc = "対象"
+
+        return target_desc, unit
+
+    @classmethod
+    def resolve_effective_owner(cls, scope: str, filter_def: Dict[str, Any]) -> str:
+        """Determine the effective owner based on scope and filter definition."""
+        if not filter_def:
+            return scope
+        owner = filter_def.get("owner", "NONE")
+        if scope in ["NONE", "ALL"] and owner != "NONE":
+            return owner
+        return scope
 
     @classmethod
     def resolve_action_scope(cls, action: Dict[str, Any]) -> str:
@@ -69,36 +139,18 @@ class TargetResolutionService:
         prefix, effective_scope = cls._resolve_scope(scope, filter_def)
 
         if filter_def:
-            zones = filter_def.get("zones", [])
-            types = filter_def.get("types", [])
-
             input_usage = action.get("input_value_usage") or action.get("input_usage")
             has_input_key = bool(action.get("input_value_key") or action.get("input_link"))
+            target_desc, unit = cls.build_subject(filter_def, omit_cost=omit_cost, input_usage=input_usage, has_input_key=has_input_key, action_type=atype)
 
-            attrs = cls.build_attribute_list(filter_def, omit_cost=omit_cost, input_usage=input_usage, has_input_key=has_input_key)
-            adjectives = "の".join(attrs)
-            if adjectives:
-                adjectives += "の"
-
-            if filter_def.get("is_tapped", None) is True: adjectives = "タップされている" + adjectives
-            elif filter_def.get("is_tapped", None) is False: adjectives = "アンタップされている" + adjectives
-            if filter_def.get("is_blocker", None) is True: adjectives = "ブロッカーを持つ" + adjectives
-            if filter_def.get("is_evolution", None) is True: adjectives = "進化" + adjectives
-
-            zone_noun, type_noun, unit = cls._determine_noun(zones, types, atype)
-
-            parts = []
-            if prefix: parts.append(prefix)
-            if zone_noun: parts.append(zone_noun + "の")
-            if adjectives: parts.append(adjectives)
-            parts.append(type_noun)
-            target_desc = "".join(parts)
-
-            # Apply standard scope handling
-            from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
-            if not prefix:
+            if prefix:
+                target_desc = prefix + target_desc
+            else:
+                from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
                 target_desc = FilterTextFormatter.format_scope_prefix(effective_scope, target_desc)
 
+            zones = filter_def.get("zones", [])
+            types = filter_def.get("types", [])
             if Zone.SHIELD_ZONE.value in zones and (not types or CardType.CARD.value in types):
                 target_desc = target_desc.replace("シールドゾーンのカード", "シールド")
                 unit = "つ"
@@ -136,7 +188,7 @@ class TargetResolutionService:
         return target_desc, unit
 
     @classmethod
-    def build_attribute_list(cls, filter_def: Dict[str, Any], omit_cost: bool = False, input_usage: str = "", has_input_key: bool = False) -> list[str]:
+    def build_attribute_list(cls, filter_def: Dict[str, Any], omit_cost: bool = False, input_usage: str = "", has_input_key: bool = False, is_modifier: bool = False, is_trigger: bool = False) -> list[str]:
         """
         Build a list of formatted attributes (civilizations, races, cost, power) for a filter.
         """
@@ -188,6 +240,25 @@ class TargetResolutionService:
             if power_text:
                 adjectives.append(power_text)
 
+        flags_config = {
+            "is_tapped": {True: "タップ状態" if is_modifier or is_trigger else "タップされている", False: "アンタップ状態" if is_modifier or is_trigger else "アンタップされている"},
+            "is_blocker": {True: "ブロッカー" if is_modifier or is_trigger else "ブロッカーを持つ", False: "ブロッカー以外" if is_modifier or is_trigger else "ブロッカーを持たない"},
+            "is_evolution": {True: "進化" if is_trigger else ("進化クリーチャー" if is_modifier else "進化"), False: "進化以外"},
+            "is_summoning_sick": {True: "召喚酔い", False: "召喚酔い以外"}
+        }
+
+        for flag_key, text_map in flags_config.items():
+            val = filter_def.get(flag_key)
+            if val is not None:
+                bool_val = bool(val) if isinstance(val, bool) else (val == 1)
+                if bool_val in text_map:
+                    adjectives.append(text_map[bool_val])
+
+        flags = filter_def.get("flags", [])
+        for flag in flags:
+            if flag == "BLOCKER" and ("ブロッカー" not in adjectives and "ブロッカーを持つ" not in adjectives):
+                adjectives.append("ブロッカー")
+
         return adjectives
 
     @classmethod
@@ -200,57 +271,8 @@ class TargetResolutionService:
         if owner == "NONE" and not filter_def.get("zones") and not filter_def.get("types"):
             return "このクリーチャー"
 
-        zones = filter_def.get("zones", [])
-        types = filter_def.get("types", [])
-        is_tapped = filter_def.get("is_tapped")
-        is_blocker = filter_def.get("is_blocker")
-        is_evolution = filter_def.get("is_evolution")
-
-        parts = []
-
-        if zones:
-            if len(zones) == 1:
-                parts.append(CardTextResources.format_zones_list(zones) + "の")
-            else:
-                parts.append(CardTextResources.format_zones_list(zones, joiner="または") + "から")
-
-        attrs = cls.build_attribute_list(filter_def)
-        if attrs:
-            parts.append("の".join(attrs) + "の")
-
-        type_noun = "カード"
-        if types:
-            if len(types) == 1:
-                if types[0] == CardType.CREATURE.value:
-                    type_noun = "クリーチャー"
-                elif types[0] == CardType.SPELL.value:
-                    type_noun = "呪文"
-                elif types[0] == CardType.ELEMENT.value:
-                    type_noun = "エレメント"
-            else:
-                type_words = []
-                if CardType.CREATURE.value in types: type_words.append("クリーチャー")
-                if CardType.SPELL.value in types: type_words.append("呪文")
-                if CardType.ELEMENT.value in types: type_words.append("エレメント")
-                if type_words: type_noun = "/".join(type_words)
-
-        flag_parts = []
-        if is_tapped == 1: flag_parts.append("タップ状態の")
-        elif is_tapped == 0: flag_parts.append("アンタップ状態の")
-
-        if is_blocker == 1: flag_parts.append("ブロッカーの")
-        elif is_blocker == 0: flag_parts.append("ブロッカー以外の")
-
-        if is_evolution == 1: flag_parts.append("進化クリーチャーの")
-        elif is_evolution == 0: flag_parts.append("進化以外の")
-
-        if flag_parts:
-            parts.extend(flag_parts)
-
-        result = "".join(parts) + type_noun
-        result = result.replace("のの", "の").replace("、の", "の")
-
-        return result if result else "対象"
+        result, _ = cls.build_subject(filter_def, is_modifier=True)
+        return result
 
     @classmethod
     def _resolve_scope(cls, scope: str, filter_def: Dict[str, Any]) -> Tuple[str, str]:
@@ -278,134 +300,73 @@ class TargetResolutionService:
     @classmethod
     def compose_subject_from_filter(cls, filter_def: Dict[str, Any], default_type: str) -> str:
         """Compose a subject phrase (noun + adjectives) from a trigger filter."""
-        f = filter_def or {}
-        zones = f.get("zones", [])
-        types = f.get("types", [])
-        is_tapped = f.get("is_tapped")
-        is_blocker = f.get("is_blocker")
-        is_evolution = f.get("is_evolution")
-        is_summoning_sick = f.get("is_summoning_sick")
-        flags = f.get("flags", [])
-
-        # Noun resolution
-        noun = "クリーチャー" if default_type == CardType.CREATURE.value else ("呪文" if default_type == CardType.SPELL.value else "カード")
-        if types:
-            if CardType.ELEMENT.value in types:
-                noun = "エレメント"
-            elif CardType.SPELL.value in types:
-                noun = "呪文"
-            elif CardType.CREATURE.value in types:
-                noun = "クリーチャー"
-            elif CardType.CARD.value in types:
-                noun = "カード"
-
-        adjs = []
-
-        # Zone conditions
-        if zones and Zone.BATTLE_ZONE.value not in zones:
-            zone_names = []
-            for z in zones:
-                zone_text = CardTextResources.normalize_zone_name(z)
-                if zone_text:
-                    zone_names.append(zone_text)
-            if zone_names:
-                adjs.append("/".join(zone_names))
-
-        # Cost, Power, Civs, Races
-        adjs.extend(cls.build_attribute_list(f))
-
-        # Flags
-        if is_tapped == 1:
-            adjs.append("タップ状態")
-        elif is_tapped == 0:
-            adjs.append("アンタップ状態")
-        if is_blocker == 1:
-            adjs.append("ブロッカー")
-        elif is_blocker == 0:
-            adjs.append("ブロッカー以外")
-        if is_evolution == 1:
-            adjs.append("進化")
-        elif is_evolution == 0:
-            adjs.append("進化以外")
-        if is_summoning_sick == 1:
-            adjs.append("召喚酔い")
-        elif is_summoning_sick == 0:
-            adjs.append("召喚酔い以外")
-
-        # Generic flags
-        if flags:
-            for flag in flags:
-                if flag == "BLOCKER" and "ブロッカー" not in adjs:
-                    adjs.append("ブロッカー")
-
-        adj_str = "の".join(adjs)
-        if adj_str:
-            return f"{adj_str}の{noun}"
-        return noun
+        result, _ = cls.build_subject(filter_def, is_trigger=True, default_type=default_type)
+        return result
 
     @classmethod
     def _determine_noun(cls, zones: list, types: list, atype: str) -> Tuple[str, str, str]:
-        # Data-driven priority mapping for zones
-        ZONE_PRIORITY = [
-            (Zone.BATTLE_ZONE.value, "バトルゾーン"),
-            (Zone.MANA_ZONE.value, "マナゾーン"),
-            (Zone.HAND.value, "手札"),
-            (Zone.SHIELD_ZONE.value, "シールドゾーン"),
-            (Zone.GRAVEYARD.value, "墓地"),
-            (Zone.DECK.value, "山札")
-        ]
-
-        # Data-driven priority mapping for card types -> (noun, unit)
-        from dm_toolkit.consts import CARD_TYPE_UNIT_MAP
-        TYPE_PRIORITY = [
-            (CardType.ELEMENT.value, "エレメント", CARD_TYPE_UNIT_MAP.get(CardType.ELEMENT.value, "体")),
-            (CardType.CREATURE.value, "クリーチャー", CARD_TYPE_UNIT_MAP.get(CardType.CREATURE.value, "体")),
-            (CardType.SPELL.value, "呪文", CARD_TYPE_UNIT_MAP.get(CardType.SPELL.value, "枚")),
-            ("CROSS_GEAR", "クロスギア", CARD_TYPE_UNIT_MAP.get("CROSS_GEAR", "枚")),
-            (CardType.CARD.value, "カード", CARD_TYPE_UNIT_MAP.get(CardType.CARD.value, "枚"))
-        ]
+        # Fully rely on consts mapping instead of hardcoding
+        from dm_toolkit.consts import CARD_TYPE_UNIT_MAP, Zone, CardType
 
         zone_noun = ""
         type_noun = "カード"
-        unit = "枚"
+        unit = CARD_TYPE_UNIT_MAP.get(CardType.CARD.value, "枚")
 
-        # Resolve primary zone
-        for z_val, z_noun in ZONE_PRIORITY:
-            if z_val in zones:
-                zone_noun = z_noun
-                break
-
-        # Resolve primary types
-        matched_types = []
-        for t_val, t_noun, t_unit in TYPE_PRIORITY:
-            if t_val in types:
-                matched_types.append((t_noun, t_unit))
-
-        if matched_types:
-            if len(types) > 1 and len(matched_types) > 1:
-                # E.g. "クリーチャー/呪文"
-                type_noun = "/".join([noun for noun, _ in matched_types])
-                # Unit defaults to "枚" for mixed unless they are all "体"
-                if all(u == "体" for _, u in matched_types):
-                    unit = "体"
+        # Handle zones with CardTextResources for consistent formatting
+        # rather than hardcoding priority lists.
+        # But we still need a primary zone for the noun prefix if it's a single zone
+        if len(zones) == 1:
+            z = zones[0]
+            if z == Zone.BATTLE_ZONE.value: zone_noun = "バトルゾーン"
+            elif z in [Zone.MANA_ZONE.value, "MANA"]: zone_noun = "マナゾーン"
+            elif z == Zone.HAND.value: zone_noun = "手札"
+            elif z in [Zone.SHIELD_ZONE.value, "SHIELD"]: zone_noun = "シールドゾーン"
+            elif z == Zone.GRAVEYARD.value: zone_noun = "墓地"
+            elif z == Zone.DECK.value: zone_noun = "山札"
             else:
-                type_noun, unit = matched_types[0]
+                zone_text = CardTextResources.normalize_zone_name(z)
+                if zone_text:
+                    zone_noun = CardTextResources.get_zone_text(zone_text)
+
+        # Map types directly using translations and standard maps
+        # Determine highest priority matching type
+        from dm_toolkit.gui.i18n import tr
+
+        # Determine type noun and unit
+        if not types:
+            if Zone.BATTLE_ZONE.value in zones:
+                type_noun = "クリーチャー"
+                unit = CARD_TYPE_UNIT_MAP.get(CardType.CREATURE.value, "体")
+            elif Zone.SHIELD_ZONE.value in zones:
+                type_noun = "シールド"
+                unit = CARD_TYPE_UNIT_MAP.get("SHIELD", "つ")
+        else:
+            if len(types) == 1:
+                t = types[0]
+                if t == CardType.ELEMENT.value: type_noun = "エレメント"
+                elif t == CardType.CREATURE.value: type_noun = "クリーチャー"
+                elif t == CardType.SPELL.value: type_noun = "呪文"
+                else: type_noun = tr(t) if tr(t) else "カード"
+                unit = CARD_TYPE_UNIT_MAP.get(t, "枚")
+            else:
+                words = []
+                units = []
+                for t in types:
+                    if t == CardType.CREATURE.value: words.append("クリーチャー")
+                    elif t == CardType.SPELL.value: words.append("呪文")
+                    elif t == CardType.ELEMENT.value: words.append("エレメント")
+                    else: words.append(tr(t))
+                    units.append(CARD_TYPE_UNIT_MAP.get(t, "枚"))
+
+                type_noun = "/".join(words)
+                # If all units are the same, use it, else default to default unit
+                if all(u == units[0] for u in units):
+                    unit = units[0]
 
         # Contextual Overrides
-        if Zone.BATTLE_ZONE.value in zones:
-            if CardType.CREATURE.value in types or not types:
-                type_noun = "クリーチャー"
-                unit = "体"
-            if CardType.ELEMENT.value in types:
-                type_noun = "エレメント"
-                unit = "枚"
-        elif Zone.SHIELD_ZONE.value in zones:
-            type_noun = "カード"
-            unit = "つ"
-        elif Zone.GRAVEYARD.value in zones:
-            if CardType.CREATURE.value in types:
-                type_noun = "クリーチャー"
-                unit = "体"
+        if Zone.SHIELD_ZONE.value in zones and (not types or CardType.CARD.value in types):
+            type_noun = "シールド"
+            unit = CARD_TYPE_UNIT_MAP.get("SHIELD", "つ")
 
         if atype == "SEARCH_DECK":
             zone_noun = ""

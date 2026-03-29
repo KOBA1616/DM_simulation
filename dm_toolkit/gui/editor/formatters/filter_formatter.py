@@ -45,8 +45,7 @@ class FilterTextFormatter:
     @classmethod
     def format_scope_prefix(cls, scope: str, text: str = "") -> str:
         """
-        Applies a scope prefix (e.g., "自分の", "相手の") to a text,
-        avoiding duplication like "相手の相手の".
+        Applies a scope prefix (e.g., "自分の", "相手の") to a text based on explicit data structure.
         """
         if not scope or scope == "NONE" or scope == "ALL":
             return text
@@ -55,22 +54,18 @@ class FilterTextFormatter:
         if not scope_text:
             return text
 
-        noun = TargetResolutionService.resolve_noun(scope)
-
-        scope_variants = []
-        if noun:
-            scope_variants.extend([f"{noun}が", f"{noun}の"])
-
-        for v in scope_variants:
-            if v in text:
-                return text
-
-        # Handle cases where we have just "自分" or "相手"
+        # If text is empty, return just the prefix.
         if not text:
             return scope_text
 
+        # Append correctly, avoiding double particles.
         if scope_text.endswith("の") and text.startswith("の"):
             return scope_text + text[1:]
+
+        # Basic check to avoid gross duplication if somehow it got through
+        noun = TargetResolutionService.resolve_noun(scope)
+        if noun and (text.startswith(f"{noun}の") or text.startswith(f"{noun}が")):
+            return text
 
         return f"{scope_text}{text}"
 
