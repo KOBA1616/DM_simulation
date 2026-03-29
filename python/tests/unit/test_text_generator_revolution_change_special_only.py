@@ -43,7 +43,8 @@ def test_get_rc_filter_ignores_legacy_mutate_revolution_change():
     }
 
     # 最新仕様移管: MUTATE互換は解釈しない
-    tf = CardTextGenerator._get_rc_filter_from_effects(card)
+    from dm_toolkit.gui.editor.formatters.special_keywords import RevolutionChangeFormatter
+    tf = RevolutionChangeFormatter.get_rc_filter_from_effects(card)
     assert tf == {}
 
 
@@ -110,5 +111,6 @@ def test_get_rc_filter_uses_target_filter_only():
         ]
     }
 
-    tf = CardTextGenerator._get_rc_filter_from_effects(card)
+    from dm_toolkit.gui.editor.formatters.special_keywords import RevolutionChangeFormatter
+    tf = RevolutionChangeFormatter.get_rc_filter_from_effects(card)
     assert tf == {"races": ["AliasRace"]}

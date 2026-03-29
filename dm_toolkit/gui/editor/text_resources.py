@@ -217,8 +217,18 @@ class CardTextResources(metaclass=CardTextResourcesMeta):
         return zone_map.get(z, z)
 
     @classmethod
-    def normalize_command_alias(cls, command_type: str) -> str:
+    def normalize_command_alias(cls, command_type: str, command: Optional[Dict[str, Any]] = None) -> str:
         cls.load_resources()
+
+        # dynamic alias resolution based on command arguments
+        if command and command_type == "MANA_CHARGE":
+            if command.get("target_group", "NONE") == "NONE" and command.get("scope", "NONE") == "NONE":
+                return "ADD_MANA"
+            else:
+                return "SEND_TO_MANA"
+        elif command_type == "MEASURE_COUNT":
+            return "COUNT_CARDS"
+
         return cls._data.get("COMMAND_ALIASES", {}).get(command_type, command_type)
 
     @classmethod

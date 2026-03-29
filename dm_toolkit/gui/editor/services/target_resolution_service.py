@@ -356,12 +356,13 @@ class TargetResolutionService:
         ]
 
         # Data-driven priority mapping for card types -> (noun, unit)
+        from dm_toolkit.consts import CARD_TYPE_UNIT_MAP
         TYPE_PRIORITY = [
-            (CardType.ELEMENT.value, "エレメント", "体"),
-            (CardType.CREATURE.value, "クリーチャー", "体"),
-            (CardType.SPELL.value, "呪文", "枚"),
-            ("CROSS_GEAR", "クロスギア", "枚"),
-            (CardType.CARD.value, "カード", "枚")
+            (CardType.ELEMENT.value, "エレメント", CARD_TYPE_UNIT_MAP.get(CardType.ELEMENT.value, "体")),
+            (CardType.CREATURE.value, "クリーチャー", CARD_TYPE_UNIT_MAP.get(CardType.CREATURE.value, "体")),
+            (CardType.SPELL.value, "呪文", CARD_TYPE_UNIT_MAP.get(CardType.SPELL.value, "枚")),
+            ("CROSS_GEAR", "クロスギア", CARD_TYPE_UNIT_MAP.get("CROSS_GEAR", "枚")),
+            (CardType.CARD.value, "カード", CARD_TYPE_UNIT_MAP.get(CardType.CARD.value, "枚"))
         ]
 
         zone_noun = ""

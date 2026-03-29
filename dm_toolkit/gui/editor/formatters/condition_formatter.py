@@ -141,10 +141,16 @@ class CardsMatchingFilterConditionFormatter(ConditionFormatterStrategy):
         elif not desc:
             desc = "カード"
 
-        if "CREATURE" in filter_def.get("card_type", []) or "Demon Command" in desc or "クリーチャー" in desc:
+        from dm_toolkit.consts import CARD_TYPE_UNIT_MAP
+
+        # 単位決定ロジックの汎化
+        unit = "枚"
+        card_types = filter_def.get("card_type", [])
+        if card_types:
+            # 最初の指定タイプに基づく
+            unit = CARD_TYPE_UNIT_MAP.get(card_types[0], "枚")
+        elif "Demon Command" in desc or "クリーチャー" in desc or "エレメント" in desc:
             unit = "体"
-        else:
-            unit = "枚"
 
         if desc.endswith("の文明"):
             unit = "つ"
@@ -160,7 +166,7 @@ class CardsMatchingFilterConditionFormatter(ConditionFormatterStrategy):
 class OpponentPlayedWithoutManaConditionFormatter(ConditionFormatterStrategy):
     @classmethod
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
-        return "相手がマナゾーンのカードをタップせずに、クリーチャーを出すか呪文を唱えた時: "
+        return "相手がマナゾーンのカードをタップせずに、クリーチャーを出すか呪文を唱えた時"
 
 @register_condition("DURING_YOUR_TURN")
 class DuringYourTurnConditionFormatter(ConditionFormatterStrategy):
@@ -168,11 +174,19 @@ class DuringYourTurnConditionFormatter(ConditionFormatterStrategy):
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         return CardTextResources.get_condition_text("DURING_YOUR_TURN")
 
+    @classmethod
+    def get_suffix(cls) -> str:
+        return ""
+
 @register_condition("DURING_OPPONENT_TURN")
 class DuringOpponentTurnConditionFormatter(ConditionFormatterStrategy):
     @classmethod
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         return CardTextResources.get_condition_text("DURING_OPPONENT_TURN")
+
+    @classmethod
+    def get_suffix(cls) -> str:
+        return ""
 
 class ConditionFormatter:
     """Formatter for logic and effect conditions."""
@@ -191,13 +205,6 @@ class ConditionFormatter:
         if formatter_cls:
             text = formatter_cls.format(condition, ctx)
             if text:
-                if cond_type == "MANA_ARMED":
-                     return text + ": "
-                elif "なら" in text:
-                     return text + ": "
-                elif cond_type not in ("OPPONENT_PLAYED_WITHOUT_MANA", "DURING_YOUR_TURN", "DURING_OPPONENT_TURN"):
-                     # Add suffix unless it is already fully formatted by specific handlers
-                     return text + ": "
-                return text
+                return text + formatter_cls.get_suffix()
 
         return ""

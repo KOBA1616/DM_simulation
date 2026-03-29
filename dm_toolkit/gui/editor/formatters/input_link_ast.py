@@ -1,5 +1,7 @@
 from typing import Dict, Any, List, Optional
+import copy
 from dataclasses import dataclass
+from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 
 @dataclass
 class InputLinkNode:
@@ -18,6 +20,35 @@ class InputLinkASTBuilder:
     Builds a dependency graph (AST) of commands based on input/output variable linkages.
     Used for robust text generation like 'その数だけ'.
     """
+
+    @classmethod
+    def infer_command_labels(cls, commands: List[Any]) -> List[Any]:
+        """
+        Infers input/output labels for a sequence of commands, avoiding side effects in formatting logic.
+        """
+        output_label_map: Dict[str, str] = {}
+        processed_commands = []
+
+        for command in commands:
+            cmd = copy.deepcopy(command) if isinstance(command, dict) else command
+            if isinstance(cmd, dict):
+                in_key = str(cmd.get("input_value_key") or "")
+                saved_label = str(cmd.get("_input_value_label") or "").strip()
+                mapped_label = output_label_map.get(in_key, "") if in_key else ""
+
+                # 再発防止: 連鎖コマンドの入力ラベルは generic "クエリ結果" より
+                # 推論済みのクエリ/出力ラベルを優先して自然文を生成する。
+                if mapped_label and (not saved_label or "クエリ結果" in saved_label or saved_label.startswith("Step ")):
+                    cmd["_input_value_label"] = mapped_label
+
+                out_key = str(cmd.get("output_value_key") or "")
+                if out_key:
+                    inferred_label = InputLinkFormatter.infer_output_value_label(cmd)
+                    if inferred_label:
+                        output_label_map[out_key] = inferred_label
+            processed_commands.append(cmd)
+
+        return processed_commands
 
     @classmethod
     def build(cls, commands: List[Dict[str, Any]]) -> List[InputLinkNode]:

@@ -170,9 +170,24 @@ class CardTextGenerator:
         effects = data.get("effects", [])
 
         def _is_special_only_effect(eff: Dict[str, Any]) -> bool:
-            for _, formatter_cls in SpecialKeywordRegistry._formatters.items():
-                if formatter_cls.is_special_only_effect(eff, data):
-                    return True
+            # Dynamically fetch formatter once mapped logic or default to iteration
+            cmds = eff.get("commands", []) or []
+            if not cmds:
+                return False
+
+            # Query the dynamically populated reverse map
+            reverse_map = SpecialKeywordRegistry.get_special_command_map()
+
+            for cmd in cmds:
+                if not isinstance(cmd, dict): continue
+                cmd_type = cmd.get("type")
+
+                # Check directly mapped command types
+                if cmd_type in reverse_map:
+                    for formatter_cls in reverse_map[cmd_type]:
+                        if formatter_cls.is_special_only_effect(eff, data):
+                            return True
+
             return False
 
         for i, effect in enumerate(effects):
@@ -347,25 +362,15 @@ class CardTextGenerator:
         # Commands-Only Policy:
         # We now expect 'commands' to be the sole source of truth.
         commands = effect.get("commands", [])
-        output_label_map: Dict[str, str] = {}
-        for i, command in enumerate(commands):
+
+        # 連鎖コマンドの入力ラベル推定副作用の分離
+        # AST構築パスでラベルを事前推論して独立させる
+        from dm_toolkit.gui.editor.formatters.input_link_ast import InputLinkASTBuilder
+        commands_with_labels = InputLinkASTBuilder.infer_command_labels(commands)
+
+        for i, command in enumerate(commands_with_labels):
             with ctx.error_reporter.path_segment(f"commands[{i}]"):
                 command_for_text = copy.deepcopy(command) if isinstance(command, dict) else command
-                if isinstance(command_for_text, dict):
-                    in_key = str(command_for_text.get("input_value_key") or "")
-                    saved_label = str(command_for_text.get("_input_value_label") or "").strip()
-                    mapped_label = output_label_map.get(in_key, "") if in_key else ""
-                    # 再発防止: 連鎖コマンドの入力ラベルは generic "クエリ結果" より
-                    # 推論済みのクエリ/出力ラベルを優先して自然文を生成する。
-                    if mapped_label and (not saved_label or "クエリ結果" in saved_label or saved_label.startswith("Step ")):
-                        command_for_text["_input_value_label"] = mapped_label
-
-                    out_key = str(command_for_text.get("output_value_key") or "")
-                    if out_key:
-                        inferred_label = InputLinkFormatter.infer_output_value_label(command_for_text)
-                        if inferred_label:
-                            output_label_map[out_key] = inferred_label
-
                 raw_items.append(command_for_text)
                 action_texts.append(cls._format_command(command_for_text, ctx))
 
@@ -513,16 +518,11 @@ class CardTextGenerator:
         # Use the command dict as read-only via functional overrides
         command_ro = copy.deepcopy(command)
 
-        # Handle aliases mappings like legacy original_cmd_type logic
-        if cmd_type == "MANA_CHARGE":
-            if command_ro.get("target_group", "NONE") == "NONE" and command_ro.get("scope", "NONE") == "NONE":
-                cmd_type = "ADD_MANA"
-            else:
-                cmd_type = "SEND_TO_MANA"
-        elif cmd_type == "MEASURE_COUNT":
-            cmd_type = "COUNT_CARDS"
-        elif cmd_type == "SHIELD_TRIGGER":
+        if cmd_type == "SHIELD_TRIGGER":
             return "S・トリガー"
+
+        # Resolve aliases immediately to hide business logic from generic formatting
+        cmd_type = CardTextResources.normalize_command_alias(cmd_type, command_ro)
 
         # Check the formatter registry
         from dm_toolkit.gui.editor.formatters.command_registry import CommandFormatterRegistry
@@ -545,14 +545,15 @@ class CardTextGenerator:
                 cond_text = formatter_cls.format_revolution_change_text(tf) if tf else "クリーチャー"
                 return f"革命チェンジ：{cond_text}"
 
-        cmd_type = CardTextResources.normalize_command_alias(cmd_type)
-        formatter_cls = CommandFormatterRegistry.get_formatter(cmd_type)
-        if formatter_cls:
-            if hasattr(formatter_cls, "update_metadata"):
-                formatter_cls.update_metadata(command_ro, ctx)
-            # Re-try with normalized alias.
-            formatted_text = formatter_cls.format_with_optional(command_ro, ctx)
-            return formatted_text
+        # In case the normalized alias is not found, try original cmd_type
+        # Some aliases might have specific logic in fallback formatters.
+        cmd_type_original = command.get("type") or command.get("name") or "NONE"
+        formatter_cls_orig = CommandFormatterRegistry.get_formatter(cmd_type_original)
+        if formatter_cls_orig and cmd_type_original != cmd_type:
+             if hasattr(formatter_cls_orig, "update_metadata"):
+                 formatter_cls_orig.update_metadata(command_ro, ctx)
+             formatted_text = formatter_cls_orig.format_with_optional(command_ro, ctx)
+             return formatted_text
 
         # Final fallback
         return f"({tr(cmd_type)})"
