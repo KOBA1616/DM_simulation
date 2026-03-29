@@ -1,7 +1,7 @@
 from typing import Dict, Any, List, Optional
 from dm_toolkit.gui.i18n import tr
 from dm_toolkit.gui.editor.text_resources import CardTextResources
-from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+from dm_toolkit.gui.editor.formatters.value_resolver import ValueResolver
 from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
 from dm_toolkit import consts
 
@@ -15,32 +15,10 @@ class FilterTextFormatter:
         Formats a range description (e.g. "コスト3～5", "パワー5000以上").
         Returns the formatted string without trailing particles like "の".
         """
-        if min_val is None:
-            min_val = 0
-        if max_val is None:
-            max_val = 999 if unit == "コスト" else 999999
-
-        is_min_linked = InputLinkFormatter.is_input_linked(min_val, usage=min_usage)
-        is_max_linked = InputLinkFormatter.is_input_linked(max_val, usage=max_usage)
-
-        if is_min_linked:
-            return f"{unit}{linked_token}以上"
-        if is_max_linked:
-            return f"{unit}{linked_token}以下"
-
-        min_n = min_val if isinstance(min_val, int) else 0
-        max_n = max_val if isinstance(max_val, int) else (999 if unit == "コスト" else 999999)
-
-        default_max = 999 if unit == "コスト" else 999999
-
-        if min_n > 0 and max_n < default_max:
-            return f"{unit}{min_n}～{max_n}"
-        elif min_n > 0:
-            return f"{unit}{min_n}以上"
-        elif max_n < default_max:
-            return f"{unit}{max_n}以下"
-
-        return ""
+        return ValueResolver.resolve_range(
+            min_val=min_val, max_val=max_val, unit=unit,
+            min_usage=min_usage, max_usage=max_usage, linked_token=linked_token
+        )
 
     @classmethod
     def format_scope_prefix(cls, scope: str, text: str = "") -> str:
@@ -89,11 +67,11 @@ class FilterTextFormatter:
         #   フィルターでタイプ未指定は「カード」(全タイプ対象)。
         #   CREATURE のみ指定時だけ「クリーチャー」、SPELL のみなら「呪文」、
         #   複数タイプ指定時は "/" 区切り、races 指定があればそれを優先する。
-        if consts.CardType.ELEMENT.value in types:
+        if consts.CardTypeHelper.is_element_like(types) and (consts.CardType.ELEMENT.value in types or not consts.CardTypeHelper.is_creature_like(types)) and not consts.CardTypeHelper.is_spell_like(types):
             noun_str = "エレメント"
-        elif consts.CardType.SPELL.value in types and consts.CardType.CREATURE.value not in types:
+        elif consts.CardTypeHelper.is_spell_like(types) and not consts.CardTypeHelper.is_creature_like(types):
             noun_str = "呪文"
-        elif consts.CardType.CREATURE.value in types:
+        elif consts.CardTypeHelper.is_creature_like(types):
             noun_str = "クリーチャー"
         elif types:
             noun_str = "/".join(tr(t) for t in types if t)

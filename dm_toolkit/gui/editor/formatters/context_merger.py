@@ -2,6 +2,19 @@ from typing import Dict, Any, List, Callable
 
 # --- Common helper predicates for pattern matching ---
 
+def is_dependency_link(cmd_a: Dict[str, Any], cmd_b: Dict[str, Any]) -> bool:
+    """Check if cmd_b uses the output of cmd_a as its input link."""
+    if not isinstance(cmd_a, dict) or not isinstance(cmd_b, dict):
+        return False
+    out_key = cmd_a.get("output_value_key")
+    in_key = cmd_b.get("input_value_key") or cmd_b.get("input_link")
+
+    # Needs to actually have a key to be a dependency
+    if not out_key or not in_key:
+        return False
+
+    return out_key == in_key
+
 def is_draw_item(it: Dict[str, Any]) -> bool:
     if not isinstance(it, dict): return False
     t = it.get('type', '')
@@ -62,6 +75,29 @@ def merge_draw_then_bottom(items: List[Dict[str, Any]], texts: List[str]) -> str
             merged = merged.rstrip('。') + '、' + rest
     return merged
 
+def cond_dependency_link(items: List[Dict[str, Any]]) -> bool:
+    # A generic dependency link rule "Aする。そうしたらBする" or similar based on AST link.
+    # Exclude the hardcoded rules to prevent overlap, or if they take priority, they will match first.
+    if len(items) < 2: return False
+    return is_dependency_link(items[0], items[1])
+
+def merge_dependency_link(items: List[Dict[str, Any]], texts: List[str]) -> str:
+    first = texts[0].rstrip('。')
+    second = texts[1].lstrip('。、 ')
+
+    # Try to make the second sentence natural if it starts with standard token.
+    # If the second is something like "その数を〜", we merge with "そうしたら、"
+    merged = f"{first}。そうしたら、{second}"
+
+    # Example logic for replacement effect
+    if "かわりに" in second:
+        merged = f"{first}、かわりに{second.replace('かわりに', '')}"
+
+    if len(texts) > 2:
+        rest = ' '.join(texts[2:]).strip()
+        if rest:
+            merged = merged.rstrip('。') + '、' + rest
+    return merged
 
 class ContextMerger:
     """Rule-based engine for merging consecutive actions into natural Japanese sentences."""
@@ -74,6 +110,10 @@ class ContextMerger:
         {
             "condition": cond_draw_then_bottom,
             "merge": merge_draw_then_bottom
+        },
+        {
+            "condition": cond_dependency_link,
+            "merge": merge_dependency_link
         }
     ]
 
