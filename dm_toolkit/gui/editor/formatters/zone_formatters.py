@@ -6,6 +6,7 @@ from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from dm_toolkit.gui.editor.formatters.text_utils import TextUtils
+from dm_toolkit.gui.editor.formatters.metadata_flags import SemanticMetadataFlags
 from dm_toolkit.gui.i18n import tr
 
 @register_formatter("TRANSITION")
@@ -14,17 +15,34 @@ class TransitionFormatter(CommandFormatterBase):
     def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
         to_z = command.get("to_zone", "")
         if to_z == "HAND":
-            ctx.metadata["returns_to_hand"] = True
+            ctx.metadata[SemanticMetadataFlags.RETURNS_TO_HAND.value] = True
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        from_z = CardTextResources.normalize_zone_name(command.get("from_zone", ""))
-        to_z = CardTextResources.normalize_zone_name(command.get("to_zone", ""))
+        from_z_raw = command.get("from_zone", "")
+        if isinstance(from_z_raw, list):
+            from_z_list = [CardTextResources.normalize_zone_name(z) for z in from_z_raw]
+            from_z = from_z_list[0] if from_z_list else ""
+            from_z_str = CardTextResources.format_zones_list(from_z_list, "と")
+        else:
+            from_z = CardTextResources.normalize_zone_name(from_z_raw)
+            from_z_str = CardTextResources.get_zone_text(from_z) if from_z else ""
+
+        to_z_raw = command.get("to_zone", "")
+        if isinstance(to_z_raw, list):
+            to_z_list = [CardTextResources.normalize_zone_name(z) for z in to_z_raw]
+            to_z = to_z_list[0] if to_z_list else ""
+            to_z_str = CardTextResources.format_zones_list(to_z_list, "または")
+        else:
+            to_z = CardTextResources.normalize_zone_name(to_z_raw)
+            to_z_str = CardTextResources.get_zone_text(to_z) if to_z else ""
+
         amount = get_command_amount(command, default=0)
         up_to_flag = bool(command.get('up_to', False))
 
         target_str, unit = cls._resolve_target(command, ctx)
 
+        # For mapping lookup, we use the first element if it's a list. The actual text replacement uses from_z_str/to_z_str.
         template_key = (from_z, to_z)
         template = CardTextResources.ZONE_MOVE_TEMPLATES.get(template_key, "")
 
@@ -58,21 +76,23 @@ class TransitionFormatter(CommandFormatterBase):
 
         elif up_to_flag and amount > 0:
             # Handle "up to" case ("まで選び")
+            formatted_qty = TextUtils.format_up_to("{amount}", "{unit}", up_to=True)
             if to_z == "HAND" and from_z != "DECK":
-                template = template.replace("{amount}{unit}", "{amount}{unit}まで").replace("戻す", "選び、戻す")
+                template = template.replace("{amount}{unit}", formatted_qty).replace("戻す", "選び、戻す")
                 if "選び、" not in template:
                     template = template.replace("まで{to_z}", "まで選び、{to_z}")
             elif to_z in ["GRAVEYARD", "MANA_ZONE", "DECK_BOTTOM", "BATTLE_ZONE"]:
-                template = template.replace("{amount}{unit}", "{amount}{unit}まで").replace("置く", "選び、置く").replace("出す", "選び、出す")
+                template = template.replace("{amount}{unit}", formatted_qty).replace("置く", "選び、置く").replace("出す", "選び、出す")
                 if "選び、" not in template:
                      template = template.replace("まで{to_z}", "まで選び、{to_z}")
             elif template_key == ("DECK", "HAND"):
-                template = template.replace("{amount}{unit}", "{amount}{unit}まで")
+                template = template.replace("{amount}{unit}", formatted_qty)
 
         if template_key == ("DECK", "HAND") and target_str == "カード":
              # Exception for generic deck drawing/searching phrasing
              if up_to_flag:
-                  template = "山札からカードを最大{amount}枚まで選び、手札に加える。"
+                  qty_str = TextUtils.format_up_to("{amount}", "枚", up_to=True)
+                  template = f"山札からカードを{qty_str}選び、手札に加える。"
              else:
                   template = "{from_z}から{target}を{amount}{unit}選び、{to_z}に加える。"
 
@@ -90,20 +110,18 @@ class TransitionFormatter(CommandFormatterBase):
                      owner = "相手の"
                  elif scope == "ALL_PLAYERS":
                      owner = "各プレイヤーの"
-                 if up_to_flag:
-                     template = f"{owner}手札から{{target}}を{linked_count}だけまで選び、{to_zone_text}に置く。"
-                 else:
-                     template = f"{owner}手札から{{target}}を{linked_count}だけ選び、{to_zone_text}に置く。"
-             elif up_to_flag:
-                 template = "{from_z}の{target}をその同じ数だけまで選び、{to_z}に置く。"
+
+                 qty_str = f"最大{linked_count}だけまで" if up_to_flag else f"{linked_count}だけ"
+                 template = f"{owner}手札から{{target}}を{qty_str}選び、{to_zone_text}に置く。"
              else:
-                 template = "{from_z}の{target}をその同じ数だけ選び、{to_z}に置く。"
+                 qty_str = f"その同じ数だけまで" if up_to_flag else f"その同じ数だけ"
+                 template = f"{{from_z}}の{{target}}を{qty_str}選び、{{to_z}}に置く。"
 
 
         if "{from_z}" in template:
-            template = template.replace("{from_z}", CardTextResources.get_zone_text(from_z))
+            template = template.replace("{from_z}", from_z_str)
         if "{to_z}" in template:
-            template = template.replace("{to_z}", CardTextResources.get_zone_text(to_z))
+            template = template.replace("{to_z}", to_z_str)
 
         template = template.replace("{amount}", str(amount))
 
@@ -188,16 +206,12 @@ class MoveBufferToZoneFormatter(CommandFormatterBase):
             else:
                 type_part = "カード"
 
-            qty_part = f"{val1}枚" if val1 > 0 else "すべて"
-            if val1 > 0 and up_to:
-                 qty_part = f"最大{val1}枚"
+            qty_part = TextUtils.format_up_to(val1, "枚", up_to) if val1 > 0 else "すべて"
 
             text = f"その中から、{civ_part}{type_part}を{qty_part}選び、{to_zone}に加える。"
             return text
         else:
-            qty_part = f"{val1}枚" if val1 > 0 else "すべて"
-            if val1 > 0 and up_to:
-                qty_part = f"最大{val1}枚"
+            qty_part = TextUtils.format_up_to(val1, "枚", up_to) if val1 > 0 else "すべて"
             text = f"その中から、{qty_part}を{to_zone}に加える。"
             return text
 
@@ -238,7 +252,9 @@ class ReplaceCardMoveFormatter(CommandFormatterBase):
              t = t.replace("{target}", "このカード")
         else:
              if amount > 0:
-                  qty = f"最大{amount}{unit}" if up_to_flag else f"{amount}{unit}"
+                  qty = TextUtils.format_up_to(amount, unit, up_to_flag)
+                  # Strip "まで" logic from up_to in text replacement manually
+                  # but since we append "選び", "最大X枚まで選び" flows fine.
                   t = f"{target_str}を{qty}選び、" + t.replace("{target}を", "")
              else:
                   t = t.replace("{target}", target_str)

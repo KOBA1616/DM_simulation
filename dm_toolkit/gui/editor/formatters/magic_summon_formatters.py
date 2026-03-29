@@ -5,6 +5,7 @@ from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount
+from dm_toolkit.gui.editor.formatters.metadata_flags import SemanticMetadataFlags
 from dm_toolkit.consts import MAX_COST_VALUE
 
 @register_formatter("CAST_SPELL")
@@ -93,7 +94,7 @@ class PlayFromBufferFormatter(CommandFormatterBase):
 class AddManaFormatter(CommandFormatterBase):
     @classmethod
     def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
-        ctx.metadata["mana_charged"] = True
+        ctx.metadata[SemanticMetadataFlags.MANA_CHARGED.value] = True
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:

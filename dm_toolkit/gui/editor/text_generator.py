@@ -481,12 +481,13 @@ class CardTextGenerator:
         return ""
 
     @classmethod
-    def _format_keyword_grant_text(cls, target_str: str, key_id: str, display_text: str, duration_text: str, amount: int = None, skip_selection: bool = False) -> str:
+    def _format_keyword_grant_text(cls, target_str: str, key_id: str, display_text: str, duration_text: str, amount: int = None, skip_selection: bool = False, cond_prefix: str = "") -> str:
         """Helper to format keyword granting text.
 
         amount=None or 0: apply to all matching targets (no selection).
         amount>0: select N targets (N体選び).
         skip_selection=True: target already determined by input link.
+        cond_prefix: A prefix like 'このターン、' that goes before the sentence.
         """
         restriction_keys = [
             'CANNOT_ATTACK', 'CANNOT_BLOCK', 'CANNOT_ATTACK_OR_BLOCK', 'CANNOT_ATTACK_AND_BLOCK'
@@ -499,15 +500,21 @@ class CardTextGenerator:
 
         selection_prefix = cls._format_target_selection_prefix(target_str, amount, skip_selection)
 
+        # Adjust placement of prefix - prefix comes first
+        if selection_prefix:
+            prefix = f"{cond_prefix}{selection_prefix}"
+        else:
+            prefix = cond_prefix
+
         # If we selected targets, the subject usually becomes "そのクリーチャー"
         # However if it's all targets (amount=0/None), subject remains target_str
         has_selection = bool(selection_prefix)
         subject_str = "そのクリーチャー" if has_selection or skip_selection else target_str
 
         if is_restriction:
-            return f"{selection_prefix}{duration_text}{subject_str}は{display_text}。"
+            return f"{prefix}{duration_text}{subject_str}は{display_text}。"
 
-        return f"{selection_prefix}{duration_text}{subject_str}に「{display_text}」を与える。"
+        return f"{prefix}{duration_text}{subject_str}に「{display_text}」を与える。"
 
     @classmethod
     def _format_command(cls, command: Dict[str, Any], ctx: TextGenerationContext = None) -> str:

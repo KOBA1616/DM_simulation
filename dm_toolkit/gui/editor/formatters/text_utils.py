@@ -102,3 +102,14 @@ class TextUtils:
             return ""
 
         return "。".join([s.rstrip("。") for s in filtered]) + "。"
+
+    @staticmethod
+    def format_up_to(amount: Any, unit: str, up_to: bool) -> str:
+        """
+        Generates the proper Japanese phrase for a quantity, factoring in 'up to' logic.
+        E.g., amount=2, unit="枚", up_to=True -> "最大2枚まで"
+              amount=2, unit="枚", up_to=False -> "2枚"
+        """
+        if up_to:
+            return f"最大{amount}{unit}まで"
+        return f"{amount}{unit}"

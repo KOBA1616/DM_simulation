@@ -4,6 +4,7 @@ from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount, get_command_amount_with_fallback
+from dm_toolkit.gui.editor.formatters.metadata_flags import SemanticMetadataFlags
 from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
@@ -107,7 +108,7 @@ class BoostManaFormatter(CommandFormatterBase):
 class BreakShieldFormatter(CommandFormatterBase):
     @classmethod
     def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
-        ctx.metadata["shields_broken"] = True
+        ctx.metadata[SemanticMetadataFlags.SHIELDS_BROKEN.value] = True
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
@@ -130,7 +131,7 @@ class BreakShieldFormatter(CommandFormatterBase):
 class AddShieldFormatter(CommandFormatterBase):
     @classmethod
     def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
-        ctx.metadata["shields_added"] = True
+        ctx.metadata[SemanticMetadataFlags.SHIELDS_ADDED.value] = True
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
@@ -153,7 +154,7 @@ class ShieldBurnFormatter(CommandFormatterBase):
 class DestroyFormatter(CommandFormatterBase):
     @classmethod
     def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
-        ctx.metadata["destroys"] = True
+        ctx.metadata[SemanticMetadataFlags.DESTROYS.value] = True
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
@@ -351,7 +352,7 @@ class ResetInstanceFormatter(CommandFormatterBase):
 class SelectTargetFormatter(CommandFormatterBase):
     @classmethod
     def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
-        ctx.metadata["targets"] = True
+        ctx.metadata[SemanticMetadataFlags.TARGETS.value] = True
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
