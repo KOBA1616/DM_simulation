@@ -99,6 +99,41 @@ class CardType(str, Enum):
     TAMASEED = "TAMASEED"
     CASTLE = "CASTLE"
 
+class CardTypeHelper:
+    """Helper for polymorphic card type checking."""
+
+    @classmethod
+    def is_creature_like(cls, types: list[str]) -> bool:
+        """Returns True if any type in the list is a creature variant."""
+        if not types: return False
+        creature_types = {
+            CardType.CREATURE.value,
+            CardType.EVOLUTION_CREATURE.value,
+            CardType.PSYCHIC_CREATURE.value,
+            CardType.GR_CREATURE.value
+        }
+        return any(t in creature_types for t in types)
+
+    @classmethod
+    def is_spell_like(cls, types: list[str]) -> bool:
+        """Returns True if any type in the list is a spell."""
+        if not types: return False
+        return CardType.SPELL.value in types
+
+    @classmethod
+    def is_element_like(cls, types: list[str]) -> bool:
+        """Returns True if any type in the list is an element or creature-like."""
+        if not types: return False
+        if CardType.ELEMENT.value in types:
+            return True
+        # All creatures, cross gears, tamaseeds, and castles are elements on the battlefield.
+        element_types = {
+            CardType.CROSS_GEAR.value,
+            CardType.TAMASEED.value,
+            CardType.CASTLE.value
+        }
+        return cls.is_creature_like(types) or any(t in element_types for t in types)
+
 class TimingMode(str, Enum):
     PRE = "PRE"
     POST = "POST"

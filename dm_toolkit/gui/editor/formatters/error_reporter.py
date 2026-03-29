@@ -10,6 +10,15 @@ class ErrorReporter:
     def __init__(self):
         self._path: List[str] = []
 
+    def iter_path(self, items: List, path_prefix: str):
+        """
+        Iterates over a list of items, automatically wrapping each iteration
+        with a path segment based on its index.
+        """
+        for i, item in enumerate(items):
+            with self.path_segment(f"{path_prefix}[{i}]"):
+                yield i, item
+
     @contextmanager
     def path_segment(self, segment: str):
         """Context manager to push and pop a segment from the current path."""

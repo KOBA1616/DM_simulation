@@ -190,33 +190,30 @@ class CardTextGenerator:
 
             return False
 
-        for i, effect in enumerate(effects):
+        for _, effect in ctx.error_reporter.iter_path(effects, "effects"):
             if _is_special_only_effect(effect):
                 continue
-            with ctx.error_reporter.path_segment(f"effects[{i}]"):
-                text = cls._format_effect(effect, ctx)
-                if text:
-                    lines.append(f"■ {text}")
+            text = cls._format_effect(effect, ctx)
+            if text:
+                lines.append(f"■ {text}")
 
         # 3.1 Static Abilities (常在効果)
         # Process static_abilities array which contains Modifier objects
         static_abilities = data.get("static_abilities", [])
-        for i, static_ability in enumerate(static_abilities):
+        for _, static_ability in ctx.error_reporter.iter_path(static_abilities, "static_abilities"):
             if static_ability and isinstance(static_ability, dict):
-                with ctx.error_reporter.path_segment(f"static_abilities[{i}]"):
-                    text = cls._format_effect(static_ability, ctx)
-                    if text:
-                        lines.append(f"■ {text}")
+                text = cls._format_effect(static_ability, ctx)
+                if text:
+                    lines.append(f"■ {text}")
 
         # 3.5 Metamorph Abilities (Ultra Soul Cross, etc.)
         metamorphs = data.get("metamorph_abilities", [])
         if metamorphs:
             lines.append("【追加能力】")
-            for i, effect in enumerate(metamorphs):
-                with ctx.error_reporter.path_segment(f"metamorph_abilities[{i}]"):
-                    text = cls._format_effect(effect, ctx)
-                    if text:
-                        lines.append(f"■ {text}")
+            for _, effect in ctx.error_reporter.iter_path(metamorphs, "metamorph_abilities"):
+                text = cls._format_effect(effect, ctx)
+                if text:
+                    lines.append(f"■ {text}")
 
         return "\n".join(lines)
 
@@ -368,11 +365,10 @@ class CardTextGenerator:
         from dm_toolkit.gui.editor.formatters.input_link_ast import InputLinkASTBuilder
         commands_with_labels = InputLinkASTBuilder.infer_command_labels(commands)
 
-        for i, command in enumerate(commands_with_labels):
-            with ctx.error_reporter.path_segment(f"commands[{i}]"):
-                command_for_text = copy.deepcopy(command) if isinstance(command, dict) else command
-                raw_items.append(command_for_text)
-                action_texts.append(cls._format_command(command_for_text, ctx))
+        for _, command in ctx.error_reporter.iter_path(commands_with_labels, "commands"):
+            command_for_text = copy.deepcopy(command) if isinstance(command, dict) else command
+            raw_items.append(command_for_text)
+            action_texts.append(cls._format_command(command_for_text, ctx))
 
         # Try to merge common sequential patterns for more natural language
         full_action_text = cls._merge_action_texts(raw_items, action_texts)

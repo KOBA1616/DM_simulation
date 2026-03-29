@@ -1,5 +1,5 @@
 from typing import Dict, Any, Tuple
-from dm_toolkit.consts import TargetScope, CardType, Zone, MAX_COST_VALUE, MAX_POWER_VALUE
+from dm_toolkit.consts import TargetScope, CardType, CardTypeHelper, Zone, MAX_COST_VALUE, MAX_POWER_VALUE
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 
 class TargetResolutionService:
@@ -140,8 +140,8 @@ class TargetResolutionService:
         """
         Build a list of formatted attributes (civilizations, races, cost, power) for a filter.
         """
-        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
         from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
+        from dm_toolkit.gui.editor.formatters.value_resolver import ValueResolver
 
         adjectives = []
 
@@ -167,26 +167,16 @@ class TargetResolutionService:
             elif exact_cost is not None:
                 adjectives.append(f"コスト{exact_cost}")
             else:
-                if InputLinkFormatter.is_input_linked(min_cost, usage="MIN_COST") or (has_input_key and input_usage == "MIN_COST"):
-                    adjectives.append("コストその数以上")
-                elif InputLinkFormatter.is_input_linked(max_cost, usage="MAX_COST") or (has_input_key and input_usage == "MAX_COST"):
-                    adjectives.append("コストその数以下")
-                else:
-                    cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
-                    if cost_text:
-                        adjectives.append(cost_text)
+                cost_text = ValueResolver.resolve_range(min_cost, max_cost, unit="コスト", min_usage="MIN_COST", max_usage="MAX_COST", linked_token="その数", has_input_key=has_input_key, input_usage=input_usage)
+                if cost_text:
+                    adjectives.append(cost_text)
 
         min_power = filter_def.get("min_power", 0)
         max_power = filter_def.get("max_power", MAX_POWER_VALUE)
 
-        if InputLinkFormatter.is_input_linked(min_power, usage="MIN_POWER") or (has_input_key and input_usage == "MIN_POWER"):
-            adjectives.append("パワーその数以上")
-        elif InputLinkFormatter.is_input_linked(max_power, usage="MAX_POWER") or (has_input_key and input_usage == "MAX_POWER"):
-            adjectives.append("パワーその数以下")
-        else:
-            power_text = FilterTextFormatter.format_range_text(min_power, max_power, unit="パワー", min_usage="MIN_POWER", max_usage="MAX_POWER", linked_token="その数")
-            if power_text:
-                adjectives.append(power_text)
+        power_text = ValueResolver.resolve_range(min_power, max_power, unit="パワー", min_usage="MIN_POWER", max_usage="MAX_POWER", linked_token="その数", has_input_key=has_input_key, input_usage=input_usage)
+        if power_text:
+            adjectives.append(power_text)
 
         return adjectives
 
@@ -221,17 +211,18 @@ class TargetResolutionService:
         type_noun = "カード"
         if types:
             if len(types) == 1:
-                if types[0] == CardType.CREATURE.value:
+                if CardTypeHelper.is_creature_like([types[0]]):
                     type_noun = "クリーチャー"
-                elif types[0] == CardType.SPELL.value:
+                elif CardTypeHelper.is_spell_like([types[0]]):
                     type_noun = "呪文"
-                elif types[0] == CardType.ELEMENT.value:
+                elif CardTypeHelper.is_element_like([types[0]]):
                     type_noun = "エレメント"
             else:
                 type_words = []
-                if CardType.CREATURE.value in types: type_words.append("クリーチャー")
-                if CardType.SPELL.value in types: type_words.append("呪文")
-                if CardType.ELEMENT.value in types: type_words.append("エレメント")
+                if CardTypeHelper.is_creature_like(types): type_words.append("クリーチャー")
+                if CardTypeHelper.is_spell_like(types): type_words.append("呪文")
+                if CardTypeHelper.is_element_like(types) and not CardTypeHelper.is_creature_like(types): type_words.append("エレメント")
+                elif CardTypeHelper.is_element_like(types) and CardType.ELEMENT.value in types: type_words.append("エレメント")
                 if type_words: type_noun = "/".join(type_words)
 
         flag_parts = []
@@ -290,11 +281,11 @@ class TargetResolutionService:
         # Noun resolution
         noun = "クリーチャー" if default_type == CardType.CREATURE.value else ("呪文" if default_type == CardType.SPELL.value else "カード")
         if types:
-            if CardType.ELEMENT.value in types:
+            if CardTypeHelper.is_element_like(types) and (CardType.ELEMENT.value in types or not CardTypeHelper.is_creature_like(types)):
                 noun = "エレメント"
-            elif CardType.SPELL.value in types:
+            elif CardTypeHelper.is_spell_like(types):
                 noun = "呪文"
-            elif CardType.CREATURE.value in types:
+            elif CardTypeHelper.is_creature_like(types):
                 noun = "クリーチャー"
             elif CardType.CARD.value in types:
                 noun = "カード"
@@ -393,17 +384,17 @@ class TargetResolutionService:
 
         # Contextual Overrides
         if Zone.BATTLE_ZONE.value in zones:
-            if CardType.CREATURE.value in types or not types:
+            if CardTypeHelper.is_creature_like(types) or not types:
                 type_noun = "クリーチャー"
                 unit = "体"
-            if CardType.ELEMENT.value in types:
+            if CardTypeHelper.is_element_like(types) and (CardType.ELEMENT.value in types or not CardTypeHelper.is_creature_like(types)):
                 type_noun = "エレメント"
                 unit = "枚"
         elif Zone.SHIELD_ZONE.value in zones:
             type_noun = "カード"
             unit = "つ"
         elif Zone.GRAVEYARD.value in zones:
-            if CardType.CREATURE.value in types:
+            if CardTypeHelper.is_creature_like(types):
                 type_noun = "クリーチャー"
                 unit = "体"
 
