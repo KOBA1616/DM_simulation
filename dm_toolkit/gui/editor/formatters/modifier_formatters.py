@@ -32,10 +32,12 @@ class CostModifierFormatter(ModifierFormatterBase):
 class PowerModifierFormatter(ModifierFormatterBase):
     @classmethod
     def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
-        sign = "+" if value >= 0 else ""
-        if value == 0:
+        if value > 0:
+            return f"{cond}{target}のパワーを+{value}する。"
+        elif value < 0:
+            return f"{cond}{target}のパワーを{abs(value)}低下させる。"
+        else:
             return f"{cond}{target}のパワーは不変。"
-        return f"{cond}{target}のパワーを{sign}{value}する。"
 
 from enum import Enum
 

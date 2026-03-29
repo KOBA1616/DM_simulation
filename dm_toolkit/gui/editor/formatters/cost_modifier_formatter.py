@@ -36,23 +36,55 @@ class FixedCostModifier(CostModifierStrategy):
         if val is None:
             return f"{prefix}{target.to_string()}修正する。"
 
-        # Generate verb based on particle
-        if target.particle == "は":
+        # Preserve exact legacy phrasing for Fixed Modifiers unless customized
+        verb = "軽減"
+        if val < 0:
+            verb = "増加"
+
+        # When specifically applying condition text, Duel Masters often uses "少なくなる"
+        # However, for legacy compatibility where prefix doesn't exist, we fall back to 軽減
+
+        target_str = target.to_string()
+        if target_str.endswith("は"):
             verb = "少なくなる" if val > 0 else "多くなる"
-        elif target.particle in ("を、", "を"):
-            verb = "少なくする" if val > 0 else "多くする"
-        else:
-            verb = "少なくする" if val > 0 else "多くする"
+        elif cond_text or cond_desc or prefix:
+            if target.particle in ("を、", "を"):
+                verb = "少なくする" if val > 0 else "多くする"
+            else:
+                verb = "少なくする" if val > 0 else "多くする"
 
         val_abs = abs(val)
-        target_str = target.to_string()
+
+        min_cost = mod_dict.get("min_cost")
+        min_cost_text = ""
+        if min_cost is not None:
+            if min_cost <= 0:
+                min_cost_text = f"ただし、コストは{min_cost}以下にならない。"
+            else:
+                min_cost_text = f"ただし、コストは{min_cost}より少なくならない。"
 
         if cond_text:
-            return f"{prefix}{cond_text}、{target_str}{val_abs}{verb}。"
-        if cond_desc:
-            return f"{prefix}{cond_desc}があれば、{target_str}{val_abs}{verb}。"
+            result = f"{prefix}{cond_text}、{target_str}{val_abs}{verb}。"
+        elif cond_desc:
+            result = f"{prefix}{cond_desc}があれば、{target_str}{val_abs}{verb}。"
+        else:
+            # Preserve generic legacy output without particles
+            if verb in ("軽減", "増加"):
+                 # Legacy outputs usually format like: "コストをX軽減"
+                 target_adj = target_str if target_str else "コストを"
+                 if not target_adj.endswith("を"):
+                      if target_adj.endswith("の"):
+                           target_adj += "コストを"
+                 result = f"{prefix}{target_adj}{val_abs}{verb}"
+                 if result.endswith("コストを"):
+                      result = result[:-4] + "軽減"
+            else:
+                 result = f"{prefix}{target_str}{val_abs}{verb}。"
 
-        return f"{prefix}{target_str}{val_abs}{verb}。"
+        if min_cost_text:
+            result += min_cost_text
+
+        return result
 
 class StatScaledCostModifier(CostModifierStrategy):
     @classmethod
@@ -166,6 +198,14 @@ class StatScaledCostModifier(CostModifierStrategy):
                         base += f" （例: 現在の{stat_name}{sval} → コストを{calc}削減）"
         except (KeyError, ValueError, TypeError):
             pass
+
+        min_cost = mod_dict.get("min_cost")
+        if min_cost is not None:
+            if min_cost <= 0:
+                base += f"ただし、コストは{min_cost}以下にならない。"
+            else:
+                base += f"ただし、コストは{min_cost}より少なくならない。"
+
         return base
 
 class CostModifierFormatter:
@@ -208,10 +248,10 @@ class CostModifierFormatter:
 
         target = cls._parse_target_phrase(target_phrase)
 
-        if value_mode in ("FIXED", "FIXED_AMOUNT", "PASSIVE") or mod_dict.get("value") is not None:
-             return FixedCostModifier.format(mod_dict, prefix, target, ctx, cond_text, cond_desc)
-        elif value_mode == "STAT_SCALED":
+        if value_mode == "STAT_SCALED":
              return StatScaledCostModifier.format(mod_dict, prefix, target, ctx, cond_text, cond_desc)
+        elif value_mode in ("FIXED", "FIXED_AMOUNT", "PASSIVE") or mod_dict.get("value") is not None:
+             return FixedCostModifier.format(mod_dict, prefix, target, ctx, cond_text, cond_desc)
 
         return f"{prefix}{target.to_string()}修正する。"
 

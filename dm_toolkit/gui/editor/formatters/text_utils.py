@@ -5,31 +5,53 @@ class TextUtils:
     """Utility class for handling common Japanese punctuation and verb conjugations."""
 
     @staticmethod
-    def format_comparison_operator(op: str, value: Any) -> str:
+    def format_comparison_operator(op: str, value: Any, attribute: str = "", particle: str = "の") -> str:
         """
         Formats a comparison operator and value into Japanese text.
+        If an attribute is provided, generates phrases like "X以下のコストの〜".
         """
+        op_text = ""
         if op == ">=":
-            return f"{value}以上"
+            op_text = f"{value}以上"
         elif op == "<=":
-            return f"{value}以下"
+            op_text = f"{value}以下"
         elif op in ("=", "=="):
-            return f"{value}"
+            op_text = f"{value}"
         elif op == ">":
-            return f"{value}より多い"
+            if attribute == "パワー":
+                op_text = f"{value}より大きい"
+            else:
+                op_text = f"{value}より多い"
         elif op == "<":
-            return f"{value}未満"
-        return f"{value}"
+            op_text = f"{value}未満"
+        else:
+            op_text = f"{value}"
+
+        if not attribute:
+            return op_text
+
+        if op in ("=", "=="):
+            return f"{attribute}{op_text}{particle}"
+        elif op == ">" and attribute == "パワー":
+            # Avoid appending "の" after an i-adjective like "大きい"
+            adj_particle = "" if particle == "の" else particle
+            return f"{attribute}が{op_text}{adj_particle}"
+
+        return f"{op_text}の{attribute}{particle}"
 
     @staticmethod
-    def apply_conjugation(text: str, optional: bool = False) -> str:
+    def apply_conjugation(text: str, optional: bool = False, replacement_base: str = "") -> str:
         """
         Applies standard conjugation to the end of a sentence based on the `optional` flag.
         Handles replacing '。' with 'てもよい。' etc. using data-driven rules.
         Instead of merely changing the string ending, this splits by '。' and applies
         conjugation only to the final non-empty clause, ensuring multiple or nested clauses
         are handled safely at a structural level.
+        If replacement_base is provided, wraps the action in a 'かわりに' clause.
         """
+        if replacement_base:
+            text = f"{replacement_base}かわりに、{text}"
+
         if not optional or not text:
             return text
 
