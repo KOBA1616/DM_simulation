@@ -172,7 +172,7 @@ class OpponentPlayedWithoutManaConditionFormatter(ConditionFormatterStrategy):
 class DuringYourTurnConditionFormatter(ConditionFormatterStrategy):
     @classmethod
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
-        return CardTextResources.get_condition_text("DURING_YOUR_TURN")
+        return "自分のターン中"
 
     @classmethod
     def get_suffix(cls) -> str:
@@ -182,7 +182,7 @@ class DuringYourTurnConditionFormatter(ConditionFormatterStrategy):
 class DuringOpponentTurnConditionFormatter(ConditionFormatterStrategy):
     @classmethod
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
-        return CardTextResources.get_condition_text("DURING_OPPONENT_TURN")
+        return "相手のターン中"
 
     @classmethod
     def get_suffix(cls) -> str:

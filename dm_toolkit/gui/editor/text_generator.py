@@ -336,6 +336,10 @@ class CardTextGenerator:
                 effect.get("trigger_filter", {}),
                 timing_mode=timing_mode,
             )
+        else:
+            # Handle pure triggers (without scope) where the trigger text might still need replacement
+            if timing_mode == TimingMode.PRE.value:
+                trigger_text = cls._to_replacement_trigger_text(trigger_text)
 
         if ctx and hasattr(ctx, "error_reporter"):
             with ctx.error_reporter.path_segment("condition"):
@@ -344,11 +348,12 @@ class CardTextGenerator:
             cond_text = cls._format_condition(condition, ctx)
         cond_type = condition.get("type", "NONE")
 
-        # Refined natural language logic
+        # Refined natural language logic: structured binding of active conditions + trigger events
+        active_condition_prefix = ""
         if trigger != "NONE" and trigger != "PASSIVE_CONST":
             if cond_type == "DURING_YOUR_TURN" or cond_type == "DURING_OPPONENT_TURN":
-                base_cond = cond_text.strip("、: ")
-                trigger_text = f"{base_cond}、{trigger_text}" # 自分のターン中、このクリーチャーが出た時
+                # cond_text is now purely "自分のターン中" due to ConditionFormatter refactor
+                active_condition_prefix = f"{cond_text}、"
                 cond_text = ""
             elif trigger == "ON_OPPONENT_DRAW" and cond_type == "OPPONENT_DRAW_COUNT":
                 val = condition.get("value", 0)
@@ -384,7 +389,7 @@ class CardTextGenerator:
         if trigger_text and trigger != "NONE" and trigger != "PASSIVE_CONST":
              if not full_action_text:
                  return ""
-             return f"{trigger_text}: {cond_text}{full_action_text}"
+             return f"{active_condition_prefix}{trigger_text}: {cond_text}{full_action_text}"
         elif trigger == "PASSIVE_CONST":
              return f"{cond_text}{full_action_text}"
         else:
@@ -423,7 +428,7 @@ class CardTextGenerator:
         if tmpl_set:
             timing_key = str(timing_mode or "").upper()
             if timing_key not in (TimingMode.PRE.value, TimingMode.POST.value):
-                timing_key = TimingMode.PRE.value if cls._looks_like_pre_timing(trigger_text) else TimingMode.POST.value
+                timing_key = TimingMode.POST.value
             tmpl = tmpl_set.get(timing_key) or tmpl_set.get(TimingMode.POST.value)
             if tmpl:
                 default_type = CardType.SPELL.value if trigger_type == "ON_CAST_SPELL" else CardType.CREATURE.value
@@ -431,10 +436,12 @@ class CardTextGenerator:
                 subject = TargetResolutionService.compose_subject_from_filter(trigger_filter, default_type)
                 return tmpl.format(scope_text=scope_text, subject=subject)
 
-        if trigger_type == "ON_SHIELD_ADD":
-             # "カードがシールドゾーンに..." -> replace "シールドゾーン" with "自分の/相手のシールドゾーン"
-             if "シールドゾーン" in trigger_text:
-                 return trigger_text.replace("シールドゾーン", f"{scope_text}のシールドゾーン")
+        # For fallback triggers without specific COMPOSITION_TEMPLATES,
+        # apply replacement phrases directly if PRE timing mode is requested,
+        # ensuring tests for legacy trigger formatting (like ON_OPPONENT_CREATURE_ENTER) pass without guessing.
+        if timing_mode == TimingMode.PRE.value:
+            from dm_toolkit.gui.editor.formatters.trigger_formatter import TriggerFormatter
+            trigger_text = TriggerFormatter.to_replacement_trigger_text(trigger_text)
 
         # Default fallbacks
         if trigger_text.startswith("この"):
@@ -448,11 +455,6 @@ class CardTextGenerator:
     def _resolve_effect_timing_mode(cls, effect: Dict[str, Any]) -> str:
         from dm_toolkit.gui.editor.formatters.trigger_formatter import TriggerFormatter
         return TriggerFormatter.resolve_effect_timing_mode(effect)
-
-    @classmethod
-    def _looks_like_pre_timing(cls, trigger_text: str) -> bool:
-        from dm_toolkit.gui.editor.formatters.trigger_formatter import TriggerFormatter
-        return TriggerFormatter.looks_like_pre_timing(trigger_text)
 
     @classmethod
     def _to_replacement_trigger_text(cls, trigger_text: str) -> str:
