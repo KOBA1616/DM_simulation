@@ -148,6 +148,31 @@ class TransitionFormatter(CommandFormatterBase):
             from dm_toolkit.gui.i18n import tr
             res = command.get("result", "")
             text = text.replace("{result}", tr(res))
+
+        # Handle face_up / face_down and enter_tapped modifiers
+        face_modifier = ""
+        if command.get("face_up"):
+            face_modifier = "表向きにして"
+        elif command.get("face_down"):
+            face_modifier = "裏向きにして"
+
+        tapped_modifier = ""
+        if command.get("enter_tapped"):
+            tapped_modifier = "タップして"
+
+        if face_modifier or tapped_modifier:
+            combined_modifier = face_modifier + tapped_modifier
+
+            # Common verbs to replace
+            verbs = ["置く", "出す", "加える", "戻す", "移動する"]
+            for verb in verbs:
+                if text.endswith(f"{verb}。"):
+                    text = text[:-len(f"{verb}。")] + f"{combined_modifier}{verb}。"
+                    break
+                elif text.endswith(f"、{verb}"): # For cases within conditions
+                    text = text[:-len(f"、{verb}")] + f"、{combined_modifier}{verb}"
+                    break
+
         return text
 
 @register_formatter("MOVE_CARD")

@@ -185,6 +185,28 @@ class TargetResolutionService:
         if target_desc == "カード" and effective_scope in ["NONE", ""] and default_self_noun:
             target_desc = default_self_noun
 
+        if ctx:
+            if ctx.last_target and ctx.last_target == target_desc and target_desc not in ["カード", "手札", "シールド"]:
+                from dm_toolkit.gui.editor.formatters.utils import get_command_amount
+                amt = get_command_amount(action, default=0)
+                if amt == 1:
+                    type_noun = ctx.last_target_type_noun or "カード"
+                    target_desc = f"その{type_noun}"
+                else:
+                    target_desc = "それら"
+            else:
+                ctx.last_target = target_desc
+                if filter_def:
+                    _, type_noun, _ = cls._determine_noun(filter_def.get("zones", []), filter_def.get("types", []), atype)
+                else:
+                    if target_desc.endswith("クリーチャー"):
+                        type_noun = "クリーチャー"
+                    elif target_desc.endswith("呪文"):
+                        type_noun = "呪文"
+                    else:
+                        type_noun = "カード"
+                ctx.last_target_type_noun = type_noun
+
         return target_desc, unit
 
     @classmethod
