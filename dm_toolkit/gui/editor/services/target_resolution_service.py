@@ -71,8 +71,13 @@ class TargetResolutionService:
             zones = filter_def.get("zones", [])
             types = filter_def.get("types", [])
 
-            adjectives = cls._format_attributes(filter_def, action)
-            adjectives += cls._format_cost_and_power(filter_def, action, omit_cost=omit_cost)
+            input_usage = action.get("input_value_usage") or action.get("input_usage")
+            has_input_key = bool(action.get("input_value_key") or action.get("input_link"))
+
+            attrs = cls.build_attribute_list(filter_def, omit_cost=omit_cost, input_usage=input_usage, has_input_key=has_input_key)
+            adjectives = "の".join(attrs)
+            if adjectives:
+                adjectives += "の"
 
             if filter_def.get("is_tapped", None) is True: adjectives = "タップされている" + adjectives
             elif filter_def.get("is_tapped", None) is False: adjectives = "アンタップされている" + adjectives
@@ -130,9 +135,63 @@ class TargetResolutionService:
         return target_desc, unit
 
     @classmethod
+    def build_attribute_list(cls, filter_def: Dict[str, Any], omit_cost: bool = False, input_usage: str = "", has_input_key: bool = False) -> list[str]:
+        """
+        Build a list of formatted attributes (civilizations, races, cost, power) for a filter.
+        """
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+        from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
+
+        adjectives = []
+
+        civs = filter_def.get("civilizations", [])
+        if not civs and "civilization" in filter_def:
+            single = filter_def.get("civilization")
+            if single: civs = [single]
+        if civs:
+            adjectives.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
+
+        races = filter_def.get("races", [])
+        if races:
+            adjectives.append("/".join(races))
+
+        if not omit_cost:
+            min_cost = filter_def.get("min_cost", 0)
+            max_cost = filter_def.get("max_cost", MAX_COST_VALUE)
+            exact_cost = filter_def.get("exact_cost")
+            cost_ref = filter_def.get("cost_ref")
+
+            if cost_ref:
+                adjectives.append("選択した数字と同じコスト")
+            elif exact_cost is not None:
+                adjectives.append(f"コスト{exact_cost}")
+            else:
+                if InputLinkFormatter.is_input_linked(min_cost, usage="MIN_COST") or (has_input_key and input_usage == "MIN_COST"):
+                    adjectives.append("コストその数以上")
+                elif InputLinkFormatter.is_input_linked(max_cost, usage="MAX_COST") or (has_input_key and input_usage == "MAX_COST"):
+                    adjectives.append("コストその数以下")
+                else:
+                    cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
+                    if cost_text:
+                        adjectives.append(cost_text)
+
+        min_power = filter_def.get("min_power", 0)
+        max_power = filter_def.get("max_power", MAX_POWER_VALUE)
+
+        if InputLinkFormatter.is_input_linked(min_power, usage="MIN_POWER") or (has_input_key and input_usage == "MIN_POWER"):
+            adjectives.append("パワーその数以上")
+        elif InputLinkFormatter.is_input_linked(max_power, usage="MAX_POWER") or (has_input_key and input_usage == "MAX_POWER"):
+            adjectives.append("パワーその数以下")
+        else:
+            power_text = FilterTextFormatter.format_range_text(min_power, max_power, unit="パワー", min_usage="MIN_POWER", max_usage="MAX_POWER", linked_token="その数")
+            if power_text:
+                adjectives.append(power_text)
+
+        return adjectives
+
+    @classmethod
     def format_modifier_target(cls, filter_def: Dict[str, Any]) -> str:
         """Format target description from filter with comprehensive support."""
-        from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
         if not filter_def:
             return "対象"
 
@@ -142,12 +201,6 @@ class TargetResolutionService:
 
         zones = filter_def.get("zones", [])
         types = filter_def.get("types", [])
-        civs = filter_def.get("civilizations", [])
-        races = filter_def.get("races", [])
-        min_cost = filter_def.get("min_cost", 0)
-        max_cost = filter_def.get("max_cost", MAX_COST_VALUE)
-        min_power = filter_def.get("min_power", 0)
-        max_power = filter_def.get("max_power", MAX_POWER_VALUE)
         is_tapped = filter_def.get("is_tapped")
         is_blocker = filter_def.get("is_blocker")
         is_evolution = filter_def.get("is_evolution")
@@ -160,27 +213,9 @@ class TargetResolutionService:
             else:
                 parts.append(CardTextResources.format_zones_list(zones, joiner="または") + "から")
 
-        if civs:
-            parts.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]) + "の")
-
-        if races:
-            parts.append("/".join(races) + "の")
-
-        exact_cost = filter_def.get("exact_cost")
-        cost_ref = filter_def.get("cost_ref")
-
-        if cost_ref:
-            parts.append("選択した数字と同じコストの")
-        elif exact_cost is not None:
-            parts.append(f"コスト{exact_cost}の")
-        else:
-            cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
-            if cost_text:
-                parts.append(cost_text + "の")
-
-        power_text = FilterTextFormatter.format_range_text(min_power, max_power, unit="パワー", min_usage="MIN_POWER", max_usage="MAX_POWER", linked_token="その数")
-        if power_text:
-            parts.append(power_text + "の")
+        attrs = cls.build_attribute_list(filter_def)
+        if attrs:
+            parts.append("の".join(attrs) + "の")
 
         type_noun = "カード"
         if types:
@@ -231,57 +266,81 @@ class TargetResolutionService:
 
     @classmethod
     def _format_cost_and_power(cls, filter_def: Dict[str, Any], action: Dict[str, Any], omit_cost: bool = False) -> str:
-        adjectives = ""
-        input_usage = action.get("input_value_usage") or action.get("input_usage")
-        has_input_key = bool(action.get("input_value_key") or action.get("input_link"))
-
-        if not omit_cost:
-            min_cost = filter_def.get("min_cost", 0)
-            max_cost = filter_def.get("max_cost", MAX_COST_VALUE)
-
-            from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-            from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
-            if InputLinkFormatter.is_input_linked(min_cost, usage="MIN_COST") or (has_input_key and input_usage == "MIN_COST"):
-                adjectives += "コストその数以上の"
-            elif InputLinkFormatter.is_input_linked(max_cost, usage="MAX_COST") or (has_input_key and input_usage == "MAX_COST"):
-                adjectives += "コストその数以下の"
-            else:
-                cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
-                if cost_text:
-                    adjectives += cost_text + "の"
-
-        min_power = filter_def.get("min_power", 0)
-        max_power = filter_def.get("max_power", MAX_POWER_VALUE)
-
-        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-        from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
-        if InputLinkFormatter.is_input_linked(min_power, usage="MIN_POWER") or (has_input_key and input_usage == "MIN_POWER"):
-            adjectives += "パワーその数以上の"
-        elif InputLinkFormatter.is_input_linked(max_power, usage="MAX_POWER") or (has_input_key and input_usage == "MAX_POWER"):
-            adjectives += "パワーその数以下の"
-        else:
-            power_text = FilterTextFormatter.format_range_text(min_power, max_power, unit="パワー", min_usage="MIN_POWER", max_usage="MAX_POWER", linked_token="その数")
-            if power_text:
-                adjectives += power_text + "の"
-
-        return adjectives
+        # These methods are replaced by build_attribute_list, but we keep them for compatibility
+        # if other parts of the code still call them.
+        return ""
 
     @classmethod
     def _format_attributes(cls, filter_def: Dict[str, Any], action: Dict[str, Any]) -> str:
-        adjectives = ""
-        civs = filter_def.get("civilizations", [])
-        races = filter_def.get("races", [])
+        return ""
 
-        if not civs and "civilization" in filter_def:
-            single = filter_def.get("civilization")
-            if single: civs = [single]
+    @classmethod
+    def compose_subject_from_filter(cls, filter_def: Dict[str, Any], default_type: str) -> str:
+        """Compose a subject phrase (noun + adjectives) from a trigger filter."""
+        f = filter_def or {}
+        zones = f.get("zones", [])
+        types = f.get("types", [])
+        is_tapped = f.get("is_tapped")
+        is_blocker = f.get("is_blocker")
+        is_evolution = f.get("is_evolution")
+        is_summoning_sick = f.get("is_summoning_sick")
+        flags = f.get("flags", [])
 
-        temp_adjs = []
-        if civs: temp_adjs.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
-        if races: temp_adjs.append("/".join(races))
+        # Noun resolution
+        noun = "クリーチャー" if default_type == CardType.CREATURE.value else ("呪文" if default_type == CardType.SPELL.value else "カード")
+        if types:
+            if CardType.ELEMENT.value in types:
+                noun = "エレメント"
+            elif CardType.SPELL.value in types:
+                noun = "呪文"
+            elif CardType.CREATURE.value in types:
+                noun = "クリーチャー"
+            elif CardType.CARD.value in types:
+                noun = "カード"
 
-        if temp_adjs: adjectives += "/".join(temp_adjs) + "の"
-        return adjectives
+        adjs = []
+
+        # Zone conditions
+        if zones and Zone.BATTLE_ZONE.value not in zones:
+            zone_names = []
+            for z in zones:
+                zone_text = CardTextResources.normalize_zone_name(z)
+                if zone_text:
+                    zone_names.append(zone_text)
+            if zone_names:
+                adjs.append("/".join(zone_names))
+
+        # Cost, Power, Civs, Races
+        adjs.extend(cls.build_attribute_list(f))
+
+        # Flags
+        if is_tapped == 1:
+            adjs.append("タップ状態")
+        elif is_tapped == 0:
+            adjs.append("アンタップ状態")
+        if is_blocker == 1:
+            adjs.append("ブロッカー")
+        elif is_blocker == 0:
+            adjs.append("ブロッカー以外")
+        if is_evolution == 1:
+            adjs.append("進化")
+        elif is_evolution == 0:
+            adjs.append("進化以外")
+        if is_summoning_sick == 1:
+            adjs.append("召喚酔い")
+        elif is_summoning_sick == 0:
+            adjs.append("召喚酔い以外")
+
+        # Generic flags
+        if flags:
+            for flag in flags:
+                if flag == "BLOCKER" and "ブロッカー" not in adjs:
+                    adjs.append("ブロッカー")
+
+        adj_str = "の".join(adjs)
+        if adj_str:
+            return f"{adj_str}の{noun}"
+        return noun
 
     @classmethod
     def _determine_noun(cls, zones: list, types: list, atype: str) -> Tuple[str, str, str]:

@@ -133,16 +133,6 @@ class CardTextGenerator:
                     if formatted_kw:
                         special_kw_lines.append(f"■ {formatted_kw}")
                 else:
-                    if k == "power_attacker":
-                        bonus = data.get("power_attacker_bonus", 0)
-                        if bonus > 0:
-                            kw_str += f" +{bonus}"
-                    elif k == "hyper_energy":
-                        kw_str += "（このクリーチャーを召喚する時、コストが異なる自分のクリーチャーを好きな数タップしてもよい、こうしてタップしたクリーチャー1体につき、このクリーチャーの召喚コストを2少なくする、ただし、コストは0以下にならない。）"
-                    elif k == "mega_last_burst":
-                        kw_str += "（このクリーチャーが手札、マナゾーン、または墓地に置かれた時、このカードの呪文側をコストを支払わずに唱えてもよい）"
-                    elif k == "just_diver":
-                        kw_str += "（このクリーチャーが出た時、次の自分のターンのはじめまで、このクリーチャーは相手に選ばれず、攻撃されない）"
                     basic_kw_lines.append(f"■ {kw_str}")
 
         # Append in required order
@@ -162,9 +152,10 @@ class CardTextGenerator:
                         lines.append(f"■ {ul}")
 
         # 2.5 Cost Reductions
-        cost_reductions = cls._normalize_cost_reductions(data.get("cost_reductions", []))
+        from dm_toolkit.gui.editor.formatters.cost_modifier_formatter import CostModifierFormatter
+        cost_reductions = CostModifierFormatter._normalize_cost_reductions(data.get("cost_reductions", []))
         for cr in cost_reductions:
-            text = cls._format_cost_reduction(cr, ctx=ctx)
+            text = CostModifierFormatter._format_cost_reduction(cr, ctx=ctx)
             if text:
                 lines.append(f"■ {text}")
 
@@ -233,31 +224,6 @@ class CardTextGenerator:
         return tr(rtype)
 
     @classmethod
-    def _safe_int(cls, value: Any, default: int = 0) -> int:
-        from dm_toolkit.gui.editor.formatters.cost_modifier_formatter import CostModifierFormatter
-        return CostModifierFormatter._safe_int(value, default)
-
-    @classmethod
-    def _format_stat_scaled_cost_text(cls, target_phrase: str, stat_key: Any, per_value: Any, step_delta: Any, min_stat: Any, max_reduction: Any, prefix: str = "") -> str:
-        from dm_toolkit.gui.editor.formatters.cost_modifier_formatter import CostModifierFormatter
-        return CostModifierFormatter._format_stat_scaled_cost_text(target_phrase, stat_key, per_value, step_delta, min_stat, max_reduction, prefix)
-
-    @classmethod
-    def _format_unified_cost_modifier(cls, mod_dict: Dict[str, Any], prefix: str = "", target_phrase: str = "このカードの召喚コストを", ctx: TextGenerationContext = None) -> str:
-        from dm_toolkit.gui.editor.formatters.cost_modifier_formatter import CostModifierFormatter
-        return CostModifierFormatter._format_unified_cost_modifier(mod_dict, prefix, target_phrase, ctx)
-
-    @classmethod
-    def _format_cost_reduction(cls, cr: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
-        from dm_toolkit.gui.editor.formatters.cost_modifier_formatter import CostModifierFormatter
-        return CostModifierFormatter._format_cost_reduction(cr, ctx)
-
-    @classmethod
-    def _normalize_cost_reductions(cls, crs: Any) -> List[Dict[str, Any]]:
-        from dm_toolkit.gui.editor.formatters.cost_modifier_formatter import CostModifierFormatter
-        return CostModifierFormatter._normalize_cost_reductions(crs)
-
-    @classmethod
     def _format_modifier(cls, modifier: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         """Format a static ability (Modifier) with comprehensive support for all types and conditions."""
         from dm_toolkit.consts import TargetScope
@@ -313,7 +279,7 @@ class CardTextGenerator:
         
         from dm_toolkit.gui.editor.formatters.modifier_formatters import ModifierFormatterRegistry
 
-        return ModifierFormatterRegistry.format(mtype, cond_text, full_target, scope_prefix, value, modifier, cls, ctx)
+        return ModifierFormatterRegistry.format(mtype, cond_text, full_target, scope_prefix, value, modifier, ctx)
     
     @classmethod
     def _get_scope_prefix(cls, scope: str) -> str:
@@ -447,126 +413,6 @@ class CardTextGenerator:
         if formatted == trigger_text:
             return trigger_text
 
-        # Helper to compose subject phrase from filter
-        def _compose_subject_from_filter(default_type: str) -> str:
-            f = trigger_filter or {}
-            civs = f.get("civilizations", [])
-            races = f.get("races", [])
-            types = f.get("types", [])
-            zones = f.get("zones", [])
-            min_cost = f.get("min_cost", 0)
-            if min_cost is None:
-                min_cost = 0
-            max_cost = f.get("max_cost", MAX_COST_VALUE)
-            if max_cost is None:
-                max_cost = MAX_COST_VALUE
-            exact_cost = f.get("exact_cost")
-            cost_ref = f.get("cost_ref")
-            min_power = f.get("min_power", 0)
-            if min_power is None:
-                min_power = 0
-            max_power = f.get("max_power", MAX_POWER_VALUE)
-            if max_power is None:
-                max_power = MAX_POWER_VALUE
-            power_max_ref = f.get("power_max_ref")
-            is_tapped = f.get("is_tapped")
-            is_blocker = f.get("is_blocker")
-            is_evolution = f.get("is_evolution")
-            is_summoning_sick = f.get("is_summoning_sick")
-            flags = f.get("flags", [])
-
-            # Noun resolution
-            noun = "クリーチャー" if default_type == CardType.CREATURE.value else ("呪文" if default_type == CardType.SPELL.value else "カード")
-            if types:
-                if CardType.ELEMENT.value in types:
-                    noun = "エレメント"
-                elif CardType.SPELL.value in types:
-                    noun = "呪文"
-                elif CardType.CREATURE.value in types:
-                    noun = "クリーチャー"
-                elif CardType.CARD.value in types:
-                    noun = "カード"
-
-            adjs: List[str] = []
-            
-            # Zone conditions (if specified, generally not mentioned in trigger text but may appear)
-            if zones and Zone.BATTLE_ZONE.value not in zones:
-                zone_names = []
-                for z in zones:
-                    zone_text = CardTextResources.normalize_zone_name(z)
-                    if zone_text:
-                        zone_names.append(zone_text)
-                if zone_names:
-                    adjs.append("/".join(zone_names))
-            
-            if civs:
-                adjs.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
-            if races:
-                adjs.append("/".join(races))
-
-            # Cost conditions
-            if cost_ref:
-                adjs.append("選択した数字と同じコスト")
-            elif exact_cost is not None:
-                adjs.append(f"コスト{exact_cost}")
-            else:
-                if InputLinkFormatter.is_input_linked(min_cost, usage="MIN_COST"):
-                    adjs.append("コストその数以上")
-                elif InputLinkFormatter.is_input_linked(max_cost, usage="MAX_COST"):
-                    adjs.append("コストその数以下")
-                else:
-                    if min_cost > 0 and max_cost < MAX_COST_VALUE:
-                        adjs.append(f"コスト{min_cost}～{max_cost}")
-                    elif min_cost > 0:
-                        adjs.append(f"コスト{min_cost}以上")
-                    elif max_cost < MAX_COST_VALUE:
-                        adjs.append(f"コスト{max_cost}以下")
-
-            # Power conditions
-            if power_max_ref:
-                adjs.append("パワーその数以下")
-            elif InputLinkFormatter.is_input_linked(min_power, usage="MIN_POWER"):
-                adjs.append("パワーその数以上")
-            elif InputLinkFormatter.is_input_linked(max_power, usage="MAX_POWER"):
-                adjs.append("パワーその数以下")
-            else:
-                if min_power > 0 and max_power < MAX_POWER_VALUE:
-                    adjs.append(f"パワー{min_power}～{max_power}")
-                elif min_power > 0:
-                    adjs.append(f"パワー{min_power}以上")
-                elif max_power < MAX_POWER_VALUE:
-                    adjs.append(f"パワー{max_power}以下")
-
-            # Flags
-            if is_tapped == 1:
-                adjs.append("タップ状態")
-            elif is_tapped == 0:
-                adjs.append("アンタップ状態")
-            if is_blocker == 1:
-                adjs.append("ブロッカー")
-            elif is_blocker == 0:
-                adjs.append("ブロッカー以外")
-            if is_evolution == 1:
-                adjs.append("進化")
-            elif is_evolution == 0:
-                adjs.append("進化以外")
-            if is_summoning_sick == 1:
-                adjs.append("召喚酔い")
-            elif is_summoning_sick == 0:
-                adjs.append("召喚酔い以外")
-            
-            # Generic flags
-            if flags:
-                for flag in flags:
-                    if flag == "BLOCKER":
-                        if "ブロッカー" not in adjs:
-                            adjs.append("ブロッカー")
-
-            adj_str = "の".join(adjs)
-            if adj_str:
-                return f"{adj_str}の{noun}"
-            return noun
-
         # Structured template composition (timing/scope/trigger as variables)
         tmpl_set = CardTextResources.TRIGGER_COMPOSITION_TEMPLATES.get(trigger_type)
         if tmpl_set:
@@ -576,7 +422,8 @@ class CardTextGenerator:
             tmpl = tmpl_set.get(timing_key) or tmpl_set.get(TimingMode.POST.value)
             if tmpl:
                 default_type = CardType.SPELL.value if trigger_type == "ON_CAST_SPELL" else CardType.CREATURE.value
-                subject = _compose_subject_from_filter(default_type)
+                from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
+                subject = TargetResolutionService.compose_subject_from_filter(trigger_filter, default_type)
                 return tmpl.format(scope_text=scope_text, subject=subject)
 
         if trigger_type == "ON_SHIELD_ADD":
@@ -656,7 +503,7 @@ class CardTextGenerator:
         return f"{duration_text}{target_str}に「{display_text}」を与える。"
 
     @classmethod
-    def _format_command(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
+    def _format_command(cls, command: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         if not command:
             return ""
 

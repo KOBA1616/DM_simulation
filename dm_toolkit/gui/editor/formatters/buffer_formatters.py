@@ -73,7 +73,7 @@ class SelectFromBufferFormatter(CommandFormatterBase):
 class PlayFromBufferFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, ctx.is_spell)
+        target_str, unit = cls._resolve_target(command, getattr(ctx, "is_spell", False))
         return f'選んだカード（{target_str}）を使う。'
 
 @register_formatter("MOVE_BUFFER_TO_ZONE")

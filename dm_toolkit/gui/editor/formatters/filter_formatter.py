@@ -76,27 +76,10 @@ class FilterTextFormatter:
 
     @classmethod
     def describe_simple_filter(cls, filter_def: Dict[str, Any]) -> str:
-        civs = filter_def.get("civilizations", [])
-        races = filter_def.get("races", [])
         types = filter_def.get("types", [])
-        min_cost = filter_def.get("min_cost", 0)
-        max_cost = filter_def.get("max_cost", consts.MAX_COST_VALUE)
-        exact_cost = filter_def.get("exact_cost")
-        cost_ref = filter_def.get("cost_ref")
+        races = filter_def.get("races", [])
 
-        adjectives = []
-        if civs:
-            adjectives.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
-
-        # Handle cost filtering
-        if cost_ref:
-            adjectives.append("選択した数字と同じコスト")
-        elif exact_cost is not None:
-            adjectives.append(f"コスト{exact_cost}")
-        else:
-            cost_text = FilterTextFormatter.format_range_text(min_cost, max_cost, unit="コスト", linked_token="その数")
-            if cost_text:
-                adjectives.append(cost_text)
+        adjectives = TargetResolutionService.build_attribute_list(filter_def)
 
         adj_str = "の".join(adjectives)
         if adj_str:
