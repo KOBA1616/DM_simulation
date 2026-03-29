@@ -12,6 +12,11 @@ class ConditionFormatterStrategy:
         """
         raise NotImplementedError
 
+    @classmethod
+    def get_suffix(cls) -> str:
+        """Returns the suffix to append after the condition text."""
+        return ": "
+
 class ConditionFormatterRegistry:
     """Registry for condition formatters."""
 

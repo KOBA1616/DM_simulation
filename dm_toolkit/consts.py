@@ -6,6 +6,15 @@ from dm_toolkit.stat_keys import QUERY_STAT_KEYS
 MAX_COST_VALUE = 999
 MAX_POWER_VALUE = 999999
 
+CARD_TYPE_UNIT_MAP = {
+    "CREATURE": "体",
+    "ELEMENT": "体",
+    "SPELL": "枚",
+    "CROSS_GEAR": "枚",
+    "CARD": "枚",
+    "SHIELD": "つ"
+}
+
 """
 Central Constants Definition.
 

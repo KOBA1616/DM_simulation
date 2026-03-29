@@ -40,26 +40,16 @@ class RevolutionChangeFormatter(SpecialKeywordFormatterBase):
     @classmethod
     def format_revolution_change_text(cls, cond: Dict[str, Any]) -> str:
         """Format REVOLUTION_CHANGE condition summary text from filter definition."""
-        parts: List[str] = []
-        civs = cond.get("civilizations", []) or []
-        if civs:
-            parts.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
-        min_cost = cond.get("min_cost", 0)
-        max_cost = cond.get("max_cost", MAX_COST_VALUE)
-        if InputLinkFormatter.is_input_linked(min_cost):
-            parts.append("コストその数以上")
-        elif InputLinkFormatter.is_input_linked(max_cost):
-            parts.append("コストその数以下")
-        else:
-            if isinstance(min_cost, int) and isinstance(max_cost, int):
-                has_min = min_cost > 0
-                has_max = max_cost > 0 and max_cost not in (MAX_COST_VALUE,)
-                if has_min and has_max and min_cost != max_cost:
-                    parts.append(f"コスト{min_cost}～{max_cost}")
-                elif has_min:
-                    parts.append(f"コスト{min_cost}以上")
-                elif has_max:
-                    parts.append(f"コスト{max_cost}以下")
+        from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
+
+        # We need to omit races here to avoid repetition since we add them at the end
+        import copy
+        cond_no_race = copy.deepcopy(cond)
+        if "races" in cond_no_race:
+            del cond_no_race["races"]
+
+        parts: List[str] = TargetResolutionService.build_attribute_list(cond_no_race)
+
         races = cond.get("races", []) or []
         noun = "/".join(races) if races else "クリーチャー"
         is_evo = cond.get("is_evolution")
@@ -67,6 +57,7 @@ class RevolutionChangeFormatter(SpecialKeywordFormatterBase):
             noun = "進化" + noun
         elif is_evo is False:
             parts.append("進化以外の")
+
         adjs = "の".join(parts)
         return f"{adjs}の{noun}" if adjs else noun
     @classmethod
