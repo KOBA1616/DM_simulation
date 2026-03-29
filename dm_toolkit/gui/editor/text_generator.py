@@ -470,6 +470,15 @@ class CardTextGenerator:
         return TriggerFormatter.trigger_to_japanese(trigger, is_spell, effect)
 
     @classmethod
+    def _format_target_selection_prefix(cls, target_str: str, amount: int = None, skip_selection: bool = False) -> str:
+        """Helper to generate the target selection prefix (e.g. 'N体選び、')."""
+        if skip_selection:
+            return ""
+        if isinstance(amount, int) and amount > 0:
+            return f"{target_str}を{amount}体選び、"
+        return ""
+
+    @classmethod
     def _format_keyword_grant_text(cls, target_str: str, key_id: str, display_text: str, duration_text: str, amount: int = None, skip_selection: bool = False) -> str:
         """Helper to format keyword granting text.
 
@@ -486,26 +495,17 @@ class CardTextGenerator:
         if duration_text and not duration_text.endswith('、'):
             duration_text += "、"
 
-        if is_restriction:
-            # 再発防止: skip_selection/amount=0/amount>0 の 3 ケースを明示的に分岐する
-            if skip_selection:
-                # 入力リンク経由で対象決定済み
-                return f"{duration_text}そのクリーチャーは{display_text}。"
-            elif isinstance(amount, int) and amount > 0:
-                # N体選び
-                return f"{target_str}を{amount}体選び、{duration_text}そのクリーチャーは{display_text}。"
-            else:
-                # amount=0 またの未指定 → 対象すべてに適用
-                return f"{duration_text}{target_str}は{display_text}。"
+        selection_prefix = cls._format_target_selection_prefix(target_str, amount, skip_selection)
 
-        # 通常キーワード付与
-        if skip_selection:
-            return f"{duration_text}そのクリーチャーに「{display_text}」を与える。"
-        if isinstance(amount, int) and amount > 0:
-            # 再発防止: amount>0 の時が遷局テキストがなかった以前のバグを修正
-            return f"{duration_text}{target_str}を{amount}体選び、「{display_text}」を与える。"
-        # amount=0 またの未指定 → 対象すべてに適用（選択文なし）
-        return f"{duration_text}{target_str}に「{display_text}」を与える。"
+        # If we selected targets, the subject usually becomes "そのクリーチャー"
+        # However if it's all targets (amount=0/None), subject remains target_str
+        has_selection = bool(selection_prefix)
+        subject_str = "そのクリーチャー" if has_selection or skip_selection else target_str
+
+        if is_restriction:
+            return f"{selection_prefix}{duration_text}{subject_str}は{display_text}。"
+
+        return f"{selection_prefix}{duration_text}{subject_str}に「{display_text}」を与える。"
 
     @classmethod
     def _format_command(cls, command: Dict[str, Any], ctx: TextGenerationContext = None) -> str:

@@ -37,15 +37,19 @@ class PowerModifierFormatter(ModifierFormatterBase):
             return f"{cond}{target}のパワーは不変。"
         return f"{cond}{target}のパワーを{sign}{value}する。"
 
-class GrantKeywordFormatter(ModifierFormatterBase):
+from enum import Enum
+
+class CharacteristicModifierType(Enum):
+    GRANT = "GRANT"
+    REMOVE = "REMOVE"
+    RESTRICT = "RESTRICT"
+    SET = "SET"
+
+class CharacteristicModifierBase(ModifierFormatterBase):
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
+    def format_characteristic(cls, behavior: CharacteristicModifierType, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
         str_val = modifier.get('mutation_kind') or modifier.get('str_val', '')
-
-        if not str_val:
-            return f"{cond}{target}に能力を与える。"
-
-        keyword = CardTextResources.get_keyword_text(str_val)
+        keyword = CardTextResources.get_keyword_text(str_val) if str_val else ""
 
         duration_key = modifier.get('duration') or modifier.get('input_value_key', '')
         duration_text = CardTextResources.get_duration_text_with_comma(duration_key)
@@ -55,23 +59,45 @@ class GrantKeywordFormatter(ModifierFormatterBase):
             amt = None
 
         subject = f"{cond}{target}"
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-        return CardTextGenerator._format_keyword_grant_text(subject, str_val, keyword, duration_text, amount=amt)
 
-class SetKeywordFormatter(ModifierFormatterBase):
+        # Determine the action based on behavior
+        if behavior == CharacteristicModifierType.GRANT:
+            if not str_val:
+                return f"{cond}{target}に能力を与える。"
+            from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+            return CardTextGenerator._format_keyword_grant_text(subject, str_val, keyword, duration_text, amount=amt)
+
+        elif behavior == CharacteristicModifierType.SET:
+            if keyword:
+                return f"{cond}{target}は「{keyword}」を得る。"
+            return f"{cond}{target}は能力を得る。"
+
+        elif behavior == CharacteristicModifierType.REMOVE:
+            if keyword:
+                return f"{cond}{target}は「{keyword}」を失う。"
+            return f"{cond}{target}から能力を失わせる。"
+
+        elif behavior == CharacteristicModifierType.RESTRICT:
+            if keyword:
+                return f"{cond}{scope_prefix}{keyword}を与える。"
+            return f"{cond}{scope_prefix}制限を与える。"
+
+        return f"{cond}{target}の能力を変更する。"
+
+class GrantKeywordFormatter(CharacteristicModifierBase):
     @classmethod
     def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
-        str_val = modifier.get("mutation_kind", "") or modifier.get("str_val", "")
-        if str_val:
-            keyword = CardTextResources.get_keyword_text(str_val)
-            return f"{cond}{target}は「{keyword}」を得る。"
-        return f"{cond}{target}は能力を得る。"
+        return cls.format_characteristic(CharacteristicModifierType.GRANT, cond, target, scope_prefix, value, modifier, ctx)
 
-class AddRestrictionFormatter(ModifierFormatterBase):
+class SetKeywordFormatter(CharacteristicModifierBase):
     @classmethod
     def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
-        keyword = modifier.get("mutation_kind", "") or modifier.get("str_val", "")
-        return f"{cond}{scope_prefix}{CardTextResources.get_keyword_text(keyword)}を与える。"
+        return cls.format_characteristic(CharacteristicModifierType.SET, cond, target, scope_prefix, value, modifier, ctx)
+
+class AddRestrictionFormatter(CharacteristicModifierBase):
+    @classmethod
+    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
+        return cls.format_characteristic(CharacteristicModifierType.RESTRICT, cond, target, scope_prefix, value, modifier, ctx)
 
 
 class ModifierFormatterRegistry:
