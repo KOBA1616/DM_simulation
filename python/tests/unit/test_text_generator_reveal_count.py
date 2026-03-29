@@ -39,9 +39,9 @@ def test_reveal_cards_with_input_key():
 
 def test_count_cards_with_target():
     res = _call_format_command(
-        "COUNT_CARDS", {}, False, 0, 0, "自分のカード", "", "", "", None
+        "COUNT_CARDS", {"target_filter": {"types": ["CREATURE"]}}, False, 0, 0, "自分のカード", "", "", "", None
     )
-    assert res == "自分のカードの数を数える。"
+    assert res == "クリーチャーの数を数える。"
 
 
 def test_count_cards_generic():

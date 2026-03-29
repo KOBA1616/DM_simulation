@@ -19,6 +19,8 @@ class TextGenerationContext:
         # Will be set during formatting for context-aware AST input-link resolution
         self.current_commands_list: Optional[List[Dict[str, Any]]] = None
         self.indent_level: int = 0
+        self.last_target: Optional[str] = None
+        self.last_target_type_noun: Optional[str] = None
 
         # Metadata extraction logic
         self.metadata = {flag.value: False for flag in SemanticMetadataFlags}
