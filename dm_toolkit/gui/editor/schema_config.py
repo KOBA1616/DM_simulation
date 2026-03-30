@@ -197,7 +197,6 @@ def register_all_schemas():
         FieldSchema("str_param", tr("Query Mode"), FieldType.SELECT, options=_QUERY_OPTION_MODES),
         FieldSchema("amount", tr("Selection Count"), FieldType.INT, default=1, min_value=1),
         FieldSchema("str_val", tr("Options Text (Legacy SELECT_OPTION Labels)"), FieldType.STRING),
-        f_links_in,
         f_links_out
     ]))
 
