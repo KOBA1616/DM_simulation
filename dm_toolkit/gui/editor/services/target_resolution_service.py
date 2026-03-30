@@ -222,7 +222,11 @@ class TargetResolutionService:
         civs = filter_def.get("civilizations", [])
         if not civs and "civilization" in filter_def:
             single = filter_def.get("civilization")
-            if single: civs = [single]
+            if single:
+                if isinstance(single, list):
+                    civs = single
+                else:
+                    civs = [single]
         if civs:
             adjectives.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
 

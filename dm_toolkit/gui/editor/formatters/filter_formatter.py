@@ -76,6 +76,12 @@ class FilterTextFormatter:
 
         adjectives = TargetResolutionService.build_attribute_list(filter_def)
 
+        # Races shouldn't be in both adjectives and noun string to avoid duplication like "Demon CommandのDemon Command"
+        if races:
+            adj_races_str = "/".join(races)
+            if adj_races_str in adjectives:
+                adjectives.remove(adj_races_str)
+
         adj_str = "の".join(adjectives)
         if adj_str:
             adj_str += "の"
