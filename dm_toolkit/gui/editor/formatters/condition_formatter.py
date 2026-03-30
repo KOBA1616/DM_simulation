@@ -113,12 +113,12 @@ class CardsMatchingFilterConditionFormatter(ConditionFormatterStrategy):
         from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
 
         # Check if the filter specifies ONLY civilization.
-        civs = filter_def.get("civilization", [])
+        civs = filter_def.get("civilizations", filter_def.get("civilization", []))
         if isinstance(civs, str):
             civs = [civs]
 
         # Ensure no other filtering keys are used (including zone and owner, which would make it specific cards)
-        only_civs = civs and not any(bool(filter_def.get(k)) for k in filter_def if k != "civilization")
+        only_civs = civs and not any(bool(filter_def.get(k)) for k in filter_def if k not in ("civilization", "civilizations"))
 
         desc = FilterTextFormatter.describe_simple_filter(filter_def)
         zones = filter_def.get("zone", [])

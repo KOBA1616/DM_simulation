@@ -18,6 +18,7 @@ CONDITION_FORM_SCHEMA = {
     "COMPARE_STAT": ["stat_key", "op", "value"],
     "COMPARE_INPUT": ["input_value_key", "op", "value"],
     "MANA_CIVILIZATION_COUNT": ["op", "value"],
+    "CARDS_MATCHING_FILTER": ["value", "op", "filter"],
     "HAS_TARGET": ["target"],
     # Generic fallback for string-based condition parameters
     "CUSTOM": ["str_val"]

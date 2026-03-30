@@ -31,7 +31,7 @@ def test_cards_matching_filter_condition():
         "op": ">="
     }
     text = CardTextGenerator._format_condition(condition)
-    assert "闇の文明が3枚以上あるなら: " in text
+    assert "闇の文明が3つ以上あるなら: " in text
 
 def test_cards_matching_filter_condition_complex():
     condition = {
