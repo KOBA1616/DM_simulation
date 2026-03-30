@@ -41,11 +41,11 @@ namespace dm::engine::effects {
                 if (!card_db.count(card.card_id)) continue;
                 const auto& def = card_db.at(card.card_id);
 
-                for (const auto& reaction : def.reaction_abilities) {
+                for (const auto& effect : def.effects) {
                     // Check Event Type Match
-                    bool event_match = (reaction.condition.trigger_event == trigger_event);
+                    bool event_match = (effect.condition.str_val == trigger_event);
                     if (!event_match) {
-                        if (reaction.condition.trigger_event == "ON_BLOCK_OR_ATTACK") {
+                        if (effect.condition.str_val == "ON_BLOCK_OR_ATTACK") {
                             if (trigger_event == "ON_ATTACK" || trigger_event == "ON_BLOCK") {
                                 event_match = true;
                             }
@@ -54,8 +54,8 @@ namespace dm::engine::effects {
                     if (!event_match) continue;
 
                     // Check zone if specified
-                    if (!reaction.zone.empty()) {
-                         if (reaction.zone == "HAND") {
+                    if (!effect.condition.stat_key.empty()) {
+                         if (effect.condition.stat_key == "HAND") {
                              if (trigger_event == "ON_ATTACK" || trigger_event == "ON_BLOCK") {
                                  if (!attacker_exists) continue;
                              }
@@ -65,16 +65,16 @@ namespace dm::engine::effects {
                     }
 
                     // Check other conditions (Mana Count, Civ Match)
-                    if (!check_condition(game_state, reaction, card, reaction_player_id, card_db)) continue;
+                    if (!check_condition(game_state, effect, card, reaction_player_id, card_db)) continue;
 
                     ReactionCandidate c;
                     c.card_id = card.card_id;
                     c.instance_id = card.instance_id;
                     c.player_id = reaction_player_id;
 
-                    if (reaction.condition.trigger_event == "ON_BLOCK_OR_ATTACK") {
+                    if (effect.condition.str_val == "ON_BLOCK_OR_ATTACK") {
                         c.type = ReactionType::NINJA_STRIKE;
-                    } else if (reaction.condition.trigger_event == "ON_SHIELD_ADD") {
+                    } else if (effect.condition.str_val == "ON_SHIELD_ADD") {
                         c.type = ReactionType::STRIKE_BACK;
                     } else {
                         c.type = ReactionType::OTHER;
@@ -93,7 +93,7 @@ namespace dm::engine::effects {
     public:
         static bool check_condition(
             const dm::core::GameState& game_state,
-            const dm::core::ReactionAbility& reaction,
+            const dm::core::EffectDef& effect,
             const dm::core::CardInstance& card_instance,
             dm::core::PlayerID player_id,
             const std::map<dm::core::CardID, dm::core::CardDefinition>& card_db,
@@ -101,9 +101,9 @@ namespace dm::engine::effects {
         ) {
             // Event Type Match (if provided)
             if (!event_type.empty()) {
-                bool event_match = (reaction.condition.trigger_event == event_type);
+                bool event_match = (effect.condition.str_val == event_type);
                 if (!event_match) {
-                    if (reaction.condition.trigger_event == "ON_BLOCK_OR_ATTACK") {
+                    if (effect.condition.str_val == "ON_BLOCK_OR_ATTACK") {
                         if (event_type == "ON_ATTACK" || event_type == "ON_BLOCK") {
                             event_match = true;
                         }
@@ -113,7 +113,7 @@ namespace dm::engine::effects {
             }
 
             // Civilization Match
-            if (reaction.condition.civilization_match) {
+            if ((effect.condition.type == "CIVILIZATION_MATCH")) {
                 const auto& player = game_state.players[player_id];
                 // Check if mana zone has matching civilization
                 const auto& def = card_db.at(card_instance.card_id);
@@ -140,10 +140,10 @@ namespace dm::engine::effects {
             }
 
             // Mana Count Min
-            if (reaction.condition.mana_count_min > 0) {
+            if (effect.condition.value > 0) {
                  const auto& player = game_state.players[player_id];
                  // Basic count, assumes no tapped/untapped logic for raw count
-                 if (player.mana_zone.size() < (size_t)reaction.condition.mana_count_min) {
+                 if (player.mana_zone.size() < (size_t)effect.condition.value) {
                      return false;
                  }
             }

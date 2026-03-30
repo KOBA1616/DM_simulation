@@ -18,4 +18,3 @@ def test_apply_cached_cir_to_card_attaches_attribute():
     assert hasattr(card, '_cir')
     assert isinstance(card._cir, list)
     assert card._cir[0]['type'] == 'TEST'
-*** End Patch

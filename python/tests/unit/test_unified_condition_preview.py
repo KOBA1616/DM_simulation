@@ -35,4 +35,3 @@ def test_unified_shows_condition_preview(qtbot):
     assert form.condition_preview_label.isVisible()
     txt = form.condition_preview_label.text()
     assert txt and len(txt) > 0
-*** End Patch
