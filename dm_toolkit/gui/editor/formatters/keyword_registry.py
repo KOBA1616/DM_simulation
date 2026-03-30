@@ -13,6 +13,20 @@ class SpecialKeywordFormatterBase:
         raise NotImplementedError
 
     @classmethod
+    def format_numbered_keyword(cls, keyword_id: str, card_data: Dict[str, Any]) -> str:
+        """Format a numbered keyword (e.g. MEKRAID 5) by extracting its value."""
+        from dm_toolkit.gui.editor.text_resources import CardTextResources
+        kw_str = CardTextResources.get_keyword_text(keyword_id)
+        val = card_data.get(keyword_id)
+        if not val:
+            val = card_data.get("keywords", {}).get(keyword_id)
+        if isinstance(val, dict):
+            val = val.get("value")
+        if val:
+            return f"{kw_str}{val}"
+        return kw_str
+
+    @classmethod
     def get_unbound_text(cls, card_data: Dict[str, Any]) -> List[str]:
         """
         Returns additional text lines for a special keyword that might exist on a card

@@ -325,21 +325,27 @@ class CardTextGenerator:
             condition = {}
         actions = effect.get("actions", [])
 
-        trigger_text = cls.trigger_to_japanese(trigger, ctx.is_spell, effect=effect)
+        triggers = effect.get("triggers", [])
+        if not triggers and trigger != "NONE":
+            triggers = [trigger]
 
-        # Apply trigger scope (NEW: Add prefix based on scope)
-        if trigger_scope and trigger_scope != "NONE" and trigger != "PASSIVE_CONST":
-            trigger_text = cls._apply_trigger_scope(
-                trigger_text,
-                trigger_scope,
-                trigger,
-                effect.get("trigger_filter", {}),
-                timing_mode=timing_mode,
-            )
-        else:
-            # Handle pure triggers (without scope) where the trigger text might still need replacement
-            if timing_mode == TimingMode.PRE.value:
-                trigger_text = cls._to_replacement_trigger_text(trigger_text)
+        trigger_texts = []
+        for t in triggers:
+            t_text = cls.trigger_to_japanese(t, ctx.is_spell, effect=effect)
+            if trigger_scope and trigger_scope != "NONE" and t != "PASSIVE_CONST":
+                t_text = cls._apply_trigger_scope(
+                    t_text,
+                    trigger_scope,
+                    t,
+                    effect.get("trigger_filter", {}),
+                    timing_mode=timing_mode,
+                )
+            else:
+                if timing_mode == TimingMode.PRE.value:
+                    t_text = cls._to_replacement_trigger_text(t_text)
+            trigger_texts.append(t_text)
+
+        trigger_text = "、または".join(trigger_texts) if trigger_texts else ""
 
         if ctx and hasattr(ctx, "error_reporter"):
             with ctx.error_reporter.path_segment("condition"):
@@ -386,11 +392,21 @@ class CardTextGenerator:
         if ctx.is_spell and trigger == "ON_PLAY":
             trigger_text = ""
 
-        if trigger_text and trigger != "NONE" and trigger != "PASSIVE_CONST":
+        has_active_trigger = any(t not in ("NONE", "PASSIVE_CONST") for t in triggers)
+        is_passive = any(t == "PASSIVE_CONST" for t in triggers) and not has_active_trigger
+
+        if trigger_text and has_active_trigger:
              if not full_action_text:
                  return ""
+
+             if cls.is_replacement_effect(effect):
+                 from dm_toolkit.gui.editor.formatters.trigger_formatter import ReplacementEffectFormatter
+                 full_text = ReplacementEffectFormatter.format(f"{active_condition_prefix}{trigger_text}", f"{cond_text}{full_action_text}")
+                 # Remove potentially dangling colons usually added for standard triggers
+                 return full_text.replace(": ", "、")
+
              return f"{active_condition_prefix}{trigger_text}: {cond_text}{full_action_text}"
-        elif trigger == "PASSIVE_CONST":
+        elif is_passive or trigger == "PASSIVE_CONST":
              return f"{cond_text}{full_action_text}"
         else:
              return f"{cond_text}{full_action_text}"

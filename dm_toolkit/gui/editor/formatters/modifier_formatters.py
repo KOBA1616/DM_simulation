@@ -5,7 +5,7 @@ from dm_toolkit.gui.i18n import tr
 
 class ModifierFormatterBase:
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
+    def format(cls, cond: str, target: str, scope_prefix: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
         raise NotImplementedError
 
 class CostModifierFormatter(ModifierFormatterBase):
@@ -15,11 +15,16 @@ class CostModifierFormatter(ModifierFormatterBase):
             ctx.metadata[SemanticMetadataFlags.COSTS_REDUCED.value] = True
 
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
+    def format(cls, cond: str, target: str, scope_prefix: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
+        if str(value).upper() in ("INFINITY", "∞"):
+            return f"{cond}{target}のコストを∞にする。"
+        if str(value) == "*":
+            return f"{cond}{target}のコストを＊にする。"
+
         if not isinstance(modifier, dict):
-            if value > 0:
+            if isinstance(value, (int, float)) and value > 0:
                 return f"{cond}{target}のコストを{value}少なくする。"
-            elif value < 0:
+            elif isinstance(value, (int, float)) and value < 0:
                 return f"{cond}{target}のコストを{abs(value)}多くする。"
             return f"{cond}{target}のコストを修正する。"
 
@@ -32,10 +37,15 @@ class CostModifierFormatter(ModifierFormatterBase):
 
 class PowerModifierFormatter(ModifierFormatterBase):
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
-        if value > 0:
+    def format(cls, cond: str, target: str, scope_prefix: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
+        if str(value).upper() in ("INFINITY", "∞"):
+            return f"{cond}{target}のパワーを∞にする。"
+        if str(value) == "*":
+            return f"{cond}{target}のパワーを＊にする。"
+
+        if isinstance(value, (int, float)) and value > 0:
             return f"{cond}{target}のパワーを+{value}する。"
-        elif value < 0:
+        elif isinstance(value, (int, float)) and value < 0:
             return f"{cond}{target}のパワーを{abs(value)}低下させる。"
         else:
             return f"{cond}{target}のパワーは不変。"
@@ -50,7 +60,7 @@ class CharacteristicModifierType(Enum):
 
 class CharacteristicModifierBase(ModifierFormatterBase):
     @classmethod
-    def format_characteristic(cls, behavior: CharacteristicModifierType, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
+    def format_characteristic(cls, behavior: CharacteristicModifierType, cond: str, target: str, scope_prefix: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
         str_val = modifier.get('mutation_kind') or modifier.get('str_val', '')
         keyword = CardTextResources.get_keyword_text(str_val) if str_val else ""
 
@@ -96,17 +106,17 @@ class CharacteristicModifierBase(ModifierFormatterBase):
 
 class GrantKeywordFormatter(CharacteristicModifierBase):
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
+    def format(cls, cond: str, target: str, scope_prefix: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
         return cls.format_characteristic(CharacteristicModifierType.GRANT, cond, target, scope_prefix, value, modifier, ctx)
 
 class SetKeywordFormatter(CharacteristicModifierBase):
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
+    def format(cls, cond: str, target: str, scope_prefix: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
         return cls.format_characteristic(CharacteristicModifierType.SET, cond, target, scope_prefix, value, modifier, ctx)
 
 class AddRestrictionFormatter(CharacteristicModifierBase):
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
+    def format(cls, cond: str, target: str, scope_prefix: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
         return cls.format_characteristic(CharacteristicModifierType.RESTRICT, cond, target, scope_prefix, value, modifier, ctx)
 
 

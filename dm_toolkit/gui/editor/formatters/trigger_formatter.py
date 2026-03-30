@@ -38,3 +38,14 @@ class TriggerFormatter:
             return cls.to_replacement_trigger_text(base)
 
         return base
+
+class ReplacementEffectFormatter:
+    """Formatter to strictly decouple and structure Replacement Effects."""
+
+    @classmethod
+    def format(cls, trigger_text: str, actions_text: str) -> str:
+        if not trigger_text:
+            return actions_text
+        if trigger_text.endswith("、"):
+            return f"{trigger_text}かわりに{actions_text}"
+        return f"{trigger_text}、かわりに{actions_text}"
