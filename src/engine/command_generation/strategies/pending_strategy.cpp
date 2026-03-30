@@ -300,7 +300,7 @@ namespace dm::engine {
                      const auto& def = card_db.at(card.card_id);
 
                      bool legal = false;
-                     for (const auto& r : def.reaction_abilities) {
+                     for (const auto& r : def.effects) {
                          if (dm::engine::effects::ReactionSystem::check_condition(game_state, r, card, eff.controller, card_db, event_type)) {
                              legal = true;
                              break;

@@ -444,20 +444,6 @@ namespace dm::core {
         std::optional<ConditionNode> condition_tree;
     };
 
-    struct ReactionCondition {
-        std::string trigger_event;
-        bool civilization_match = false;
-        int mana_count_min = 0;
-        bool same_civilization_shield = false;
-    };
-
-    struct ReactionAbility {
-        ReactionType type = ReactionType::NONE;
-        int cost = 0;
-        std::string zone;
-        ReactionCondition condition;
-    };
-
     struct CardData {
         int id;
         std::string name;
@@ -472,7 +458,6 @@ namespace dm::core {
         std::optional<FilterDef> evolution_condition;
         std::optional<FilterDef> revolution_change_condition;
         std::optional<std::map<std::string, bool>> keywords;
-        std::vector<ReactionAbility> reaction_abilities;
         std::vector<CostReductionDef> cost_reductions;
         std::shared_ptr<CardData> spell_side;
 
@@ -878,9 +863,6 @@ namespace dm::core {
 
     // NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(EffectDef, trigger, condition, actions, commands) -- REPLACED BY MANUAL IMPL ABOVE
 
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionCondition, trigger_event, civilization_match, mana_count_min, same_civilization_shield)
-    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ReactionAbility, type, cost, zone, condition)
-
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CostDef, type, amount, filter, is_optional, cost_id)
     NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CostReductionDef, type, unit_cost, reduction_amount, max_units, min_mana_cost, id, name)
 
@@ -899,7 +881,6 @@ namespace dm::core {
             {"evolution_condition", c.evolution_condition},
             {"revolution_change_condition", c.revolution_change_condition},
             {"keywords", c.keywords},
-            {"reaction_abilities", c.reaction_abilities},
             {"cost_reductions", c.cost_reductions},
             {"is_key_card", c.is_key_card},
             {"ai_importance_score", c.ai_importance_score}
@@ -972,12 +953,6 @@ namespace dm::core {
         }
 
         if (j.contains("keywords")) j.at("keywords").get_to(c.keywords);
-
-        if (j.contains("reaction_abilities")) {
-            j.at("reaction_abilities").get_to(c.reaction_abilities);
-        } else {
-            c.reaction_abilities = {};
-        }
 
         if (j.contains("cost_reductions")) {
             j.at("cost_reductions").get_to(c.cost_reductions);
