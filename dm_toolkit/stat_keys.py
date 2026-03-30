@@ -26,6 +26,7 @@ QUERY_STAT_KEYS: Tuple[str, ...] = (
     "CARDS_DRAWN_THIS_TURN",
     "SPELL_CAST_THIS_TURN",
     "MANA_CIVILIZATION_COUNT",
+    "SELF_POWER",
 )
 
 

@@ -281,6 +281,9 @@ class TargetResolutionService:
             if flag == "BLOCKER" and ("ブロッカー" not in adjectives and "ブロッカーを持つ" not in adjectives):
                 adjectives.append("ブロッカー")
 
+        if filter_def.get("exclude", False) and adjectives:
+            return ["・".join(adjectives) + "以外"]
+
         return adjectives
 
     @classmethod

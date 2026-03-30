@@ -199,8 +199,48 @@ class FilterEditorWidget(QWidget):
         power_layout.addWidget(self.max_power_spin, 0, 3)
         stats_layout.addLayout(power_layout, 3, 1)
 
+        stats_layout.addWidget(QLabel(tr("パワー(完全一致):")), 4, 0)
+        self.exact_power_spin = QSpinBox()
+        self.exact_power_spin.setRange(-1, 99999)
+        self.exact_power_spin.setSingleStep(500)
+        self.exact_power_spin.setValue(-1)
+        self.exact_power_spin.setSpecialValueText(tr("未指定"))
+        self.exact_power_spin.setToolTip(tr("パワーがこの値に完全一致するカードのみ対象(最小/最大より優先)"))
+        stats_layout.addWidget(self.exact_power_spin, 4, 1)
+
         safe_connect(self.min_power_spin, "valueChanged", self.filterChanged.emit)
         safe_connect(self.max_power_spin, "valueChanged", self.filterChanged.emit)
+        safe_connect(self.exact_power_spin, "valueChanged", self.filterChanged.emit)
+
+        stats_layout.addWidget(QLabel(tr("数量:")), 5, 0)
+        self.min_count_spin = QSpinBox()
+        self.min_count_spin.setRange(-1, 99)
+        self.min_count_spin.setValue(-1)
+        self.min_count_spin.setSpecialValueText(tr("問わない"))
+
+        self.max_count_spin = QSpinBox()
+        self.max_count_spin.setRange(-1, 99)
+        self.max_count_spin.setValue(-1)
+        self.max_count_spin.setSpecialValueText(tr("問わない"))
+
+        count_layout = QGridLayout()
+        count_layout.addWidget(QLabel(tr("最小:")), 0, 0)
+        count_layout.addWidget(self.min_count_spin, 0, 1)
+        count_layout.addWidget(QLabel(tr("最大:")), 0, 2)
+        count_layout.addWidget(self.max_count_spin, 0, 3)
+        stats_layout.addLayout(count_layout, 5, 1)
+
+        stats_layout.addWidget(QLabel(tr("数量(完全一致):")), 6, 0)
+        self.exact_count_spin = QSpinBox()
+        self.exact_count_spin.setRange(-1, 99)
+        self.exact_count_spin.setValue(-1)
+        self.exact_count_spin.setSpecialValueText(tr("未指定"))
+        self.exact_count_spin.setToolTip(tr("数量がこの値に完全一致する対象のみ(最小/最大より優先)"))
+        stats_layout.addWidget(self.exact_count_spin, 6, 1)
+
+        safe_connect(self.min_count_spin, "valueChanged", self.filterChanged.emit)
+        safe_connect(self.max_count_spin, "valueChanged", self.filterChanged.emit)
+        safe_connect(self.exact_count_spin, "valueChanged", self.filterChanged.emit)
 
         # 3. Flags (Tapped, Blocker, Evolution)
         # 再発防止: ラベルはすべて日本語で統一。英語表記を追加しないこと。
@@ -320,6 +360,11 @@ class FilterEditorWidget(QWidget):
             self.cost_ref_edit.clear()
             self.min_power_spin.setValue(-1)
             self.max_power_spin.setValue(-1)
+            self.exact_power_spin.setValue(-1)
+
+            self.min_count_spin.setValue(-1)
+            self.max_count_spin.setValue(-1)
+            self.exact_count_spin.setValue(-1)
 
             self.tapped_combo.setCurrentIndex(0)
             self.blocker_combo.setCurrentIndex(0)
@@ -446,6 +491,12 @@ class FilterEditorWidget(QWidget):
         # Powers
         self.min_power_spin.setValue(filt_data.get('min_power', -1) if filt_data.get('min_power') is not None else -1)
         self.max_power_spin.setValue(filt_data.get('max_power', -1) if filt_data.get('max_power') is not None else -1)
+        self.exact_power_spin.setValue(filt_data.get('exact_power', -1) if filt_data.get('exact_power') is not None else -1)
+
+        # Counts
+        self.min_count_spin.setValue(filt_data.get('min_count', -1) if filt_data.get('min_count') is not None else -1)
+        self.max_count_spin.setValue(filt_data.get('max_count', -1) if filt_data.get('max_count') is not None else -1)
+        self.exact_count_spin.setValue(filt_data.get('exact_count', -1) if filt_data.get('exact_count') is not None else -1)
 
         # Flags
         def set_tristate(combo, val):
@@ -516,6 +567,11 @@ class FilterEditorWidget(QWidget):
 
         if self.min_power_spin.value() != -1: filt['min_power'] = self.min_power_spin.value()
         if self.max_power_spin.value() != -1: filt['max_power'] = self.max_power_spin.value()
+        if self.exact_power_spin.value() != -1: filt['exact_power'] = self.exact_power_spin.value()
+
+        if self.min_count_spin.value() != -1: filt['min_count'] = self.min_count_spin.value()
+        if self.max_count_spin.value() != -1: filt['max_count'] = self.max_count_spin.value()
+        if self.exact_count_spin.value() != -1: filt['exact_count'] = self.exact_count_spin.value()
 
         def get_tristate(combo):
             idx = combo.currentIndex()
@@ -575,6 +631,10 @@ class FilterEditorWidget(QWidget):
         self.cost_ref_edit.blockSignals(block)
         self.min_power_spin.blockSignals(block)
         self.max_power_spin.blockSignals(block)
+        self.exact_power_spin.blockSignals(block)
+        self.min_count_spin.blockSignals(block)
+        self.max_count_spin.blockSignals(block)
+        self.exact_count_spin.blockSignals(block)
         self.tapped_combo.blockSignals(block)
         self.blocker_combo.blockSignals(block)
         self.evolution_combo.blockSignals(block)
