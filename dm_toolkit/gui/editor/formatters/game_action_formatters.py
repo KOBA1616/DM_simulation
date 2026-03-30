@@ -223,6 +223,7 @@ class LockSpellFormatter(CommandFormatterBase):
 @register_formatter("CANNOT_PUT_CREATURE")
 @register_formatter("CANNOT_SUMMON_CREATURE")
 @register_formatter("PLAYER_CANNOT_ATTACK")
+@register_formatter("LIMIT_PUT_CREATURE_PER_TURN")
 class ActionRestrictionFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
@@ -249,6 +250,9 @@ class ActionRestrictionFormatter(CommandFormatterBase):
             action_text = 'クリーチャーを出せない'
         elif atype == 'CANNOT_SUMMON_CREATURE':
             action_text = 'クリーチャーを召喚できない'
+        elif atype == 'LIMIT_PUT_CREATURE_PER_TURN':
+            amount = command.get('amount', 1)
+            action_text = f'各ターン、クリーチャーを{amount}体までしか出せない'
         else:
             action_text = '攻撃できない'
 

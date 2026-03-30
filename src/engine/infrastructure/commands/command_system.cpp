@@ -280,6 +280,7 @@ std::vector<Instruction> CommandSystem::generate_instructions(
   case core::CommandType::CANNOT_SUMMON_CREATURE:
   case core::CommandType::PLAYER_CANNOT_ATTACK:
   case core::CommandType::IGNORE_ABILITY:
+  case core::CommandType::LIMIT_PUT_CREATURE_PER_TURN:
     generate_macro_instructions(out, state, cmd, source_instance_id, player_id,
                                 execution_context);
     break;
@@ -852,7 +853,8 @@ void CommandSystem::generate_macro_instructions(
              cmd.type == core::CommandType::CANNOT_PUT_CREATURE ||
              cmd.type == core::CommandType::CANNOT_SUMMON_CREATURE ||
              cmd.type == core::CommandType::PLAYER_CANNOT_ATTACK ||
-             cmd.type == core::CommandType::IGNORE_ABILITY) {
+             cmd.type == core::CommandType::IGNORE_ABILITY ||
+             cmd.type == core::CommandType::LIMIT_PUT_CREATURE_PER_TURN) {
     // 再発防止: 制限コマンドは ADD_PASSIVE 命令でパッシブ効果を登録する。
     //   duration 文字列（"THIS_TURN" 等）を整数ターン数に変換する。
     //   target_group から対象プレイヤーを自動設定。
@@ -916,6 +918,11 @@ void CommandSystem::generate_macro_instructions(
                                : ("$" + cmd.input_value_key);
         mod.args["filter"]["cost_ref"] = in_key;
       }
+    } else if (cmd.type == core::CommandType::LIMIT_PUT_CREATURE_PER_TURN) {
+      mod.args["str_value"] = "LIMIT_PUT_CREATURE_PER_TURN";
+      mod.args["value"] = cmd.amount; // 制限枚数
+      mod.args["filter"]["owner"] = owner_str;
+      mod.args["filter"]["types"] = nlohmann::json::array({"CREATURE"});
     }
 
     out.push_back(mod);

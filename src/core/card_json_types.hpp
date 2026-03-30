@@ -223,6 +223,7 @@ namespace dm::core {
         CANNOT_SUMMON_CREATURE, // クリーチャー召喚禁止
         PLAYER_CANNOT_ATTACK,   // プレイヤーの攻撃禁止
         IGNORE_ABILITY,         // 指定タイプ/コストの能力を無視
+        LIMIT_PUT_CREATURE_PER_TURN, // ターンあたりのクリーチャー出し枚数制限
 
             MOVE_BUFFER_REMAIN_TO_ZONE, // バッファ残余を指定ゾーンへ移動
         NONE
@@ -682,6 +683,7 @@ namespace dm::core {
         {CommandType::CANNOT_SUMMON_CREATURE, "CANNOT_SUMMON_CREATURE"},
         {CommandType::PLAYER_CANNOT_ATTACK, "PLAYER_CANNOT_ATTACK"},
         {CommandType::IGNORE_ABILITY, "IGNORE_ABILITY"},
+        {CommandType::LIMIT_PUT_CREATURE_PER_TURN, "LIMIT_PUT_CREATURE_PER_TURN"},
         {CommandType::MOVE_BUFFER_REMAIN_TO_ZONE, "MOVE_BUFFER_REMAIN_TO_ZONE"},
     })
 
