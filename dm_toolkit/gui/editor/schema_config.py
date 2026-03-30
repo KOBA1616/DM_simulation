@@ -412,6 +412,12 @@ def register_all_schemas():
         f_filter,
         FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_TYPES)
     ]))
+    register_schema(CommandSchema("LIMIT_PUT_CREATURE_PER_TURN", [
+        f_target,
+        f_filter,
+        FieldSchema("amount", tr("Limit Amount"), FieldType.INT, default=1, min_value=0),
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_TYPES)
+    ]))
     register_schema(CommandSchema("PLAYER_CANNOT_ATTACK", [
         f_target,
         f_filter,
