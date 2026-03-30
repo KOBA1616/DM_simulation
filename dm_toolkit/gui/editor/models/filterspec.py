@@ -12,6 +12,13 @@ class FilterSpec(BaseModel):
     count: Optional[int] = Field(default=None)
     min_cost: Optional[int] = Field(default=None)
     max_cost: Optional[int] = Field(default=None)
+    exact_cost: Optional[int] = Field(default=None)
+    min_power: Optional[int] = Field(default=None)
+    max_power: Optional[int] = Field(default=None)
+    exact_power: Optional[int] = Field(default=None)
+    min_count: Optional[int] = Field(default=None)
+    max_count: Optional[int] = Field(default=None)
+    exact_count: Optional[int] = Field(default=None)
     keywords: Optional[List[str]] = Field(default=None)
     extras: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
@@ -33,7 +40,10 @@ def filterspec_from_legacy(d: Optional[Dict[str, Any]]) -> Optional[FilterSpec]:
     # Only pick known fields to avoid accidental data leakage
     keys = {
         'zones', 'civilizations', 'types', 'races', 'owner', 'count',
-        'min_cost', 'max_cost', 'keywords', 'extras'
+        'min_cost', 'max_cost', 'exact_cost',
+        'min_power', 'max_power', 'exact_power',
+        'min_count', 'max_count', 'exact_count',
+        'keywords', 'extras'
     }
     payload = {k: v for k, v in d.items() if k in keys}
     # Ensure extras is a dict when present
@@ -52,7 +62,13 @@ def filterspec_to_legacy(f: Optional[FilterSpec]) -> Optional[Dict[str, Any]]:
     if isinstance(f, dict):
         return f
     data: Dict[str, Any] = {}
-    for name in ('zones', 'civilizations', 'types', 'races', 'owner', 'count', 'min_cost', 'max_cost', 'keywords', 'extras'):
+    for name in (
+        'zones', 'civilizations', 'types', 'races', 'owner', 'count',
+        'min_cost', 'max_cost', 'exact_cost',
+        'min_power', 'max_power', 'exact_power',
+        'min_count', 'max_count', 'exact_count',
+        'keywords', 'extras'
+    ):
         val = getattr(f, name, None)
         if val is not None:
             data[name] = val
