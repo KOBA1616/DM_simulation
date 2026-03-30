@@ -5,6 +5,8 @@ from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+from dm_toolkit.gui.editor.formatters.quantity_formatter import QuantityFormatter
+from dm_toolkit.gui.editor.formatters.zone_formatter import ZoneFormatter
 from dm_toolkit.gui.editor.formatters.text_utils import TextUtils
 from dm_toolkit.gui.editor.formatters.metadata_flags import SemanticMetadataFlags
 from dm_toolkit.gui.i18n import tr
@@ -19,11 +21,12 @@ class TransitionFormatter(CommandFormatterBase):
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
+
         from_z_raw = command.get("from_zone", "")
         if isinstance(from_z_raw, list):
             from_z_list = [CardTextResources.normalize_zone_name(z) for z in from_z_raw]
             from_z = from_z_list[0] if from_z_list else ""
-            from_z_str = CardTextResources.format_zones_list(from_z_list, "と")
+            from_z_str = ZoneFormatter.format_zone_list(from_z_list, context="", joiner="と")
         else:
             from_z = CardTextResources.normalize_zone_name(from_z_raw)
             from_z_str = CardTextResources.get_zone_text(from_z) if from_z else ""
@@ -32,10 +35,11 @@ class TransitionFormatter(CommandFormatterBase):
         if isinstance(to_z_raw, list):
             to_z_list = [CardTextResources.normalize_zone_name(z) for z in to_z_raw]
             to_z = to_z_list[0] if to_z_list else ""
-            to_z_str = CardTextResources.format_zones_list(to_z_list, "または")
+            to_z_str = ZoneFormatter.format_zone_list(to_z_list, context="", joiner="、または")
         else:
             to_z = CardTextResources.normalize_zone_name(to_z_raw)
             to_z_str = CardTextResources.get_zone_text(to_z) if to_z else ""
+
 
         amount = get_command_amount(command, default=0)
         up_to_flag = bool(command.get('up_to', False))
@@ -63,30 +67,16 @@ class TransitionFormatter(CommandFormatterBase):
                 if not template:
                     template = CardTextResources.ZONE_MOVE_TEMPLATES.get("DEFAULT", "{target}を{from_z}から{to_z}へ移動する。")
 
+
         # Adjust template for up_to and all
         input_key = command.get('input_value_key') or command.get('input_link')
         is_all = (amount == 0 and not input_key)
 
-        if is_all:
-            # Handle "all" case ("すべて")
-            if to_z == "HAND" and from_z != "DECK":
-                template = template.replace("{amount}{unit}", "すべて").replace("選び、", "")
-            elif to_z in ["GRAVEYARD", "MANA_ZONE", "DECK_BOTTOM"]:
-                template = template.replace("{amount}{unit}", "すべて").replace("選び、", "")
+        linked_text = None
+        if input_key:
+             linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
 
-        elif up_to_flag and amount > 0:
-            # Handle "up to" case ("まで選び")
-            formatted_qty = TextUtils.format_up_to("{amount}", "{unit}", up_to=True)
-            if to_z == "HAND" and from_z != "DECK":
-                template = template.replace("{amount}{unit}", formatted_qty).replace("戻す", "選び、戻す")
-                if "選び、" not in template:
-                    template = template.replace("まで{to_z}", "まで選び、{to_z}")
-            elif to_z in ["GRAVEYARD", "MANA_ZONE", "DECK_BOTTOM", "BATTLE_ZONE"]:
-                template = template.replace("{amount}{unit}", formatted_qty).replace("置く", "選び、置く").replace("出す", "選び、出す")
-                if "選び、" not in template:
-                     template = template.replace("まで{to_z}", "まで選び、{to_z}")
-            elif template_key == ("DECK", "HAND"):
-                template = template.replace("{amount}{unit}", formatted_qty)
+        formatted_qty = QuantityFormatter.format_quantity(amount, unit, up_to_flag, is_all, linked_text)
 
         if template_key == ("DECK", "HAND") and target_str == "カード":
              # Exception for generic deck drawing/searching phrasing
@@ -95,29 +85,23 @@ class TransitionFormatter(CommandFormatterBase):
                   template = f"山札からカードを{qty_str}選び、手札に加える。"
              else:
                   template = "{from_z}から{target}を{amount}{unit}選び、{to_z}に加える。"
-
-        # Handle input_key dynamic text for deck bottom generic returns
-        if input_key and to_z == "DECK_BOTTOM":
-             normalized_from = CardTextResources.normalize_zone_name(from_z)
+        elif input_key and to_z == "DECK_BOTTOM" and CardTextResources.normalize_zone_name(from_z) == "HAND":
+             # Handle input_key dynamic text for deck bottom generic returns from hand
+             to_zone_text = CardTextResources.get_zone_text(to_z)
              scope = command.get("target_group") or command.get("scope", "NONE")
-             if normalized_from == "HAND":
-                 to_zone_text = CardTextResources.get_zone_text(to_z)
-                 linked_count = InputLinkFormatter.format_linked_count_token(command, "その同じ数")
-                 owner = ""
-                 if scope in ["PLAYER_SELF", "SELF"]:
-                     owner = "自分の"
-                 elif scope in ["PLAYER_OPPONENT", "OPPONENT"]:
-                     owner = "相手の"
-                 elif scope == "ALL_PLAYERS":
-                     owner = "各プレイヤーの"
+             owner = ""
+             if scope in ["PLAYER_SELF", "SELF"]:
+                 owner = "自分の"
+             elif scope in ["PLAYER_OPPONENT", "OPPONENT"]:
+                 owner = "相手の"
+             elif scope == "ALL_PLAYERS":
+                 owner = "各プレイヤーの"
 
-                 qty_str = f"最大{linked_count}だけまで" if up_to_flag else f"{linked_count}だけ"
-                 template = f"{owner}手札から{{target}}を{qty_str}選び、{to_zone_text}に置く。"
-             else:
-                 qty_str = f"その同じ数だけまで" if up_to_flag else f"その同じ数だけ"
-                 template = f"{{from_z}}の{{target}}を{qty_str}選び、{{to_z}}に置く。"
-
-
+             template = f"{owner}手札から{{target}}を{formatted_qty}選び、{to_zone_text}に置く。"
+        elif input_key and to_z == "DECK_BOTTOM":
+             template = f"{{from_z}}の{{target}}を{formatted_qty}選び、{{to_z}}に置く。"
+        else:
+             template = QuantityFormatter.apply_to_template(template, formatted_qty, is_all, up_to_flag, to_z, from_z)
         if "{from_z}" in template:
             template = template.replace("{from_z}", from_z_str)
         if "{to_z}" in template:
@@ -211,9 +195,11 @@ class MoveBufferToZoneFormatter(CommandFormatterBase):
         types = filter_def.get("types", []) if filter_def else []
         races = filter_def.get("races", []) if filter_def else []
 
+
         has_filter = bool(civs or types or races)
         val1 = get_command_amount(command, default=0)
         up_to = bool(command.get('up_to', False))
+        is_all = (val1 == 0)
 
         if has_filter:
             civ_part = ""
@@ -231,12 +217,12 @@ class MoveBufferToZoneFormatter(CommandFormatterBase):
             else:
                 type_part = "カード"
 
-            qty_part = TextUtils.format_up_to(val1, "枚", up_to) if val1 > 0 else "すべて"
+            qty_part = QuantityFormatter.format_quantity(val1, "枚", up_to, is_all)
 
             text = f"その中から、{civ_part}{type_part}を{qty_part}選び、{to_zone}に加える。"
             return text
         else:
-            qty_part = TextUtils.format_up_to(val1, "枚", up_to) if val1 > 0 else "すべて"
+            qty_part = QuantityFormatter.format_quantity(val1, "枚", up_to, is_all)
             text = f"その中から、{qty_part}を{to_zone}に加える。"
             return text
 
