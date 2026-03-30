@@ -17,8 +17,10 @@ class CommandListFormatter:
         """
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
 
-        # Auto-enable tree rendering if we are inside a nested block
-        use_tree = use_tree or (getattr(ctx, 'indent_level', 0) > 0 and len(commands) > 1)
+        # Auto-enable tree rendering if we are deeply nested (e.g. > 1) or have many commands
+        # For top level single conditional statements with 1-2 actions, we prefer inline.
+        auto_tree = getattr(ctx, 'indent_level', 0) > 1 or (getattr(ctx, 'indent_level', 0) > 0 and len(commands) > 2)
+        effective_use_tree = use_tree if use_tree is not None else auto_tree
 
         # Save old list for nested restorations, and set the new context
         old_list = ctx.current_commands_list
@@ -29,7 +31,7 @@ class CommandListFormatter:
             if isinstance(cmd, dict):
                 cmd_text = CardTextGenerator._format_command(cmd, ctx)
                 if cmd_text:
-                    if use_tree:
+                    if effective_use_tree:
                         indent_str = "  " * ctx.indent_level
                         bullet = CommandListFormatter.get_bullet(ctx.indent_level)
                         # Add tree structure only if not already formatted with current bullet
@@ -37,10 +39,10 @@ class CommandListFormatter:
                             cmd_text = f"{indent_str}{bullet} {cmd_text}"
                     texts.append(cmd_text)
 
-# Restore old context
+        # Restore old context
         ctx.current_commands_list = old_list
 
-        if use_tree:
+        if effective_use_tree:
             return "\n".join(texts)
         return joiner.join(texts)
 

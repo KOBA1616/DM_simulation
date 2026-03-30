@@ -15,13 +15,6 @@ class TriggerFormatter:
         return TimingMode.PRE.value if cls.is_replacement_effect(effect) else TimingMode.POST.value
 
     @classmethod
-    def looks_like_pre_timing(cls, trigger_text: str) -> bool:
-        """Best-effort check whether trigger text is already in PRE/replacement tone."""
-        if not trigger_text:
-            return False
-        return any(token in trigger_text for token in CardTextResources.PRE_TIMING_TOKENS)
-
-    @classmethod
     def to_replacement_trigger_text(cls, trigger_text: str) -> str:
         """Convert post-event trigger text (〜た時) into replacement tone (〜る時)."""
         text = trigger_text
@@ -43,4 +36,5 @@ class TriggerFormatter:
         base = CardTextResources.get_trigger_text(trigger, is_spell=is_spell)
         if effect is not None and cls.is_replacement_effect(effect):
             return cls.to_replacement_trigger_text(base)
+
         return base

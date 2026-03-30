@@ -4,6 +4,7 @@ from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount, get_command_max_cost
+from dm_toolkit.gui.editor.formatters.metadata_flags import SemanticMetadataFlags
 import dm_toolkit.consts as consts
 from dm_toolkit.gui.i18n import tr
 
@@ -53,9 +54,9 @@ class ApplyModifierFormatter(CommandFormatterBase):
         if modifier.get("type") == "GRANT_KEYWORD":
             kw = modifier.get("keyword", "")
             if kw == "speed_attacker":
-                ctx.metadata["grants_speed_attacker"] = True
+                ctx.metadata[SemanticMetadataFlags.GRANTS_SPEED_ATTACKER.value] = True
             elif kw == "blocker":
-                ctx.metadata["grants_blocker"] = True
+                ctx.metadata[SemanticMetadataFlags.GRANTS_BLOCKER.value] = True
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:

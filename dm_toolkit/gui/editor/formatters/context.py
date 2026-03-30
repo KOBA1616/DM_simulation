@@ -1,4 +1,5 @@
 from typing import Dict, Any, List, Optional
+from dm_toolkit.gui.editor.formatters.metadata_flags import SemanticMetadataFlags
 
 class TextGenerationContext:
     """
@@ -18,21 +19,11 @@ class TextGenerationContext:
         # Will be set during formatting for context-aware AST input-link resolution
         self.current_commands_list: Optional[List[Dict[str, Any]]] = None
         self.indent_level: int = 0
+        self.last_target: Optional[str] = None
+        self.last_target_type_noun: Optional[str] = None
 
         # Metadata extraction logic
-        self.metadata = {
-            "targets": False,
-            "draws": False,
-            "discards": False,
-            "destroys": False,
-            "shields_added": False,
-            "shields_broken": False,
-            "mana_charged": False,
-            "costs_reduced": False,
-            "grants_speed_attacker": False,
-            "grants_blocker": False,
-            "returns_to_hand": False
-        }
+        self.metadata = {flag.value: False for flag in SemanticMetadataFlags}
 
         from dm_toolkit.gui.editor.formatters.error_reporter import ErrorReporter
         self.error_reporter = ErrorReporter()

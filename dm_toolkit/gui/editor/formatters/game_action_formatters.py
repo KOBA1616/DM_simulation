@@ -4,6 +4,7 @@ from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount, get_command_amount_with_fallback
+from dm_toolkit.gui.editor.formatters.metadata_flags import SemanticMetadataFlags
 from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
@@ -87,7 +88,16 @@ class PutCreatureFormatter(CommandFormatterBase):
         action_local["target_filter"] = filter_local
         put_target_str, put_unit = cls._resolve_target(action_local, ctx)
 
-        return f"{src_text}{put_target_str}を{count}{put_unit}バトルゾーンに出す。"
+        placement_text = ""
+        placement_target = command.get("placement_target")
+        if placement_target:
+            from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
+            placement_target_desc, _ = TargetResolutionService.build_subject(placement_target)
+            placement_text = f"{placement_target_desc}の上に"
+
+        tapped_modifier = "タップして" if command.get("enter_tapped") else ""
+
+        return f"{src_text}{put_target_str}を{count}{put_unit}{placement_text}バトルゾーンに{tapped_modifier}出す。"
 
 @register_formatter("SHUFFLE_DECK")
 class ShuffleDeckFormatter(CommandFormatterBase):
@@ -107,7 +117,7 @@ class BoostManaFormatter(CommandFormatterBase):
 class BreakShieldFormatter(CommandFormatterBase):
     @classmethod
     def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
-        ctx.metadata["shields_broken"] = True
+        ctx.metadata[SemanticMetadataFlags.SHIELDS_BROKEN.value] = True
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
@@ -130,16 +140,23 @@ class BreakShieldFormatter(CommandFormatterBase):
 class AddShieldFormatter(CommandFormatterBase):
     @classmethod
     def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
-        ctx.metadata["shields_added"] = True
+        ctx.metadata[SemanticMetadataFlags.SHIELDS_ADDED.value] = True
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         target_str, unit = cls._resolve_target(command, ctx)
         look_count = get_command_amount_with_fallback(command, default=1)
         amt = look_count
+
+        face_modifier = ""
+        if command.get("face_up"):
+            face_modifier = "表向きにして"
+        elif command.get("face_down"):
+            face_modifier = "裏向きにして"
+
         if "山札" in target_str or target_str == "カード":
-            return f"山札の上から{amt}枚をシールド化する。"
-        return f"{target_str}を{amt}つシールド化する。"
+            return f"山札の上から{amt}枚を{face_modifier}シールド化する。"
+        return f"{target_str}を{amt}つ{face_modifier}シールド化する。"
 
 @register_formatter("SHIELD_BURN")
 class ShieldBurnFormatter(CommandFormatterBase):
@@ -153,7 +170,7 @@ class ShieldBurnFormatter(CommandFormatterBase):
 class DestroyFormatter(CommandFormatterBase):
     @classmethod
     def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
-        ctx.metadata["destroys"] = True
+        ctx.metadata[SemanticMetadataFlags.DESTROYS.value] = True
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
@@ -351,7 +368,7 @@ class ResetInstanceFormatter(CommandFormatterBase):
 class SelectTargetFormatter(CommandFormatterBase):
     @classmethod
     def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
-        ctx.metadata["targets"] = True
+        ctx.metadata[SemanticMetadataFlags.TARGETS.value] = True
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
