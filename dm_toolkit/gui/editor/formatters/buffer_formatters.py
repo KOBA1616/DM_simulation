@@ -3,6 +3,7 @@ from dm_toolkit.gui.editor.formatters.command_formatter_base import CommandForma
 from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
+from dm_toolkit.gui.editor.formatters.utils import get_command_amount, get_command_amount_with_fallback
 from dm_toolkit.gui.i18n import tr
 
 @register_formatter("LOOK_TO_BUFFER")
@@ -10,7 +11,7 @@ class LookToBufferFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         try:
-            val1 = int(command.get('value1', 0))
+            val1 = int(get_command_amount_with_fallback(command, default=int(command.get('value1', 0))))
         except (TypeError, ValueError):
             val1 = 0
 
@@ -23,7 +24,7 @@ class RevealToBufferFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         try:
-            val1 = int(command.get('value1', 0))
+            val1 = int(get_command_amount_with_fallback(command, default=int(command.get('value1', 0))))
         except (TypeError, ValueError):
             val1 = 0
 
@@ -36,7 +37,7 @@ class SelectFromBufferFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         try:
-            val1 = int(command.get('value1', 0))
+            val1 = int(get_command_amount_with_fallback(command, default=int(command.get('value1', 0))))
         except (TypeError, ValueError):
             val1 = 0
 
@@ -81,7 +82,7 @@ class MoveBufferToZoneFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         try:
-            val1 = int(command.get('value1', 0))
+            val1 = int(get_command_amount_with_fallback(command, default=int(command.get('value1', 0))))
         except (TypeError, ValueError):
             val1 = 0
 
@@ -111,8 +112,12 @@ class MoveBufferToZoneFormatter(CommandFormatterBase):
             qty = f'{val1}枚' if val1 > 0 else 'すべて'
             return f'見た{civ_part}{type_part}{qty}を選び、{to_zone}に置く。'
 
+        # Deddam format expected: "1枚を手札に置く。" instead of "選んだカードを1枚手札に置く。"
+        # But we must be careful with standard cards. Since buffer is typically implicit "選んだ",
+        # let's modify the text for general brevity if there is no filter.
+        # Actually, let's just make it shorter and cleaner:
         if val1 > 0:
-            return f'選んだカードを{val1}枚{to_zone}に置く。'
+            return f'{val1}枚を{to_zone}に置く。'
         return f'選んだカードをすべて{to_zone}に置く。'
 
 @register_formatter("MOVE_BUFFER_REMAIN_TO_ZONE")
