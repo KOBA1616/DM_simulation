@@ -268,33 +268,12 @@ class CardTextGenerator:
         from dm_toolkit.gui.editor.formatters.modifier_formatters import ModifierFormatterRegistry
         if mtype:
             ModifierFormatterRegistry.update_metadata(mtype, modifier, ctx)
-        
-        # Build scope prefix（SCALEが SELF/OPPONENTの場合）
-        scope_prefix = cls._get_scope_prefix(scope)
-        
-        # Build target description（フィルターがある場合）
-        # NOTE: フィルターは owner を持つ場合があるが、スコープで上書きする
-        effective_filter = copy.deepcopy(filter_def) if filter_def else {}
-        if scope and scope != TargetScope.ALL:
-            effective_filter["owner"] = scope
-        
-        if scope == "NONE" and not filter_def:
-            target_str = "このクリーチャー"
-        else:
-            from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
-            target_str = TargetResolutionService.format_modifier_target(effective_filter) if effective_filter else "対象"
-        
-        # Avoid redundancy like "自身のこのクリーチャー"
-        if scope == "NONE" and target_str == "このクリーチャー":
-            full_target = target_str
-        else:
-            # Combine: condition + scope + target
-            # Final structure: 「条件」「自身の」「対象」「に〜を与える」 or 「自分の」「クリーチャー」
-            full_target = FilterTextFormatter.format_scope_prefix(scope, target_str)
-        
-        from dm_toolkit.gui.editor.formatters.modifier_formatters import ModifierFormatterRegistry
 
-        return ModifierFormatterRegistry.format(mtype, cond_text, full_target, scope_prefix, value, modifier, ctx)
+        # Delegate fully to TargetResolutionService to build "自分のクリーチャー" etc.
+        from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
+        full_target = TargetResolutionService.format_modifier_target(filter_def, scope=scope)
+
+        return ModifierFormatterRegistry.format(mtype, cond_text, full_target, value, modifier, ctx)
     
     @classmethod
     def _get_scope_prefix(cls, scope: str) -> str:

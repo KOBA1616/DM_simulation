@@ -178,6 +178,17 @@ class InputLinkFormatter:
             return default
 
         usage = str(command.get("input_usage") or command.get("input_value_usage") or "").upper()
+        ctype_self = command.get("type", "")
+
+        # Target reference shortcuts: If modifying targets dynamically
+        if usage == "TARGET_SELECTION" or ctype_self in ["DESTROY", "TAP", "UNTAP", "RETURN_TO_HAND", "SEND_TO_MANA"]:
+             up_to_flag = bool(command.get('up_to', False))
+             if up_to_flag:
+                  return "その同じ数だけまで選び"
+             return "その同じ数だけ"
+
+        if usage in ["COUNT", "AMOUNT"]:
+             return "その同じ数"
 
         # Context-aware resolution using AST
         if context_commands:

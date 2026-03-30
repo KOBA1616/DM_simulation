@@ -5,7 +5,7 @@ from dm_toolkit.gui.i18n import tr
 
 class ModifierFormatterBase:
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
+    def format(cls, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
         raise NotImplementedError
 
 class CostModifierFormatter(ModifierFormatterBase):
@@ -15,7 +15,7 @@ class CostModifierFormatter(ModifierFormatterBase):
             ctx.metadata[SemanticMetadataFlags.COSTS_REDUCED.value] = True
 
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
+    def format(cls, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
         if str(value).upper() in ("INFINITY", "∞"):
             return f"{cond}{target}のコストを∞にする。"
         if str(value) == "*":
@@ -37,7 +37,7 @@ class CostModifierFormatter(ModifierFormatterBase):
 
 class PowerModifierFormatter(ModifierFormatterBase):
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
+    def format(cls, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
         if str(value).upper() in ("INFINITY", "∞"):
             return f"{cond}{target}のパワーを∞にする。"
         if str(value) == "*":
@@ -60,7 +60,7 @@ class CharacteristicModifierType(Enum):
 
 class CharacteristicModifierBase(ModifierFormatterBase):
     @classmethod
-    def format_characteristic(cls, behavior: CharacteristicModifierType, cond: str, target: str, scope_prefix: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
+    def format_characteristic(cls, behavior: CharacteristicModifierType, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
         str_val = modifier.get('mutation_kind') or modifier.get('str_val', '')
         keyword = CardTextResources.get_keyword_text(str_val) if str_val else ""
 
@@ -99,25 +99,25 @@ class CharacteristicModifierBase(ModifierFormatterBase):
 
         elif behavior == CharacteristicModifierType.RESTRICT:
             if keyword:
-                return f"{prefix}{scope_prefix}{keyword}を与える。"
-            return f"{prefix}{scope_prefix}制限を与える。"
+                return f"{prefix}{target}に{keyword}を与える。"
+            return f"{prefix}{target}に制限を与える。"
 
         return f"{prefix}{target}の能力を変更する。"
 
 class GrantKeywordFormatter(CharacteristicModifierBase):
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
-        return cls.format_characteristic(CharacteristicModifierType.GRANT, cond, target, scope_prefix, value, modifier, ctx)
+    def format(cls, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
+        return cls.format_characteristic(CharacteristicModifierType.GRANT, cond, target, value, modifier, ctx)
 
 class SetKeywordFormatter(CharacteristicModifierBase):
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
-        return cls.format_characteristic(CharacteristicModifierType.SET, cond, target, scope_prefix, value, modifier, ctx)
+    def format(cls, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
+        return cls.format_characteristic(CharacteristicModifierType.SET, cond, target, value, modifier, ctx)
 
 class AddRestrictionFormatter(CharacteristicModifierBase):
     @classmethod
-    def format(cls, cond: str, target: str, scope_prefix: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
-        return cls.format_characteristic(CharacteristicModifierType.RESTRICT, cond, target, scope_prefix, value, modifier, ctx)
+    def format(cls, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
+        return cls.format_characteristic(CharacteristicModifierType.RESTRICT, cond, target, value, modifier, ctx)
 
 
 class ModifierFormatterRegistry:
@@ -138,11 +138,11 @@ class ModifierFormatterRegistry:
         return cls._registry.get(mtype)
 
     @classmethod
-    def format(cls, mtype: str, cond: str, target: str, scope_prefix: str, value: int, modifier: Dict[str, Any], ctx: Any = None) -> str:
+    def format(cls, mtype: str, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
         formatter = cls.get_formatter(mtype)
         if formatter:
-            return formatter.format(cond, target, scope_prefix, value, modifier, ctx)
-        return f"{cond}{scope_prefix}常在効果: {tr(mtype)}"
+            return formatter.format(cond, target, value, modifier, ctx)
+        return f"{cond}{target}常在効果: {tr(mtype)}"
 
 # Register default formatters
 ModifierFormatterRegistry.register("COST_MODIFIER", CostModifierFormatter)

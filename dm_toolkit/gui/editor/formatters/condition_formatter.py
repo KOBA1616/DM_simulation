@@ -66,13 +66,16 @@ class CompareInputConditionFormatter(ConditionFormatterStrategy):
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 
         input_key = action.get("input_value_key") or action.get("input_link") or ""
-        input_desc_map = {
-            "spell_count": "墓地の呪文の数",
-            "card_count": "カードの数",
-            "creature_count": "クリーチャーの数",
-            "element_count": "エレメントの数"
-        }
-        input_desc = input_desc_map.get(input_key, InputLinkFormatter.format_input_source_label(action) or "入力値")
+
+        input_desc = InputLinkFormatter.resolve_linked_value_text(action, context_commands=ctx.current_commands_list if ctx else None)
+        if not input_desc:
+            input_desc_map = {
+                "spell_count": "墓地の呪文の数",
+                "card_count": "カードの数",
+                "creature_count": "クリーチャーの数",
+                "element_count": "エレメントの数"
+            }
+            input_desc = input_desc_map.get(input_key, InputLinkFormatter.format_input_source_label(action) or "入力値")
 
         ival = int(val) if isinstance(val, (int, str)) and str(val).isdigit() else val
 
@@ -82,10 +85,9 @@ class CompareInputConditionFormatter(ConditionFormatterStrategy):
         else:
              val_str = f"{val}"
 
-        op_text = TextUtils.format_comparison_operator(op, val_str)
-        op_text = op_text.replace("未満", "より少ない")
+        op_text = TextUtils.format_comparison_operator(op, val_str, attribute=input_desc, particle="が")
 
-        return f"{input_desc}が{op_text}なら"
+        return f"{op_text}なら"
 
 @register_condition("PLAYED_WITHOUT_MANA_TARGET")
 class PlayedWithoutManaTargetConditionFormatter(ConditionFormatterStrategy):
