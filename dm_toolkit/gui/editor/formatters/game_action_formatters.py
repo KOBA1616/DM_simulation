@@ -375,6 +375,12 @@ class SelectTargetFormatter(CommandFormatterBase):
         target_str, unit = cls._resolve_target(command, ctx)
         val1 = get_command_amount_with_fallback(command, default=1)
         amount = val1
+        choosing_player = command.get("choosing_player")
+        if choosing_player:
+            from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
+            prefix = TargetResolutionService.resolve_noun(choosing_player)
+            if prefix:
+                return f'{prefix}は{target_str}を{amount}{unit}選ぶ。'
         return f'{target_str}を{amount}{unit}選ぶ。'
 
 @register_formatter("COST_REFERENCE")
@@ -416,6 +422,12 @@ class SendToDeckBottomFormatter(CommandFormatterBase):
 
 @register_formatter("RESOLVE_BATTLE")
 class ResolveBattleFormatter(CommandFormatterBase):
+    @classmethod
+    def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
+        battle_context_id = command.get("id")
+        if battle_context_id:
+            ctx.metadata["battle_context_id"] = battle_context_id
+
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         target_str, unit = cls._resolve_target(command, ctx)

@@ -40,18 +40,15 @@ class TextUtils:
         return f"{op_text}の{attribute}{particle}"
 
     @staticmethod
-    def apply_conjugation(text: str, optional: bool = False, replacement_base: str = "") -> str:
+    def apply_conjugation(text: str, optional: bool = False) -> str:
         """
         Applies standard conjugation to the end of a sentence based on the `optional` flag.
         Handles replacing '。' with 'てもよい。' etc. using data-driven rules.
         Instead of merely changing the string ending, this splits by '。' and applies
         conjugation only to the final non-empty clause, ensuring multiple or nested clauses
         are handled safely at a structural level.
-        If replacement_base is provided, wraps the action in a 'かわりに' clause.
-        """
-        if replacement_base:
-            text = f"{replacement_base}かわりに、{text}"
 
+        """
         if not optional or not text:
             return text
 

@@ -109,7 +109,7 @@ class MekraidFormatter(SpecialKeywordFormatterBase):
     def format(cls, keyword_id: str, card_data: Dict[str, Any]) -> str:
         # MEKRAID is separated into the special keywords section.
         # It has no extra formatting here, just the keyword text.
-        return CardTextResources.get_keyword_text(keyword_id)
+        return cls.format_numbered_keyword(keyword_id, card_data)
 
     @classmethod
     def is_special_only_effect(cls, effect: Dict[str, Any], card_data: Dict[str, Any]) -> bool:
