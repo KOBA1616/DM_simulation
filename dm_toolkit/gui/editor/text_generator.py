@@ -262,9 +262,6 @@ class CardTextGenerator:
         else:
             cond_text = cls._format_condition(condition, ctx)
 
-        if cond_text and not cond_text.endswith("、"):
-            cond_text += "、"
-
         from dm_toolkit.gui.editor.formatters.modifier_formatters import ModifierFormatterRegistry
         if mtype:
             ModifierFormatterRegistry.update_metadata(mtype, modifier, ctx)
@@ -337,8 +334,8 @@ class CardTextGenerator:
         active_condition_prefix = ""
         if trigger != "NONE" and trigger != "PASSIVE_CONST":
             if cond_type == "DURING_YOUR_TURN" or cond_type == "DURING_OPPONENT_TURN":
-                # cond_text is now purely "自分のターン中" due to ConditionFormatter refactor
-                active_condition_prefix = f"{cond_text}、"
+                # With ClauseJoiner, cond_text has the appropriate suffix "、"
+                active_condition_prefix = cond_text
                 cond_text = ""
             elif trigger == "ON_OPPONENT_DRAW" and cond_type == "OPPONENT_DRAW_COUNT":
                 val = condition.get("value", 0)
@@ -380,7 +377,8 @@ class CardTextGenerator:
 
              if cls.is_replacement_effect(effect):
                  from dm_toolkit.gui.editor.formatters.trigger_formatter import ReplacementEffectFormatter
-                 full_text = ReplacementEffectFormatter.format(f"{active_condition_prefix}{trigger_text}", f"{cond_text}{full_action_text}")
+                 # Pass the raw strings directly to format_string so we bypass the dict signature
+                 full_text = ReplacementEffectFormatter.format_string(f"{active_condition_prefix}{trigger_text}", f"{cond_text}{full_action_text}")
                  # Remove potentially dangling colons usually added for standard triggers
                  return full_text.replace(": ", "、")
 

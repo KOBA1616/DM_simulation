@@ -146,7 +146,7 @@ class TargetResolutionService:
         if not filter_def and scope == "NONE":
              # This means target self implicitly
              target_desc = default_self_noun if default_self_noun else "このカード"
-             return target_desc, unit
+             return target_desc, "枚"
 
         if filter_def:
             input_usage = action.get("input_value_usage") or action.get("input_usage")
