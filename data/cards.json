@@ -209,25 +209,6 @@
     },
     "effects": [
       {
-        "uid": "95aa92c6-d712-4ac1-9418-d3efd5443bc5",
-        "trigger": "ON_ATTACK_FROM_HAND",
-        "trigger_scope": "NONE",
-        "trigger_filter": {},
-        "condition": {
-          "type": "NONE",
-          "extra_fields": {}
-        },
-        "commands": [
-          {
-            "uid": "2feb837a-f478-444f-b93e-f865fb8e01fe",
-            "type": "MUTATE",
-            "mutation_kind": "REVOLUTION_CHANGE",
-            "amount": 5,
-            "output_value_key": "var_MEKRAID_0"
-          }
-        ]
-      },
-      {
         "uid": "1df1ac53-1cc4-4326-99ea-aea57e42a847",
         "trigger": "AT_BREAK_SHIELD",
         "trigger_scope": "NONE",
@@ -281,16 +262,22 @@
                                     "legacy_action": {
                                       "type": "LEGACY_CMD",
                                       "legacy_action": {
-                                        "zones": [
-                                          "HAND",
-                                          "GRAVEYARD"
-                                        ],
-                                        "civilizations": [],
-                                        "races": [],
-                                        "flags": [],
-                                        "types": [
-                                          "SPELL"
-                                        ]
+                                        "type": "LEGACY_CMD",
+                                        "legacy_action": {
+                                          "type": "LEGACY_CMD",
+                                          "legacy_action": {
+                                            "zones": [
+                                              "HAND",
+                                              "GRAVEYARD"
+                                            ],
+                                            "civilizations": [],
+                                            "races": [],
+                                            "flags": [],
+                                            "types": [
+                                              "SPELL"
+                                            ]
+                                          }
+                                        }
                                       }
                                     }
                                   }
@@ -335,16 +322,22 @@
                                     "legacy_action": {
                                       "type": "LEGACY_CMD",
                                       "legacy_action": {
-                                        "zones": [
-                                          "HAND",
-                                          "GRAVEYARD"
-                                        ],
-                                        "civilizations": [],
-                                        "races": [],
-                                        "flags": [],
-                                        "types": [
-                                          "SPELL"
-                                        ]
+                                        "type": "LEGACY_CMD",
+                                        "legacy_action": {
+                                          "type": "LEGACY_CMD",
+                                          "legacy_action": {
+                                            "zones": [
+                                              "HAND",
+                                              "GRAVEYARD"
+                                            ],
+                                            "civilizations": [],
+                                            "races": [],
+                                            "flags": [],
+                                            "types": [
+                                              "SPELL"
+                                            ]
+                                          }
+                                        }
                                       }
                                     }
                                   }
@@ -374,6 +367,37 @@
             "input_value_key": "var_MEKRAID_0"
           }
         ]
+      },
+      {
+        "uid": "2bf08f89-a5f3-4ebd-be75-4718fb3ea017",
+        "trigger": "ON_ATTACK",
+        "trigger_scope": "PLAYER_SELF",
+        "trigger_filter": {},
+        "commands": [
+          {
+            "uid": "a15e6aee-c967-46ec-9e5a-207bd456dbb2",
+            "type": "REVOLUTION_CHANGE",
+            "filter": {
+              "min_cost": 5,
+              "races": [
+                "マジック"
+              ],
+              "types": [
+                "CREATURE"
+              ]
+            },
+            "target_filter": {
+              "min_cost": 5,
+              "races": [
+                "マジック"
+              ],
+              "types": [
+                "CREATURE"
+              ]
+            },
+            "output_value_key": "var_a15e6aee"
+          }
+        ]
       }
     ],
     "static_abilities": [
@@ -385,10 +409,23 @@
           "value": 0,
           "extra_fields": {}
         },
-        "value": -1,
+        "value": 0,
+        "value_mode": "FIXED",
+        "stat_key": "MY_MANA_COUNT",
+        "per_value": 1,
+        "min_stat": 1,
+        "max_reduction": 0,
+        "mutation_kind": "speed_attacker",
         "str_val": "speed_attacker",
         "scope": "SELF",
-        "target_filter": {}
+        "target_filter": {
+          "races": [
+            "マジック"
+          ],
+          "zones": [
+            "BATTLE_ZONE"
+          ]
+        }
       }
     ],
     "reaction_abilities": [],
