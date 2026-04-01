@@ -116,7 +116,7 @@ interface ReplaceCardMoveCommand {
 
 ### テキスト生成
 
-`CardTextGenerator._format_command()` が以下のテンプレートを使用：
+`CardTextGenerator.format_command()` が以下のテンプレートを使用：
 
 ```
 "{target}を{orig}に置くかわりに{dest}に置く。"

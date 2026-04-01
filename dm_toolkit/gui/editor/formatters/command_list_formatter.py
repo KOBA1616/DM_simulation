@@ -29,7 +29,7 @@ class CommandListFormatter:
         texts = []
         for cmd in commands:
             if isinstance(cmd, dict):
-                cmd_text = CardTextGenerator._format_command(cmd, ctx)
+                cmd_text = CardTextGenerator.format_command(cmd, ctx)
                 if cmd_text:
                     if effective_use_tree:
                         indent_str = "  " * ctx.indent_level

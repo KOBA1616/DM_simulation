@@ -194,7 +194,7 @@ class CardTextGenerator:
             if _is_special_only_effect(effect):
                 continue
             with ctx.error_reporter.path_segment(f"effects[{i}]"):
-                text = cls._format_effect(effect, ctx)
+                text = cls.format_effect(effect, ctx)
                 if text:
                     lines.append(f"■ {text}")
 
@@ -204,7 +204,7 @@ class CardTextGenerator:
         for i, static_ability in enumerate(static_abilities):
             if static_ability and isinstance(static_ability, dict):
                 with ctx.error_reporter.path_segment(f"static_abilities[{i}]"):
-                    text = cls._format_effect(static_ability, ctx)
+                    text = cls.format_effect(static_ability, ctx)
                     if text:
                         lines.append(f"■ {text}")
 
@@ -229,7 +229,7 @@ class CardTextGenerator:
         return tr(rtype)
 
     @classmethod
-    def _format_modifier(cls, modifier: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
+    def format_modifier(cls, modifier: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         """Format a static ability (Modifier) with comprehensive support for all types and conditions."""
         from dm_toolkit.consts import TargetScope
         
@@ -269,7 +269,7 @@ class CardTextGenerator:
     
 
     @classmethod
-    def _format_effect(cls, effect: Dict[str, Any], ctx: TextGenerationContext) -> str:
+    def format_effect(cls, effect: Dict[str, Any], ctx: TextGenerationContext) -> str:
         # Check if this is a Modifier (static ability)
         # Modifiers have a 'type' field with specific values (COST_MODIFIER, POWER_MODIFIER, GRANT_KEYWORD, SET_KEYWORD)
         # and do NOT have a 'trigger' field (or trigger is NONE)
@@ -281,7 +281,7 @@ class CardTextGenerator:
             if effect_type in ("COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD", "ADD_RESTRICTION"):
                 # Verify it's not a triggered effect
                 if trigger == "NONE" or trigger not in effect:
-                    return cls._format_modifier(effect, ctx=ctx)
+                    return cls.format_modifier(effect, ctx=ctx)
         
         trigger = effect.get("trigger", "NONE")
         triggers = effect.get("triggers", [])
@@ -430,7 +430,7 @@ class CardTextGenerator:
         return f"{prefix}{duration_text}{subject_str}に「{display_text}」を与える。"
 
     @classmethod
-    def _format_command(cls, command: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
+    def format_command(cls, command: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         if not command:
             return ""
 

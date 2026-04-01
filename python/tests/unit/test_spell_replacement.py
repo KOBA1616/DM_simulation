@@ -31,10 +31,10 @@ class TestSpellReplacementMove:
         ]
         
         # 各効果のテキスト生成を確認
-        text1 = CardTextGenerator._format_command(spell_effects[0])
+        text1 = CardTextGenerator.format_command(spell_effects[0])
         assert "カードを2枚引く" in text1
         
-        text2 = CardTextGenerator._format_command(spell_effects[1])
+        text2 = CardTextGenerator.format_command(spell_effects[1])
         assert "墓地に置くかわりに" in text2
         assert "山札の下に置く" in text2
     
@@ -55,7 +55,7 @@ class TestSpellReplacementMove:
         assert cmd["to_zone"] == "DECK_BOTTOM"
         
         # テキスト生成
-        generated = CardTextGenerator._format_command(cmd)
+        generated = CardTextGenerator.format_command(cmd)
         assert "このカード" in generated or "そのカード" in generated
         assert "墓地" in generated
         assert "山札の下" in generated
@@ -71,7 +71,7 @@ class TestSpellReplacementMove:
             "input_value_key": None  # 自己参照（入力なし）
         }
         
-        generated = CardTextGenerator._format_command(cmd)
+        generated = CardTextGenerator.format_command(cmd)
         
         # 自己参照の場合は "このカード" または "そのカード" が使われる
         assert ("このカード" in generated or "そのカード" in generated)
@@ -96,7 +96,7 @@ class TestSpellReplacementMove:
                 "target_group": "SELF"
             }
             
-            generated = CardTextGenerator._format_command(cmd)
+            generated = CardTextGenerator.format_command(cmd)
             
             # from_zone のローカライズを確認
             assert expected_from in generated, \
@@ -144,7 +144,7 @@ class TestSpellReplacementMove:
         # 各効果のテキスト生成
         effect_texts = []
         for effect in card_def["effects"]:
-            text = CardTextGenerator._format_command(effect)
+            text = CardTextGenerator.format_command(effect)
             effect_texts.append(text)
         
         # 期待されるテキストパーツが含まれているか確認
