@@ -135,6 +135,13 @@ class TargetResolutionService:
                 return ("そのカード", "枚")
             return ("そのクリーチャー", "体")
 
+        # Handle Battle Context specific targets
+        if ctx and "battle_context_id" in ctx.metadata:
+            if filter_def.get("is_battle_loser") is True:
+                return ("そのバトルに負けたクリーチャー", "体")
+            if filter_def.get("is_battle_winner") is True:
+                return ("そのバトルに勝ったクリーチャー", "体")
+
         if atype == "DISCARD" and scope == "NONE":
             scope = "PLAYER_SELF"
         if atype == "COST_REDUCTION" and not filter_def and scope == "NONE":

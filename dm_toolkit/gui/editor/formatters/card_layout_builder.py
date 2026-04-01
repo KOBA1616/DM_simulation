@@ -33,6 +33,16 @@ class CardLayoutBuilder:
         if body_text:
             lines.append(body_text)
 
+        # 2.5 Metamorph Abilities (Ultra Soul Cross, etc.)
+        metamorphs = data.get("metamorph_abilities", [])
+        if metamorphs:
+            lines.append("【追加能力】")
+            for i, effect in enumerate(metamorphs):
+                with ctx.error_reporter.path_segment(f"metamorph_abilities[{i}]"):
+                    text = CardTextGenerator._format_effect(effect, ctx)
+                    if text:
+                        lines.append(f"■ {text}")
+
         # 3. Secondary Faces (Twinpact, etc.)
         if include_twinpact:
             cls._append_secondary_faces(data, ctx, lines)
@@ -98,6 +108,16 @@ class CardLayoutBuilder:
         body_text = CardTextGenerator.generate_body_text(data, ctx=ctx)
         if body_text:
             lines.append(body_text)
+
+        # 2.5 Metamorph Abilities (Ultra Soul Cross, etc.)
+        metamorphs = data.get("metamorph_abilities", [])
+        if metamorphs:
+            lines.append("【追加能力】")
+            for i, effect in enumerate(metamorphs):
+                with ctx.error_reporter.path_segment(f"metamorph_abilities[{i}]"):
+                    text = CardTextGenerator._format_effect(effect, ctx)
+                    if text:
+                        lines.append(f"■ {text}")
 
         if include_twinpact:
             cls._append_secondary_faces(data, ctx, lines)

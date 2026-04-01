@@ -74,7 +74,7 @@ class TransitionFormatter(CommandFormatterBase):
 
         linked_text = None
         if input_key:
-             linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
+             linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list if ctx else [])
 
         formatted_qty = QuantityFormatter.format_quantity(amount, unit, up_to_flag, is_all, linked_text)
 
@@ -234,7 +234,7 @@ class ReplaceCardMoveFormatter(CommandFormatterBase):
         is_self_ref = scope == "SELF"
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list if ctx else [])
 
         from dm_toolkit.gui.editor.formatters.trigger_formatter import ReplacementEffectFormatter
 

@@ -36,6 +36,13 @@ class SpecialKeywordFormatterBase:
         return []
 
     @classmethod
+    def extract_requirements(cls, card_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extract required conditions (e.g., source races, civilizations) from card_data explicitly.
+        """
+        return {}
+
+    @classmethod
     def is_special_only_effect(cls, effect: Dict[str, Any], card_data: Dict[str, Any]) -> bool:
         """
         Determine if the given effect node exists purely to realize this special keyword.
