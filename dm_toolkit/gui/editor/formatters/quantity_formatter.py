@@ -33,7 +33,7 @@ class QuantityFormatter:
         return f"{amount}{unit}"
 
     @classmethod
-    def apply_to_template(cls, template: str, formatted_qty: str, is_all: bool, up_to: bool, to_z: str, from_z: str, modifier: str = "") -> str:
+    def apply_to_template(cls, template: str, formatted_qty: str, is_all: bool, up_to: bool, to_z: str, from_z: str, modifier: str = "", targeting_mode: str = "NON_TARGET") -> str:
         """
         Applies the formatted quantity to a template, adjusting verbs (選び、戻す、置く、出す)
         based on up_to and 'all' rules.
@@ -56,8 +56,8 @@ class QuantityFormatter:
             result = result.replace("{amount}{unit}", formatted_qty).replace("選び、", "")
             return result.replace("{modifier}", modifier)
 
-        if up_to and formatted_qty != "すべて" and "最大" in formatted_qty:
-            # Handle "up to" case ("まで選び")
+        if targeting_mode == "TARGET":
+            # Handle targeted selection case ("選び、")
             if to_z == "HAND" and from_z != "DECK":
                 # We target only exact token combinations, avoiding generic string verb matching.
                 # However, some hardcoded verbs still exist in `replace("戻す", "選び、戻す")`.

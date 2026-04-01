@@ -114,7 +114,10 @@ class TransitionFormatter(CommandFormatterBase):
         elif input_key and to_z == "DECK_BOTTOM":
              template = f"{{from_z}}の{{target}}を{formatted_qty}選び、{{to_z}}に{combined_modifier}置く。"
         else:
-             template = QuantityFormatter.apply_to_template(template, formatted_qty, is_all, up_to_flag, to_z, from_z, modifier=combined_modifier)
+             from dm_toolkit.gui.editor.schema_def import get_schema
+             schema = get_schema(command.get('type', ''))
+             t_mode = schema.targeting_mode if schema and schema.targeting_mode else "NON_TARGET"
+             template = QuantityFormatter.apply_to_template(template, formatted_qty, is_all, up_to_flag, to_z, from_z, modifier=combined_modifier, targeting_mode=t_mode)
         if "{from_z}" in template:
             template = template.replace("{from_z}", from_z_str)
         if "{to_z}" in template:

@@ -224,7 +224,7 @@ class TargetResolutionService:
         return target_desc, unit
 
     @classmethod
-    def build_attribute_list(cls, filter_def: Dict[str, Any], omit_cost: bool = False, input_usage: str = "", has_input_key: bool = False, is_modifier: bool = False, is_trigger: bool = False) -> list[str]:
+    def build_attribute_list(cls, filter_def: Dict[str, Any], omit_cost: bool = False, input_usage: str = "", has_input_key: bool = False, is_modifier: bool = False, is_trigger: bool = False, is_header: bool = False) -> list[str]:
         """
         Build a list of formatted attributes (civilizations, races, cost, power) for a filter.
         """
@@ -242,7 +242,8 @@ class TargetResolutionService:
                 else:
                     civs = [single]
         if civs:
-            adjectives.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
+            joiner = "/" if is_header else "・"
+            adjectives.append(joiner.join([CardTextResources.get_civilization_text(c) for c in civs]))
 
         races = filter_def.get("races", [])
         if races:

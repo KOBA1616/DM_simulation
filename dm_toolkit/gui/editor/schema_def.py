@@ -66,12 +66,14 @@ class CommandSchema:
     """
     Defines the layout and fields for a specific Command Type.
     """
-    def __init__(self, type_name: str, fields: List[FieldSchema], label_override: str = "", allowed_filter_fields: Optional[List[str]] = None):
+    def __init__(self, type_name: str, fields: List[FieldSchema], label_override: str = "", allowed_filter_fields: Optional[List[str]] = None, default_amount: Optional[int] = None, targeting_mode: Optional[str] = None):
         self.type_name = type_name
         self.fields = fields
         self.label_override = label_override
         # Optional constraint hint for Filter widgets (e.g., ['zones','types'])
         self.allowed_filter_fields = allowed_filter_fields
+        self.default_amount = default_amount
+        self.targeting_mode = targeting_mode
 
 # Registry
 SCHEMA_REGISTRY = {}
