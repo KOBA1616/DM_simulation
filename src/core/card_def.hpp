@@ -112,9 +112,6 @@ namespace dm::core {
         // AND granted to the creature above if this card is underneath (Rule 817.1b)
         std::vector<EffectDef> metamorph_abilities;
 
-        // Reaction Abilities
-        std::vector<ReactionAbility> reaction_abilities;
-
         // Phase 4: Cost Reductions
         std::vector<CostReductionDef> cost_reductions;
 

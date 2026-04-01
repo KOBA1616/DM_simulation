@@ -45,7 +45,8 @@ namespace dm::core {
         FORCE_ATTACK,
         FORCE_SELECTION,
         CANNOT_BE_SELECTED,
-        CANNOT_LEAVE_BATTLE  // バトルゾーンを離れない
+        CANNOT_LEAVE_BATTLE, // バトルゾーンを離れない
+        LIMIT_PUT_CREATURE_PER_TURN // ターンあたりのクリーチャー出し制限
     };
 
     struct PassiveEffect {

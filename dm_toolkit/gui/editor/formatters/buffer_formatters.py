@@ -1,3 +1,4 @@
+from dm_toolkit.gui.editor.formatters.quantity_formatter import QuantityFormatter
 from typing import Dict, Any
 from dm_toolkit.gui.editor.formatters.command_formatter_base import CommandFormatterBase
 from dm_toolkit.gui.editor.formatters.command_registry import register_formatter
@@ -109,15 +110,13 @@ class MoveBufferToZoneFormatter(CommandFormatterBase):
                 type_part = '/'.join((tr(t) for t in types if t))
             else:
                 type_part = 'カード'
-            qty = f'{val1}枚' if val1 > 0 else 'すべて'
+
+            qty = QuantityFormatter.format_quantity(val1, "枚", up_to=False, is_all=(val1==0))
             return f'見た{civ_part}{type_part}{qty}を選び、{to_zone}に置く。'
 
-        # Deddam format expected: "1枚を手札に置く。" instead of "選んだカードを1枚手札に置く。"
-        # But we must be careful with standard cards. Since buffer is typically implicit "選んだ",
-        # let's modify the text for general brevity if there is no filter.
-        # Actually, let's just make it shorter and cleaner:
         if val1 > 0:
-            return f'{val1}枚を{to_zone}に置く。'
+            qty = QuantityFormatter.format_quantity(val1, "枚", up_to=False, is_all=False)
+            return f'{qty}を{to_zone}に置く。'
         return f'選んだカードをすべて{to_zone}に置く。'
 
 @register_formatter("MOVE_BUFFER_REMAIN_TO_ZONE")

@@ -18,6 +18,7 @@ CONDITION_FORM_SCHEMA = {
     "COMPARE_STAT": ["stat_key", "op", "value"],
     "COMPARE_INPUT": ["input_value_key", "op", "value"],
     "MANA_CIVILIZATION_COUNT": ["op", "value"],
+    "CARDS_MATCHING_FILTER": ["value", "op", "filter"],
     "HAS_TARGET": ["target"],
     # Generic fallback for string-based condition parameters
     "CUSTOM": ["str_val"]
@@ -71,7 +72,7 @@ def register_all_schemas():
         f_optional,
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_links_out # Handles both input (amount) and output (cards drawn)
-    ]))
+    ], default_amount=1))
 
     # DISCARD
     # Outputs: discarded count to output_value_key (card IDs in future C++ enhancement)
@@ -82,17 +83,18 @@ def register_all_schemas():
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
         f_links_out  # Enables output_value_key for discarded count and input linking
-    ]))
+    ], default_amount=1))
 
     # DESTROY / MANA_CHARGE / RETURN_TO_HAND / BREAK_SHIELD
     # Outputs: moved/destroyed/returned count and card instance IDs to output_value_key
     for cmd in ["DESTROY", "MANA_CHARGE", "RETURN_TO_HAND", "BREAK_SHIELD"]:
+        from dm_toolkit.consts import TargetingMode
         register_schema(CommandSchema(cmd, [
             f_target,
             f_filter,
             FieldSchema("amount", tr("Count (if selecting)"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
             f_links_out  # Enables output_value_key for card movement tracking and input linking
-        ]))
+        ], default_amount=1, targeting_mode=TargetingMode.TARGET.value))
 
     # TAP / UNTAP (state changes, no movement)
     for cmd in ["TAP", "UNTAP"]:
@@ -409,6 +411,12 @@ def register_all_schemas():
     register_schema(CommandSchema("CANNOT_SUMMON_CREATURE", [
         f_target,
         f_filter,
+        FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_TYPES)
+    ]))
+    register_schema(CommandSchema("LIMIT_PUT_CREATURE_PER_TURN", [
+        f_target,
+        f_filter,
+        FieldSchema("amount", tr("Limit Amount"), FieldType.INT, default=1, min_value=0),
         FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_TYPES)
     ]))
     register_schema(CommandSchema("PLAYER_CANNOT_ATTACK", [

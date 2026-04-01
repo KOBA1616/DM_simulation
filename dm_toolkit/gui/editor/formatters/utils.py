@@ -36,6 +36,11 @@ def get_command_amount(command: Dict[str, Any], default: int = 1) -> Any:
     if isinstance(filter_def, dict) and "count" in filter_def and filter_def["count"] is not None:
         return filter_def["count"]
 
+    from dm_toolkit.gui.editor.schema_def import get_schema
+    schema = get_schema(command.get('type', ''))
+    if schema and schema.default_amount is not None:
+        return schema.default_amount
+
     return default
 
 def get_command_max_cost(command: Dict[str, Any], default: Any = None) -> Any:

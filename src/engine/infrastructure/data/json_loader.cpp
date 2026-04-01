@@ -318,9 +318,6 @@ namespace dm::engine::infrastructure {
             def.keywords.revolution_change = true;
         }
 
-        // Reaction Abilities
-        def.reaction_abilities = data.reaction_abilities;
-
         // Twinpact Spell Side (Recursive)
         if (data.spell_side) {
             def.spell_side = std::make_shared<CardDefinition>(convert_to_def(*data.spell_side));
@@ -478,7 +475,7 @@ namespace dm::engine::infrastructure {
                     static const std::unordered_set<std::string> int_keys = {"id", "cost", "power", "value", "value1", "value2", "amount", "duration", "slot_index", "target_slot_index", "ai_importance_score"};
                     static const std::unordered_set<std::string> string_keys = {"name", "str_val", "type", "scope", "source_zone", "destination_zone", "target_choice", "input_value_key", "output_value_key", "input_value_usage", "timing_mode", "multiplicity"};
                     static const std::unordered_set<std::string> bool_keys = {"optional", "is_key_card", "is_tapped"};
-                    static const std::unordered_set<std::string> array_keys = {"civilizations", "races", "triggers", "effects", "commands", "actions", "options", "trigger_list", "trigger_zones", "children", "static_abilities", "metamorph_abilities", "reaction_abilities", "cost_reductions"};
+                    static const std::unordered_set<std::string> array_keys = {"civilizations", "races", "triggers", "effects", "commands", "actions", "options", "trigger_list", "trigger_zones", "children", "static_abilities", "metamorph_abilities", "cost_reductions"};
 
                     if (node.is_object()) {
                         for (auto it = node.begin(); it != node.end(); ++it) {
@@ -567,7 +564,7 @@ namespace dm::engine::infrastructure {
                         static const std::unordered_set<std::string> int_keys = {"id", "cost", "power", "value", "value1", "value2", "amount", "duration", "slot_index", "target_slot_index", "ai_importance_score"};
                         static const std::unordered_set<std::string> string_keys = {"name", "str_val", "type", "scope", "source_zone", "destination_zone", "target_choice", "input_value_key", "output_value_key", "input_value_usage", "timing_mode", "multiplicity"};
                         static const std::unordered_set<std::string> bool_keys = {"optional", "is_key_card", "is_tapped"};
-                        static const std::unordered_set<std::string> array_keys = {"civilizations", "races", "triggers", "effects", "commands", "actions", "options", "trigger_list", "trigger_zones", "children", "static_abilities", "metamorph_abilities", "reaction_abilities", "cost_reductions"};
+                        static const std::unordered_set<std::string> array_keys = {"civilizations", "races", "triggers", "effects", "commands", "actions", "options", "trigger_list", "trigger_zones", "children", "static_abilities", "metamorph_abilities", "cost_reductions"};
 
                         if (node.is_object()) {
                             for (auto it = node.begin(); it != node.end(); ++it) {

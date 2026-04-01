@@ -5,6 +5,8 @@ from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount
 from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+from dm_toolkit.gui.editor.formatters.quantity_formatter import QuantityFormatter
+from dm_toolkit.gui.editor.formatters.zone_formatter import ZoneFormatter
 from dm_toolkit.gui.editor.formatters.text_utils import TextUtils
 from dm_toolkit.gui.editor.formatters.metadata_flags import SemanticMetadataFlags
 from dm_toolkit.gui.i18n import tr
@@ -19,11 +21,12 @@ class TransitionFormatter(CommandFormatterBase):
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
+
         from_z_raw = command.get("from_zone", "")
         if isinstance(from_z_raw, list):
             from_z_list = [CardTextResources.normalize_zone_name(z) for z in from_z_raw]
             from_z = from_z_list[0] if from_z_list else ""
-            from_z_str = CardTextResources.format_zones_list(from_z_list, "と")
+            from_z_str = ZoneFormatter.format_zone_list(from_z_list, context="", joiner="と")
         else:
             from_z = CardTextResources.normalize_zone_name(from_z_raw)
             from_z_str = CardTextResources.get_zone_text(from_z) if from_z else ""
@@ -32,10 +35,11 @@ class TransitionFormatter(CommandFormatterBase):
         if isinstance(to_z_raw, list):
             to_z_list = [CardTextResources.normalize_zone_name(z) for z in to_z_raw]
             to_z = to_z_list[0] if to_z_list else ""
-            to_z_str = CardTextResources.format_zones_list(to_z_list, "または")
+            to_z_str = ZoneFormatter.format_zone_list(to_z_list, context="", joiner="、または")
         else:
             to_z = CardTextResources.normalize_zone_name(to_z_raw)
             to_z_str = CardTextResources.get_zone_text(to_z) if to_z else ""
+
 
         amount = get_command_amount(command, default=0)
         up_to_flag = bool(command.get('up_to', False))
@@ -63,61 +67,57 @@ class TransitionFormatter(CommandFormatterBase):
                 if not template:
                     template = CardTextResources.ZONE_MOVE_TEMPLATES.get("DEFAULT", "{target}を{from_z}から{to_z}へ移動する。")
 
+
         # Adjust template for up_to and all
         input_key = command.get('input_value_key') or command.get('input_link')
         is_all = (amount == 0 and not input_key)
 
-        if is_all:
-            # Handle "all" case ("すべて")
-            if to_z == "HAND" and from_z != "DECK":
-                template = template.replace("{amount}{unit}", "すべて").replace("選び、", "")
-            elif to_z in ["GRAVEYARD", "MANA_ZONE", "DECK_BOTTOM"]:
-                template = template.replace("{amount}{unit}", "すべて").replace("選び、", "")
+        linked_text = None
+        if input_key:
+             linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list if ctx else [])
 
-        elif up_to_flag and amount > 0:
-            # Handle "up to" case ("まで選び")
-            formatted_qty = TextUtils.format_up_to("{amount}", "{unit}", up_to=True)
-            if to_z == "HAND" and from_z != "DECK":
-                template = template.replace("{amount}{unit}", formatted_qty).replace("戻す", "選び、戻す")
-                if "選び、" not in template:
-                    template = template.replace("まで{to_z}", "まで選び、{to_z}")
-            elif to_z in ["GRAVEYARD", "MANA_ZONE", "DECK_BOTTOM", "BATTLE_ZONE"]:
-                template = template.replace("{amount}{unit}", formatted_qty).replace("置く", "選び、置く").replace("出す", "選び、出す")
-                if "選び、" not in template:
-                     template = template.replace("まで{to_z}", "まで選び、{to_z}")
-            elif template_key == ("DECK", "HAND"):
-                template = template.replace("{amount}{unit}", formatted_qty)
+        formatted_qty = QuantityFormatter.format_quantity(amount, unit, up_to_flag, is_all, linked_text)
+
+        # Handle face_up / face_down and enter_tapped modifiers uniformly
+        face_modifier = ""
+        if command.get("face_up"):
+            face_modifier = "表向きにして"
+        elif command.get("face_down"):
+            face_modifier = "裏向きにして"
+
+        tapped_modifier = ""
+        if command.get("enter_tapped"):
+            tapped_modifier = "タップして"
+
+        combined_modifier = face_modifier + tapped_modifier
 
         if template_key == ("DECK", "HAND") and target_str == "カード":
              # Exception for generic deck drawing/searching phrasing
              if up_to_flag:
                   qty_str = TextUtils.format_up_to("{amount}", "枚", up_to=True)
-                  template = f"山札からカードを{qty_str}選び、手札に加える。"
+                  template = f"山札からカードを{qty_str}選び、手札に{combined_modifier}加える。"
              else:
-                  template = "{from_z}から{target}を{amount}{unit}選び、{to_z}に加える。"
-
-        # Handle input_key dynamic text for deck bottom generic returns
-        if input_key and to_z == "DECK_BOTTOM":
-             normalized_from = CardTextResources.normalize_zone_name(from_z)
+                  template = "{from_z}から{target}を{amount}{unit}選び、{to_z}に{combined_modifier}加える。"
+        elif input_key and to_z == "DECK_BOTTOM" and CardTextResources.normalize_zone_name(from_z) == "HAND":
+             # Handle input_key dynamic text for deck bottom generic returns from hand
+             to_zone_text = CardTextResources.get_zone_text(to_z)
              scope = command.get("target_group") or command.get("scope", "NONE")
-             if normalized_from == "HAND":
-                 to_zone_text = CardTextResources.get_zone_text(to_z)
-                 linked_count = InputLinkFormatter.format_linked_count_token(command, "その同じ数")
-                 owner = ""
-                 if scope in ["PLAYER_SELF", "SELF"]:
-                     owner = "自分の"
-                 elif scope in ["PLAYER_OPPONENT", "OPPONENT"]:
-                     owner = "相手の"
-                 elif scope == "ALL_PLAYERS":
-                     owner = "各プレイヤーの"
+             owner = ""
+             if scope in ["PLAYER_SELF", "SELF"]:
+                 owner = "自分の"
+             elif scope in ["PLAYER_OPPONENT", "OPPONENT"]:
+                 owner = "相手の"
+             elif scope == "ALL_PLAYERS":
+                 owner = "各プレイヤーの"
 
-                 qty_str = f"最大{linked_count}だけまで" if up_to_flag else f"{linked_count}だけ"
-                 template = f"{owner}手札から{{target}}を{qty_str}選び、{to_zone_text}に置く。"
-             else:
-                 qty_str = f"その同じ数だけまで" if up_to_flag else f"その同じ数だけ"
-                 template = f"{{from_z}}の{{target}}を{qty_str}選び、{{to_z}}に置く。"
-
-
+             template = f"{owner}手札から{{target}}を{formatted_qty}選び、{to_zone_text}に{combined_modifier}置く。"
+        elif input_key and to_z == "DECK_BOTTOM":
+             template = f"{{from_z}}の{{target}}を{formatted_qty}選び、{{to_z}}に{combined_modifier}置く。"
+        else:
+             from dm_toolkit.gui.editor.schema_def import get_schema
+             schema = get_schema(command.get('type', ''))
+             t_mode = schema.targeting_mode if schema and schema.targeting_mode else "NON_TARGET"
+             template = QuantityFormatter.apply_to_template(template, formatted_qty, is_all, up_to_flag, to_z, from_z, modifier=combined_modifier, targeting_mode=t_mode)
         if "{from_z}" in template:
             template = template.replace("{from_z}", from_z_str)
         if "{to_z}" in template:
@@ -149,30 +149,7 @@ class TransitionFormatter(CommandFormatterBase):
             res = command.get("result", "")
             text = text.replace("{result}", tr(res))
 
-        # Handle face_up / face_down and enter_tapped modifiers
-        face_modifier = ""
-        if command.get("face_up"):
-            face_modifier = "表向きにして"
-        elif command.get("face_down"):
-            face_modifier = "裏向きにして"
-
-        tapped_modifier = ""
-        if command.get("enter_tapped"):
-            tapped_modifier = "タップして"
-
-        if face_modifier or tapped_modifier:
-            combined_modifier = face_modifier + tapped_modifier
-
-            # Common verbs to replace
-            verbs = ["置く", "出す", "加える", "戻す", "移動する"]
-            for verb in verbs:
-                if text.endswith(f"{verb}。"):
-                    text = text[:-len(f"{verb}。")] + f"{combined_modifier}{verb}。"
-                    break
-                elif text.endswith(f"、{verb}"): # For cases within conditions
-                    text = text[:-len(f"、{verb}")] + f"、{combined_modifier}{verb}"
-                    break
-
+        # Modifiers are now handled inside QuantityFormatter.apply_to_template before verbs are formed
         return text
 
 @register_formatter("MOVE_CARD")
@@ -211,9 +188,11 @@ class MoveBufferToZoneFormatter(CommandFormatterBase):
         types = filter_def.get("types", []) if filter_def else []
         races = filter_def.get("races", []) if filter_def else []
 
+
         has_filter = bool(civs or types or races)
         val1 = get_command_amount(command, default=0)
         up_to = bool(command.get('up_to', False))
+        is_all = (val1 == 0)
 
         if has_filter:
             civ_part = ""
@@ -231,12 +210,12 @@ class MoveBufferToZoneFormatter(CommandFormatterBase):
             else:
                 type_part = "カード"
 
-            qty_part = TextUtils.format_up_to(val1, "枚", up_to) if val1 > 0 else "すべて"
+            qty_part = QuantityFormatter.format_quantity(val1, "枚", up_to, is_all)
 
             text = f"その中から、{civ_part}{type_part}を{qty_part}選び、{to_zone}に加える。"
             return text
         else:
-            qty_part = TextUtils.format_up_to(val1, "枚", up_to) if val1 > 0 else "すべて"
+            qty_part = QuantityFormatter.format_quantity(val1, "枚", up_to, is_all)
             text = f"その中から、{qty_part}を{to_zone}に加える。"
             return text
 
@@ -255,33 +234,35 @@ class ReplaceCardMoveFormatter(CommandFormatterBase):
         is_self_ref = scope == "SELF"
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
-        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list if ctx else [])
 
-        # Base replacement template
-        t = CardTextResources.ZONE_MOVE_TEMPLATES.get("REPLACE_CARD_MOVE", "{target}を{from_zone}に置くかわりに{to_zone}に置く。")
-        t = t.replace("{from_zone}", orig_zone_str).replace("{to_zone}", zone_str)
+        from dm_toolkit.gui.editor.formatters.trigger_formatter import ReplacementEffectFormatter
+
+        # Base replacement logic split into from_text and to_text
+        from_text = f"{{target}}を{orig_zone_str}に置く"
+        to_text = f"{zone_str}に置く。"
 
         if linked_text:
             input_usage = str(command.get("input_value_usage") or command.get("input_usage") or "").upper()
             linked_target = "そのカード"
             if input_usage == "REPLACEMENT":
-                 return f"かわりに、{orig_zone_str}に置くかわりに{zone_str}に置く。"
+                 return ReplacementEffectFormatter.format_string(from_text.replace("{target}を", ""), to_text)
 
-            t = t.replace("{target}", linked_target)
-            return f"その後、{t}"
+            replaced = ReplacementEffectFormatter.format_string(from_text.replace("{target}", linked_target), to_text)
+            return f"その後、{replaced}"
 
         amount = get_command_amount(command, default=0)
         target_str, unit = cls._resolve_target(command, ctx)
 
         if is_self_ref:
-             t = t.replace("{target}", "このカード")
+             from_text = from_text.replace("{target}", "このカード")
+             return ReplacementEffectFormatter.format_string(from_text, to_text)
         else:
              if amount > 0:
                   qty = TextUtils.format_up_to(amount, unit, up_to_flag)
-                  # Strip "まで" logic from up_to in text replacement manually
-                  # but since we append "選び", "最大X枚まで選び" flows fine.
-                  t = f"{target_str}を{qty}選び、" + t.replace("{target}を", "")
+                  prefix = f"{target_str}を{qty}選び、"
+                  from_text = from_text.replace("{target}を", "")
+                  return prefix + ReplacementEffectFormatter.format_string(from_text, to_text)
              else:
-                  t = t.replace("{target}", target_str)
-
-        return t
+                  from_text = from_text.replace("{target}", target_str)
+                  return ReplacementEffectFormatter.format_string(from_text, to_text)

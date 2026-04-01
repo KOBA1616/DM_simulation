@@ -53,6 +53,26 @@ namespace dm::engine::systems {
             }
         }
 
+        // 3. Limit Put Creature Restrictions (LIMIT_PUT_CREATURE_PER_TURN)
+        if (def.type == CardType::CREATURE || def.type == CardType::EVOLUTION_CREATURE) {
+            int strict_limit = -1;
+            for (const auto& eff : state.passive_effects) {
+                if (eff.type == PassiveType::LIMIT_PUT_CREATURE_PER_TURN) {
+                    if (dm::engine::utils::TargetUtils::is_valid_target(card, def, eff.target_filter, state, eff.controller, card.owner, true)) {
+                        int current_limit = eff.value;
+                        if (strict_limit == -1 || current_limit < strict_limit) {
+                            strict_limit = current_limit;
+                        }
+                    }
+                }
+            }
+            if (strict_limit != -1) {
+                if (state.turn_stats.creatures_played_this_turn >= strict_limit) {
+                    return true; // Limit reached
+                }
+            }
+        }
+
         return false;
     }
 

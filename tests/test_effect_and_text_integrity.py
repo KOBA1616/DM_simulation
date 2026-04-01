@@ -345,6 +345,7 @@ class TestTriggerAndScopeIntegrity:
             trigger_scope="PLAYER_OPPONENT",
             trigger_filter={"types": ["SPELL"], "civilizations": [], "races": [], "flags": []},
         )
+        from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
         try:
             text = CardTextGenerator._format_effect(effect, TextGenerationContext(card_data={}))
             assert isinstance(text, str)

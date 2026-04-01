@@ -21,7 +21,7 @@ class ShieldCountConditionFormatter(ConditionFormatterStrategy):
         val = d.get("value", 0)
         op = d.get("op", ">=")
         op_text = TextUtils.format_comparison_operator(op, "")
-        return f"自分のシールドが{val}つ{op_text}なら"
+        return f"自分のシールドが{val}つ{op_text}"
 
 @register_condition("CIVILIZATION_MATCH")
 class CivilizationMatchConditionFormatter(ConditionFormatterStrategy):
@@ -34,7 +34,7 @@ class OpponentDrawCountConditionFormatter(ConditionFormatterStrategy):
     @classmethod
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         val = d.get("value", 0)
-        return f"相手がカードを{val}枚目以上引いたなら"
+        return f"相手がカードを{val}枚目以上引いた"
 
 @register_condition("COMPARE_STAT")
 class CompareStatConditionFormatter(ConditionFormatterStrategy):
@@ -51,7 +51,7 @@ class CompareStatConditionFormatter(ConditionFormatterStrategy):
         # Custom logic for stat comparisons might expect "より少ない", replace "未満" if it's there.
         op_text = op_text.replace("未満", "より少ない")
 
-        return f"自分の{stat_name}が{op_text}なら"
+        return f"自分の{stat_name}が{op_text}"
 
 @register_condition("COMPARE_INPUT")
 class CompareInputConditionFormatter(ConditionFormatterStrategy):
@@ -59,20 +59,30 @@ class CompareInputConditionFormatter(ConditionFormatterStrategy):
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         # action is no longer passed as a separate param, we use ctx to pull input references if needed.
         # However, for compatibility we extract it from `d` or `ctx` safely.
-        action = d if d.get("input_link") or d.get("input_value_key") else {}
+        # Some callers might pass action dict as ctx due to old APIs, so we handle both.
+        if isinstance(ctx, dict):
+             action = ctx
+             current_cmds = None
+        else:
+             action = d if d.get("input_link") or d.get("input_value_key") else {}
+             current_cmds = ctx.current_commands_list if ctx else None
+
         val = d.get("value", 0)
         op = d.get("op", ">=")
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
 
         input_key = action.get("input_value_key") or action.get("input_link") or ""
-        input_desc_map = {
-            "spell_count": "墓地の呪文の数",
-            "card_count": "カードの数",
-            "creature_count": "クリーチャーの数",
-            "element_count": "エレメントの数"
-        }
-        input_desc = input_desc_map.get(input_key, InputLinkFormatter.format_input_source_label(action) or "入力値")
+
+        input_desc = InputLinkFormatter.resolve_linked_value_text(action, context_commands=current_cmds)
+        if not input_desc:
+            input_desc_map = {
+                "spell_count": "墓地の呪文の数",
+                "card_count": "カードの数",
+                "creature_count": "クリーチャーの数",
+                "element_count": "エレメントの数"
+            }
+            input_desc = input_desc_map.get(input_key, InputLinkFormatter.format_input_source_label(action) or "入力値")
 
         ival = int(val) if isinstance(val, (int, str)) and str(val).isdigit() else val
 
@@ -82,10 +92,9 @@ class CompareInputConditionFormatter(ConditionFormatterStrategy):
         else:
              val_str = f"{val}"
 
-        op_text = TextUtils.format_comparison_operator(op, val_str)
-        op_text = op_text.replace("未満", "より少ない")
+        op_text = TextUtils.format_comparison_operator(op, val_str, attribute=input_desc, particle="が")
 
-        return f"{input_desc}が{op_text}なら"
+        return f"{op_text}"
 
 @register_condition("PLAYED_WITHOUT_MANA_TARGET")
 class PlayedWithoutManaTargetConditionFormatter(ConditionFormatterStrategy):
@@ -100,7 +109,7 @@ class ManaCivilizationCountConditionFormatter(ConditionFormatterStrategy):
         val = d.get("value", 0)
         op = d.get("op", ">=")
         op_text = "以上" if op == ">=" else "以下" if op == "<=" else "と同じ" if op in ("=", "==") else ""
-        return f"自分のマナゾーンにある文明の数が{val}{op_text}なら"
+        return f"自分のマナゾーンにある文明の数が{val}{op_text}"
 
 @register_condition("CARDS_MATCHING_FILTER")
 class CardsMatchingFilterConditionFormatter(ConditionFormatterStrategy):
@@ -111,14 +120,7 @@ class CardsMatchingFilterConditionFormatter(ConditionFormatterStrategy):
         op = d.get("op", ">=")
 
         from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
-
-        # Check if the filter specifies ONLY civilization.
-        civs = filter_def.get("civilization", [])
-        if isinstance(civs, str):
-            civs = [civs]
-
-        # Ensure no other filtering keys are used (including zone and owner, which would make it specific cards)
-        only_civs = civs and not any(bool(filter_def.get(k)) for k in filter_def if k != "civilization")
+        from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
 
         desc = FilterTextFormatter.describe_simple_filter(filter_def)
         zones = filter_def.get("zone", [])
@@ -135,23 +137,18 @@ class CardsMatchingFilterConditionFormatter(ConditionFormatterStrategy):
         if desc.endswith("の"):
             desc = desc[:-1]
 
-        if only_civs:
-            civ_names = "・".join([CardTextResources.get_civilization_text(c) for c in civs])
-            desc = civ_names + "の文明"
-        elif not desc:
+        if not desc:
             desc = "カード"
 
-        from dm_toolkit.consts import CARD_TYPE_UNIT_MAP
-
         # 単位決定ロジックの汎化
-        unit = "枚"
-        card_types = filter_def.get("card_type", [])
-        if card_types:
-            # 最初の指定タイプに基づく
-            unit = CARD_TYPE_UNIT_MAP.get(card_types[0], "枚")
-        elif "Demon Command" in desc or "クリーチャー" in desc or "エレメント" in desc:
-            unit = "体"
+        from dm_toolkit.consts import CARD_TYPE_UNIT_MAP
+        card_types = filter_def.get("card_type", filter_def.get("types", []))
 
+        # TargetResolutionService already computes optimal unit for types/zones
+        _, _, resolved_unit = TargetResolutionService._determine_noun(zones, card_types, "")
+        unit = resolved_unit
+
+        # Override for purely civilization checks (no types specified, outputs "文明")
         if desc.endswith("の文明"):
             unit = "つ"
 
@@ -160,13 +157,13 @@ class CardsMatchingFilterConditionFormatter(ConditionFormatterStrategy):
 
         verb = "いる" if unit == "体" else "ある"
 
-        return f"{zone_text}{desc}が{op_text}{verb}なら"
+        return f"{zone_text}{desc}が{op_text}{verb}"
 
 @register_condition("OPPONENT_PLAYED_WITHOUT_MANA")
 class OpponentPlayedWithoutManaConditionFormatter(ConditionFormatterStrategy):
     @classmethod
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
-        return "相手がマナゾーンのカードをタップせずに、クリーチャーを出すか呪文を唱えた時"
+        return "相手がマナゾーンのカードをタップせずに、クリーチャーを出すか呪文を唱えた"
 
 @register_condition("DURING_YOUR_TURN")
 class DuringYourTurnConditionFormatter(ConditionFormatterStrategy):
@@ -199,12 +196,5 @@ class ConditionFormatter:
         if not condition:
             return ""
 
-        cond_type = condition.get("type", "NONE")
-
-        formatter_cls = ConditionFormatterRegistry.get_formatter(cond_type)
-        if formatter_cls:
-            text = formatter_cls.format(condition, ctx)
-            if text:
-                return text + formatter_cls.get_suffix()
-
-        return ""
+        from dm_toolkit.gui.editor.formatters.clause_joiner import ClauseJoiner
+        return ClauseJoiner.join_condition_ast(condition, ctx)

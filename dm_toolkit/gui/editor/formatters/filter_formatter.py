@@ -76,9 +76,29 @@ class FilterTextFormatter:
 
         adjectives = TargetResolutionService.build_attribute_list(filter_def)
 
+        # Races shouldn't be in both adjectives and noun string to avoid duplication like "Demon CommandのDemon Command"
+        if races:
+            adj_races_str = "/".join(races)
+            if adj_races_str in adjectives:
+                adjectives.remove(adj_races_str)
+
         adj_str = "の".join(adjectives)
         if adj_str:
             adj_str += "の"
+
+        # Check if the filter specifies ONLY civilization.
+        civs = filter_def.get("civilizations", filter_def.get("civilization", []))
+        if isinstance(civs, str):
+            civs = [civs]
+
+        # Ensure no other filtering keys are used (including zone and owner, which would make it specific cards)
+        # Note: 'zone' is used in conditions, 'zones' in proper filters. Ignore them here.
+        ignored_keys = {"civilization", "civilizations", "zone", "zones", "owner"}
+        only_civs = civs and not any(bool(filter_def.get(k)) for k in filter_def if k not in ignored_keys)
+
+        if only_civs:
+            civ_names = "・".join([CardTextResources.get_civilization_text(c) for c in civs])
+            return civ_names + "の文明"
 
         # 再発防止: types が空のときに「クリーチャー」をデフォルトにしない。
         #   フィルターでタイプ未指定は「カード」(全タイプ対象)。

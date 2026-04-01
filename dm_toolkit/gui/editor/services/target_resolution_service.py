@@ -1,6 +1,7 @@
 from typing import Dict, Any, Tuple
 from dm_toolkit.consts import TargetScope, CardType, Zone, MAX_COST_VALUE, MAX_POWER_VALUE
 from dm_toolkit.gui.editor.text_resources import CardTextResources
+from dm_toolkit.gui.editor.formatters.zone_formatter import ZoneFormatter
 
 
 class TargetResolutionService:
@@ -43,15 +44,19 @@ class TargetResolutionService:
 
         parts = []
 
+
         if is_modifier:
             if zones:
-                if len(zones) == 1: parts.append(CardTextResources.format_zones_list(zones) + "の")
-                else: parts.append(CardTextResources.format_zones_list(zones, joiner="または") + "から")
+                if len(zones) == 1:
+                     parts.append(ZoneFormatter.format_zone_list(zones, context="in"))
+                else:
+                     parts.append(ZoneFormatter.format_zone_list(zones, context="from", joiner="または"))
         elif is_trigger:
             if zones and Zone.BATTLE_ZONE.value not in zones:
-                parts.append(CardTextResources.format_zones_list(zones, joiner="、または") + "の")
+                parts.append(ZoneFormatter.format_zone_list(zones, context="in", joiner="、または"))
         else:
             if zone_noun: parts.append(zone_noun + "の")
+
 
         if attrs:
             if is_trigger: parts.append("の".join(attrs) + "の")
@@ -130,6 +135,13 @@ class TargetResolutionService:
                 return ("そのカード", "枚")
             return ("そのクリーチャー", "体")
 
+        # Handle Battle Context specific targets
+        if ctx and "battle_context_id" in ctx.metadata:
+            if filter_def.get("is_battle_loser") is True:
+                return ("そのバトルに負けたクリーチャー", "体")
+            if filter_def.get("is_battle_winner") is True:
+                return ("そのバトルに勝ったクリーチャー", "体")
+
         if atype == "DISCARD" and scope == "NONE":
             scope = "PLAYER_SELF"
         if atype == "COST_REDUCTION" and not filter_def and scope == "NONE":
@@ -138,15 +150,23 @@ class TargetResolutionService:
 
         prefix, effective_scope = cls._resolve_scope(scope, filter_def)
 
+        if not filter_def and scope == "NONE":
+             # This means target self implicitly
+             target_desc = default_self_noun if default_self_noun else "このカード"
+             return target_desc, "枚"
+
         if filter_def:
             input_usage = action.get("input_value_usage") or action.get("input_usage")
             has_input_key = bool(action.get("input_value_key") or action.get("input_link"))
             target_desc, unit = cls.build_subject(filter_def, omit_cost=omit_cost, input_usage=input_usage, has_input_key=has_input_key, action_type=atype)
 
-            if prefix:
+            from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
+
+            # Use FilterTextFormatter.format_scope_prefix for standard handling
+            # If prefix was custom (like ランダムな), apply it directly instead
+            if prefix and prefix not in ["すべてのプレイヤーの", "すべてのプレイヤー"]:
                 target_desc = prefix + target_desc
             else:
-                from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
                 target_desc = FilterTextFormatter.format_scope_prefix(effective_scope, target_desc)
 
             zones = filter_def.get("zones", [])
@@ -158,6 +178,7 @@ class TargetResolutionService:
         else:
             target_desc = ""
             unit = "枚"
+
             from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
             if atype == "DESTROY":
                 if scope == "OPPONENT":
@@ -210,7 +231,7 @@ class TargetResolutionService:
         return target_desc, unit
 
     @classmethod
-    def build_attribute_list(cls, filter_def: Dict[str, Any], omit_cost: bool = False, input_usage: str = "", has_input_key: bool = False, is_modifier: bool = False, is_trigger: bool = False) -> list[str]:
+    def build_attribute_list(cls, filter_def: Dict[str, Any], omit_cost: bool = False, input_usage: str = "", has_input_key: bool = False, is_modifier: bool = False, is_trigger: bool = False, is_header: bool = False) -> list[str]:
         """
         Build a list of formatted attributes (civilizations, races, cost, power) for a filter.
         """
@@ -222,9 +243,14 @@ class TargetResolutionService:
         civs = filter_def.get("civilizations", [])
         if not civs and "civilization" in filter_def:
             single = filter_def.get("civilization")
-            if single: civs = [single]
+            if single:
+                if isinstance(single, list):
+                    civs = single
+                else:
+                    civs = [single]
         if civs:
-            adjectives.append("/".join([CardTextResources.get_civilization_text(c) for c in civs]))
+            joiner = "/" if is_header else "・"
+            adjectives.append(joiner.join([CardTextResources.get_civilization_text(c) for c in civs]))
 
         races = filter_def.get("races", [])
         if races:
@@ -287,17 +313,26 @@ class TargetResolutionService:
         return adjectives
 
     @classmethod
-    def format_modifier_target(cls, filter_def: Dict[str, Any]) -> str:
-        """Format target description from filter with comprehensive support."""
-        if not filter_def:
-            return "対象"
+    def format_modifier_target(cls, filter_def: Dict[str, Any], scope: str = "ALL") -> str:
+        """Format target description from filter with comprehensive support, including scope."""
+        if not filter_def and scope == "NONE":
+            return "このクリーチャー"
+        elif not filter_def:
+             return "対象"
 
-        owner = filter_def.get("owner", "")
-        if owner == "NONE" and not filter_def.get("zones") and not filter_def.get("types"):
+        effective_filter = filter_def.copy() if filter_def else {}
+        if scope and scope != "ALL":
+             effective_filter["owner"] = scope
+
+        owner = effective_filter.get("owner", "NONE")
+        if owner == "NONE" and not effective_filter.get("zones") and not effective_filter.get("types") and not effective_filter.get("races") and not effective_filter.get("civilizations"):
             return "このクリーチャー"
 
-        result, _ = cls.build_subject(filter_def, is_modifier=True)
-        return result
+        result, _ = cls.build_subject(effective_filter, is_modifier=True)
+
+        from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
+        effective_scope = cls.resolve_effective_owner(scope, effective_filter)
+        return FilterTextFormatter.format_scope_prefix(effective_scope, result)
 
     @classmethod
     def _resolve_scope(cls, scope: str, filter_def: Dict[str, Any]) -> Tuple[str, str]:

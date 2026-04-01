@@ -280,6 +280,8 @@ void bind_core(py::module& m) {
         .value("IGNORE_ABILITIES", PassiveType::IGNORE_ABILITIES)
         .value("FORCE_SELECTION", PassiveType::FORCE_SELECTION)
         .value("CANNOT_BE_SELECTED", PassiveType::CANNOT_BE_SELECTED)
+        .value("CANNOT_LEAVE_BATTLE", PassiveType::CANNOT_LEAVE_BATTLE)
+        .value("LIMIT_PUT_CREATURE_PER_TURN", PassiveType::LIMIT_PUT_CREATURE_PER_TURN)
         .export_values();
 
     py::class_<PassiveEffect>(m, "PassiveEffect")
@@ -475,6 +477,7 @@ void bind_core(py::module& m) {
         .value("CANNOT_SUMMON_CREATURE", CommandType::CANNOT_SUMMON_CREATURE)
         .value("PLAYER_CANNOT_ATTACK", CommandType::PLAYER_CANNOT_ATTACK)
         .value("IGNORE_ABILITY", CommandType::IGNORE_ABILITY)
+        .value("LIMIT_PUT_CREATURE_PER_TURN", CommandType::LIMIT_PUT_CREATURE_PER_TURN)
         .value("NONE", CommandType::NONE)
         .export_values();
 

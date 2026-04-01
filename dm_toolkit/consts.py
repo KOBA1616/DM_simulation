@@ -103,6 +103,15 @@ class TimingMode(str, Enum):
     PRE = "PRE"
     POST = "POST"
 
+class SpecialStatValue(str, Enum):
+    INFINITY = "INFINITY"
+    ASTERISK = "*"
+
+class TargetingMode(str, Enum):
+    TARGET = "TARGET"
+    NON_TARGET = "NON_TARGET"
+    RANDOM = "RANDOM"
+
 class TargetScope:
     """
     Unified target scope constants.

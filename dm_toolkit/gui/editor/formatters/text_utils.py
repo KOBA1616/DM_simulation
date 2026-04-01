@@ -5,11 +5,19 @@ class TextUtils:
     """Utility class for handling common Japanese punctuation and verb conjugations."""
 
     @staticmethod
-    def format_comparison_operator(op: str, value: Any, attribute: str = "", particle: str = "の") -> str:
+    def format_comparison_operator(op: str, value: Any, attribute: str = "", particle: str = "の", attribute_type: str = "") -> str:
         """
         Formats a comparison operator and value into Japanese text.
         If an attribute is provided, generates phrases like "X以下のコストの〜".
+        `attribute_type` can be specified (e.g., 'cost', 'count', 'power') to drive context-specific phrasing.
         """
+        # Infer attribute_type from attribute string if not explicitly given
+        attr_str = str(attribute)
+        if not attribute_type:
+             if "コスト" in attr_str: attribute_type = "cost"
+             elif "パワー" in attr_str: attribute_type = "power"
+             elif "数" in attr_str or "枚" in attr_str or "体" in attr_str: attribute_type = "count"
+
         op_text = ""
         if op == ">=":
             op_text = f"{value}以上"
@@ -18,12 +26,15 @@ class TextUtils:
         elif op in ("=", "=="):
             op_text = f"{value}"
         elif op == ">":
-            if attribute == "パワー":
+            if attribute_type == "power":
                 op_text = f"{value}より大きい"
             else:
                 op_text = f"{value}より多い"
         elif op == "<":
-            op_text = f"{value}未満"
+            if attribute_type in ["cost", "count"]:
+                 op_text = f"{value}より少ない"
+            else:
+                 op_text = f"{value}未満"
         else:
             op_text = f"{value}"
 
@@ -32,8 +43,11 @@ class TextUtils:
 
         if op in ("=", "=="):
             return f"{attribute}{op_text}{particle}"
-        elif op == ">" and attribute == "パワー":
+        elif op == ">" and attribute_type == "power":
             # Avoid appending "の" after an i-adjective like "大きい"
+            adj_particle = "" if particle == "の" else particle
+            return f"{attribute}が{op_text}{adj_particle}"
+        elif op == "<" and attribute_type in ["cost", "count"]:
             adj_particle = "" if particle == "の" else particle
             return f"{attribute}が{op_text}{adj_particle}"
 

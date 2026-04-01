@@ -208,16 +208,6 @@ class CardTextGenerator:
                     if text:
                         lines.append(f"■ {text}")
 
-        # 3.5 Metamorph Abilities (Ultra Soul Cross, etc.)
-        metamorphs = data.get("metamorph_abilities", [])
-        if metamorphs:
-            lines.append("【追加能力】")
-            for i, effect in enumerate(metamorphs):
-                with ctx.error_reporter.path_segment(f"metamorph_abilities[{i}]"):
-                    text = cls._format_effect(effect, ctx)
-                    if text:
-                        lines.append(f"■ {text}")
-
         return "\n".join(lines)
 
     @classmethod
@@ -262,39 +252,15 @@ class CardTextGenerator:
         else:
             cond_text = cls._format_condition(condition, ctx)
 
-        if cond_text and not cond_text.endswith("、"):
-            cond_text += "、"
-
         from dm_toolkit.gui.editor.formatters.modifier_formatters import ModifierFormatterRegistry
         if mtype:
             ModifierFormatterRegistry.update_metadata(mtype, modifier, ctx)
-        
-        # Build scope prefix（SCALEが SELF/OPPONENTの場合）
-        scope_prefix = cls._get_scope_prefix(scope)
-        
-        # Build target description（フィルターがある場合）
-        # NOTE: フィルターは owner を持つ場合があるが、スコープで上書きする
-        effective_filter = copy.deepcopy(filter_def) if filter_def else {}
-        if scope and scope != TargetScope.ALL:
-            effective_filter["owner"] = scope
-        
-        if scope == "NONE" and not filter_def:
-            target_str = "このクリーチャー"
-        else:
-            from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
-            target_str = TargetResolutionService.format_modifier_target(effective_filter) if effective_filter else "対象"
-        
-        # Avoid redundancy like "自身のこのクリーチャー"
-        if scope == "NONE" and target_str == "このクリーチャー":
-            full_target = target_str
-        else:
-            # Combine: condition + scope + target
-            # Final structure: 「条件」「自身の」「対象」「に〜を与える」 or 「自分の」「クリーチャー」
-            full_target = FilterTextFormatter.format_scope_prefix(scope, target_str)
-        
-        from dm_toolkit.gui.editor.formatters.modifier_formatters import ModifierFormatterRegistry
 
-        return ModifierFormatterRegistry.format(mtype, cond_text, full_target, scope_prefix, value, modifier, ctx)
+        # Delegate fully to TargetResolutionService to build "自分のクリーチャー" etc.
+        from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
+        full_target = TargetResolutionService.format_modifier_target(filter_def, scope=scope)
+
+        return ModifierFormatterRegistry.format(mtype, cond_text, full_target, value, modifier, ctx)
     
     @classmethod
     def _get_scope_prefix(cls, scope: str) -> str:
@@ -318,98 +284,29 @@ class CardTextGenerator:
                     return cls._format_modifier(effect, ctx=ctx)
         
         trigger = effect.get("trigger", "NONE")
-        trigger_scope = effect.get("trigger_scope", "NONE")
-        timing_mode = cls._resolve_effect_timing_mode(effect)
-        condition = effect.get("condition", {})
-        if condition is None:
-            condition = {}
-        actions = effect.get("actions", [])
-
         triggers = effect.get("triggers", [])
         if not triggers and trigger != "NONE":
             triggers = [trigger]
 
-        trigger_texts = []
-        for t in triggers:
-            t_text = cls.trigger_to_japanese(t, ctx.is_spell, effect=effect)
-            if trigger_scope and trigger_scope != "NONE" and t != "PASSIVE_CONST":
-                t_text = cls._apply_trigger_scope(
-                    t_text,
-                    trigger_scope,
-                    t,
-                    effect.get("trigger_filter", {}),
-                    timing_mode=timing_mode,
-                )
-            else:
-                if timing_mode == TimingMode.PRE.value:
-                    t_text = cls._to_replacement_trigger_text(t_text)
-            trigger_texts.append(t_text)
-
-        trigger_text = "、または".join(trigger_texts) if trigger_texts else ""
+        condition = effect.get("condition", {})
+        if condition is None:
+            condition = {}
 
         if ctx and hasattr(ctx, "error_reporter"):
             with ctx.error_reporter.path_segment("condition"):
                 cond_text = cls._format_condition(condition, ctx)
         else:
             cond_text = cls._format_condition(condition, ctx)
-        cond_type = condition.get("type", "NONE")
-
-        # Refined natural language logic: structured binding of active conditions + trigger events
-        active_condition_prefix = ""
-        if trigger != "NONE" and trigger != "PASSIVE_CONST":
-            if cond_type == "DURING_YOUR_TURN" or cond_type == "DURING_OPPONENT_TURN":
-                # cond_text is now purely "自分のターン中" due to ConditionFormatter refactor
-                active_condition_prefix = f"{cond_text}、"
-                cond_text = ""
-            elif trigger == "ON_OPPONENT_DRAW" and cond_type == "OPPONENT_DRAW_COUNT":
-                val = condition.get("value", 0)
-                trigger_text = f"相手がカードを引いた時、{val}枚目以降なら"
-                cond_text = ""
-
-        action_texts = []
-        # Keep parallel lists of raw and formatted for merging logic
-        raw_items = []
-
-        # Commands-Only Policy:
-        # We now expect 'commands' to be the sole source of truth.
-        commands = effect.get("commands", [])
-
-        # 連鎖コマンドの入力ラベル推定副作用の分離
-        # AST構築パスでラベルを事前推論して独立させる
-        from dm_toolkit.gui.editor.formatters.input_link_ast import InputLinkASTBuilder
-        commands_with_labels = InputLinkASTBuilder.infer_command_labels(commands)
-
-        for i, command in enumerate(commands_with_labels):
-            with ctx.error_reporter.path_segment(f"commands[{i}]"):
-                command_for_text = copy.deepcopy(command) if isinstance(command, dict) else command
-                raw_items.append(command_for_text)
-                action_texts.append(cls._format_command(command_for_text, ctx))
-
-        # Try to merge common sequential patterns for more natural language
-        full_action_text = cls._merge_action_texts(raw_items, action_texts)
-
-        # If it's a Spell's main effect (ON_PLAY), we can often omit the trigger text "Played/Cast"
-        if ctx.is_spell and trigger == "ON_PLAY":
-            trigger_text = ""
 
         has_active_trigger = any(t not in ("NONE", "PASSIVE_CONST") for t in triggers)
         is_passive = any(t == "PASSIVE_CONST" for t in triggers) and not has_active_trigger
 
-        if trigger_text and has_active_trigger:
-             if not full_action_text:
-                 return ""
-
-             if cls.is_replacement_effect(effect):
-                 from dm_toolkit.gui.editor.formatters.trigger_formatter import ReplacementEffectFormatter
-                 full_text = ReplacementEffectFormatter.format(f"{active_condition_prefix}{trigger_text}", f"{cond_text}{full_action_text}")
-                 # Remove potentially dangling colons usually added for standard triggers
-                 return full_text.replace(": ", "、")
-
-             return f"{active_condition_prefix}{trigger_text}: {cond_text}{full_action_text}"
-        elif is_passive or trigger == "PASSIVE_CONST":
-             return f"{cond_text}{full_action_text}"
+        if is_passive or trigger == "PASSIVE_CONST" or not has_active_trigger:
+            from dm_toolkit.gui.editor.formatters.abilities.static_ability_formatter import StaticAbilityFormatter
+            return StaticAbilityFormatter.format(effect, ctx, cond_text)
         else:
-             return f"{cond_text}{full_action_text}"
+            from dm_toolkit.gui.editor.formatters.abilities.triggered_ability_formatter import TriggeredAbilityFormatter
+            return TriggeredAbilityFormatter.format(effect, ctx, cond_text)
 
     @classmethod
     def _apply_trigger_scope(
