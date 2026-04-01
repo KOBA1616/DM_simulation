@@ -365,7 +365,8 @@ class CardTextGenerator:
         full_action_text = cls._merge_action_texts(raw_items, action_texts)
 
         # If it's a Spell's main effect (ON_PLAY), we can often omit the trigger text "Played/Cast"
-        if ctx.is_spell and trigger == "ON_PLAY":
+        from dm_toolkit.gui.editor.formatters.metadata_flags import SemanticMetadataFlags
+        if ctx.is_spell and trigger == "ON_PLAY" and not ctx.metadata.get(SemanticMetadataFlags.ON_CAST_TRIGGER.value, False):
             trigger_text = ""
 
         has_active_trigger = any(t not in ("NONE", "PASSIVE_CONST") for t in triggers)
