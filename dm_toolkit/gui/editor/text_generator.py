@@ -234,14 +234,15 @@ class CardTextGenerator:
     @classmethod
     def format_effect(cls, effect: Dict[str, Any], ctx: TextGenerationContext) -> str:
         # Check if this is a Modifier (static ability)
-        # Modifiers have a 'type' field with specific values (COST_MODIFIER, POWER_MODIFIER, GRANT_KEYWORD, SET_KEYWORD)
+        # Modifiers have a 'type' field which is a registered modifier type
         # and do NOT have a 'trigger' field (or trigger is NONE)
         if isinstance(effect, dict):
             effect_type = effect.get("type", "")
             trigger = effect.get("trigger", "NONE")
             
             # Check if this is a known Modifier type
-            if effect_type in ("COST_MODIFIER", "POWER_MODIFIER", "GRANT_KEYWORD", "SET_KEYWORD", "ADD_RESTRICTION"):
+            from dm_toolkit.gui.editor.formatters.modifier_formatters import ModifierFormatterRegistry
+            if ModifierFormatterRegistry.is_modifier_type(effect_type):
                 # Verify it's not a triggered effect
                 if trigger == "NONE" or trigger not in effect:
                     return cls.format_modifier(effect, ctx=ctx)
@@ -293,54 +294,9 @@ class CardTextGenerator:
 
     @classmethod
     def format_command(cls, command: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
-        if not command:
-            return ""
-
-        # Robustly pick command type from either 'type' or legacy 'name'
-        cmd_type = command.get("type") or command.get("name") or "NONE"
-
-        # Use the command dict as read-only via functional overrides
-        command_ro = copy.deepcopy(command)
-
-        if cmd_type == "SHIELD_TRIGGER":
-            return "S・トリガー"
-
-        # Resolve aliases immediately to hide business logic from generic formatting
-        cmd_type = CardTextResources.normalize_command_alias(cmd_type, command_ro)
-
-        # Check the formatter registry
         from dm_toolkit.gui.editor.formatters.command_registry import CommandFormatterRegistry
         import dm_toolkit.gui.editor.formatters # Initialize registry
-
-        formatter_cls = CommandFormatterRegistry.get_formatter(cmd_type)
-        if formatter_cls:
-            if hasattr(formatter_cls, "update_metadata"):
-                formatter_cls.update_metadata(command_ro, ctx)
-            # The formatter returns the template or finalized text.
-            formatted_text = formatter_cls.format_with_optional(command_ro, ctx)
-            return formatted_text
-
-        # 再発防止: REVOLUTION_CHANGE コマンドはカードレベルの革命チェンジテキストで使用されるが、
-        # コマンドエディタ等で単独表示する場合のために直接テキストを返す。
-        if cmd_type == "REVOLUTION_CHANGE":
-            formatter_cls = SpecialKeywordRegistry.get_formatter("revolution_change")
-            if formatter_cls and hasattr(formatter_cls, "format_revolution_change_text"):
-                tf = command.get("target_filter") or command.get("filter") or {}
-                cond_text = formatter_cls.format_revolution_change_text(tf) if tf else "クリーチャー"
-                return f"革命チェンジ：{cond_text}"
-
-        # In case the normalized alias is not found, try original cmd_type
-        # Some aliases might have specific logic in fallback formatters.
-        cmd_type_original = command.get("type") or command.get("name") or "NONE"
-        formatter_cls_orig = CommandFormatterRegistry.get_formatter(cmd_type_original)
-        if formatter_cls_orig and cmd_type_original != cmd_type:
-             if hasattr(formatter_cls_orig, "update_metadata"):
-                 formatter_cls_orig.update_metadata(command_ro, ctx)
-             formatted_text = formatter_cls_orig.format_with_optional(command_ro, ctx)
-             return formatted_text
-
-        # Final fallback
-        return f"({tr(cmd_type)})"
+        return CommandFormatterRegistry.format_command(command, ctx)
 
     @classmethod
     def _format_condition(cls, condition: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
