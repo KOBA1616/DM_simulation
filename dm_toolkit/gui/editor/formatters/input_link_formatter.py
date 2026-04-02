@@ -30,12 +30,10 @@ class InputLinkFormatter:
             if producer:
                 # Use semantic knowledge from the producer node for better text
                 ctype = producer.atype
-                if ctype == "DRAW_CARD":
-                    linked_text = "その引いた枚数と同じ数だけ"
-                elif ctype == "DISCARD":
-                    linked_text = "その捨てた枚数と同じ数だけ"
-                elif ctype in ("DECLARE_NUMBER", "SELECT_NUMBER"):
-                    linked_text = "その選択した数だけ"
+                from dm_toolkit.gui.editor.schema_def import get_schema
+                schema = get_schema(ctype)
+                if schema and schema.default_output_label:
+                    linked_text = f"その{schema.default_output_label}と同じ数だけ"
                 else:
                     linked_text = cls.resolve_linked_value_text(command)
             else:
@@ -141,12 +139,10 @@ class InputLinkFormatter:
                 return stat_name
             if mode:
                 return tr(mode)
-        if ctype == "DRAW_CARD":
-            return "引いた枚数"
-        if ctype == "DISCARD":
-            return "捨てた枚数"
-        if ctype in ("DECLARE_NUMBER", "SELECT_NUMBER"):
-            return "選択した数"
+        from dm_toolkit.gui.editor.schema_def import get_schema
+        schema = get_schema(ctype)
+        if schema and schema.default_output_label:
+            return schema.default_output_label
         return ""
 
     @classmethod
@@ -196,24 +192,23 @@ class InputLinkFormatter:
             producer = InputLinkASTBuilder.find_producer(context_commands, input_key)
             if producer:
                 ctype = producer.atype
+                from dm_toolkit.gui.editor.schema_def import get_schema
+                schema = get_schema(ctype)
+                default_label = schema.default_output_label if schema and schema.default_output_label else None
 
                 # Check how it's used
                 if usage in ("COST", "MAX_COST"):
-                    if ctype == "DRAW_CARD":
-                        return "その引いた枚数と同じコスト以下"
+                    if default_label:
+                        return f"その{default_label}と同じコスト以下"
                     return "そのコスト以下"
                 elif usage in ("POWER", "MAX_POWER"):
-                    if ctype == "DRAW_CARD":
-                        return "その引いた枚数と同じパワー以下"
+                    if default_label:
+                        return f"その{default_label}と同じパワー以下"
                     return "そのパワー以下"
 
                 # Fallbacks if usage is AMOUNT/COUNT or generic
-                if ctype == "DRAW_CARD":
-                    return "その引いた枚数"
-                elif ctype == "DISCARD":
-                    return "その捨てた枚数"
-                elif ctype in ("DECLARE_NUMBER", "SELECT_NUMBER"):
-                    return "その選択した数"
+                if default_label:
+                    return f"その{default_label}"
 
         # Static fallback
         input_label = command.get("_input_value_label", "")

@@ -5,16 +5,7 @@ from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatte
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.utils import get_command_amount
 
-from dataclasses import dataclass
-
-@dataclass
-class TargetPhrase:
-    """Represents a target phrase for cost modifiers, separating noun and particle."""
-    noun: str
-    particle: str
-
-    def to_string(self) -> str:
-        return f"{self.noun}{self.particle}"
+from dm_toolkit.gui.editor.formatters.utils import TargetPhrase
 
 from dm_toolkit.gui.editor.formatters.condition_formatter import ConditionFormatter
 

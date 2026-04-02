@@ -15,9 +15,9 @@ def test_ignore_ability_typed_params():
     assert hasattr(cmd, 'params')
     params = cmd.params
     # Ensure typed model fields are present
-    assert getattr(params, 'ability_id', None) == 'FLY'
-    assert getattr(params, 'target_group', None) == 'SELF'
-    assert getattr(params, 'duration', None) == 2
+    assert params.get('ability_id') == 'FLY'
+    assert params.get('target_group') == 'SELF'
+    assert params.get('duration') == 2
 
     # Serialization should flatten params back into top-level keys
     dumped = cmd.model_dump()

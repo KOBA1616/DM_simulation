@@ -1,5 +1,16 @@
 from typing import Dict, Any, Optional, List
+from dataclasses import dataclass
 from dm_toolkit.gui.editor.text_resources import CardTextResources
+
+@dataclass
+class TargetPhrase:
+    """Represents a target phrase, separating noun and particle.
+    Useful for safely resolving verbs and comparison operators without duplicate particles."""
+    noun: str
+    particle: str
+
+    def to_string(self) -> str:
+        return f"{self.noun}{self.particle}"
 
 def format_civs(civs: List[str]) -> str:
     """Format a list of civilizations into a string (e.g. '火/自然' or '無色')."""

@@ -53,21 +53,15 @@ class QuantityFormatter:
             result = result.replace("{amount}{unit}", formatted_qty).replace("選び、", "")
             return result.replace("{modifier}", modifier)
 
-        if targeting_mode == "TARGET":
-            # Handle targeted selection case ("選び、")
-            if to_z == "HAND" and from_z != "DECK":
-                # We target only exact token combinations, avoiding generic string verb matching.
-                # However, some hardcoded verbs still exist in `replace("戻す", "選び、戻す")`.
-                # We refactor these to strictly target the final noun structure safely.
-                result = result.replace("{amount}{unit}", formatted_qty)
-                if "選び、" not in result:
-                    result = result.replace("{to_z}", "選び、{to_z}")
-            elif to_z in ["GRAVEYARD", "MANA_ZONE", "DECK_BOTTOM", "BATTLE_ZONE"]:
-                result = result.replace("{amount}{unit}", formatted_qty)
-                if "選び、" not in result:
-                     result = result.replace("{to_z}", "選び、{to_z}")
-            elif (from_z, to_z) == ("DECK", "HAND"):
-                result = result.replace("{amount}{unit}", formatted_qty)
+        # Delegate selection verb injection to the template via {selection_verb}
+        # to avoid hardcoded string replacement logic on zone variables.
+        selection_verb = "選び、" if targeting_mode == "TARGET" else ""
+        result = result.replace("{selection_verb}", selection_verb)
+
+        # Legacy fallback if {selection_verb} isn't used yet, ensure the verb gets prepended to modifier instead
+        if targeting_mode == "TARGET" and "選び、" not in result:
+            if not modifier.startswith("選び、"):
+                modifier = selection_verb + modifier
 
         # Base replacement for standard quantity
         result = result.replace("{amount}{unit}", formatted_qty)

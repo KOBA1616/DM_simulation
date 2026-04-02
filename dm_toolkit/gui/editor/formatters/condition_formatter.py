@@ -130,7 +130,14 @@ class CompareInputConditionFormatter(ConditionFormatterStrategy):
         else:
              val_str = f"{val}{val_suffix}"
 
-        op_text = TextUtils.format_comparison_operator(op, val_str, attribute=input_desc, particle="が")
+        from dm_toolkit.gui.editor.formatters.utils import TargetPhrase
+
+        # InputLinkFormatter already produces semantic labels (like "捨てた枚数").
+        # We wrap it purely in a TargetPhrase to strictly define its role as a noun,
+        # letting TextUtils.format_comparison_operator safely append the "が" particle.
+        phrase = TargetPhrase(noun=input_desc, particle="が")
+
+        op_text = TextUtils.format_comparison_operator(op, val_str, attribute=phrase.noun, particle=phrase.particle)
 
         return f"{op_text}"
 
