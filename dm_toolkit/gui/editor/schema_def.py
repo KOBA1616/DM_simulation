@@ -66,7 +66,7 @@ class CommandSchema:
     """
     Defines the layout and fields for a specific Command Type.
     """
-    def __init__(self, type_name: str, fields: List[FieldSchema], label_override: str = "", allowed_filter_fields: Optional[List[str]] = None, default_amount: Optional[int] = None, targeting_mode: Optional[str] = None, default_output_label: Optional[str] = None):
+    def __init__(self, type_name: str, fields: List[FieldSchema], label_override: str = "", allowed_filter_fields: Optional[List[str]] = None, default_amount: Optional[int] = None, targeting_mode: Optional[str] = None, default_output_label: Optional[str] = None, is_block_statement: bool = False):
         self.type_name = type_name
         self.fields = fields
         self.label_override = label_override
@@ -75,6 +75,7 @@ class CommandSchema:
         self.default_amount = default_amount
         self.targeting_mode = targeting_mode
         self.default_output_label = default_output_label
+        self.is_block_statement = is_block_statement
 
 # Registry
 SCHEMA_REGISTRY = {}

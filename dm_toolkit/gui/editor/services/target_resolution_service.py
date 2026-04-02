@@ -249,8 +249,16 @@ class TargetResolutionService:
                 else:
                     civs = [single]
         if civs:
-            joiner = "/" if is_header else "・"
-            adjectives.append(joiner.join([CardTextResources.get_civilization_text(c) for c in civs]))
+            civ_match_mode = filter_def.get("civ_match_mode", "OR").upper()
+            if is_header:
+                joiner = "/"
+            elif len(civs) > 1:
+                joiner = "または" if civ_match_mode == "OR" else "と"
+            else:
+                joiner = "・"
+
+            civ_texts = [CardTextResources.get_civilization_text(c) for c in civs]
+            adjectives.append(joiner.join(civ_texts))
 
         races = filter_def.get("races", [])
         if races:

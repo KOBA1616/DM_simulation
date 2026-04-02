@@ -328,6 +328,8 @@ def register_all_schemas():
 
     # BATTLE related
     register_schema(CommandSchema("RESOLVE_BATTLE", [
+        FieldSchema("source_target", tr("Source Target"), FieldType.FILTER),
+        FieldSchema("destination_target", tr("Destination Target"), FieldType.FILTER),
         f_target,
         f_filter
     ]))
@@ -476,21 +478,21 @@ def register_all_schemas():
         FieldSchema("option_count", tr("Options Count"), FieldType.OPTIONS_CONTROL, default=1, min_value=1),
         FieldSchema("optional", tr("Allow Duplicates"), FieldType.BOOL, default=False),
         f_links_in  # input_value_key に前『コマンド出力値』をセット → C++ resolve_amount が自動利用
-    ]))
+    ], is_block_statement=True))
 
     # IF / IF_ELSE (Use filter as condition)
     # Outputs: condition result (0=false, 1=true) to output_value_key
     register_schema(CommandSchema("IF", [
         FieldSchema("target_filter", tr("Condition Filter"), FieldType.CONDITION_TREE),
         f_links_out  # Enables output_value_key for condition result, and input for linking
-    ]))
+    ], is_block_statement=True))
     register_schema(CommandSchema("IF_ELSE", [
         FieldSchema("target_filter", tr("Condition Filter"), FieldType.CONDITION_TREE),
         f_links_out  # Enables output_value_key for condition result
-    ]))
+    ], is_block_statement=True))
     register_schema(CommandSchema("ELSE", [
         f_links_out # Enables output_value_key
-    ]))
+    ], is_block_statement=True))
 
     # STAT
     # STAT: use SELECT options driven from CardTextResources to prevent unknown keys
