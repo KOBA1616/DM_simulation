@@ -59,7 +59,8 @@ class CompareStatConditionFormatter(ConditionFormatterStrategy):
         # Custom logic for stat comparisons might expect "より少ない", replace "未満" if it's there.
         op_text = op_text.replace("未満", "より少ない")
 
-        return f"自分の{stat_name}が{op_text}"
+        prefix = "自分の" if not stat_name.startswith("自分の") else ""
+        return f"{prefix}{stat_name}が{op_text}"
 
 @register_condition("COMPARE_INPUT")
 class CompareInputConditionFormatter(ConditionFormatterStrategy):
@@ -153,6 +154,9 @@ class CardsMatchingFilterConditionFormatter(ConditionFormatterStrategy):
     @classmethod
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         filter_def = d.get("filter", {})
+        if not filter_def and "target_filter" in d:
+             filter_def = d.get("target_filter", {})
+
         count = d.get("count", 1)
         op = d.get("op", ">=")
 
@@ -187,7 +191,7 @@ class CardsMatchingFilterConditionFormatter(ConditionFormatterStrategy):
 
         # Override for purely civilization checks (no types specified, outputs "文明")
         if desc.endswith("の文明"):
-            unit = "つ"
+            unit = "枚" # Many tests explicitly expect 枚 here based on past formatting
 
         op_text = TextUtils.format_comparison_operator(op, f"{count}{unit}")
         op_text = op_text.replace("より多い", "より多く")
