@@ -89,30 +89,18 @@ class TextUtils:
         if last_idx == -1:
             return text
 
-        # If the target sentence starts with "その後、", it means this is a follow-up action.
-        # If the entire block was marked optional, the optionality should often apply to the action BEFORE "その後、".
-        # E.g., "〜する。その後、〜する。" -> "〜してもよい。そうしたら、〜する。" (handled by ContextMerger for IF/THEN)
-        # Or "〜する。その後、〜してもよい。" (handled if the second action is optional).
-        # If apply_conjugation receives "〜する。その後、〜する。" as a single string, it means it's a grouped clause.
-        # It's usually unsafe to automatically change the very end if "その後、" is present without context.
-        # So if we detect "その後、" in the current sentence or previous sentence, we need to be careful.
-        # But wait, if text is "〜する。その後、カードを引く", sentences are ["〜する", "その後、カードを引く"].
-        # If the user meant to make the *first* part optional, they shouldn't pass the whole block to apply_conjugation.
-        # They should apply it before merging. ContextMerger handles merging *after* command generation.
-        # So apply_conjugation usually only sees ONE command.
-        # But if it sees a manually written text like "〜する。その後、〜する" and optional=True, we should avoid touching "その後".
+        # Context-aware composite clause safety check
+        # If this action is part of a composite sequence and the final segment starts with "その後、",
+        # the optionality ("〜てもよい") typically applies to the primary action (the preceding segment)
+        # rather than the follow-up action. We backtrack to conjugate the principal sentence.
+        if is_composite_action and sentences[last_idx].strip().startswith("その後、"):
+            # Move backward to find the previous non-empty sentence
+            for i in range(last_idx - 1, -1, -1):
+                if sentences[i].strip():
+                    last_idx = i
+                    break
 
         target_sentence = sentences[last_idx] + "。"
-
-        # Context-aware composite clause safety check
-        # If this action is part of a composite (like a contextual sequence) and starts with "その後、",
-        # the optionality might belong to the primary action structurally rather than the follow-up, unless
-        # the user explicitly grouped them. Since apply_conjugation usually only sees the atomic command
-        # before merging, if it sees "その後、" inside a single command string, it often means the command
-        # naturally encapsulates a composite action. We proceed with conjugation but flag it for debugging or
-        # specialized rules.
-        if is_composite_action and target_sentence.startswith("その後、"):
-            pass
 
         # We augment CardTextResources.CONJUGATION_RULES with missing Godan verb forms to be robust
         # This replaces the hardcoded "る" hack with standard conjugation rules

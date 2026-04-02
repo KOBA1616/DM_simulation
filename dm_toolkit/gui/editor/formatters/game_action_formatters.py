@@ -20,7 +20,13 @@ class LookAndAddFormatter(CommandFormatterBase):
 
         look_count = look_count if command.get("look_count") is not None else get_command_amount_with_fallback(command, default=3)
         add_count = add_count if add_count > 0 else 1
+
+        dest_zone = command.get("destination_zone", "HAND")
         rest_zone = command.get("rest_zone", "DECK_BOTTOM")
+
+        from dm_toolkit.gui.editor.formatters.zone_formatters import ZoneFormatter
+        dest_zone_list = [dest_zone]
+        dest_zone_str = ZoneFormatter.format_zone_list(dest_zone_list, context="to", joiner="、または")
 
         rest_text = ""
         if rest_zone == "DECK_BOTTOM":
@@ -34,34 +40,49 @@ class LookAndAddFormatter(CommandFormatterBase):
         if target_str != "カード":
             filter_text = f"{target_str}を"
 
-        return f"自分の山札の上から{look_count}枚を見る。その中から{filter_text}{add_count}{unit}手札に加え、{rest_text}"
+        # Handle modifiers for the destination action
+        face_modifier = "表向きにして" if command.get("face_up") else "裏向きにして" if command.get("face_down") else ""
+        tapped_modifier = "タップして" if command.get("enter_tapped") else ""
+        combined_modifier = face_modifier + tapped_modifier
+
+        # Determine appropriate verb based on the destination zone
+        action_verb = "加え" if dest_zone == "HAND" else "置き" if dest_zone in ["MANA_ZONE", "GRAVEYARD", "SHIELD_ZONE", "DECK_BOTTOM", "DECK_TOP", "BUFFER", "UNDER_CARD"] else "出し" if dest_zone == "BATTLE_ZONE" else "置き"
+
+        return f"自分の山札の上から{look_count}枚を見る。その中から{filter_text}{add_count}{unit}{dest_zone_str}{combined_modifier}{action_verb}、{rest_text}"
 
 @register_formatter("SEARCH_DECK")
 class SearchDeckFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, ctx)
-        look_count = get_command_amount_with_fallback(command, default=1)
-
         dest_zone = command.get("destination_zone", "HAND")
         if not dest_zone:
             dest_zone = "HAND"
-        zone_str = CardTextResources.get_zone_text(dest_zone)
-        count = look_count
 
-        if dest_zone == "HAND":
-            action_phrase = "手札に加える"
-        elif dest_zone == "MANA_ZONE":
-            action_phrase = "マナゾーンに置く"
-        elif dest_zone == "GRAVEYARD":
-            action_phrase = "墓地に置く"
-        else:
-            action_phrase = f"{zone_str}に置く"
+        # Delegate logic to TransitionFormatter to avoid custom action phrases
+        from dm_toolkit.gui.editor.formatters.zone_formatters import TransitionFormatter
+        transition_cmd = command.copy()
+        transition_cmd["from_zone"] = "DECK"
+        transition_cmd["to_zone"] = dest_zone
 
-        template = f"自分の山札を見る。その中から{target_str}を{count}{unit}選び、{action_phrase}。その後、山札をシャッフルする。"
-        if count == 1:
-            template = f"自分の山札を見る。その中から{target_str}を1{unit}選び、{action_phrase}。その後、山札をシャッフルする。"
-        return template
+        transition_text = TransitionFormatter.format(transition_cmd, ctx)
+
+        # Transition formatter will output something like "山札から{target}を...選び、{zone}に置く。" or "{from_z}から...".
+        # However, DM text convention for SEARCH_DECK usually starts with "自分の山札を見る。その中から..."
+        # and ends with "その後、山札をシャッフルする。"
+
+        # We can format the transition string, but to maintain the exact convention:
+        # We replace "山札から" with "自分の山札を見る。その中から"
+        if transition_text.startswith("山札から"):
+            transition_text = "自分の山札を見る。その中から" + transition_text[4:]
+        elif transition_text.startswith("自分の山札から"):
+            transition_text = "自分の山札を見る。その中から" + transition_text[7:]
+        elif "山札から" in transition_text:
+            transition_text = transition_text.replace("山札から", "自分の山札を見る。その中から")
+
+        if not transition_text.endswith("。"):
+            transition_text += "。"
+
+        return f"{transition_text}その後、山札をシャッフルする。"
 
 @register_formatter("PUT_CREATURE")
 class PutCreatureFormatter(CommandFormatterBase):
