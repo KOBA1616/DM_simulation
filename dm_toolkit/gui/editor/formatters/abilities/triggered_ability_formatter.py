@@ -45,16 +45,18 @@ class TriggeredAbilityFormatter:
 
         trigger_text = "、または".join(trigger_texts) if trigger_texts else ""
 
-        # Refined natural language logic: structured binding of active conditions + trigger events
+        # Delegate specific formatting and active prefix checks to condition formatting logic
         active_condition_prefix = ""
         if trigger != "NONE" and trigger != "PASSIVE_CONST":
-            if cond_type == "DURING_YOUR_TURN" or cond_type == "DURING_OPPONENT_TURN":
+            from dm_toolkit.gui.editor.formatters.condition_registry import ConditionFormatterRegistry
+            formatter = ConditionFormatterRegistry.get_formatter(cond_type)
+            if formatter and getattr(formatter, "is_active_condition_prefix", False):
                 active_condition_prefix = cond_text
                 cond_text = ""
-            elif trigger == "ON_OPPONENT_DRAW" and cond_type == "OPPONENT_DRAW_COUNT":
-                val = condition.get("value", 0)
-                trigger_text = f"相手がカードを引いた時、{val}枚目以降なら"
-                cond_text = ""
+            elif cond_text and "時" in trigger_text and cond_type == "OPPONENT_DRAW_COUNT":
+                 # To ensure proper structure when ON_OPPONENT_DRAW gets fully encapsulated in its condition
+                 trigger_text = f"相手がカードを引いた時、{cond_text}"
+                 cond_text = ""
 
         action_texts = []
         raw_items = []

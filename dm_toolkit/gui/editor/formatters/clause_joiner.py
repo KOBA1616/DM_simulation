@@ -67,19 +67,21 @@ class ClauseJoiner:
         """Appends the appropriate grammatical suffix based on the condition type."""
         text = text.rstrip("、:。")
 
-        # Determine the appropriate suffix
-        if condition_type in ["DURING_YOUR_TURN", "DURING_OPPONENT_TURN"]:
-            suffix = "中、"
-        elif condition_type == "OPPONENT_PLAYED_WITHOUT_MANA":
-            suffix = "時、"
-        elif text.endswith("ない") or text.endswith("る") or text.endswith("た") or text.endswith("い"):
-             suffix = "なら、"
-        elif condition_type == "CIVILIZATION_MATCH":
-             suffix = "、"
-        elif condition_type == "COMPARE_INPUT" or condition_type == "COMPARE_STAT" or condition_type == "CARDS_MATCHING_FILTER":
-             suffix = "なら、"
-        else:
-            suffix = "なら、"
+        from dm_toolkit.gui.editor.formatters.condition_registry import ConditionFormatterRegistry
+        formatter_cls = ConditionFormatterRegistry.get_formatter(condition_type)
+
+        suffix = ""
+        if formatter_cls:
+             # Ensure safety against classes that might have overridden and removed get_suffix
+             suffix_func = getattr(formatter_cls, "get_suffix", None)
+             if suffix_func:
+                 suffix = suffix_func()
+
+        if not suffix:
+             if text.endswith("ない") or text.endswith("る") or text.endswith("た") or text.endswith("い"):
+                  suffix = "なら、"
+             else:
+                  suffix = "なら、"
 
         # Ensure we don't duplicate logic if text already handles it in some edge case
         if text.endswith("なら"):
@@ -89,6 +91,9 @@ class ClauseJoiner:
              suffix = "、"
 
         if text.endswith("時") and suffix == "時、":
+             suffix = "、"
+
+        if text.endswith("ば") and suffix == "なら、":
              suffix = "、"
 
         return f"{text}{suffix}"

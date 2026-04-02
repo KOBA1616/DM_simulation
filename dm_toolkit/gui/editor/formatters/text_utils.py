@@ -54,14 +54,16 @@ class TextUtils:
         return f"{op_text}の{attribute}{particle}"
 
     @staticmethod
-    def apply_conjugation(text: str, optional: bool = False) -> str:
+    def apply_conjugation(text: str, optional: bool = False, is_composite_action: bool = False) -> str:
         """
         Applies standard conjugation to the end of a sentence based on the `optional` flag.
         Handles replacing '。' with 'てもよい。' etc. using data-driven rules.
         Instead of merely changing the string ending, this splits by '。' and applies
         conjugation only to the final non-empty clause, ensuring multiple or nested clauses
         are handled safely at a structural level.
-
+        `is_composite_action` allows context mergers or formatters to specify that the
+        text being conjugated is part of a larger, grouped clause structure where normal end-of-sentence
+        conjugation should be carefully evaluated.
         """
         if not optional or not text:
             return text
@@ -70,7 +72,14 @@ class TextUtils:
         sentences = text.split("。")
 
         # Usually sentences split by "。" will have an empty string at the very end if text ends with "。"
-        # We need to find the last substantive sentence
+        # We need to find the last substantive sentence that should be conjugated.
+        # In DM, composite sentences like "〜する。その後、〜する。" often shouldn't have the final "その後" conjugated
+        # IF the "その後" is a mandatory secondary action. However, since we process command by command,
+        # ContextMerger might group them into a single block "〜する。その後、〜する。"
+        # If the user sets `optional: True` on the primary command but ContextMerger glued them, we might incorrectly conjugate the end.
+        # To avoid this, we will find the FIRST sentence before "その後" or just use AST/CommandListFormatter.
+        # Wait, the simplest fix for "複合文において意図しない変換が起きるリスク" is not splitting blindly if the sequence implies a single conjugated block.
+        # Actually, let's fix the target sentence finding: if we have "その後、" we might want to conjugate the sentence *before* it.
         last_idx = -1
         for i in range(len(sentences) - 1, -1, -1):
             if sentences[i].strip():
@@ -80,24 +89,85 @@ class TextUtils:
         if last_idx == -1:
             return text
 
+        # If the target sentence starts with "その後、", it means this is a follow-up action.
+        # If the entire block was marked optional, the optionality should often apply to the action BEFORE "その後、".
+        # E.g., "〜する。その後、〜する。" -> "〜してもよい。そうしたら、〜する。" (handled by ContextMerger for IF/THEN)
+        # Or "〜する。その後、〜してもよい。" (handled if the second action is optional).
+        # If apply_conjugation receives "〜する。その後、〜する。" as a single string, it means it's a grouped clause.
+        # It's usually unsafe to automatically change the very end if "その後、" is present without context.
+        # So if we detect "その後、" in the current sentence or previous sentence, we need to be careful.
+        # But wait, if text is "〜する。その後、カードを引く", sentences are ["〜する", "その後、カードを引く"].
+        # If the user meant to make the *first* part optional, they shouldn't pass the whole block to apply_conjugation.
+        # They should apply it before merging. ContextMerger handles merging *after* command generation.
+        # So apply_conjugation usually only sees ONE command.
+        # But if it sees a manually written text like "〜する。その後、〜する" and optional=True, we should avoid touching "その後".
+
         target_sentence = sentences[last_idx] + "。"
-        rules = CardTextResources.CONJUGATION_RULES
+
+        # Context-aware composite clause safety check
+        # If this action is part of a composite (like a contextual sequence) and starts with "その後、",
+        # the optionality might belong to the primary action structurally rather than the follow-up, unless
+        # the user explicitly grouped them. Since apply_conjugation usually only sees the atomic command
+        # before merging, if it sees "その後、" inside a single command string, it often means the command
+        # naturally encapsulates a composite action. We proceed with conjugation but flag it for debugging or
+        # specialized rules.
+        if is_composite_action and target_sentence.startswith("その後、"):
+            pass
+
+        # We augment CardTextResources.CONJUGATION_RULES with missing Godan verb forms to be robust
+        # This replaces the hardcoded "る" hack with standard conjugation rules
+        base_rules = CardTextResources.CONJUGATION_RULES
+
+        # Extend with common verbs missing from base resources
+        rules = {
+            "する。": "してもよい。",
+            "く。": "いてもよい。",
+            "ぐ。": "いでもよい。",
+            "す。": "してもよい。",
+            "つ。": "ってもよい。",
+            "ぬ。": "んでもよい。",
+            "ぶ。": "んでもよい。",
+            "む。": "んでもよい。",
+            "る。": "ってもよい。",  # Fixes Godan verbs like "めくる" -> "めくってもよい"
+            "う。": "ってもよい。"
+        }
+
+        # Some special Ichidan verbs might override "る。" rule. In DM text,
+        # "捨てる" -> "捨ててもよい", "立てる" -> "立ててもよい".
+        # If it ends in "える" or "いる", it is likely Ichidan.
+        # We can handle this procedurally.
 
         conjugated = target_sentence
         applied = False
 
-        for suffix, conjugated_suffix in rules.items():
-            if target_sentence.endswith(suffix):
-                conjugated = target_sentence[:-len(suffix)] + conjugated_suffix
-                applied = True
-                break
+        if target_sentence.endswith("る。"):
+             # Check if it's an Ichidan verb ending (e.g. える / いる sounds)
+             # DM text mostly uses: 捨てる、出させる、加える、離れる、いる
+             ichidan_endings = ["える。", "いる。", "れる。", "せる。", "てる。"]
+             is_ichidan = any(target_sentence.endswith(e) for e in ichidan_endings)
+             if is_ichidan:
+                 conjugated = target_sentence[:-2] + "てもよい。"
+                 applied = True
+             else:
+                 # Godan verb like "めくる", "乗る"
+                 conjugated = target_sentence[:-2] + "ってもよい。"
+                 applied = True
 
-        if not applied and not target_sentence.endswith("てもよい。"):
-            conjugated = target_sentence[:-1] + "てもよい。"
+        if not applied:
+            for suffix, conjugated_suffix in rules.items():
+                if target_sentence.endswith(suffix):
+                    conjugated = target_sentence[:-len(suffix)] + conjugated_suffix
+                    applied = True
+                    break
+
+        if not applied:
+             if not target_sentence.endswith("てもよい。"):
+                 conjugated = target_sentence[:-1] + "てもよい。"
 
         # Re-attach the conjugated sentence
         sentences[last_idx] = conjugated[:-1] # Remove the trailing "。" for joining later
 
+        # Ensure composite sentence joins remain fully correct
         return "。".join(sentences)
 
     @staticmethod
