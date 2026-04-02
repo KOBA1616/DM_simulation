@@ -15,7 +15,7 @@ class CommandListFormatter:
         Formats a list of commands. If use_tree is True or ctx.indent_level > 0, it formats them as a structured tree
         using indentation and bullets based on ctx.indent_level. Otherwise, it uses the specified joiner.
         """
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+        from dm_toolkit.gui.editor.formatters.command_registry import CommandFormatterRegistry
 
         # Auto-enable tree rendering if we are deeply nested (e.g. > 1) or have many commands
         # For top level single conditional statements with 1-2 actions, we prefer inline.
@@ -29,7 +29,7 @@ class CommandListFormatter:
         texts = []
         for cmd in commands:
             if isinstance(cmd, dict):
-                cmd_text = CardTextGenerator.format_command(cmd, ctx)
+                cmd_text = CommandFormatterRegistry.format_command(cmd, ctx)
                 if cmd_text:
                     if effective_use_tree:
                         indent_str = "  " * ctx.indent_level

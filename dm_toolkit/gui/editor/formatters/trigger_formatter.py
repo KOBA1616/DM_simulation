@@ -106,7 +106,7 @@ class ReplacementEffectFormatter(CommandFormatterBase):
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+        from dm_toolkit.gui.editor.formatters.command_registry import CommandFormatterRegistry
 
         target_str, _ = cls._resolve_target(command, ctx)
         trigger_cmd = command.get("replaced_action", {})
@@ -114,7 +114,7 @@ class ReplacementEffectFormatter(CommandFormatterBase):
 
         # Format the original action that is being replaced (e.g., destroy)
         if trigger_cmd:
-            from_text = CardTextGenerator.format_command(trigger_cmd, ctx)
+            from_text = CommandFormatterRegistry.format_command(trigger_cmd, ctx)
         else:
             from_text = f"{target_str}が破壊される時" # fallback
 
@@ -123,7 +123,7 @@ class ReplacementEffectFormatter(CommandFormatterBase):
 
         # Format the replacement action
         if action_cmd:
-            to_text = CardTextGenerator.format_command(action_cmd, ctx)
+            to_text = CommandFormatterRegistry.format_command(action_cmd, ctx)
         else:
             to_text = "何もしない。" # fallback
 

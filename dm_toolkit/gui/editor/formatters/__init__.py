@@ -6,5 +6,6 @@ import dm_toolkit.gui.editor.formatters.game_action_formatters
 import dm_toolkit.gui.editor.formatters.logic_formatters
 import dm_toolkit.gui.editor.formatters.buffer_formatters
 import dm_toolkit.gui.editor.formatters.special_effect_formatters
+import dm_toolkit.gui.editor.formatters.revolution_change_formatter
 
 import dm_toolkit.gui.editor.formatters.special_keywords

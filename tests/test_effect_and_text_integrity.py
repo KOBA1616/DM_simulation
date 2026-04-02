@@ -65,6 +65,7 @@ if str(_PROJECT_ROOT) not in sys.path:
 # ── インポート ─────────────────────────────────────────────────────────────────
 from dm_toolkit.gui.editor.text_generator import CardTextGenerator
 from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
+from dm_toolkit.gui.editor.formatters.trigger_formatter import TriggerFormatter
 from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.consistency import validate_trigger_scope_filter
@@ -291,14 +292,14 @@ class TestTriggerAndScopeIntegrity:
     @pytest.mark.parametrize("trigger", TRIGGER_TYPES)
     def test_trigger_produces_nonempty_text(self, trigger: str) -> None:
         """全トリガータイプが非空の日本語テキストを返すことを確認する。"""
-        text = CardTextGenerator.trigger_to_japanese(trigger, is_spell=False)
+        text = TriggerFormatter.trigger_to_japanese(trigger, is_spell=False)
         # NONE と PASSIVE_CONST は空でも許容
         assert isinstance(text, str), f"{trigger}: テキストが str でない"
 
     @pytest.mark.parametrize("trigger", TRIGGER_TYPES)
     def test_spell_trigger_does_not_crash(self, trigger: str) -> None:
         """呪文モードのトリガーがクラッシュしないことを確認する。"""
-        text = CardTextGenerator.trigger_to_japanese(trigger, is_spell=True)
+        text = TriggerFormatter.trigger_to_japanese(trigger, is_spell=True)
         assert isinstance(text, str)
 
     def test_trigger_scope_no_duplication(self) -> None:
@@ -363,7 +364,7 @@ class TestTriggerAndScopeIntegrity:
         for trigger in TRIGGER_TYPES:
             if trigger in ("NONE", "PASSIVE_CONST"):
                 continue
-            text = CardTextGenerator.trigger_to_japanese(trigger, is_spell=False)
+            text = TriggerFormatter.trigger_to_japanese(trigger, is_spell=False)
             if text == trigger or not text:
                 missing.append(trigger)
 

@@ -8,8 +8,6 @@ from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkForma
 class RevolutionChangeFormatter(SpecialKeywordFormatterBase):
     @classmethod
     def format(cls, keyword_id: str, card_data: Dict[str, Any]) -> str:
-        # Import inside the function to avoid circular imports
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
         kw_str = CardTextResources.get_keyword_text(keyword_id)
         cond = cls.extract_requirements(card_data)
         if cond and isinstance(cond, dict):

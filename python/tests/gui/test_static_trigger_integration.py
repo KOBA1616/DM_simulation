@@ -134,7 +134,7 @@ class TestUnifiedInfrastructure:
             "str_val": "BLOCKER",
             "scope": "SELF",
             "condition": {"type": "NONE"},
-            "filter": {}
+            "filter": {"types": ["CREATURE"]}
         }
         result = CardTextGenerator.format_modifier(modifier)
         assert "ブロッカー" in result

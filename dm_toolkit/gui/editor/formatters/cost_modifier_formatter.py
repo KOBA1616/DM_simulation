@@ -16,6 +16,8 @@ class TargetPhrase:
     def to_string(self) -> str:
         return f"{self.noun}{self.particle}"
 
+from dm_toolkit.gui.editor.formatters.condition_formatter import ConditionFormatter
+
 class CostModifierStrategy:
     @classmethod
     def _safe_int(cls, value: Any, default: int = 0) -> int:
@@ -237,8 +239,7 @@ class CostModifierFormatter:
             value_mode = str(vm_raw or "FIXED").upper()
 
         cond = mod_dict.get('condition') or mod_dict.get('condition_def') or {}
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-        cond_text = CardTextGenerator._format_condition(cond).replace(": ", "").strip("、") if cond else ""
+        cond_text = ConditionFormatter.format_condition_text(cond).replace(": ", "").strip("、") if cond else ""
 
         filter_def = mod_dict.get("filter", {})
         cond_desc = FilterTextFormatter.describe_simple_filter(filter_def) if filter_def else ""
@@ -270,8 +271,7 @@ class CostModifierFormatter:
         if isinstance(cond, dict):
             ctype = cond.get('type')
             if ctype == 'COMPARE_STAT':
-                from dm_toolkit.gui.editor.text_generator import CardTextGenerator
-                cond_text = CardTextGenerator._format_condition(cond).strip('、: ')
+                cond_text = ConditionFormatter.format_condition_text(cond).strip('、: ')
                 val = norm_cr.get('value') or norm_cr.get('reduction')
                 if val is None:
                     return f"{cond_text}の時、このカードの召喚コストを修正する。"

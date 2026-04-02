@@ -14,6 +14,7 @@ from dm_toolkit.gui.editor.formatters.card_layout_builder import CardLayoutBuild
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor import normalize
 from dm_toolkit.gui.styles.civ_colors import CIV_COLORS_FOREGROUND, CIV_COLORS_BACKGROUND
+from dm_toolkit.gui.editor.formatters.trigger_formatter import TriggerFormatter
 
 class ManaCostLabel(QLabel):
     def __init__(self, text="", parent=None):
@@ -474,7 +475,7 @@ class CardPreviewWidget(QWidget):
         effects = data.get('effects', []) or data.get('triggers', []) or []
         for eff in effects:
             trig = eff.get('trigger', 'NONE')
-            trigger_text = CardTextGenerator.trigger_to_japanese(trig, effect=eff)
+            trigger_text = TriggerFormatter.trigger_to_japanese(trig, effect=eff)
 
             # Commands-First Policy
             raw_ops = eff.get('commands', [])
