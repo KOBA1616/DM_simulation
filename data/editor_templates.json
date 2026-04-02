@@ -35,6 +35,26 @@
             ]
         }
     },
+    "DANGEROUS_DASH": {
+        "root_type": "EFFECT",
+        "data": {
+            "trigger": "ON_ATTACK",
+            "trigger_scope": "PLAYER_SELF",
+            "commands": [
+                {
+                    "type": "EXECUTE_DANGEROUS_DASH",
+                    "target_filter": {
+                        "civilizations": ["__DD_CIVS__"],
+                        "cost": "__DD_COST__",
+                        "raw_text": "__DD_TEXT__"
+                    }
+                }
+            ]
+        },
+        "keywords": {
+            "dangerous_dash": true
+        }
+    },
     "FRIEND_BURST": {
         "root_type": "EFFECT",
         "data": {

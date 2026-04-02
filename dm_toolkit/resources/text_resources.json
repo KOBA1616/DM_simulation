@@ -120,6 +120,8 @@
     "REVOLUTION_CHANGE": "革命チェンジ",
     "MEKRAID": "メクレイド",
     "FRIEND_BURST": "フレンド・バースト",
+    "dangerous_dash": "D・D・D",
+    "DANGEROUS_DASH": "D・D・D",
     "UNTAP_IN": "タップして出る",
     "META_COUNTER_PLAY": "メタカウンター",
     "POWER_ATTACKER": "パワーアタッカー",
@@ -268,7 +270,8 @@
     "TRANSITION": "{target}を{from_z}から{to_zone}へ{modifier}移動する。",
     "MUTATE": "{target}の状態を変更する。",
     "ATTACH": "{target}を{base_target}の下に重ねる。",
-    "GAME_RESULT": "ゲームを終了する（{result}）。"
+    "GAME_RESULT": "ゲームを終了する（{result}）。",
+    "EXECUTE_DANGEROUS_DASH": "このカードを、D・D・D支払って自分の手札から実行してもよい。"
   },
   "SPECIAL_EFFECT_TEMPLATES": {
     "MEKRAID": "メクレイド{use_token}（自分の山札の上から{val2}枚を見る。その中からコスト{use_token}以下のクリーチャーを{count_str}、コストを支払わずに召喚してもよい。残りを山札の下に好きな順序で置く）",
