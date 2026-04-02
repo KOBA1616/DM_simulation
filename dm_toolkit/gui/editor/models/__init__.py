@@ -218,7 +218,7 @@ def describe_filterspec(fs_input: Any) -> str:
 # --- Typed Params Models (E-1) ---
 class QueryParams(BaseModel):
     # 再発防止: スキーマは str_param キーを使用するため、model_validator で両方のキーを受け入れる
-    query_string: Optional[str] = None  # legacy field name
+    query_mode: Optional[str] = None    # legacy field name
     str_param: Optional[str] = None     # schema key (Query Mode)
     options: List[str] = Field(default_factory=list)
 
@@ -227,12 +227,12 @@ class QueryParams(BaseModel):
     def map_schema_to_legacy_keys(cls, v: Any) -> Any:
         if isinstance(v, dict):
             v = dict(v)
-            # Schema produces str_param; map to query_string for compatibility
-            if 'str_param' in v and 'query_string' not in v:
-                v['query_string'] = v['str_param']
-            # Reverse: legacy query_string → str_param
-            elif 'query_string' in v and 'str_param' not in v:
-                v['str_param'] = v['query_string']
+            # Schema produces str_param; map to query_mode for compatibility
+            if 'str_param' in v and 'query_mode' not in v:
+                v['query_mode'] = v['str_param']
+            # Reverse: legacy query_mode → str_param
+            elif 'query_mode' in v and 'str_param' not in v:
+                v['str_param'] = v['query_mode']
         return v
 
 class TransitionParams(BaseModel):
