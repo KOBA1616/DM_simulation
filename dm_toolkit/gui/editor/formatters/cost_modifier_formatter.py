@@ -275,14 +275,19 @@ class CostModifierFormatter:
                 val = norm_cr.get('value') or norm_cr.get('reduction')
                 if val is None:
                     return f"{cond_text}の時、このカードの召喚コストを修正する。"
-                return f"{cond_text}の時、このカードの召喚コストを{val}少なくする。"
+                return f"{cond_text}、このカードの召喚コストは{val}少なくなる。"
             elif ctype == 'CARDS_MATCHING_FILTER':
-                f = cond.get('filter', {}) or {}
+                f = cond.get('filter', {}) or cond.get('target_filter', {}) or {}
                 desc = FilterTextFormatter.describe_simple_filter(f)
                 val = cond.get('value') or cond.get('count') or None
-                if val:
-                    return f"{desc}が{val}体以上いるなら、このカードの召喚コストは{norm_cr.get('value') or 'X'}少なくなる。"
-                return f"{desc}がいるなら、このカードの召喚コストを軽減する。"
+                unit = "枚" if "文明" in desc else "体"
+                verb = "ある" if "文明" in desc else "いる"
+                if norm_cr.get('value_mode') == 'STAT_SCALED':
+                    pass
+                elif val:
+                    return f"{desc}が{val}{unit}以上{verb}なら、このカードの召喚コストは{norm_cr.get('value') or 'X'}少なくなる。"
+                else:
+                    return f"{desc}が{verb}なら、このカードの召喚コストを軽減する。"
 
         return cls._format_unified_cost_modifier(norm_cr, prefix="", target_phrase="このカードの召喚コストは", ctx=ctx)
     @classmethod

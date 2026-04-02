@@ -93,10 +93,14 @@ class FilterTextFormatter:
 
         # Ensure no other filtering keys are used (including zone and owner, which would make it specific cards)
         # Note: 'zone' is used in conditions, 'zones' in proper filters. Ignore them here.
-        ignored_keys = {"civilization", "civilizations", "zone", "zones", "owner"}
-        only_civs = civs and not any(bool(filter_def.get(k)) for k in filter_def if k not in ignored_keys)
+        ignored_keys = {"civilization", "civilizations", "zone", "zones", "owner", "types", "exclude"}
+        has_other_keys = False
+        for k, v in filter_def.items():
+            if k not in ignored_keys and v:
+                has_other_keys = True
+                break
 
-        if only_civs:
+        if civs and not types and not races and not has_other_keys:
             civ_names = "・".join([CardTextResources.get_civilization_text(c) for c in civs])
             return civ_names + "の文明"
 
@@ -104,16 +108,18 @@ class FilterTextFormatter:
         #   フィルターでタイプ未指定は「カード」(全タイプ対象)。
         #   CREATURE のみ指定時だけ「クリーチャー」、SPELL のみなら「呪文」、
         #   複数タイプ指定時は "/" 区切り、races 指定があればそれを優先する。
-        if consts.CardType.ELEMENT.value in types:
-            noun_str = "エレメント"
-        elif consts.CardType.SPELL.value in types and consts.CardType.CREATURE.value not in types:
-            noun_str = "呪文"
-        elif consts.CardType.CREATURE.value in types:
-            noun_str = "クリーチャー"
-        elif types:
-            noun_str = "/".join(tr(t) for t in types if t)
-        else:
+        # データ駆動アプローチ: 優先度に応じた単位辞書を利用
+        from dm_toolkit.consts import CARD_TYPE_UNIT_MAP
+        if not types:
             noun_str = "カード"  # タイプ未指定は全タイプ対象
+        else:
+            words = []
+            for t in types:
+                if t == consts.CardType.CREATURE.value: words.append("クリーチャー")
+                elif t == consts.CardType.SPELL.value: words.append("呪文")
+                elif t == consts.CardType.ELEMENT.value: words.append("エレメント")
+                else: words.append(tr(t) if tr(t) else "カード")
+            noun_str = "/".join(words)
 
         if races:
             noun_str = "/".join(races)
