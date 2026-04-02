@@ -32,7 +32,7 @@ class CastSpellFormatter(CommandFormatterBase):
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+        from dm_toolkit.gui.editor.formatters.command_registry import CommandFormatterRegistry
 
         action = command.copy()
         temp_filter = action.get("filter") or action.get("target_filter") or {}
@@ -99,7 +99,7 @@ class AddManaFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         val1 = get_command_amount(command, default=0)
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+        from dm_toolkit.gui.editor.formatters.command_registry import CommandFormatterRegistry
 
         linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
         if linked_text:
@@ -110,7 +110,7 @@ class AddManaFormatter(CommandFormatterBase):
 class ChoiceFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+        from dm_toolkit.gui.editor.formatters.command_registry import CommandFormatterRegistry
         val1 = get_command_amount(command, default=0)
         flags = command.get("flags", []) or []
         optional = False
@@ -127,11 +127,11 @@ class ChoiceFormatter(CommandFormatterBase):
                   opt_parts = []
                   for a in opt:
                        if isinstance(a, dict):
-                            opt_parts.append(CardTextGenerator.format_command(a, ctx))
+                            opt_parts.append(CommandFormatterRegistry.format_command(a, ctx))
                   chain_text = " ".join(opt_parts)
                   parts.append(f"> {chain_text}")
              elif isinstance(opt, dict):
-                  parts.append(f"> {CardTextGenerator.format_command(opt, ctx)}")
+                  parts.append(f"> {CommandFormatterRegistry.format_command(opt, ctx)}")
 
         lines = []
         if len(parts) > 0:

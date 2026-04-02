@@ -275,12 +275,12 @@ class StatFormatter(CommandFormatterBase):
 class GetGameStatFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
         key = command.get('result') or ''
         stat_name, stat_unit = CardTextResources.STAT_KEY_MAP.get(key, (None, None))
         if stat_name:
             if ctx.sample is not None:
                 try:
+                    from dm_toolkit.gui.editor.text_generator import CardTextGenerator
                     val = CardTextGenerator._compute_stat_from_sample(key, ctx.sample)
                     if val is not None:
                         return f'{stat_name}（例: {val}{stat_unit}）'
@@ -481,7 +481,6 @@ class SelectOptionFormatter(CommandFormatterBase):
 class QueryFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
         target_str, unit = cls._resolve_target(command, ctx)
         mode = command.get('str_param') or command.get('query_mode') or ''
 
@@ -523,7 +522,6 @@ class QueryFormatter(CommandFormatterBase):
             sel_count = command.get('amount', 1)
 
             # Pass sample/context to descriptive formatting if needed
-            from dm_toolkit.gui.editor.text_generator import CardTextGenerator
             filter_txt = FilterTextFormatter.format_filter_text(command.get('filter', {}))
 
             input_key = command.get('input_value_key') or command.get('input_link')

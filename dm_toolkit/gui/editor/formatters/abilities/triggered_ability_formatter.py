@@ -12,11 +12,13 @@ class TriggeredAbilityFormatter:
     @classmethod
     def format(cls, effect: Dict[str, Any], ctx: TextGenerationContext, cond_text: str = "") -> str:
         # Import inside the function to avoid circular imports
-        from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+        from dm_toolkit.gui.editor.formatters.trigger_formatter import TriggerFormatter
+        from dm_toolkit.gui.editor.formatters.command_registry import CommandFormatterRegistry
+        from dm_toolkit.gui.editor.formatters.context_merger import ContextMerger
 
         trigger = effect.get("trigger", "NONE")
         trigger_scope = effect.get("trigger_scope", "NONE")
-        timing_mode = CardTextGenerator._resolve_effect_timing_mode(effect)
+        timing_mode = TriggerFormatter.resolve_effect_timing_mode(effect)
         condition = effect.get("condition", {}) or {}
         cond_type = condition.get("type", "NONE")
 
@@ -26,7 +28,7 @@ class TriggeredAbilityFormatter:
 
         trigger_texts = []
         for t in triggers:
-            t_text = CardTextGenerator.trigger_to_japanese(t, ctx.is_spell, effect=effect)
+            t_text = TriggerFormatter.trigger_to_japanese(t, ctx.is_spell, effect=effect)
             if trigger_scope and trigger_scope != "NONE" and t != "PASSIVE_CONST":
                 from dm_toolkit.gui.editor.formatters.trigger_formatter import TriggerFormatter
                 t_text = TriggerFormatter.apply_trigger_scope(
@@ -38,7 +40,7 @@ class TriggeredAbilityFormatter:
                 )
             else:
                 if timing_mode == TimingMode.PRE.value:
-                    t_text = CardTextGenerator._to_replacement_trigger_text(t_text)
+                    t_text = TriggerFormatter.to_replacement_trigger_text(t_text)
             trigger_texts.append(t_text)
 
         trigger_text = "、または".join(trigger_texts) if trigger_texts else ""
@@ -64,13 +66,13 @@ class TriggeredAbilityFormatter:
                 with ctx.error_reporter.path_segment(f"commands[{i}]"):
                     command_for_text = copy.deepcopy(command) if isinstance(command, dict) else command
                     raw_items.append(command_for_text)
-                    action_texts.append(CardTextGenerator.format_command(command_for_text, ctx))
+                    action_texts.append(CommandFormatterRegistry.format_command(command_for_text, ctx))
             else:
                 command_for_text = copy.deepcopy(command) if isinstance(command, dict) else command
                 raw_items.append(command_for_text)
-                action_texts.append(CardTextGenerator.format_command(command_for_text, ctx))
+                action_texts.append(CommandFormatterRegistry.format_command(command_for_text, ctx))
 
-        full_action_text = CardTextGenerator._merge_action_texts(raw_items, action_texts)
+        full_action_text = ContextMerger.merge(raw_items, action_texts)
 
         if ctx.is_spell and trigger == "ON_PLAY" and not ctx.metadata.get(SemanticMetadataFlags.ON_CAST_TRIGGER.value, False):
             trigger_text = ""
@@ -81,7 +83,7 @@ class TriggeredAbilityFormatter:
             if not full_action_text:
                 return ""
 
-            if CardTextGenerator.is_replacement_effect(effect):
+            if TriggerFormatter.is_replacement_effect(effect):
                 full_text = ReplacementEffectFormatter.format_string(f"{active_condition_prefix}{trigger_text}", f"{cond_text}{full_action_text}")
                 return full_text.replace(": ", "、")
 
