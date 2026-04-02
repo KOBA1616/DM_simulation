@@ -412,7 +412,18 @@ class ResetInstanceFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         target_str, unit = cls._resolve_target(command, ctx)
-        return f'{target_str}の状態を初期化する（効果を無視する）。'
+        reset_mode = command.get('str_param') or command.get('mutation_kind') or 'DEFAULT'
+
+        if reset_mode == 'UNSEAL':
+            return f'{target_str}の封印を外す。'
+        elif reset_mode == 'RECONSTRUCT':
+            return f'{target_str}を再構築する。'
+        elif reset_mode == 'IGNORE_EFFECTS':
+            return f'{target_str}に付与された効果を無視する。'
+        elif reset_mode == 'RESET_MODIFIERS':
+            return f'{target_str}の継続的効果をリセットする。'
+
+        return f'{target_str}の状態を初期化する。'
 
 @register_formatter("SELECT_TARGET")
 class SelectTargetFormatter(CommandFormatterBase):

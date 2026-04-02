@@ -408,6 +408,7 @@ class TargetResolutionService:
         # Map types directly using translations and standard maps
         # Determine highest priority matching type
         from dm_toolkit.gui.i18n import tr
+        from dm_toolkit.gui.editor.formatters.composite_type_generator import CompositeTypeGenerator
 
         # Determine type noun and unit
         if not types:
@@ -418,27 +419,18 @@ class TargetResolutionService:
                 type_noun = "シールド"
                 unit = CARD_TYPE_UNIT_MAP.get("SHIELD", "つ")
         else:
-            if len(types) == 1:
-                t = types[0]
-                if t == CardType.ELEMENT.value: type_noun = "エレメント"
-                elif t == CardType.CREATURE.value: type_noun = "クリーチャー"
-                elif t == CardType.SPELL.value: type_noun = "呪文"
-                else: type_noun = tr(t) if tr(t) else "カード"
-                unit = CARD_TYPE_UNIT_MAP.get(t, "枚")
+            # Check if race is present, but TargetResolutionService _determine_noun
+            # currently doesn't receive races. We'll format types here.
+            type_noun = CompositeTypeGenerator.format_types_and_races(types, [])
+            if type_noun == "カード":
+                unit = "枚"
             else:
-                words = []
-                units = []
-                for t in types:
-                    if t == CardType.CREATURE.value: words.append("クリーチャー")
-                    elif t == CardType.SPELL.value: words.append("呪文")
-                    elif t == CardType.ELEMENT.value: words.append("エレメント")
-                    else: words.append(tr(t))
-                    units.append(CARD_TYPE_UNIT_MAP.get(t, "枚"))
-
-                type_noun = "/".join(words)
-                # If all units are the same, use it, else default to default unit
-                if all(u == units[0] for u in units):
+                # Approximate unit based on types
+                units = [CARD_TYPE_UNIT_MAP.get(t, "枚") for t in types]
+                if all(u == units[0] for u in units) and units:
                     unit = units[0]
+                else:
+                    unit = "枚"
 
         # Contextual Overrides
         if Zone.SHIELD_ZONE.value in zones and (not types or CardType.CARD.value in types):

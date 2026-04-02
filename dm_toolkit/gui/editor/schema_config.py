@@ -439,7 +439,8 @@ def register_all_schemas():
 
     register_schema(CommandSchema("RESET_INSTANCE", [
         f_target,
-        f_filter
+        f_filter,
+        FieldSchema("str_param", tr("Reset Mode"), FieldType.SELECT, options=["DEFAULT", "UNSEAL", "RECONSTRUCT", "IGNORE_EFFECTS", "RESET_MODIFIERS"])
     ]))
     register_schema(CommandSchema("MOVE_TO_UNDER_CARD", [
         f_target,
