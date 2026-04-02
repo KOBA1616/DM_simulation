@@ -12,11 +12,12 @@ class ClauseJoiner:
     """
 
     @classmethod
-    def join_condition_ast(cls, condition_ast: Dict[str, Any], ctx: TextGenerationContext, is_root: bool = True) -> str:
+    def join_condition_ast(cls, condition_ast: Dict[str, Any], ctx: TextGenerationContext, is_root: bool = True, depth: int = 0) -> str:
         """
         Evaluates a condition AST recursively, formats the leaf nodes,
         and joins them with appropriate logical operators and suffixes.
         The grammatical suffix is only applied at the root level.
+        Adjusts joining particles based on nesting depth for natural Japanese.
         """
         if not condition_ast:
             return ""
@@ -27,14 +28,18 @@ class ClauseJoiner:
         if cond_type == "OR" or cond_type == "AND":
             sub_conds = condition_ast.get("conditions", [])
             # Recursively evaluate sub-conditions without applying suffixes yet
-            formatted_subs = [cls.join_condition_ast(sc, ctx, is_root=False) for sc in sub_conds if sc]
+            formatted_subs = [cls.join_condition_ast(sc, ctx, is_root=False, depth=depth + 1) for sc in sub_conds if sc]
             formatted_subs = [s for s in formatted_subs if s] # filter empties
 
             if not formatted_subs:
                 return ""
 
-            # Join with appropriate conjunction
-            joiner = "、または" if cond_type == "OR" else "、かつ"
+            # Join with appropriate conjunction, varying by depth
+            if cond_type == "OR":
+                joiner = "、または" if depth == 0 else "か"
+            else:
+                joiner = "、かつ" if depth == 0 else "、さらに" if depth == 1 else "で、"
+
             joined_text = joiner.join(formatted_subs)
 
             if is_root:

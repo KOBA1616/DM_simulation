@@ -114,18 +114,8 @@ class FilterTextFormatter:
         #   複数タイプ指定時は "/" 区切り、races 指定があればそれを優先する。
         # データ駆動アプローチ: 優先度に応じた単位辞書を利用
         from dm_toolkit.consts import CARD_TYPE_UNIT_MAP
-        if not types:
-            noun_str = "カード"  # タイプ未指定は全タイプ対象
-        else:
-            words = []
-            for t in types:
-                if t == consts.CardType.CREATURE.value: words.append("クリーチャー")
-                elif t == consts.CardType.SPELL.value: words.append("呪文")
-                elif t == consts.CardType.ELEMENT.value: words.append("エレメント")
-                else: words.append(tr(t) if tr(t) else "カード")
-            noun_str = "/".join(words)
 
-        if races:
-            noun_str = "/".join(races)
+        from dm_toolkit.gui.editor.formatters.composite_type_generator import CompositeTypeGenerator
+        noun_str = CompositeTypeGenerator.format_types_and_races(types, races)
 
         return adj_str + noun_str

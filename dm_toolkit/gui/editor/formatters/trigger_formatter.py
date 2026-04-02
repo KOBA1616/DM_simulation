@@ -107,13 +107,23 @@ class ReplacementEffectFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         from dm_toolkit.gui.editor.formatters.command_registry import CommandFormatterRegistry
+        from dm_toolkit.gui.editor.formatters.clause_joiner import ClauseJoiner
 
         target_str, _ = cls._resolve_target(command, ctx)
         trigger_cmd = command.get("replaced_action", {})
         action_cmd = command.get("replacement_action", {})
+        trigger_condition_ast = command.get("trigger_condition", {})
 
-        # Format the original action that is being replaced (e.g., destroy)
-        if trigger_cmd:
+        # Try evaluating trigger_condition AST first if provided natively
+        if trigger_condition_ast:
+             from_text = ClauseJoiner.join_condition_ast(trigger_condition_ast, ctx, is_root=True)
+             if from_text.endswith("なら、"):
+                 from_text = from_text.removesuffix("なら、") + "時"
+             elif from_text.endswith("、"):
+                 from_text = from_text.removesuffix("、") + "時"
+             elif from_text.endswith("。"):
+                 from_text = from_text.removesuffix("。") + "時"
+        elif trigger_cmd:
             from_text = CommandFormatterRegistry.format_command(trigger_cmd, ctx)
         else:
             from_text = f"{target_str}が破壊される時" # fallback
@@ -121,7 +131,7 @@ class ReplacementEffectFormatter(CommandFormatterBase):
         # Ensure it sounds like a future condition "する時"
         from_text = TriggerFormatter.to_replacement_trigger_text(from_text)
 
-        # Format the replacement action
+        # Format the replacement action. Note that replacing action may be an AST structure/list
         if action_cmd:
             to_text = CommandFormatterRegistry.format_command(action_cmd, ctx)
         else:

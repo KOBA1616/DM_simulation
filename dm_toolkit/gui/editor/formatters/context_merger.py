@@ -32,50 +32,66 @@ def is_replace_card_move(it: Dict[str, Any]) -> bool:
 
 # --- Rule definitions ---
 
-def cond_spell_then_replace(items: List[Dict[str, Any]]) -> bool:
-    return len(items) >= 2 and is_cast_spell_item(items[0]) and is_replace_card_move(items[1])
-
-def merge_spell_then_replace(items: List[Dict[str, Any]], texts: List[str]) -> str:
-    from dm_toolkit.gui.i18n import tr
-    from_zone_key = items[1].get('from_zone', 'GRAVEYARD')
-    to_zone_key = items[1].get('to_zone', 'DECK_BOTTOM')
-    from_zone_text = tr(from_zone_key)
-    to_zone_text = tr(to_zone_key)
-
-    merged = f"その呪文を唱えた後、{from_zone_text}に置くかわりに{to_zone_text}に置く。"
-    if len(texts) > 2:
-        rest = ' '.join(texts[2:]).strip()
-        if rest:
-            merged = merged.rstrip('。') + '、' + rest
-    return merged
-
-def cond_draw_then_bottom(items: List[Dict[str, Any]]) -> bool:
-    return len(items) >= 2 and is_draw_item(items[0]) and is_deck_bottom_move(items[1])
-
-def merge_draw_then_bottom(items: List[Dict[str, Any]], texts: List[str]) -> str:
-    first = texts[0].rstrip('。')
-    tail = 'その後、引いた枚数と同じ枚数を山札の下に置く。'
-    merged = f"{first}。{tail}"
-    if len(texts) > 2:
-        rest = ' '.join(texts[2:]).strip()
-        if rest:
-            merged = merged.rstrip('。') + '、' + rest
-    return merged
-
-
 class ContextMerger:
     """Rule-based engine for merging consecutive actions into natural Japanese sentences."""
 
+    # Declarative rules definition based on JSON-like structures
     RULES: List[Dict[str, Any]] = [
         {
-            "condition": cond_spell_then_replace,
-            "merge": merge_spell_then_replace
+            "match": ["CAST_SPELL", "REPLACE_CARD_MOVE"],
+            "template": "その呪文を唱えた後、{from_zone}に置くかわりに{to_zone}に置く。"
         },
         {
-            "condition": cond_draw_then_bottom,
-            "merge": merge_draw_then_bottom
+            "match": ["DRAW_CARD", "DECK_BOTTOM"],  # Simplified custom match approach
+            "template": "{0}その後、引いた枚数と同じ枚数を山札の下に置く。"
         }
     ]
+
+    @classmethod
+    def _matches_rule(cls, rule_match: List[str], items: List[Dict[str, Any]]) -> bool:
+        if len(items) < len(rule_match):
+            return False
+
+        for i, match_type in enumerate(rule_match):
+            if match_type == "CAST_SPELL" and not is_cast_spell_item(items[i]): return False
+            if match_type == "REPLACE_CARD_MOVE" and not is_replace_card_move(items[i]): return False
+            if match_type == "DRAW_CARD" and not is_draw_item(items[i]): return False
+            if match_type == "DECK_BOTTOM" and not is_deck_bottom_move(items[i]): return False
+
+        return True
+
+    @classmethod
+    def _apply_rule(cls, rule: Dict[str, Any], items: List[Dict[str, Any]], texts: List[str]) -> str:
+        from dm_toolkit.gui.i18n import tr
+        match_len = len(rule["match"])
+        template = rule["template"]
+
+        # Build kwargs for dynamic interpolation
+        kwargs = {}
+        for i, item in enumerate(items[:match_len]):
+            # Expose properties using prefix indicating their step index, e.g. "0_amount"
+            for k, v in item.items():
+                if isinstance(v, str):
+                    kwargs[f"{i}_{k}"] = tr(v)
+                else:
+                    kwargs[f"{i}_{k}"] = v
+
+        # Backward compatibility aliases for common variables to make templates cleaner
+        if "CAST_SPELL" in rule["match"] and "REPLACE_CARD_MOVE" in rule["match"]:
+            kwargs["from_zone"] = tr(items[1].get('from_zone', 'GRAVEYARD'))
+            kwargs["to_zone"] = tr(items[1].get('to_zone', 'DECK_BOTTOM'))
+
+        # Prepare formatted text array interpolation (e.g. {0})
+        # Use rstrip('。') + '。' to normalize sentence ends if needed
+        format_args = [t.rstrip('。') + '。' for t in texts[:match_len]]
+
+        merged = template.format(*format_args, **kwargs)
+
+        if len(texts) > match_len:
+            rest = ' '.join(texts[match_len:]).strip()
+            if rest:
+                merged = merged.rstrip('。') + '、' + rest
+        return merged
 
     @classmethod
     def merge(cls, raw_items: List[Dict[str, Any]], formatted_texts: List[str]) -> str:
@@ -87,7 +103,7 @@ class ContextMerger:
             return ""
 
         for rule in cls.RULES:
-            if rule["condition"](raw_items):
-                return rule["merge"](raw_items, formatted_texts)
+            if cls._matches_rule(rule["match"], raw_items):
+                return cls._apply_rule(rule, raw_items, formatted_texts)
 
         return " ".join([t for t in formatted_texts if t]).strip()

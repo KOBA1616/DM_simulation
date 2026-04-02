@@ -79,22 +79,30 @@ class InputLinkFormatter:
 
     @classmethod
     def format_input_source_label(cls, action: Dict[str, Any]) -> str:
-        """Resolve a human-readable source label for input-linked commands."""
+        """Resolve a human-readable source label for input-linked commands.
+        Note: This returns the raw UI label. Use LabelNormalizer for text generation.
+        """
         input_key = str(action.get("input_value_key") or "")
         if not input_key:
             return ""
 
         saved = str(action.get("_input_value_label") or "").strip()
         if saved:
-            # 再発防止: UI補足の括弧書きはカード本文に不要なので除去する。
-            if "(" in saved:
-                saved = saved.split("(", 1)[0].strip()
-            if "（" in saved:
-                saved = saved.split("（", 1)[0].strip()
             return saved
+
         if input_key == "EVENT_SOURCE":
             return "イベント発生源 (汎用)"
         return input_key
+
+    @classmethod
+    def get_clean_source_label(cls, action: Dict[str, Any]) -> str:
+        """Get source label with UI parentheses stripped for rule text use."""
+        saved = cls.format_input_source_label(action)
+        if "(" in saved:
+            saved = saved.split("(", 1)[0].strip()
+        if "（" in saved:
+            saved = saved.split("（", 1)[0].strip()
+        return saved
 
     @classmethod
     def normalize_linked_count_label(cls, label: str) -> str:
@@ -114,7 +122,7 @@ class InputLinkFormatter:
     @classmethod
     def format_linked_count_token(cls, action: Dict[str, Any], fallback: str) -> str:
         """Return count token for linked-input text. Prefer semantic labels over generic wording."""
-        label = cls.format_input_source_label(action)
+        label = cls.get_clean_source_label(action)
         if not label:
             return fallback
         normalized = label.strip()
@@ -213,7 +221,7 @@ class InputLinkFormatter:
         # Static fallback
         input_label = command.get("_input_value_label", "")
         if not input_label:
-             input_label = cls.format_input_source_label(command)
+             input_label = cls.get_clean_source_label(command)
 
         if usage in ("COST", "MAX_COST"):
              return "そのコスト以下"

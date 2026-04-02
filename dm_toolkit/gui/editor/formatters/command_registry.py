@@ -45,16 +45,6 @@ class CommandFormatterRegistry:
                 formatter_cls.update_metadata(command_ro, ctx)
             return formatter_cls.format_with_optional(command_ro, ctx)
 
-        # 再発防止: REVOLUTION_CHANGE コマンドはカードレベルの革命チェンジテキストで使用されるが、
-        # コマンドエディタ等で単独表示する場合のために直接テキストを返す。
-        if cmd_type == "REVOLUTION_CHANGE":
-            from dm_toolkit.gui.editor.formatters.keyword_registry import SpecialKeywordRegistry
-            formatter_cls_kw = SpecialKeywordRegistry.get_formatter("revolution_change")
-            if formatter_cls_kw and hasattr(formatter_cls_kw, "format_revolution_change_text"):
-                tf = command.get("target_filter") or command.get("filter") or {}
-                cond_text = formatter_cls_kw.format_revolution_change_text(tf) if tf else "クリーチャー"
-                return f"革命チェンジ：{cond_text}"
-
         # In case the normalized alias is not found, try original cmd_type
         # Some aliases might have specific logic in fallback formatters.
         cmd_type_original = command.get("type") or command.get("name") or "NONE"
