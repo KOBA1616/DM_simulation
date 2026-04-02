@@ -134,50 +134,75 @@ class BoostManaFormatter(CommandFormatterBase):
         count = look_count
         return f"自分のマナを{count}つ増やす。"
 
-@register_formatter("BREAK_SHIELD")
-class BreakShieldFormatter(CommandFormatterBase):
-    @classmethod
-    def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
-        ctx.metadata[SemanticMetadataFlags.SHIELDS_BROKEN.value] = True
-
-    @classmethod
-    def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, ctx)
-        look_count = get_command_amount_with_fallback(command, default=1)
-        count = look_count
-        tgt = target_str
-        if tgt in ("", "カード", "自分のカード", "それ"):
-            tgt = "シールド"
-
-        scope = TargetResolutionService.resolve_action_scope(command)
-        if scope == "NONE":
-            prefix = TargetResolutionService.resolve_prefix("OPPONENT")
-            if not tgt.startswith(prefix):
-                tgt = prefix + tgt
-
-        return f"{tgt}を{count}つブレイクする。"
-
+@register_formatter("SEND_SHIELD_TO_GRAVE")
 @register_formatter("ADD_SHIELD")
-class AddShieldFormatter(CommandFormatterBase):
+@register_formatter("BREAK_SHIELD")
+class ShieldActionFormatter(CommandFormatterBase):
     @classmethod
     def update_metadata(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> None:
-        ctx.metadata[SemanticMetadataFlags.SHIELDS_ADDED.value] = True
+        action_type = command.get("type", "")
+        if action_type == "BREAK_SHIELD":
+            ctx.metadata[SemanticMetadataFlags.SHIELDS_BROKEN.value] = True
+        elif action_type == "ADD_SHIELD":
+            ctx.metadata[SemanticMetadataFlags.SHIELDS_ADDED.value] = True
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
+        action_type = command.get("type", "")
+        to_zone = command.get("to_zone", "GRAVEYARD")
+
         target_str, unit = cls._resolve_target(command, ctx)
         look_count = get_command_amount_with_fallback(command, default=1)
         amt = look_count
 
-        face_modifier = ""
-        if command.get("face_up"):
-            face_modifier = "表向きにして"
-        elif command.get("face_down"):
-            face_modifier = "裏向きにして"
+        # Determine prefix and target for shield commands
+        tgt = target_str
 
-        if "山札" in target_str or target_str == "カード":
-            return f"山札の上から{amt}枚を{face_modifier}シールド化する。"
-        return f"{target_str}を{amt}つ{face_modifier}シールド化する。"
+        if action_type == "BREAK_SHIELD":
+            if tgt in ("", "カード", "自分のカード", "それ"):
+                tgt = "シールド"
+            scope = TargetResolutionService.resolve_action_scope(command)
+            if scope == "NONE":
+                prefix = TargetResolutionService.resolve_prefix("OPPONENT")
+                if not tgt.startswith(prefix):
+                    tgt = prefix + tgt
+            return f"{tgt}を{amt}つブレイクする。"
+
+        elif action_type == "ADD_SHIELD":
+            face_modifier = ""
+            if command.get("face_up"):
+                face_modifier = "表向きにして"
+            elif command.get("face_down"):
+                face_modifier = "裏向きにして"
+
+            if "山札" in target_str or target_str == "カード":
+                return f"山札の上から{amt}枚を{face_modifier}シールド化する。"
+            return f"{target_str}を{amt}つ{face_modifier}シールド化する。"
+
+        else:
+            # Handle SEND_SHIELD_TO_GRAVE and general manipulating shield actions
+            scope = command.get("target_group") or command.get("scope", "NONE")
+            if tgt == "カード":
+                tgt = "シールド"
+
+            if scope == 'OPPONENT' or scope == 'PLAYER_OPPONENT':
+                tgt = "相手のシールド"
+                if amt > 0:
+                    tgt += f"を{amt}つ選び、"
+                else:
+                    tgt += "を"
+            else:
+                if tgt == "シールド":
+                    tgt = f"{tgt}を{amt}つ"
+                else:
+                    tgt = f"{tgt}を{amt}つ選び、"
+
+            if to_zone == "HAND":
+                return f'{tgt}手札に加える。'
+            elif to_zone == "MANA_ZONE":
+                return f'{tgt}マナゾーンに置く。'
+            else:
+                return f'{tgt}墓地に置く。'
 
 @register_formatter("SHIELD_BURN")
 class ShieldBurnFormatter(CommandFormatterBase):
@@ -415,18 +440,6 @@ class CostReferenceFormatter(CommandFormatterBase):
         ref_mode = command.get('ref_mode', '')
         return f'（コスト参照: {tr(ref_mode)}）'
 
-@register_formatter("SEND_SHIELD_TO_GRAVE")
-class SendShieldToGraveFormatter(CommandFormatterBase):
-    @classmethod
-    def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, ctx)
-        look_count = get_command_amount_with_fallback(command, default=1)
-        amt = look_count
-        scope = command.get("target_group") or command.get("scope", "NONE")
-        if scope == 'OPPONENT' or scope == 'PLAYER_OPPONENT':
-            return f'相手のシールドを{amt}つ選び、墓地に置く。'
-        return f'{target_str}を{amt}つ墓地に置く。'
-
 @register_formatter("SEARCH_DECK_BOTTOM")
 class SearchDeckBottomFormatter(CommandFormatterBase):
     @classmethod
@@ -455,8 +468,26 @@ class ResolveBattleFormatter(CommandFormatterBase):
 
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
-        target_str, unit = cls._resolve_target(command, ctx)
-        return f'{target_str}とバトルさせる。'
+        source_target = command.get("source_target")
+        destination_target = command.get("destination_target")
+
+        from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
+
+        dest_str = ""
+        if destination_target:
+            dest_str, _ = TargetResolutionService.build_subject(destination_target)
+        else:
+            dest_str, _ = cls._resolve_target(command, ctx)
+
+        if not dest_str:
+            dest_str = "対象"
+
+        if source_target:
+            source_str, _ = TargetResolutionService.build_subject(source_target)
+            if source_str and source_str != "カード" and source_str != "自身":
+                return f'{source_str}と{dest_str}をバトルさせる。'
+
+        return f'{dest_str}とバトルさせる。'
 
 @register_formatter("MODIFY_POWER")
 class ModifyPowerFormatter(CommandFormatterBase):
@@ -471,11 +502,45 @@ class ModifyPowerFormatter(CommandFormatterBase):
 class SelectNumberFormatter(CommandFormatterBase):
     @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
+        from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+
+        choosing_player = command.get("choosing_player")
+        prefix = ""
+        if choosing_player:
+            from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
+            prefix = TargetResolutionService.resolve_noun(choosing_player)
+            if prefix:
+                prefix = f'{prefix}は'
+
+        max_value_link = command.get("max_value_link")
+        if max_value_link:
+            # Re-use the InputLinkFormatter logic to describe the linked name
+            # To handle max_value_link properly, we inject it into the command dict as input_link
+            # so resolve_linked_value_text can process it correctly since it looks up input_value_key
+            temp_command = command.copy()
+            temp_command["input_value_key"] = max_value_link
+            temp_command["input_value_usage"] = "MAX_VALUE"
+
+            link_name = InputLinkFormatter.resolve_linked_value_text(temp_command, default=max_value_link, context_commands=ctx.current_commands_list)
+
+            # Remove leading "その" and trailing words to isolate the core word
+            if link_name.startswith("その"):
+                link_name = link_name[2:]
+
+            # Clean up trailing logic if it is "のコスト" -> "コスト"
+            if link_name.endswith("のコスト"):
+                link_name = "コスト"
+            elif link_name.endswith("のパワー"):
+                link_name = "パワー"
+
+            # "コスト以下の数字を1つ選ぶ。"
+            return f'{prefix}{link_name}以下の数字を1つ選ぶ。'
+
         min_val = command.get("min_value", 1)
         max_val = command.get("amount", 6)
         if min_val > 0 and max_val > 0:
-            return f'{min_val}～{max_val}の数字を1つ選ぶ。'
-        return "数字を1つ選ぶ。"
+            return f'{prefix}{min_val}～{max_val}の数字を1つ選ぶ。'
+        return f'{prefix}数字を1つ選ぶ。'
 
 @register_formatter("SELECT_OPTION")
 class SelectOptionFormatter(CommandFormatterBase):

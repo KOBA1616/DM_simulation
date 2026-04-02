@@ -101,7 +101,11 @@ class FilterTextFormatter:
                 break
 
         if civs and not types and not races and not has_other_keys:
-            civ_names = "・".join([CardTextResources.get_civilization_text(c) for c in civs])
+            civ_match_mode = filter_def.get("civ_match_mode", "OR").upper()
+            joiner = "または" if civ_match_mode == "OR" else "と"
+            if len(civs) == 1:
+                 joiner = "・"
+            civ_names = joiner.join([CardTextResources.get_civilization_text(c) for c in civs])
             return civ_names + "の文明"
 
         # 再発防止: types が空のときに「クリーチャー」をデフォルトにしない。

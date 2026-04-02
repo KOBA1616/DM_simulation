@@ -17,10 +17,20 @@ class CommandListFormatter:
         """
         from dm_toolkit.gui.editor.formatters.command_registry import CommandFormatterRegistry
 
-        # Auto-enable tree rendering if we are deeply nested (e.g. > 1) or have many commands
-        # For top level single conditional statements with 1-2 actions, we prefer inline.
-        auto_tree = getattr(ctx, 'indent_level', 0) > 1 or (getattr(ctx, 'indent_level', 0) > 0 and len(commands) > 2)
-        effective_use_tree = use_tree if use_tree is not None else auto_tree
+        # Ensure we always import the schema resolver to check if commands demand a block statement visually
+        from dm_toolkit.gui.editor.schema_def import get_schema
+
+        # Determine if we should use tree rendering
+        has_block_statement = False
+        for cmd in commands:
+            if isinstance(cmd, dict):
+                schema = get_schema(cmd.get('type', ''))
+                if schema and getattr(schema, 'is_block_statement', False):
+                    has_block_statement = True
+                    break
+
+        # Auto-enable tree rendering if any command demands it, or if explicitly requested.
+        effective_use_tree = use_tree if use_tree is not None else has_block_statement
 
         # Save old list for nested restorations, and set the new context
         old_list = ctx.current_commands_list
