@@ -221,30 +221,31 @@ class ReplaceCardMoveFormatter(CommandFormatterBase):
         from dm_toolkit.gui.editor.formatters.trigger_formatter import ReplacementEffectFormatter
 
         # Base replacement logic split into from_text and to_text
-        from_text = f"{{target}}を{orig_zone_str}に置く"
         to_text = f"{zone_str}に置く。"
 
         if linked_text:
             input_usage = str(command.get("input_value_usage") or command.get("input_usage") or "").upper()
             linked_target = "そのカード"
             if input_usage == "REPLACEMENT":
-                 return ReplacementEffectFormatter.format_string(from_text.replace("{target}を", ""), to_text)
+                 from_text = f"{orig_zone_str}に置く"
+                 return ReplacementEffectFormatter.format_string(from_text, to_text)
 
-            replaced = ReplacementEffectFormatter.format_string(from_text.replace("{target}", linked_target), to_text)
+            from_text = f"{linked_target}を{orig_zone_str}に置く"
+            replaced = ReplacementEffectFormatter.format_string(from_text, to_text)
             return f"その後、{replaced}"
 
         amount = get_command_amount(command, default=0)
         target_str, unit = cls._resolve_target(command, ctx)
 
         if is_self_ref:
-             from_text = from_text.replace("{target}", "このカード")
+             from_text = f"このカードを{orig_zone_str}に置く"
              return ReplacementEffectFormatter.format_string(from_text, to_text)
         else:
              if amount > 0:
                   qty = TextUtils.format_up_to(amount, unit, up_to_flag)
                   prefix = f"{target_str}を{qty}選び、"
-                  from_text = from_text.replace("{target}を", "")
+                  from_text = f"{orig_zone_str}に置く"
                   return prefix + ReplacementEffectFormatter.format_string(from_text, to_text)
              else:
-                  from_text = from_text.replace("{target}", target_str)
+                  from_text = f"{target_str}を{orig_zone_str}に置く"
                   return ReplacementEffectFormatter.format_string(from_text, to_text)
