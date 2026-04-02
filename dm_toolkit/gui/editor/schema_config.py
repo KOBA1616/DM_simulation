@@ -72,7 +72,7 @@ def register_all_schemas():
         f_optional,
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_links_out # Handles both input (amount) and output (cards drawn)
-    ], default_amount=1))
+    ], default_amount=1, default_output_label="引いた枚数"))
 
     # DISCARD
     # Outputs: discarded count to output_value_key (card IDs in future C++ enhancement)
@@ -83,7 +83,7 @@ def register_all_schemas():
         FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_optional,
         f_links_out  # Enables output_value_key for discarded count and input linking
-    ], default_amount=1))
+    ], default_amount=1, default_output_label="捨てた枚数"))
 
     # DESTROY / MANA_CHARGE / RETURN_TO_HAND / BREAK_SHIELD
     # Outputs: moved/destroyed/returned count and card instance IDs to output_value_key
@@ -449,7 +449,7 @@ def register_all_schemas():
         FieldSchema("min_value", tr("Min Number"), FieldType.INT, default=1),
         FieldSchema("amount", tr("Max Number"), FieldType.INT, default=10),
         f_links_out
-    ]))
+    ], default_output_label="選択した数"))
 
     # --- Logic Commands ---
 
@@ -505,7 +505,7 @@ def register_all_schemas():
         FieldSchema("min_value", tr("Min Number"), FieldType.INT, default=1),
         FieldSchema("amount", tr("Max Number"), FieldType.INT, default=10),
         f_links_out
-    ]))
+    ], default_output_label="選択した数"))
 
     # FLOW
     register_schema(CommandSchema("FLOW", [

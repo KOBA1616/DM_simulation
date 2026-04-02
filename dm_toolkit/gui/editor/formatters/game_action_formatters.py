@@ -572,10 +572,6 @@ class IgnoreAbilityFormatter(CommandFormatterBase):
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         target_str_lock = cls._resolve_player_noun(command, ctx)
 
-        look_count = get_command_amount_with_fallback(command, default=1)
-        duration_key = command.get('duration', '') or ''
-        duration_text = CardTextResources.get_duration_text(duration_key, look_count)
-
         filt = command.get('filter', {}) or {}
         types = []
         if isinstance(filt, dict):
@@ -588,7 +584,7 @@ class IgnoreAbilityFormatter(CommandFormatterBase):
         linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
 
         if linked_text:
-            return f'{target_str_lock}のコスト{linked_text}の{type_txt}の能力は{duration_text}の間、無視される。'
+            return f'{target_str_lock}のコスト{linked_text}の{type_txt}の能力は無視される。'
         if isinstance(filt, dict) and filt.get('exact_cost') is not None:
-            return f"{target_str_lock}のコスト{filt.get('exact_cost')}の{type_txt}の能力は{duration_text}の間、無視される。"
-        return f'{target_str_lock}の{type_txt}の能力は{duration_text}の間、無視される。'
+            return f"{target_str_lock}のコスト{filt.get('exact_cost')}の{type_txt}の能力は無視される。"
+        return f'{target_str_lock}の{type_txt}の能力は無視される。'
