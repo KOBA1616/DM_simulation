@@ -30,6 +30,7 @@ from dm_toolkit.gui.editor.consts import (
     STRUCT_CMD_ADD_REV_CHANGE, STRUCT_CMD_REMOVE_REV_CHANGE, 
     STRUCT_CMD_ADD_MEKRAID, STRUCT_CMD_REMOVE_MEKRAID,
     STRUCT_CMD_ADD_FRIEND_BURST, STRUCT_CMD_REMOVE_FRIEND_BURST,
+    STRUCT_CMD_ADD_DANGEROUS_DASH, STRUCT_CMD_REMOVE_DANGEROUS_DASH,
     STRUCT_CMD_ADD_MEGA_LAST_BURST, STRUCT_CMD_REMOVE_MEGA_LAST_BURST,
     STRUCT_CMD_GENERATE_BRANCHES, STRUCT_CMD_GENERATE_OPTIONS, STRUCT_CMD_MOVE_EFFECT, 
     STRUCT_CMD_ADD_CHILD_ACTION, STRUCT_CMD_REPLACE_WITH_COMMAND
@@ -411,6 +412,15 @@ class CardEditor(QMainWindow):
             self.tree_widget.remove_friend_burst(card_item.index())
             return True
 
+        def _add_dangerous_dash():
+            self.tree_widget.add_dangerous_dash(card_item.index(), payload=payload)
+            self.tree_widget.expand(card_item.index())
+            return True
+
+        def _remove_dangerous_dash():
+            self.tree_widget.remove_dangerous_dash(card_item.index())
+            return True
+
         def _add_mega_last_burst():
             self.tree_widget.add_mega_last_burst(card_item.index())
             self.tree_widget.expand(card_item.index())
@@ -508,6 +518,8 @@ class CardEditor(QMainWindow):
             STRUCT_CMD_REMOVE_MEKRAID: _remove_mekraid,
             STRUCT_CMD_ADD_FRIEND_BURST: _add_friend_burst,
             STRUCT_CMD_REMOVE_FRIEND_BURST: _remove_friend_burst,
+            STRUCT_CMD_ADD_DANGEROUS_DASH: _add_dangerous_dash,
+            STRUCT_CMD_REMOVE_DANGEROUS_DASH: _remove_dangerous_dash,
             STRUCT_CMD_ADD_MEGA_LAST_BURST: _add_mega_last_burst,
             STRUCT_CMD_REMOVE_MEGA_LAST_BURST: _remove_mega_last_burst,
             STRUCT_CMD_GENERATE_OPTIONS: _generate_options,

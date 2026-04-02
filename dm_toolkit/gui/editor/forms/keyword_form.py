@@ -15,6 +15,8 @@ from dm_toolkit.gui.editor.consts import (
     STRUCT_CMD_REMOVE_MEKRAID,
     STRUCT_CMD_ADD_FRIEND_BURST,
     STRUCT_CMD_REMOVE_FRIEND_BURST,
+    STRUCT_CMD_ADD_DANGEROUS_DASH,
+    STRUCT_CMD_REMOVE_DANGEROUS_DASH,
 )
 
 
@@ -26,6 +28,10 @@ class KeywordFormState:
     mekraid_races: list[str]
     friend_burst: bool
     friend_burst_races: list[str]
+    dangerous_dash: bool
+    dangerous_dash_civs: list[str]
+    dangerous_dash_cost: int
+    dangerous_dash_text: str
     mega_last_burst: bool
 
     def apply_to_data(self, data: dict[str, Any]) -> None:
@@ -66,6 +72,23 @@ class KeywordFormState:
         else:
             data.pop("friend_burst", None)
             data.pop("friend_burst_condition", None)
+
+        if self.dangerous_dash:
+            data["dangerous_dash"] = True
+            cond = {}
+            if self.dangerous_dash_civs:
+                cond["civilizations"] = self.dangerous_dash_civs
+            if self.dangerous_dash_cost > 0:
+                cond["cost"] = self.dangerous_dash_cost
+            if self.dangerous_dash_text:
+                cond["raw_text"] = self.dangerous_dash_text
+            if cond:
+                data["dangerous_dash_condition"] = cond
+            else:
+                data.pop("dangerous_dash_condition", None)
+        else:
+            data.pop("dangerous_dash", None)
+            data.pop("dangerous_dash_condition", None)
 
         if self.mega_last_burst:
             data["mega_last_burst"] = True
@@ -178,6 +201,42 @@ class KeywordEditForm(BaseEditForm):
         special_layout.addWidget(self.fb_race_label)
         special_layout.addWidget(self.fb_race_edit)
 
+        # Dangerous Dash
+        self.dangerous_dash_check = QCheckBox(tr("D・D・D"))
+        self.dangerous_dash_check.setToolTip(tr("D・D・D（デデデ・デンジャラ・ダッシュ）を有効にすると、攻撃時の効果が自動で追加されます。"))
+        safe_connect(self.dangerous_dash_check, "stateChanged", self.toggle_dangerous_dash)
+        special_layout.addWidget(self.dangerous_dash_check)
+
+        self.dd_civs_label = QLabel(tr("D・D・D Civilizations"))
+        self.dd_civs_edit = QLineEdit()
+        self.dd_civs_edit.setPlaceholderText(tr("e.g. FIRE, ZERO"))
+        self.dd_civs_label.setVisible(False)
+        self.dd_civs_edit.setVisible(False)
+        safe_connect(self.dd_civs_edit, "textChanged", self.update_data)
+        safe_connect(self.dd_civs_edit, "editingFinished", self._on_dangerous_dash_edited)
+        special_layout.addWidget(self.dd_civs_label)
+        special_layout.addWidget(self.dd_civs_edit)
+
+        self.dd_cost_label = QLabel(tr("D・D・D Cost"))
+        self.dd_cost_edit = QLineEdit()
+        self.dd_cost_edit.setPlaceholderText(tr("Cost value"))
+        self.dd_cost_label.setVisible(False)
+        self.dd_cost_edit.setVisible(False)
+        safe_connect(self.dd_cost_edit, "textChanged", self.update_data)
+        safe_connect(self.dd_cost_edit, "editingFinished", self._on_dangerous_dash_edited)
+        special_layout.addWidget(self.dd_cost_label)
+        special_layout.addWidget(self.dd_cost_edit)
+
+        self.dd_text_label = QLabel(tr("D・D・D Raw Text"))
+        self.dd_text_edit = QLineEdit()
+        self.dd_text_edit.setPlaceholderText(tr("Custom condition (e.g. 火のカードを1枚自分の手札から捨てる)"))
+        self.dd_text_label.setVisible(False)
+        self.dd_text_edit.setVisible(False)
+        safe_connect(self.dd_text_edit, "textChanged", self.update_data)
+        safe_connect(self.dd_text_edit, "editingFinished", self._on_dangerous_dash_edited)
+        special_layout.addWidget(self.dd_text_label)
+        special_layout.addWidget(self.dd_text_edit)
+
         # Mega Last Burst
         self.mega_last_burst_check = QCheckBox(tr("Mega Last Burst"))
         self.mega_last_burst_check.setToolTip(tr("メガ・ラスト・バーストを有効にすると、破壊時の効果が自動で追加されます。"))
@@ -259,6 +318,37 @@ class KeywordEditForm(BaseEditForm):
         self.structure_update_requested.emit(STRUCT_CMD_REMOVE_FRIEND_BURST, {})
         self.structure_update_requested.emit(STRUCT_CMD_ADD_FRIEND_BURST, {'races': races})
 
+    def toggle_dangerous_dash(self, state):
+        is_checked = self._is_checked_state(state)
+        self.dd_civs_label.setVisible(is_checked)
+        self.dd_civs_edit.setVisible(is_checked)
+        self.dd_cost_label.setVisible(is_checked)
+        self.dd_cost_edit.setVisible(is_checked)
+        self.dd_text_label.setVisible(is_checked)
+        self.dd_text_edit.setVisible(is_checked)
+        self.update_data()
+        if is_checked:
+            payload = {
+                'civilizations': self._parse_races(self.dd_civs_edit.text()),
+                'cost': int(self.dd_cost_edit.text()) if self.dd_cost_edit.text().isdigit() else 0,
+                'raw_text': self.dd_text_edit.text().strip()
+            }
+            self.structure_update_requested.emit(STRUCT_CMD_ADD_DANGEROUS_DASH, payload)
+        else:
+            self.structure_update_requested.emit(STRUCT_CMD_REMOVE_DANGEROUS_DASH, {})
+
+    def _on_dangerous_dash_edited(self):
+        if not self.dangerous_dash_check.isChecked():
+            return
+        payload = {
+            'civilizations': self._parse_races(self.dd_civs_edit.text()),
+            'cost': int(self.dd_cost_edit.text()) if self.dd_cost_edit.text().isdigit() else 0,
+            'raw_text': self.dd_text_edit.text().strip()
+        }
+        self.update_data()
+        self.structure_update_requested.emit(STRUCT_CMD_REMOVE_DANGEROUS_DASH, {})
+        self.structure_update_requested.emit(STRUCT_CMD_ADD_DANGEROUS_DASH, payload)
+
     def toggle_mega_last_burst(self, state):
         from dm_toolkit.gui.editor.consts import STRUCT_CMD_ADD_MEGA_LAST_BURST, STRUCT_CMD_REMOVE_MEGA_LAST_BURST
         is_checked = self._is_checked_state(state)
@@ -310,6 +400,24 @@ class KeywordEditForm(BaseEditForm):
             self.fb_race_edit.setText(tr(", ").join(fb_races) if fb_races else '')
         self.friend_burst_check.blockSignals(False)
 
+        self.dangerous_dash_check.blockSignals(True)
+        dd_checked = data.get('dangerous_dash', False)
+        self.dangerous_dash_check.setChecked(dd_checked)
+        self.dd_civs_label.setVisible(dd_checked)
+        self.dd_civs_edit.setVisible(dd_checked)
+        self.dd_cost_label.setVisible(dd_checked)
+        self.dd_cost_edit.setVisible(dd_checked)
+        self.dd_text_label.setVisible(dd_checked)
+        self.dd_text_edit.setVisible(dd_checked)
+        dd_cond = data.get('dangerous_dash_condition', {})
+        if isinstance(dd_cond, dict):
+            dd_civs = dd_cond.get('civilizations', [])
+            self.dd_civs_edit.setText(", ".join(dd_civs) if dd_civs else "")
+            dd_cost = dd_cond.get('cost', 0)
+            self.dd_cost_edit.setText(str(dd_cost) if dd_cost > 0 else "")
+            self.dd_text_edit.setText(dd_cond.get('raw_text', ""))
+        self.dangerous_dash_check.blockSignals(False)
+
         self.mega_last_burst_check.blockSignals(True)
         self.mega_last_burst_check.setChecked(data.get('mega_last_burst', False))
         self.mega_last_burst_check.blockSignals(False)
@@ -329,6 +437,10 @@ class KeywordEditForm(BaseEditForm):
             mekraid_races=self._parse_races(self.mk_race_edit.text()),
             friend_burst=bool(self.friend_burst_check.isChecked()),
             friend_burst_races=self._parse_races(self.fb_race_edit.text()),
+            dangerous_dash=bool(self.dangerous_dash_check.isChecked()),
+            dangerous_dash_civs=self._parse_races(self.dd_civs_edit.text()),
+            dangerous_dash_cost=int(self.dd_cost_edit.text()) if self.dd_cost_edit.text().isdigit() else 0,
+            dangerous_dash_text=self.dd_text_edit.text().strip(),
             mega_last_burst=bool(self.mega_last_burst_check.isChecked()),
         )
 
@@ -391,4 +503,8 @@ class KeywordEditForm(BaseEditForm):
         self.mk_race_edit.blockSignals(block)
         self.friend_burst_check.blockSignals(block)
         self.fb_race_edit.blockSignals(block)
+        self.dangerous_dash_check.blockSignals(block)
+        self.dd_civs_edit.blockSignals(block)
+        self.dd_cost_edit.blockSignals(block)
+        self.dd_text_edit.blockSignals(block)
         self.mega_last_burst_check.blockSignals(block)

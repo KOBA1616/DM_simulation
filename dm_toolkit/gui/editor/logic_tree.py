@@ -437,15 +437,16 @@ class LogicTreeWidget(QTreeView):
             extra_context[context_key] = payload['races']
         return extra_context
 
-    def _apply_logic_template(self, card_index, template_key, label, payload=None, races_context_key=None):
+    def _apply_logic_template(self, card_index, template_key, label, payload=None, races_context_key=None, extra_context=None):
         """Apply a logic template and normalize post-apply UI updates.
         再発防止: テンプレート適用後の選択更新と展開処理を共通化し、能力別実装の差分漏れを防ぐ。"""
         if not card_index.isValid():
             return None
 
-        extra_context = {}
+        if extra_context is None:
+            extra_context = {}
         if races_context_key:
-            extra_context = self._build_races_context(payload, races_context_key)
+            extra_context.update(self._build_races_context(payload, races_context_key))
 
         eff_item = self.data_manager.apply_template_by_key(
             card_index,
@@ -503,6 +504,29 @@ class LogicTreeWidget(QTreeView):
         """フレンド・バースト効果を削除"""
         if not card_index.isValid(): return
         self.data_manager.remove_logic_by_label(card_index, "Friend Burst")
+
+    def add_dangerous_dash(self, card_index, payload=None):
+        """D・D・D効果を追加"""
+        extra_ctx = {}
+        if payload:
+            if 'civilizations' in payload:
+                extra_ctx['dd_civs'] = payload['civilizations']
+            if 'cost' in payload:
+                extra_ctx['cost'] = payload['cost']
+            if 'raw_text' in payload:
+                extra_ctx['raw_text'] = payload['raw_text']
+
+        return self._apply_logic_template(
+            card_index,
+            "DANGEROUS_DASH",
+            "D・D・D",
+            extra_context=extra_ctx
+        )
+
+    def remove_dangerous_dash(self, card_index):
+        """D・D・D効果を削除"""
+        if not card_index.isValid(): return
+        self.data_manager.remove_logic_by_label(card_index, "D・D・D")
 
     def add_mega_last_burst(self, card_index):
         """メガ・ラスト・バースト効果を追加"""

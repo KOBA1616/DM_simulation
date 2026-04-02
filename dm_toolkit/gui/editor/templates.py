@@ -106,6 +106,9 @@ class LogicTemplateManager:
                     elif val == "__MEKRAID_RACES__":
                         obj[k] = context.get('mekraid_races', context.get('races', []))
                         continue
+                    elif val == "__DD_CIVS__":
+                        obj[k] = context.get('dd_civs', [])
+                        continue
                     # LOOK_SELECT_TO_ZONE テンプレート用フィルタリストプレースホルダー
                     # 再発防止: ["__TEMPLATE_CIVS__"] など1要素リストとして書くとリストに展開される。
                     elif val == "__TEMPLATE_CIVS__":
@@ -140,6 +143,16 @@ class LogicTemplateManager:
                     elif v == "__MEKRAID_RACES__":
                         mk = context.get('mekraid_races', context.get('races', []))
                         obj[k] = mk[0] if mk else ""
+                        continue
+                    elif v == "__DD_CIVS__":
+                        dd_civs = context.get('dd_civs', [])
+                        obj[k] = dd_civs[0] if dd_civs else ""
+                        continue
+                    elif v == "__DD_COST__":
+                        obj[k] = int(context.get('cost', 0))
+                        continue
+                    elif v == "__DD_TEXT__":
+                        obj[k] = str(context.get('raw_text', ""))
                         continue
                     # 再発防止: LOOK_SELECT_TO_ZONE 用 int/str プレースホルダー。
                     # 文字列として書かれた値を int/str に型変換して返す。

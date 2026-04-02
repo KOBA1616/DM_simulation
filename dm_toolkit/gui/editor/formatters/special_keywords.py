@@ -76,6 +76,26 @@ class RevolutionChangeFormatter(SpecialKeywordFormatterBase):
     def is_revolution_change_command(cls, cmd: Dict[str, Any]) -> bool:
         """Return True only for the current REVOLUTION_CHANGE command type."""
         return cmd.get("type") == "REVOLUTION_CHANGE"
+@register_special_keyword("dangerous_dash")
+class DangerousDashFormatter(SpecialKeywordFormatterBase):
+    @classmethod
+    def format(cls, keyword_id: str, card_data: Dict[str, Any]) -> str:
+        kw_str = CardTextResources.get_keyword_text(keyword_id)
+        cond = card_data.get("dangerous_dash_condition", {})
+        if not cond:
+            cond = card_data.get("keywords", {}).get("dangerous_dash_condition", {})
+        if cond and isinstance(cond, dict):
+            raw_text = cond.get("raw_text")
+            if raw_text:
+                return f"{kw_str}：{raw_text}"
+
+            civs = cond.get("civilizations", [])
+            cost = cond.get("cost", 0)
+            if civs or cost > 0:
+                civ_str = "、".join([CardTextResources.get_civilization_text(c) for c in civs])
+                return f"{kw_str}[{civ_str}({cost})]"
+        return kw_str
+
 @register_special_keyword("friend_burst")
 class FriendBurstFormatter(SpecialKeywordFormatterBase):
     @classmethod

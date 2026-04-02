@@ -894,6 +894,7 @@ class CardModel(BaseModel):
         friend_burst_condition: Dict[str, Any] = Field(default_factory=dict)
         revolution_change_condition: Dict[str, Any] = Field(default_factory=dict)
         mekraid_condition: Dict[str, Any] = Field(default_factory=dict)
+        dangerous_dash_condition: Dict[str, Any] = Field(default_factory=dict)
         # Generic keyword flags (e.g., 's_trigger': True)
         flags: Dict[str, Any] = Field(default_factory=dict)
         # Any other legacy keyword entries
@@ -914,6 +915,7 @@ class CardModel(BaseModel):
                     'friend_burst_condition': v.get('friend_burst_condition', {}),
                     'revolution_change_condition': v.get('revolution_change_condition', {}),
                     'mekraid_condition': v.get('mekraid_condition', {}),
+                    'dangerous_dash_condition': v.get('dangerous_dash_condition', {}),
                     'flags': {},
                     'extras': {},
                 }
@@ -940,6 +942,8 @@ class CardModel(BaseModel):
                 out['revolution_change_condition'] = self.revolution_change_condition
             if self.mekraid_condition:
                 out['mekraid_condition'] = self.mekraid_condition
+            if self.dangerous_dash_condition:
+                out['dangerous_dash_condition'] = self.dangerous_dash_condition
             return out
 
     keywords: KeywordsModel = Field(default_factory=KeywordsModel)
