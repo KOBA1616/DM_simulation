@@ -483,7 +483,7 @@ class QueryFormatter(CommandFormatterBase):
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         from dm_toolkit.gui.editor.text_generator import CardTextGenerator
         target_str, unit = cls._resolve_target(command, ctx)
-        mode = command.get('query_mode') or ''
+        mode = command.get('str_param') or command.get('query_mode') or ''
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
         linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
