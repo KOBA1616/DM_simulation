@@ -2,6 +2,7 @@ from typing import Dict, Any, Callable, Type
 from dm_toolkit.gui.editor.text_resources import CardTextResources
 from dm_toolkit.gui.editor.formatters.metadata_flags import SemanticMetadataFlags
 from dm_toolkit.gui.i18n import tr
+from dm_toolkit.consts import SpecialStatValue
 
 class ModifierFormatterBase:
     @classmethod
@@ -16,9 +17,9 @@ class CostModifierFormatter(ModifierFormatterBase):
 
     @classmethod
     def format(cls, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
-        if str(value).upper() in ("INFINITY", "∞"):
+        if str(value).upper() == SpecialStatValue.INFINITY.value or str(value) == "∞":
             return f"{cond}{target}のコストを∞にする。"
-        if str(value) == "*":
+        if str(value) == SpecialStatValue.ASTERISK.value:
             return f"{cond}{target}のコストを＊にする。"
 
         if not isinstance(modifier, dict):
@@ -38,9 +39,9 @@ class CostModifierFormatter(ModifierFormatterBase):
 class PowerModifierFormatter(ModifierFormatterBase):
     @classmethod
     def format(cls, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
-        if str(value).upper() in ("INFINITY", "∞"):
+        if str(value).upper() == SpecialStatValue.INFINITY.value or str(value) == "∞":
             return f"{cond}{target}のパワーを∞にする。"
-        if str(value) == "*":
+        if str(value) == SpecialStatValue.ASTERISK.value:
             return f"{cond}{target}のパワーを＊にする。"
 
         if isinstance(value, (int, float)) and value > 0:
@@ -60,7 +61,11 @@ class CharacteristicModifierType(Enum):
 
 class CharacteristicModifierBase(ModifierFormatterBase):
     @classmethod
-    def format_characteristic(cls, behavior: CharacteristicModifierType, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
+    def _build_prefix_and_get_details(cls, cond: str, modifier: Dict[str, Any]) -> tuple[str, str, str, Any]:
+        """Helper to extract common properties and build the shared text prefix.
+        Returns:
+            (prefix, str_val, keyword, amount)
+        """
         str_val = modifier.get('mutation_kind') or modifier.get('str_val', '')
         keyword = CardTextResources.get_keyword_text(str_val) if str_val else ""
 
@@ -71,37 +76,12 @@ class CharacteristicModifierBase(ModifierFormatterBase):
         if not isinstance(amt, int) or amt <= 0:
             amt = None
 
-        subject = f"{target}"
-
         # Determine duration placement
         if duration_text and not duration_text.endswith("、"):
             duration_text += "、"
 
         prefix = f"{cond}{duration_text}"
-
-        # Determine the action based on behavior
-        if behavior == CharacteristicModifierType.GRANT:
-            if not str_val:
-                return f"{prefix}{target}に能力を与える。"
-            # Pass an empty duration_text since we handle it in prefix
-            return cls._format_keyword_grant_text(subject, str_val, keyword, "", amount=amt, cond_prefix=prefix)
-
-        elif behavior == CharacteristicModifierType.SET:
-            if keyword:
-                return f"{prefix}{target}は「{keyword}」を得る。"
-            return f"{prefix}{target}は能力を得る。"
-
-        elif behavior == CharacteristicModifierType.REMOVE:
-            if keyword:
-                return f"{prefix}{target}は「{keyword}」を失う。"
-            return f"{prefix}{target}から能力を失わせる。"
-
-        elif behavior == CharacteristicModifierType.RESTRICT:
-            if keyword:
-                return f"{prefix}{target}に{keyword}を与える。"
-            return f"{prefix}{target}に制限を与える。"
-
-        return f"{prefix}{target}の能力を変更する。"
+        return prefix, str_val, keyword, amt
 
     @classmethod
     def _format_keyword_grant_text(cls, target_str: str, key_id: str, display_text: str, duration_text: str, amount: int = None, skip_selection: bool = False, cond_prefix: str = "") -> str:
@@ -155,17 +135,39 @@ class CharacteristicModifierBase(ModifierFormatterBase):
 class GrantKeywordFormatter(CharacteristicModifierBase):
     @classmethod
     def format(cls, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
-        return cls.format_characteristic(CharacteristicModifierType.GRANT, cond, target, value, modifier, ctx)
+        prefix, str_val, keyword, amt = cls._build_prefix_and_get_details(cond, modifier)
+
+        if not str_val:
+            return f"{prefix}{target}に能力を与える。"
+        # Pass an empty duration_text since we handle it in prefix
+        return cls._format_keyword_grant_text(target, str_val, keyword, "", amount=amt, cond_prefix=prefix)
 
 class SetKeywordFormatter(CharacteristicModifierBase):
     @classmethod
     def format(cls, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
-        return cls.format_characteristic(CharacteristicModifierType.SET, cond, target, value, modifier, ctx)
+        prefix, _, keyword, _ = cls._build_prefix_and_get_details(cond, modifier)
+
+        if keyword:
+            return f"{prefix}{target}は「{keyword}」を得る。"
+        return f"{prefix}{target}は能力を得る。"
 
 class AddRestrictionFormatter(CharacteristicModifierBase):
     @classmethod
     def format(cls, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
-        return cls.format_characteristic(CharacteristicModifierType.RESTRICT, cond, target, value, modifier, ctx)
+        prefix, _, keyword, _ = cls._build_prefix_and_get_details(cond, modifier)
+
+        if keyword:
+            return f"{prefix}{target}に{keyword}を与える。"
+        return f"{prefix}{target}に制限を与える。"
+
+class RemoveKeywordFormatter(CharacteristicModifierBase):
+    @classmethod
+    def format(cls, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
+        prefix, _, keyword, _ = cls._build_prefix_and_get_details(cond, modifier)
+
+        if keyword:
+            return f"{prefix}{target}は「{keyword}」を失う。"
+        return f"{prefix}{target}から能力を失わせる。"
 
 
 class ModifierFormatterRegistry:
@@ -186,6 +188,11 @@ class ModifierFormatterRegistry:
         return cls._registry.get(mtype)
 
     @classmethod
+    def is_modifier_type(cls, mtype: str) -> bool:
+        """Check if the given effect type is a registered static modifier."""
+        return mtype in cls._registry
+
+    @classmethod
     def format(cls, mtype: str, cond: str, target: str, value: Any, modifier: Dict[str, Any], ctx: Any = None) -> str:
         formatter = cls.get_formatter(mtype)
         if formatter:
@@ -198,3 +205,4 @@ ModifierFormatterRegistry.register("POWER_MODIFIER", PowerModifierFormatter)
 ModifierFormatterRegistry.register("GRANT_KEYWORD", GrantKeywordFormatter)
 ModifierFormatterRegistry.register("SET_KEYWORD", SetKeywordFormatter)
 ModifierFormatterRegistry.register("ADD_RESTRICTION", AddRestrictionFormatter)
+ModifierFormatterRegistry.register("REMOVE_KEYWORD", RemoveKeywordFormatter)
