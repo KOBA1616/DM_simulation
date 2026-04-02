@@ -5,6 +5,63 @@ from dm_toolkit.consts import TimingMode
 
 class TriggerFormatter:
     @classmethod
+    def apply_trigger_scope(
+        cls,
+        trigger_text: str,
+        scope: str,
+        trigger_type: str,
+        trigger_filter: Dict[str, Any] = None,
+        timing_mode: str = TimingMode.POST.value,
+    ) -> str:
+        """
+        Apply scope prefix to trigger text (e.g., "ON_CAST_SPELL" + "OPPONENT" -> "相手が呪文を唱えた時").
+        """
+        if not scope or scope == "NONE" or scope == "ALL":
+            return trigger_text
+
+        from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService as TargetScopeResolver
+        scope_text = TargetScopeResolver.resolve_noun(scope)
+        if not scope_text:
+            return trigger_text
+
+        from dm_toolkit.gui.editor.formatters.filter_formatter import FilterTextFormatter
+        # Uses FilterTextFormatter to avoid scope prefix duplication
+        # if the trigger text already has "相手が" or "自分が", etc.
+        formatted = FilterTextFormatter.format_scope_prefix(scope, trigger_text)
+        # If FilterTextFormatter actually did not prepend anything new (it detected the prefix),
+        # return the trigger text as-is to preserve structural replacements correctly,
+        # or we could just use its output which is identical.
+        if formatted == trigger_text:
+            return trigger_text
+
+        # Structured template composition (timing/scope/trigger as variables)
+        tmpl_set = CardTextResources.TRIGGER_COMPOSITION_TEMPLATES.get(trigger_type)
+        if tmpl_set:
+            timing_key = str(timing_mode or "").upper()
+            if timing_key not in (TimingMode.PRE.value, TimingMode.POST.value):
+                timing_key = TimingMode.POST.value
+            tmpl = tmpl_set.get(timing_key) or tmpl_set.get(TimingMode.POST.value)
+            if tmpl:
+                from dm_toolkit.consts import CardType
+                default_type = CardType.SPELL.value if trigger_type == "ON_CAST_SPELL" else CardType.CREATURE.value
+                subject = TargetScopeResolver.compose_subject_from_filter(trigger_filter, default_type)
+                return tmpl.format(scope_text=scope_text, subject=subject)
+
+        # For fallback triggers without specific COMPOSITION_TEMPLATES,
+        # apply replacement phrases directly if PRE timing mode is requested,
+        # ensuring tests for legacy trigger formatting (like ON_OPPONENT_CREATURE_ENTER) pass without guessing.
+        if timing_mode == TimingMode.PRE.value:
+            trigger_text = cls.to_replacement_trigger_text(trigger_text)
+
+        # Default fallbacks
+        if trigger_text.startswith("この"):
+             # "このクリーチャー..." -> "相手のこのクリーチャー..." (Syntactically valid for 'Target's this creature')
+             return f"{scope_text}の{trigger_text}"
+
+        # Default to "の" prefix
+        return f"{scope_text}の{trigger_text}"
+
+    @classmethod
     def resolve_effect_timing_mode(cls, effect: Dict[str, Any]) -> str:
         """Normalize effect timing mode for text composition."""
         if not isinstance(effect, dict):

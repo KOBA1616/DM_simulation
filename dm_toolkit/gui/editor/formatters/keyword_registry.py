@@ -53,6 +53,30 @@ class SpecialKeywordFormatterBase:
 class SpecialKeywordRegistry:
     """Registry for special keyword text formatters."""
 
+    @classmethod
+    def is_special_only_effect(cls, effect: Dict[str, Any], card_data: Dict[str, Any]) -> bool:
+        """
+        Check if the effect exists solely to realize a special keyword.
+        """
+        cmds = effect.get("commands", []) or []
+        if not cmds:
+            return False
+
+        # Query the dynamically populated reverse map
+        reverse_map = cls.get_special_command_map()
+
+        for cmd in cmds:
+            if not isinstance(cmd, dict): continue
+            cmd_type = cmd.get("type")
+
+            # Check directly mapped command types
+            if cmd_type in reverse_map:
+                for formatter_cls in reverse_map[cmd_type]:
+                    if formatter_cls.is_special_only_effect(effect, card_data):
+                        return True
+
+        return False
+
     _formatters: Dict[str, Type[SpecialKeywordFormatterBase]] = {}
     _special_command_map: Dict[str, List[Type[SpecialKeywordFormatterBase]]] = {}
 

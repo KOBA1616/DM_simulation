@@ -90,7 +90,8 @@ class ApplyModifierFormatter(CommandFormatterBase):
                 select_phrase = f'{target_str}を選び、'
             return f'{select_phrase}{duration_text}そのクリーチャーにコスト修正（{amt_val}）を与える。'
 
-        return CardTextGenerator._format_keyword_grant_text(target_str, str_param, effect_text, duration_text, amt, skip_selection=is_target_linked)
+        from dm_toolkit.gui.editor.formatters.modifier_formatters import CharacteristicModifierBase
+        return CharacteristicModifierBase._format_keyword_grant_text(target_str, str_param, effect_text, duration_text, amt, skip_selection=is_target_linked)
 
 @register_formatter("ADD_KEYWORD")
 class AddKeywordFormatter(CommandFormatterBase):
@@ -126,7 +127,8 @@ class AddKeywordFormatter(CommandFormatterBase):
         if amt is None:
             amt = val1 if isinstance(val1, int) else 0
 
-        return CardTextGenerator._format_keyword_grant_text(target_str, str_val, keyword, duration_text, amt, skip_selection=is_target_linked)
+        from dm_toolkit.gui.editor.formatters.modifier_formatters import CharacteristicModifierBase
+        return CharacteristicModifierBase._format_keyword_grant_text(target_str, str_val, keyword, duration_text, amt, skip_selection=is_target_linked)
 
 class MutationFormatter:
     """Formatter specifically for handling mutation kinds. Extracted from CardTextGenerator."""

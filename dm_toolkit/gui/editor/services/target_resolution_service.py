@@ -335,6 +335,15 @@ class TargetResolutionService:
         return FilterTextFormatter.format_scope_prefix(effective_scope, result)
 
     @classmethod
+    def format_target_selection_prefix(cls, target_str: str, amount: int = None, skip_selection: bool = False) -> str:
+        """Helper to generate the target selection prefix (e.g. 'N体選び、')."""
+        if skip_selection:
+            return ""
+        if isinstance(amount, int) and amount > 0:
+            return f"{target_str}を{amount}体選び、"
+        return ""
+
+    @classmethod
     def _resolve_scope(cls, scope: str, filter_def: Dict[str, Any]) -> Tuple[str, str]:
         prefix = ""
         if scope == "ALL_PLAYERS": prefix = "すべてのプレイヤーの"

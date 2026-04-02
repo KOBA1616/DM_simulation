@@ -1,4 +1,11 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
+from dm_toolkit.gui.editor.text_resources import CardTextResources
+
+def format_civs(civs: List[str]) -> str:
+    """Format a list of civilizations into a string (e.g. '火/自然' or '無色')."""
+    if not civs:
+        return "無色"
+    return "/".join([CardTextResources.get_civilization_text(c) for c in civs])
 
 def get_command_amount_with_fallback(command: Dict[str, Any], default: int = 1) -> Any:
     """

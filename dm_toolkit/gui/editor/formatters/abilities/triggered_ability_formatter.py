@@ -28,7 +28,8 @@ class TriggeredAbilityFormatter:
         for t in triggers:
             t_text = CardTextGenerator.trigger_to_japanese(t, ctx.is_spell, effect=effect)
             if trigger_scope and trigger_scope != "NONE" and t != "PASSIVE_CONST":
-                t_text = CardTextGenerator._apply_trigger_scope(
+                from dm_toolkit.gui.editor.formatters.trigger_formatter import TriggerFormatter
+                t_text = TriggerFormatter.apply_trigger_scope(
                     t_text,
                     trigger_scope,
                     t,
