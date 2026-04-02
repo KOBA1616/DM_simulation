@@ -80,6 +80,31 @@ class CardTextResourcesMeta(type):
     def INPUT_USAGE_LABELS(cls): cls.load_resources(); return cls._data.get("INPUT_USAGE_LABELS", {})
     @property
     def ZONE_MOVE_TEMPLATES(cls): cls.load_resources(); return cls._ZONE_MOVE_TEMPLATES
+
+    def get_zone_move_template(cls, from_z: str, to_z: str) -> str:
+        """
+        Retrieves the appropriate transition template for the given zones,
+        automatically handling specific mappings, wildcard fallbacks, and the default template.
+        """
+        cls.load_resources()
+
+        # Exact match
+        template = cls._ZONE_MOVE_TEMPLATES.get((from_z, to_z), "")
+        if template:
+            return template
+
+        # Wildcard fallback for any destination to specific target (e.g. "*|GRAVEYARD")
+        template = cls._ZONE_MOVE_TEMPLATES.get(("*", to_z), "")
+        if template:
+            return template
+
+        # Wildcard fallback for specific origin to any target (e.g. "BATTLE_ZONE|*")
+        template = cls._ZONE_MOVE_TEMPLATES.get((from_z, "*"), "")
+        if template:
+            return template
+
+        # Default fallback
+        return cls._ZONE_MOVE_TEMPLATES.get("DEFAULT", "{target}を{from_z}から{to_z}へ移動する。")
     @property
     def TRANSITION_ALIASES(cls): cls.load_resources(); return cls._TRANSITION_ALIASES
     @property

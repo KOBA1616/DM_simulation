@@ -49,16 +49,6 @@ class QuantityFormatter:
         # Common pattern replaces {amount}{unit} with the formatted quantity string
         result = template
 
-        # Make sure the template has the {modifier} token directly where needed.
-        # If the token is missing from the template dict, safely inject it before known verbs.
-        # We prefer modifying text_resources.json natively, but provide a safe fallback just in case.
-        if "{modifier}" not in result:
-            for verb in ["置く", "出す", "加える", "戻す", "移動する"]:
-                if f"{verb}。" in result:
-                    result = result.replace(f"{verb}。", f"{{modifier}}{verb}。")
-                elif f"、{verb}" in result:
-                    result = result.replace(f"、{verb}", f"、{{modifier}}{verb}")
-
         if is_all:
             result = result.replace("{amount}{unit}", formatted_qty).replace("選び、", "")
             return result.replace("{modifier}", modifier)

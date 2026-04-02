@@ -58,53 +58,18 @@ class SpecialKeywordRegistry:
         """
         Check if the effect exists solely to realize a special keyword.
         """
-        cmds = effect.get("commands", []) or []
-        if not cmds:
-            return False
-
-        # Query the dynamically populated reverse map
-        reverse_map = cls.get_special_command_map()
-
-        for cmd in cmds:
-            if not isinstance(cmd, dict): continue
-            cmd_type = cmd.get("type")
-
-            # Check directly mapped command types
-            if cmd_type in reverse_map:
-                for formatter_cls in reverse_map[cmd_type]:
-                    if formatter_cls.is_special_only_effect(effect, card_data):
-                        return True
+        special_keyword_id = effect.get("special_keyword_id")
+        if special_keyword_id and special_keyword_id in cls._formatters:
+             return True
 
         return False
 
     _formatters: Dict[str, Type[SpecialKeywordFormatterBase]] = {}
-    _special_command_map: Dict[str, List[Type[SpecialKeywordFormatterBase]]] = {}
 
     @classmethod
     def register(cls, keyword_id: str, formatter_cls: Type[SpecialKeywordFormatterBase]) -> None:
         """Register a formatter class for a specific special keyword."""
         cls._formatters[keyword_id] = formatter_cls
-
-    @classmethod
-    def get_special_command_map(cls) -> Dict[str, List[Type[SpecialKeywordFormatterBase]]]:
-        if not cls._special_command_map:
-            cls._build_special_command_map()
-        return cls._special_command_map
-
-    @classmethod
-    def _build_special_command_map(cls) -> None:
-        """Dynamically build a reverse mapping from command types to formatters based on heuristics."""
-        # Note: Since 'is_special_only_effect' doesn't explicitly expose the command types it watches,
-        # we configure known mappings centrally here to ensure O(1) text generation lookups.
-        cls._special_command_map = {
-            "REVOLUTION_CHANGE": [cls._formatters.get("revolution_change")],
-            "FRIEND_BURST": [cls._formatters.get("friend_burst")],
-            "MEKRAID": [cls._formatters.get("mekraid")],
-            "CAST_SPELL": [cls._formatters.get("mega_last_burst")]
-        }
-
-        # Clean up Nones
-        cls._special_command_map = {k: [f for f in v if f is not None] for k, v in cls._special_command_map.items()}
 
     @classmethod
     def get_formatter(cls, keyword_id: str) -> Optional[Type[SpecialKeywordFormatterBase]]:
