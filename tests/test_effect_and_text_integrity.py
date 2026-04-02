@@ -307,7 +307,8 @@ class TestTriggerAndScopeIntegrity:
         再発防止: _apply_trigger_scope は既に「相手が」が含まれる場合はスコープを追加しない。
         """
         # ON_CAST_SPELL (相手が呪文を唱えた時) + PLAYER_OPPONENT
-        text = CardTextGenerator._apply_trigger_scope(
+        from dm_toolkit.gui.editor.formatters.trigger_formatter import TriggerFormatter
+        text = TriggerFormatter.apply_trigger_scope(
             "相手が呪文を唱えた時",
             "PLAYER_OPPONENT",
             "ON_CAST_SPELL",
@@ -320,7 +321,8 @@ class TestTriggerAndScopeIntegrity:
 
     def test_scope_prefix_not_double_self(self) -> None:
         """自分スコープのトリガーテキストに「自分が自分が」が含まれないことを確認する。"""
-        text = CardTextGenerator._apply_trigger_scope(
+        from dm_toolkit.gui.editor.formatters.trigger_formatter import TriggerFormatter
+        text = TriggerFormatter.apply_trigger_scope(
             "自分がクリーチャーを召喚した時",
             "PLAYER_SELF",
             "ON_PLAY",

@@ -75,7 +75,8 @@ class CardLayoutBuilder:
             civ_single = data.get("civilization")
             if civ_single:
                 civs_data = [civ_single]
-        civs = cls._format_civs(civs_data)
+        from dm_toolkit.gui.editor.formatters.utils import format_civs
+        civs = format_civs(civs_data)
 
         raw_type = data.get("type", CardType.CREATURE.value)
         type_str = CardTextResources.get_card_type_text(raw_type)
@@ -123,9 +124,3 @@ class CardLayoutBuilder:
             cls._append_secondary_faces(data, ctx, lines)
 
         return "\n".join(lines)
-
-    @classmethod
-    def _format_civs(cls, civs: List[str]) -> str:
-        if not civs:
-            return "無色"
-        return "/".join([CardTextResources.get_civilization_text(c) for c in civs])

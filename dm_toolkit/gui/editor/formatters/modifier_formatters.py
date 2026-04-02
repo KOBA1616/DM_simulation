@@ -83,9 +83,8 @@ class CharacteristicModifierBase(ModifierFormatterBase):
         if behavior == CharacteristicModifierType.GRANT:
             if not str_val:
                 return f"{prefix}{target}に能力を与える。"
-            from dm_toolkit.gui.editor.text_generator import CardTextGenerator
             # Pass an empty duration_text since we handle it in prefix
-            return CardTextGenerator._format_keyword_grant_text(subject, str_val, keyword, "", amount=amt, cond_prefix=prefix)
+            return cls._format_keyword_grant_text(subject, str_val, keyword, "", amount=amt, cond_prefix=prefix)
 
         elif behavior == CharacteristicModifierType.SET:
             if keyword:
@@ -103,6 +102,55 @@ class CharacteristicModifierBase(ModifierFormatterBase):
             return f"{prefix}{target}に制限を与える。"
 
         return f"{prefix}{target}の能力を変更する。"
+
+    @classmethod
+    def _format_keyword_grant_text(cls, target_str: str, key_id: str, display_text: str, duration_text: str, amount: int = None, skip_selection: bool = False, cond_prefix: str = "") -> str:
+        """Helper to format keyword granting text.
+
+        amount=None or 0: apply to all matching targets (no selection).
+        amount>0: select N targets (N体選び).
+        skip_selection=True: target already determined by input link.
+        cond_prefix: A prefix like 'このターン、' that goes before the sentence.
+        """
+        restriction_keys = [
+            'CANNOT_ATTACK', 'CANNOT_BLOCK', 'CANNOT_ATTACK_OR_BLOCK', 'CANNOT_ATTACK_AND_BLOCK'
+        ]
+        is_restriction = (key_id in restriction_keys) or (str(key_id).upper() in restriction_keys)
+
+        # Normalize duration_text end
+        if duration_text and not duration_text.endswith('、'):
+            duration_text += "、"
+
+        from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
+        selection_prefix = TargetResolutionService.format_target_selection_prefix(target_str, amount, skip_selection)
+
+        # Adjust placement of prefix - prefix comes first
+        if selection_prefix:
+            prefix = f"{cond_prefix}{selection_prefix}"
+        else:
+            prefix = cond_prefix
+
+        # If we selected targets, the subject usually becomes "そのクリーチャー"
+        # However if it's all targets (amount=0/None), subject remains target_str
+        has_selection = bool(selection_prefix)
+        subject_str = "そのクリーチャー" if has_selection or skip_selection else target_str
+
+        if is_restriction:
+            template = "{modifier}{duration}{target}は{keyword}。"
+            return template.format(
+                modifier=prefix,
+                duration=duration_text,
+                target=subject_str,
+                keyword=display_text
+            )
+
+        template = "{modifier}{duration}{target}に「{keyword}」を与える。"
+        return template.format(
+            modifier=prefix,
+            duration=duration_text,
+            target=subject_str,
+            keyword=display_text
+        )
 
 class GrantKeywordFormatter(CharacteristicModifierBase):
     @classmethod

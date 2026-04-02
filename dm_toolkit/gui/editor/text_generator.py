@@ -65,7 +65,8 @@ class CardTextGenerator:
             civ_single = data.get("civilization")
             if civ_single:
                 civs_data = [civ_single]
-        civs = cls._format_civs(civs_data)
+        from dm_toolkit.gui.editor.formatters.utils import format_civs
+        civs = format_civs(civs_data)
 
         # Use CardTextResources for translation
         raw_type = data.get("type", CardType.CREATURE.value)
@@ -103,6 +104,7 @@ class CardTextGenerator:
 
     @classmethod
     def generate_body_text(cls, data: Dict[str, Any], sample: List[Any] = None, ctx: TextGenerationContext = None) -> str:
+        from dm_toolkit.gui.editor.formatters.reaction_formatter import ReactionFormatter
         """
         Generates only the body text (Keywords, Effects, Reactions) without headers.
         Useful for structured preview and Twinpact separation.
@@ -162,36 +164,15 @@ class CardTextGenerator:
         # 2.6 Reaction Abilities
         reactions = data.get("reaction_abilities", [])
         for r in reactions:
-            text = cls._format_reaction(r)
+            text = ReactionFormatter.format(r)
             if text:
                 lines.append(f"■ {text}")
 
         # 3. Effects (Configured actions). Skip effects that only realize special keywords
         effects = data.get("effects", [])
 
-        def _is_special_only_effect(eff: Dict[str, Any]) -> bool:
-            # Dynamically fetch formatter once mapped logic or default to iteration
-            cmds = eff.get("commands", []) or []
-            if not cmds:
-                return False
-
-            # Query the dynamically populated reverse map
-            reverse_map = SpecialKeywordRegistry.get_special_command_map()
-
-            for cmd in cmds:
-                if not isinstance(cmd, dict): continue
-                cmd_type = cmd.get("type")
-
-                # Check directly mapped command types
-                if cmd_type in reverse_map:
-                    for formatter_cls in reverse_map[cmd_type]:
-                        if formatter_cls.is_special_only_effect(eff, data):
-                            return True
-
-            return False
-
         for i, effect in enumerate(effects):
-            if _is_special_only_effect(effect):
+            if SpecialKeywordRegistry.is_special_only_effect(effect, data):
                 continue
             with ctx.error_reporter.path_segment(f"effects[{i}]"):
                 text = cls.format_effect(effect, ctx)
@@ -209,24 +190,6 @@ class CardTextGenerator:
                         lines.append(f"■ {text}")
 
         return "\n".join(lines)
-
-    @classmethod
-    def _format_civs(cls, civs: List[str]) -> str:
-        if not civs:
-            return "無色"
-        return "/".join([CardTextResources.get_civilization_text(c) for c in civs])
-
-    @classmethod
-    def _format_reaction(cls, reaction: Dict[str, Any]) -> str:
-        if not reaction:
-            return ""
-        rtype = reaction.get("type", "NONE")
-
-        formatter = CardTextResources.REACTION_TEXT_MAP.get(rtype)
-        if formatter is not None:
-            return formatter(reaction)
-
-        return tr(rtype)
 
     @classmethod
     def format_modifier(cls, modifier: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
@@ -309,62 +272,6 @@ class CardTextGenerator:
             return TriggeredAbilityFormatter.format(effect, ctx, cond_text)
 
     @classmethod
-    def _apply_trigger_scope(
-        cls,
-        trigger_text: str,
-        scope: str,
-        trigger_type: str,
-        trigger_filter: Dict[str, Any] = None,
-        timing_mode: str = TimingMode.POST.value,
-    ) -> str:
-        """
-        Apply scope prefix to trigger text (e.g., "ON_CAST_SPELL" + "OPPONENT" -> "相手が呪文を唱えた時").
-        """
-        if not scope or scope == "NONE" or scope == "ALL":
-            return trigger_text
-
-        scope_text = TargetScopeResolver.resolve_noun(scope)
-        if not scope_text:
-            return trigger_text
-
-        # Uses FilterTextFormatter to avoid scope prefix duplication
-        # if the trigger text already has "相手が" or "自分が", etc.
-        formatted = FilterTextFormatter.format_scope_prefix(scope, trigger_text)
-        # If FilterTextFormatter actually did not prepend anything new (it detected the prefix),
-        # return the trigger text as-is to preserve structural replacements correctly,
-        # or we could just use its output which is identical.
-        if formatted == trigger_text:
-            return trigger_text
-
-        # Structured template composition (timing/scope/trigger as variables)
-        tmpl_set = CardTextResources.TRIGGER_COMPOSITION_TEMPLATES.get(trigger_type)
-        if tmpl_set:
-            timing_key = str(timing_mode or "").upper()
-            if timing_key not in (TimingMode.PRE.value, TimingMode.POST.value):
-                timing_key = TimingMode.POST.value
-            tmpl = tmpl_set.get(timing_key) or tmpl_set.get(TimingMode.POST.value)
-            if tmpl:
-                default_type = CardType.SPELL.value if trigger_type == "ON_CAST_SPELL" else CardType.CREATURE.value
-                from dm_toolkit.gui.editor.services.target_resolution_service import TargetResolutionService
-                subject = TargetResolutionService.compose_subject_from_filter(trigger_filter, default_type)
-                return tmpl.format(scope_text=scope_text, subject=subject)
-
-        # For fallback triggers without specific COMPOSITION_TEMPLATES,
-        # apply replacement phrases directly if PRE timing mode is requested,
-        # ensuring tests for legacy trigger formatting (like ON_OPPONENT_CREATURE_ENTER) pass without guessing.
-        if timing_mode == TimingMode.PRE.value:
-            from dm_toolkit.gui.editor.formatters.trigger_formatter import TriggerFormatter
-            trigger_text = TriggerFormatter.to_replacement_trigger_text(trigger_text)
-
-        # Default fallbacks
-        if trigger_text.startswith("この"):
-             # "このクリーチャー..." -> "相手のこのクリーチャー..." (Syntactically valid for 'Target's this creature')
-             return f"{scope_text}の{trigger_text}"
-
-        # Default to "の" prefix
-        return f"{scope_text}の{trigger_text}"
-
-    @classmethod
     def _resolve_effect_timing_mode(cls, effect: Dict[str, Any]) -> str:
         from dm_toolkit.gui.editor.formatters.trigger_formatter import TriggerFormatter
         return TriggerFormatter.resolve_effect_timing_mode(effect)
@@ -383,51 +290,6 @@ class CardTextGenerator:
     def trigger_to_japanese(cls, trigger: str, is_spell: bool = False, effect: Dict[str, Any] = None) -> str:
         from dm_toolkit.gui.editor.formatters.trigger_formatter import TriggerFormatter
         return TriggerFormatter.trigger_to_japanese(trigger, is_spell, effect)
-
-    @classmethod
-    def _format_target_selection_prefix(cls, target_str: str, amount: int = None, skip_selection: bool = False) -> str:
-        """Helper to generate the target selection prefix (e.g. 'N体選び、')."""
-        if skip_selection:
-            return ""
-        if isinstance(amount, int) and amount > 0:
-            return f"{target_str}を{amount}体選び、"
-        return ""
-
-    @classmethod
-    def _format_keyword_grant_text(cls, target_str: str, key_id: str, display_text: str, duration_text: str, amount: int = None, skip_selection: bool = False, cond_prefix: str = "") -> str:
-        """Helper to format keyword granting text.
-
-        amount=None or 0: apply to all matching targets (no selection).
-        amount>0: select N targets (N体選び).
-        skip_selection=True: target already determined by input link.
-        cond_prefix: A prefix like 'このターン、' that goes before the sentence.
-        """
-        restriction_keys = [
-            'CANNOT_ATTACK', 'CANNOT_BLOCK', 'CANNOT_ATTACK_OR_BLOCK', 'CANNOT_ATTACK_AND_BLOCK'
-        ]
-        is_restriction = (key_id in restriction_keys) or (str(key_id).upper() in restriction_keys)
-
-        # Normalize duration_text end
-        if duration_text and not duration_text.endswith('、'):
-            duration_text += "、"
-
-        selection_prefix = cls._format_target_selection_prefix(target_str, amount, skip_selection)
-
-        # Adjust placement of prefix - prefix comes first
-        if selection_prefix:
-            prefix = f"{cond_prefix}{selection_prefix}"
-        else:
-            prefix = cond_prefix
-
-        # If we selected targets, the subject usually becomes "そのクリーチャー"
-        # However if it's all targets (amount=0/None), subject remains target_str
-        has_selection = bool(selection_prefix)
-        subject_str = "そのクリーチャー" if has_selection or skip_selection else target_str
-
-        if is_restriction:
-            return f"{prefix}{duration_text}{subject_str}は{display_text}。"
-
-        return f"{prefix}{duration_text}{subject_str}に「{display_text}」を与える。"
 
     @classmethod
     def format_command(cls, command: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
@@ -484,13 +346,6 @@ class CardTextGenerator:
     def _format_condition(cls, condition: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         from dm_toolkit.gui.editor.formatters.condition_formatter import ConditionFormatter
         return ConditionFormatter.format_condition_text(condition, ctx)
-
-    @classmethod
-    def _format_selection_quantity(cls, count: Any, unit: str) -> str:
-        """Format the number of cards implicitly selected by a filter."""
-        if isinstance(count, int) and count > 1:
-            return f"{count}{unit}まで"
-        return f"1{unit}"
 
     @classmethod
     def _resolve_target(cls, action: Dict[str, Any], ctx: "TextGenerationContext" = None) -> Tuple[str, str]:

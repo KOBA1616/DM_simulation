@@ -33,6 +33,13 @@ class QuantityFormatter:
         return f"{amount}{unit}"
 
     @classmethod
+    def format_selection_quantity(cls, count: Any, unit: str) -> str:
+        """Format the number of cards implicitly selected by a filter."""
+        if isinstance(count, int) and count > 1:
+            return f"{count}{unit}まで"
+        return f"1{unit}"
+
+    @classmethod
     def apply_to_template(cls, template: str, formatted_qty: str, is_all: bool, up_to: bool, to_z: str, from_z: str, modifier: str = "", targeting_mode: str = "NON_TARGET") -> str:
         """
         Applies the formatted quantity to a template, adjusting verbs (選び、戻す、置く、出す)
