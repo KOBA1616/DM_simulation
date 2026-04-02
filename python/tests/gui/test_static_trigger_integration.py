@@ -128,7 +128,7 @@ class TestUnifiedInfrastructure:
         expected = CardTextResources.get_trigger_text("ON_PLAY", is_spell=False)
         assert result == expected
         
-        # Test _format_modifier uses resources
+        # Test format_modifier uses resources
         modifier = {
             "type": "GRANT_KEYWORD",
             "str_val": "BLOCKER",
@@ -136,7 +136,7 @@ class TestUnifiedInfrastructure:
             "condition": {"type": "NONE"},
             "filter": {}
         }
-        result = CardTextGenerator._format_modifier(modifier)
+        result = CardTextGenerator.format_modifier(modifier)
         assert "ブロッカー" in result
         assert "自分の" in result
     

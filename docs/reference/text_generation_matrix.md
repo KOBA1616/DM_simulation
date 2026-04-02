@@ -1,7 +1,7 @@
 # テキスト生成マトリクス
 
 以下は `dm_toolkit.gui.editor.text_generator.CardTextGenerator` の `ACTION_MAP` と
-`_format_action` / `_format_command` に基づく、アクション型 → 生成されるテキスト関係の網羅表です。
+`_format_action` / `format_command` に基づく、アクション型 → 生成されるテキスト関係の網羅表です。
 
 | アクション型 | 生成テンプレート（原文） | 条件 / 特記事項 | 主に使用するパラメータ |
 |---|---:|---|---|
@@ -61,6 +61,6 @@
 - `input_value_key` が設定されると、テンプレの数値は「その数」表現に置換される（例: "その数だけ破壊する"）。
 - アクションが `optional=True` の場合、文末の活用（「する。」→「してもよい。」等）に変換される。
 - 未定義テンプレは `(tr(ATYPE))` のように型名を括弧で返す（フォールバック）。
-- `_format_command` はコマンド型をアクション風にプロキシ変換する（`POWER_MOD`→`MODIFY_POWER`、`ADD_KEYWORD`→`GRANT_KEYWORD`、`MANA_CHARGE`→`SEND_TO_MANA/ADD_MANA` 等）。
+- `format_command` はコマンド型をアクション風にプロキシ変換する（`POWER_MOD`→`MODIFY_POWER`、`ADD_KEYWORD`→`GRANT_KEYWORD`、`MANA_CHARGE`→`SEND_TO_MANA/ADD_MANA` 等）。
 
 このファイルは人によるレビュー用の要約です。自動で CSV/JSON 出力が必要なら生成します。ご希望はどちらですか？

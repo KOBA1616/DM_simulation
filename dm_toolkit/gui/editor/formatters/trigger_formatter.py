@@ -57,7 +57,7 @@ class ReplacementEffectFormatter(CommandFormatterBase):
 
         # Format the original action that is being replaced (e.g., destroy)
         if trigger_cmd:
-            from_text = CardTextGenerator._format_command(trigger_cmd, ctx)
+            from_text = CardTextGenerator.format_command(trigger_cmd, ctx)
         else:
             from_text = f"{target_str}が破壊される時" # fallback
 
@@ -66,7 +66,7 @@ class ReplacementEffectFormatter(CommandFormatterBase):
 
         # Format the replacement action
         if action_cmd:
-            to_text = CardTextGenerator._format_command(action_cmd, ctx)
+            to_text = CardTextGenerator.format_command(action_cmd, ctx)
         else:
             to_text = "何もしない。" # fallback
 

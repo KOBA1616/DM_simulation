@@ -33,8 +33,8 @@ def test_text_generation():
     }
     
     # 各コマンドのテキスト生成
-    cast_text = CardTextGenerator._format_command(cast_spell_cmd)
-    replace_text = CardTextGenerator._format_command(replace_cmd)
+    cast_text = CardTextGenerator.format_command(cast_spell_cmd)
+    replace_text = CardTextGenerator.format_command(replace_cmd)
     
     print(f"✓ CAST_SPELL テキスト: {cast_text}")
     print(f"✓ REPLACE_CARD_MOVE テキスト: {replace_text}")

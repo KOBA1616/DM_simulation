@@ -37,13 +37,13 @@ class TestAddKeywordAmountAll:
 
     def test_all_creatures_get_blocker(self):
         cmd = _make_add_keyword_cmd("BLOCKER", amount=0)
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator.format_command(cmd)
         assert "体選び" not in text
         assert "「ブロッカー」" in text
 
     def test_all_with_duration(self):
         cmd = _make_add_keyword_cmd("SPEED_ATTACKER", amount=0, duration="THIS_TURN")
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator.format_command(cmd)
         assert "体選び" not in text
         assert "スピードアタッカー" in text  # CardTextResources の表記に合わせる
         # 期間テキストが含まれる
@@ -52,7 +52,7 @@ class TestAddKeywordAmountAll:
     def test_restriction_all_without_selection(self):
         """制限キーワード + amount=0 → 選択文なし"""
         cmd = _make_add_keyword_cmd("CANNOT_ATTACK", amount=0)
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator.format_command(cmd)
         assert "体選び" not in text
         # "{target}は攻撃できない。" の形式
         assert "攻撃できない" in text
@@ -63,19 +63,19 @@ class TestAddKeywordAmountN:
 
     def test_select_1_creature_gets_blocker(self):
         cmd = _make_add_keyword_cmd("BLOCKER", amount=1)
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator.format_command(cmd)
         assert "1体選び" in text
         assert "「ブロッカー」" in text
 
     def test_select_2_creatures_get_speed_attacker(self):
         cmd = _make_add_keyword_cmd("SPEED_ATTACKER", amount=2)
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator.format_command(cmd)
         assert "2体選び" in text
         assert "スピードアタッカー" in text  # CardTextResources の表記に合わせる
 
     def test_select_1_with_duration(self):
         cmd = _make_add_keyword_cmd("BLOCKER", amount=1, duration="THIS_TURN")
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator.format_command(cmd)
         assert "1体選び" in text
         assert "このターン" in text
         assert "「ブロッカー」" in text
@@ -83,20 +83,20 @@ class TestAddKeywordAmountN:
     def test_restriction_select_1(self):
         """制限キーワード + amount=1 → 1体選び → そのクリーチャーは…"""
         cmd = _make_add_keyword_cmd("CANNOT_ATTACK", amount=1)
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator.format_command(cmd)
         assert "1体選び" in text
         assert "攻撃できない" in text
 
     def test_restriction_select_2(self):
         cmd = _make_add_keyword_cmd("CANNOT_BLOCK", amount=2)
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator.format_command(cmd)
         assert "2体選び" in text
         assert "ブロック" in text or "できない" in text
 
     def test_target_details_include_owner_zone_and_type(self):
         cmd = _make_add_keyword_cmd("BLOCKER", amount=2, target_group="PLAYER_OPPONENT")
         cmd["target_filter"] = {"zones": ["BATTLE_ZONE"], "types": ["CREATURE"]}
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator.format_command(cmd)
         assert "相手のバトルゾーンのクリーチャー" in text
         assert "2体選び" in text
         assert "ブロッカー" in text
@@ -107,13 +107,13 @@ class TestAddKeywordExplicitSelf:
 
     def test_this_card_gets_keyword(self):
         cmd = _make_add_keyword_cmd("SPEED_ATTACKER", amount=0, explicit_self=True)
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator.format_command(cmd)
         assert "このカード" in text
         assert "スピードアタッカー" in text  # CardTextResources の表記に合わせる
 
     def test_this_card_with_duration(self):
         cmd = _make_add_keyword_cmd("BLOCKER", amount=0, duration="THIS_TURN", explicit_self=True)
-        text = CardTextGenerator._format_command(cmd)
+        text = CardTextGenerator.format_command(cmd)
         assert "このカード" in text
         assert "このターン" in text
 

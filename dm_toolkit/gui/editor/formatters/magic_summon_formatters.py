@@ -127,11 +127,11 @@ class ChoiceFormatter(CommandFormatterBase):
                   opt_parts = []
                   for a in opt:
                        if isinstance(a, dict):
-                            opt_parts.append(CardTextGenerator._format_command(a, ctx))
+                            opt_parts.append(CardTextGenerator.format_command(a, ctx))
                   chain_text = " ".join(opt_parts)
                   parts.append(f"> {chain_text}")
              elif isinstance(opt, dict):
-                  parts.append(f"> {CardTextGenerator._format_command(opt, ctx)}")
+                  parts.append(f"> {CardTextGenerator.format_command(opt, ctx)}")
 
         lines = []
         if len(parts) > 0:

@@ -39,7 +39,7 @@ class CardLayoutBuilder:
             lines.append("【追加能力】")
             for i, effect in enumerate(metamorphs):
                 with ctx.error_reporter.path_segment(f"metamorph_abilities[{i}]"):
-                    text = CardTextGenerator._format_effect(effect, ctx)
+                    text = CardTextGenerator.format_effect(effect, ctx)
                     if text:
                         lines.append(f"■ {text}")
 
@@ -115,7 +115,7 @@ class CardLayoutBuilder:
             lines.append("【追加能力】")
             for i, effect in enumerate(metamorphs):
                 with ctx.error_reporter.path_segment(f"metamorph_abilities[{i}]"):
-                    text = CardTextGenerator._format_effect(effect, ctx)
+                    text = CardTextGenerator.format_effect(effect, ctx)
                     if text:
                         lines.append(f"■ {text}")
 

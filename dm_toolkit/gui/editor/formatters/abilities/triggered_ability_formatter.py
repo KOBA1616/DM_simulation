@@ -63,11 +63,11 @@ class TriggeredAbilityFormatter:
                 with ctx.error_reporter.path_segment(f"commands[{i}]"):
                     command_for_text = copy.deepcopy(command) if isinstance(command, dict) else command
                     raw_items.append(command_for_text)
-                    action_texts.append(CardTextGenerator._format_command(command_for_text, ctx))
+                    action_texts.append(CardTextGenerator.format_command(command_for_text, ctx))
             else:
                 command_for_text = copy.deepcopy(command) if isinstance(command, dict) else command
                 raw_items.append(command_for_text)
-                action_texts.append(CardTextGenerator._format_command(command_for_text, ctx))
+                action_texts.append(CardTextGenerator.format_command(command_for_text, ctx))
 
         full_action_text = CardTextGenerator._merge_action_texts(raw_items, action_texts)
 
