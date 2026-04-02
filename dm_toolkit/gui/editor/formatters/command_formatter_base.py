@@ -22,7 +22,15 @@ class CommandFormatterBase:
         """
         text = cls.format(command, ctx)
         optional = bool(command.get("optional", False))
-        return TextUtils.apply_conjugation(text, optional)
+
+        # AST/Context integration to detect if this command is structurally composite
+        is_composite_action = False
+        if ctx and hasattr(ctx, "current_commands_list") and ctx.current_commands_list:
+            # Context-aware logic can determine if we're evaluating inside a sequence
+            # where "その後" is prevalent, enabling smarter end-of-sentence decisions.
+            is_composite_action = len(ctx.current_commands_list) > 1
+
+        return TextUtils.apply_conjugation(text, optional, is_composite_action=is_composite_action)
 
 
     @classmethod

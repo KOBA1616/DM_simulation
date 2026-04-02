@@ -12,7 +12,11 @@ class ManaArmedConditionFormatter(ConditionFormatterStrategy):
         val = d.get("value", 0)
         civ_raw = d.get("str_val", "")
         civ = tr(civ_raw)
-        return f"マナ武装 {val} ({civ})"
+        template = "マナ武装 {val} ({civ})"
+
+        # Proper Python template engine approach using format() instead of procedural loops
+        # or error-prone replace() chaining.
+        return template.format(val=val, civ=civ)
 
 @register_condition("SHIELD_COUNT")
 class ShieldCountConditionFormatter(ConditionFormatterStrategy):
@@ -29,12 +33,16 @@ class CivilizationMatchConditionFormatter(ConditionFormatterStrategy):
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         return "マナゾーンに同じ文明があれば"
 
+    @classmethod
+    def get_suffix(cls) -> str:
+        return "、"
+
 @register_condition("OPPONENT_DRAW_COUNT")
 class OpponentDrawCountConditionFormatter(ConditionFormatterStrategy):
     @classmethod
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         val = d.get("value", 0)
-        return f"相手がカードを{val}枚目以上引いた"
+        return f"{val}枚目以降なら"
 
 @register_condition("COMPARE_STAT")
 class CompareStatConditionFormatter(ConditionFormatterStrategy):
@@ -71,10 +79,32 @@ class CompareInputConditionFormatter(ConditionFormatterStrategy):
         op = d.get("op", ">=")
 
         from dm_toolkit.gui.editor.formatters.input_link_formatter import InputLinkFormatter
+        from dm_toolkit.gui.editor.formatters.input_link_ast import InputLinkASTBuilder
 
         input_key = action.get("input_value_key") or action.get("input_link") or ""
 
-        input_desc = InputLinkFormatter.resolve_linked_value_text(action, context_commands=current_cmds)
+        # Delegate deeper AST resolution specifically for COMPARISON sentences where natural wording differs
+        input_desc = None
+        if current_cmds and input_key:
+            producer = InputLinkASTBuilder.find_producer(current_cmds, input_key)
+            if producer:
+                if producer.atype == "DRAW_CARD":
+                    input_desc = "引いた枚数"
+                elif producer.atype == "DISCARD":
+                    input_desc = "捨てた枚数"
+                elif producer.atype in ("DECLARE_NUMBER", "SELECT_NUMBER"):
+                    input_desc = "選択した数"
+
+        if not input_desc:
+             input_desc = InputLinkFormatter.resolve_linked_value_text(action, context_commands=current_cmds)
+             # Strip leading "その" and trailing "と同じ" for cleaner phrasing in a conditional clause
+             if input_desc.startswith("その"):
+                 input_desc = input_desc[2:]
+             if input_desc.endswith("と同じ"):
+                 input_desc = input_desc[:-3]
+             elif input_desc.endswith("と同じ数"):
+                 input_desc = input_desc[:-4] + "数"
+
         if not input_desc:
             input_desc_map = {
                 "spell_count": "墓地の呪文の数",
@@ -86,11 +116,18 @@ class CompareInputConditionFormatter(ConditionFormatterStrategy):
 
         ival = int(val) if isinstance(val, (int, str)) and str(val).isdigit() else val
 
+        # Adjust formatting unit based on semantic context
+        val_suffix = ""
+        if "枚数" in input_desc:
+             val_suffix = "枚"
+
         # Special logic: for some ops (like >= with an incremented ival), we adapt the value first
         if op == ">=":
-             val_str = f"{ival + 1}" if isinstance(ival, int) else f"{val}"
+             # If op is >= and we are comparing count/枚数, "X枚以上" natively handled
+             val_str = f"{ival}{val_suffix}"
+             # For legacy reasons some cards expect strictly greater semantics, but >= is standard "以上"
         else:
-             val_str = f"{val}"
+             val_str = f"{val}{val_suffix}"
 
         op_text = TextUtils.format_comparison_operator(op, val_str, attribute=input_desc, particle="が")
 
@@ -165,25 +202,33 @@ class OpponentPlayedWithoutManaConditionFormatter(ConditionFormatterStrategy):
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
         return "相手がマナゾーンのカードをタップせずに、クリーチャーを出すか呪文を唱えた"
 
+    @classmethod
+    def get_suffix(cls) -> str:
+        return "時、"
+
 @register_condition("DURING_YOUR_TURN")
 class DuringYourTurnConditionFormatter(ConditionFormatterStrategy):
+    is_active_condition_prefix = True
+
     @classmethod
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
-        return "自分のターン中"
+        return "自分のターン"
 
     @classmethod
     def get_suffix(cls) -> str:
-        return ""
+        return "中、"
 
 @register_condition("DURING_OPPONENT_TURN")
 class DuringOpponentTurnConditionFormatter(ConditionFormatterStrategy):
+    is_active_condition_prefix = True
+
     @classmethod
     def format(cls, d: Dict[str, Any], ctx: TextGenerationContext = None) -> str:
-        return "相手のターン中"
+        return "相手のターン"
 
     @classmethod
     def get_suffix(cls) -> str:
-        return ""
+        return "中、"
 
 class ConditionFormatter:
     """Formatter for logic and effect conditions."""
