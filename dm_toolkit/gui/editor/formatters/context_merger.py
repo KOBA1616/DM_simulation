@@ -106,4 +106,29 @@ class ContextMerger:
             if cls._matches_rule(rule["match"], raw_items):
                 return cls._apply_rule(rule, raw_items, formatted_texts)
 
-        return " ".join([t for t in formatted_texts if t]).strip()
+        # Dynamic conjunction logic based on input/output dependencies
+        valid_texts = [t for t in formatted_texts if t.strip()]
+        if not valid_texts:
+            return ""
+
+        merged = valid_texts[0].rstrip('。') + "。"
+        # find the actual index of the valid texts in the original lists to map raw_items correctly
+        valid_indices = [i for i, t in enumerate(formatted_texts) if t.strip()]
+
+        for i in range(1, len(valid_indices)):
+            curr_idx = valid_indices[i]
+            prev_idx = valid_indices[i-1]
+
+            prev_item = raw_items[prev_idx]
+            curr_item = raw_items[curr_idx]
+
+            prev_out = prev_item.get("output_value_key")
+            curr_in = curr_item.get("input_value_key") or curr_item.get("input_link")
+
+            if prev_out and curr_in and prev_out == curr_in:
+                merged += "その後、" + formatted_texts[curr_idx].lstrip('。')
+            else:
+                merged += "また、" + formatted_texts[curr_idx].lstrip('。')
+            merged = merged.rstrip('。') + "。"
+
+        return merged

@@ -242,9 +242,14 @@ class RegisterDelayedEffectFormatter(CommandFormatterBase):
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         max_cost_src = get_command_max_cost(command)
         val1 = max_cost_src if max_cost_src is not None else get_command_amount(command, default=0)
-        str_val = command.get('str_val', '')
+        str_val = command.get('str_val') or command.get('str_param', '')
         effect_text = CardTextResources.get_delayed_effect_text(str_val)
-        if effect_text == str_val:
-            duration = val1 if val1 > 0 else 1
-            return f'遅延効果（{str_val}）を{duration}ターン登録する。'
-        return effect_text
+
+        # Handle standard durations
+        duration_text = f"（{val1}ターンの間）。" if val1 > 0 else "。"
+
+        if effect_text != str_val:
+            return f"{effect_text.rstrip('。')}{duration_text}"
+
+        duration = val1 if val1 > 0 else 1
+        return f'遅延効果（{str_val}）を{duration}ターン登録する。'

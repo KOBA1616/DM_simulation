@@ -51,6 +51,7 @@ class VariableLinkWidget(QWidget):
             (tr("Power"), "POWER"),
             (tr("Max Power"), "MAX_POWER"),
             (tr("Min Power"), "MIN_POWER"),
+            (tr("Remainder"), "REMAINDER"),
         ]
         for label, key in usage_items:
             self.input_usage_combo.addItem(label, key)

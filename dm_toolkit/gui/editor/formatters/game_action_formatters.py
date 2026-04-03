@@ -29,12 +29,16 @@ class LookAndAddFormatter(CommandFormatterBase):
         dest_zone_str = ZoneFormatter.format_zone_list(dest_zone_list, context="to", joiner="、または")
 
         rest_text = ""
+        # Check if there is an input link that resolves to "残りを"
+        linked_text = InputLinkFormatter.resolve_linked_value_text(command, context_commands=ctx.current_commands_list)
+        remainder_prefix = linked_text if "残り" in linked_text else "残りを"
+
         if rest_zone == "DECK_BOTTOM":
-            rest_text = "残りを好きな順序で山札の下に置く。"
+            rest_text = f"{remainder_prefix}好きな順序で山札の下に置く。"
         elif rest_zone == "GRAVEYARD":
-            rest_text = "残りを墓地に置く。"
+            rest_text = f"{remainder_prefix}墓地に置く。"
         else:
-            rest_text = f"残りを{tr(rest_zone)}に置く。"
+            rest_text = f"{remainder_prefix}{tr(rest_zone)}に置く。"
 
         filter_text = ""
         if target_str != "カード":
