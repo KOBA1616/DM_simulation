@@ -131,6 +131,12 @@ class ReplacementEffectFormatter(CommandFormatterBase):
         # Ensure it sounds like a future condition "する時"
         from_text = TriggerFormatter.to_replacement_trigger_text(from_text)
 
+        # Apply scope if specified in replaced_action or command target
+        scope = command.get("target", "ALL")
+        if trigger_cmd and trigger_cmd.get("target"):
+             scope = trigger_cmd.get("target")
+        from_text = TriggerFormatter.apply_trigger_scope(from_text, scope, "REPLACEMENT_EFFECT", timing_mode="PRE")
+
         # Format the replacement action. Note that replacing action may be an AST structure/list
         if action_cmd:
             to_text = CommandFormatterRegistry.format_command(action_cmd, ctx)

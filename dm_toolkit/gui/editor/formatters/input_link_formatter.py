@@ -194,6 +194,9 @@ class InputLinkFormatter:
         if usage in ["COUNT", "AMOUNT"]:
              return "その同じ数"
 
+        if usage == "REMAINDER":
+             return "残りを"
+
         # Context-aware resolution using AST
         if context_commands:
             from dm_toolkit.gui.editor.formatters.input_link_ast import InputLinkASTBuilder
