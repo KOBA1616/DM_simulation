@@ -27,6 +27,8 @@ class FieldType(Enum):
     ENUM = auto()         # Dynamically loaded Enum
     CONDITION = auto()    # Condition editor
     CONDITION_TREE = auto() # Hierarchical condition tree editor
+    QUANTITY = auto()     # Quantity Mode Widget (Exact, Up To, All)
+    ZONE_LIST = auto()    # Multi Zone Selector
 
 class FieldSchema:
     """

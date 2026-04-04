@@ -192,13 +192,16 @@ class MoveBufferToZoneFormatter(CommandFormatterBase):
             else:
                 type_part = "カード"
 
-            qty_part = QuantityFormatter.format_quantity(val1, "枚", up_to, is_all)
-
-            text = f"その中から、{civ_part}{type_part}を{qty_part}選び、{to_zone}に加える。"
+            targeting_mode = command.get("targeting_mode", "TARGET")
+            qty_part = QuantityFormatter.format_quantity(val1, "枚", up_to, is_all, targeting_mode=targeting_mode)
+            selection_verb = "選び、" if targeting_mode == "TARGET" else ""
+            text = f"その中から、{civ_part}{type_part}を{qty_part}{selection_verb}{to_zone}に加える。"
             return text
         else:
-            qty_part = QuantityFormatter.format_quantity(val1, "枚", up_to, is_all)
-            text = f"その中から、{qty_part}を{to_zone}に加える。"
+            targeting_mode = command.get("targeting_mode", "TARGET")
+            qty_part = QuantityFormatter.format_quantity(val1, "枚", up_to, is_all, targeting_mode=targeting_mode)
+            selection_verb = "選び、" if targeting_mode == "TARGET" else ""
+            text = f"その中から、{qty_part}を{selection_verb}{to_zone}に加える。"
             return text
 
 @register_formatter("REPLACE_CARD_MOVE")
@@ -208,8 +211,17 @@ class ReplaceCardMoveFormatter(CommandFormatterBase):
         dest_zone = command.get("destination_zone") or command.get("to_zone", "DECK_BOTTOM")
         src_zone = command.get("source_zone") or command.get("from_zone", "GRAVEYARD")
 
-        zone_str = CardTextResources.get_zone_text(dest_zone) if dest_zone else "どこか"
-        orig_zone_str = CardTextResources.get_zone_text(src_zone) if src_zone else "元のゾーン"
+        # Handle list format from MultiZoneSelector
+        from dm_toolkit.gui.editor.formatters.zone_formatter import ZoneFormatter
+        if isinstance(dest_zone, list):
+            zone_str = ZoneFormatter.format_zone_list(dest_zone, context="", joiner="または")
+        else:
+            zone_str = CardTextResources.get_zone_text(dest_zone) if dest_zone else "どこか"
+
+        if isinstance(src_zone, list):
+            orig_zone_str = ZoneFormatter.format_zone_list(src_zone, context="", joiner="または")
+        else:
+            orig_zone_str = CardTextResources.get_zone_text(src_zone) if src_zone else "元のゾーン"
         up_to_flag = bool(command.get('up_to', False))
 
         scope = command.get("target_group") or command.get("scope", "NONE")

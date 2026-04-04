@@ -262,7 +262,14 @@ class TargetResolutionService:
 
         races = filter_def.get("races", [])
         if races:
-            adjectives.append("/".join(races))
+            race_match_mode = filter_def.get("race_match_mode", "OR").upper()
+            if is_header:
+                joiner = "/"
+            elif len(races) > 1:
+                joiner = "または" if race_match_mode == "OR" else "と"
+            else:
+                joiner = "・"
+            adjectives.append(joiner.join(races))
 
         if not omit_cost:
             min_cost = filter_def.get("min_cost", 0)

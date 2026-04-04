@@ -61,16 +61,23 @@ def register_all_schemas():
     f_target = FieldSchema("target_group", tr("Target"), FieldType.PLAYER, default="PLAYER_SELF")
     f_filter = FieldSchema("target_filter", tr("Filter"), FieldType.FILTER)
     f_amount = FieldSchema("amount", tr("Amount"), FieldType.INT, default=1, min_value=1)
+    f_quantity = FieldSchema("amount", tr("Quantity"), FieldType.QUANTITY, default=1)
     f_optional = FieldSchema("optional", tr("Optional"), FieldType.BOOL, default=False)
     f_links_out = FieldSchema("links", tr("Variable Links"), FieldType.LINK, produces_output=True)
     f_links_in = FieldSchema("links", tr("Variable Links"), FieldType.LINK, produces_output=False)
 
+    # Targeting Mode is typically stored in a string parameter, we can use str_param or a specific one,
+    # but the simplest way to add the toggle in the schema is a SELECT field mapped to targeting_mode.
+    # However, since targeting_mode is a property of CommandSchema, we don't necessarily need a FieldSchema
+    # for it unless we want it auto-generated. Let's add it to the form explicitly later, or as a field.
+    f_targeting_mode = FieldSchema("targeting_mode", tr("Targeting Mode"), FieldType.SELECT, options=["TARGET", "NON_TARGET", "RANDOM"], default="TARGET")
+
     # DRAW_CARD
     register_schema(CommandSchema("DRAW_CARD", [
         f_target,
-        FieldSchema("amount", tr("Cards to Draw"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
+        f_quantity,
+        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False, visible_if={"hidden": True}), # Explicitly preserved but visually hidden in favor of f_quantity
         f_optional,
-        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
         f_links_out # Handles both input (amount) and output (cards drawn)
     ], default_amount=1, default_output_label="引いた枚数"))
 
@@ -79,8 +86,8 @@ def register_all_schemas():
     register_schema(CommandSchema("DISCARD", [
         f_target,
         f_filter,
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
-        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
+        f_quantity,
+        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False, visible_if={"hidden": True}),
         f_optional,
         f_links_out  # Enables output_value_key for discarded count and input linking
     ], default_amount=1, default_output_label="捨てた枚数"))
@@ -92,7 +99,9 @@ def register_all_schemas():
         register_schema(CommandSchema(cmd, [
             f_target,
             f_filter,
-            FieldSchema("amount", tr("Count (if selecting)"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
+            f_targeting_mode,
+            f_quantity,
+            FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False, visible_if={"hidden": True}),
             f_links_out  # Enables output_value_key for card movement tracking and input linking
         ], default_amount=1, targeting_mode=TargetingMode.TARGET.value))
 
@@ -117,10 +126,11 @@ def register_all_schemas():
     register_schema(CommandSchema("TRANSITION", [
         f_target,
         f_filter,
-        FieldSchema("from_zone", tr("Source Zone"), FieldType.ZONE, default="NONE"),
-        FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
-        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
+        FieldSchema("from_zone", tr("Source Zone(s)"), FieldType.ZONE_LIST, default=["NONE"]),
+        FieldSchema("to_zone", tr("Destination Zone(s)"), FieldType.ZONE_LIST, default=["HAND"]),
+        f_targeting_mode,
+        f_quantity,
+        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False, visible_if={"hidden": True}),
         f_optional,
         f_links_out  # Enables output_value_key for card movement tracking and input linking
     ]))
@@ -130,8 +140,8 @@ def register_all_schemas():
         f_target,
         f_filter,
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="GRAVEYARD"),
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
-        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
+        f_quantity,
+        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False, visible_if={"hidden": True}),
         f_optional,
         f_links_out
     ]))
@@ -140,10 +150,10 @@ def register_all_schemas():
     register_schema(CommandSchema("REPLACE_CARD_MOVE", [
         f_target,
         f_filter,
-        FieldSchema("from_zone", tr("Original Destination"), FieldType.ZONE, default="GRAVEYARD"),
-        FieldSchema("to_zone", tr("Replacement Destination"), FieldType.ZONE, default="DECK_BOTTOM"),
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
-        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False),
+        FieldSchema("from_zone", tr("Original Destination(s)"), FieldType.ZONE_LIST, default=["GRAVEYARD"]),
+        FieldSchema("to_zone", tr("Replacement Destination(s)"), FieldType.ZONE_LIST, default=["DECK_BOTTOM"]),
+        f_quantity,
+        FieldSchema("up_to", tr("Up To"), FieldType.BOOL, default=False, visible_if={"hidden": True}),
         f_optional,
         f_links_out
     ]))
@@ -151,7 +161,7 @@ def register_all_schemas():
     # SEARCH_DECK
     register_schema(CommandSchema("SEARCH_DECK", [
         f_filter,
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
+        f_quantity,
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="HAND"),
         f_links_out
     ]))
@@ -178,7 +188,7 @@ def register_all_schemas():
     register_schema(CommandSchema("PUT_CREATURE", [
         f_target,
         f_filter,
-        FieldSchema("from_zone", tr("Source Zone"), FieldType.ZONE, default="NONE"),
+        FieldSchema("from_zone", tr("Source Zone(s)"), FieldType.ZONE_LIST, default=["NONE"]),
         FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
         f_links_in
     ]))
@@ -214,12 +224,21 @@ def register_all_schemas():
     ]))
 
     # ADD_KEYWORD
+    # Get all dynamic keywords from CardTextResources translation map, fall back to consts MUTATION_TYPES
+    # so we're fully data-driven.
+    try:
+        dynamic_keywords = list(CardTextResources.KEYWORD_TRANSLATION.keys())
+        if not dynamic_keywords:
+            dynamic_keywords = MUTATION_TYPES
+    except Exception:
+        dynamic_keywords = MUTATION_TYPES
+
     register_schema(CommandSchema("ADD_KEYWORD", [
         f_target,
         f_filter,
         FieldSchema("explicit_self", tr("This Card"), FieldType.BOOL, default=False),
         # Keyword stored in str_val for text generation compatibility
-        FieldSchema("str_val", tr("Keyword"), FieldType.SELECT, options=MUTATION_TYPES, default=None),
+        FieldSchema("str_val", tr("Keyword"), FieldType.SELECT, options=dynamic_keywords, default=None),
         FieldSchema("duration", tr("Duration"), FieldType.SELECT, options=DURATION_TYPES, default=None),
         # 再発防止: amount=0 は「すべて」，amount>0 は「N体選び」。widget_hint="hidden" は削除して UI から設定可能にする。
         FieldSchema("amount", tr("Count (0 = all)"), FieldType.INT, default=0, min_value=0),
@@ -239,7 +258,7 @@ def register_all_schemas():
     # PLAY_FROM_ZONE
     # 再発防止: target_filter フィールドを追加して UI からフィルタ条件を設定できるようにする
     register_schema(CommandSchema("PLAY_FROM_ZONE", [
-        FieldSchema("from_zone", tr("Source Zone"), FieldType.ZONE, default="HAND"),
+        FieldSchema("from_zone", tr("Source Zone(s)"), FieldType.ZONE_LIST, default=["HAND"]),
         FieldSchema("to_zone", tr("Destination Zone"), FieldType.ZONE, default="BATTLE_ZONE"),
         FieldSchema("amount", tr("Max Cost"), FieldType.INT, default=99),
         FieldSchema("target_filter", tr("Card Filter"), FieldType.FILTER),
@@ -352,19 +371,19 @@ def register_all_schemas():
     # BUFFER operations
     register_schema(CommandSchema("LOOK_TO_BUFFER", [
         FieldSchema("from_zone", tr("Source Zone"), FieldType.ZONE, default="DECK"),
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_quantity,
         f_links_in
     ]))
     register_schema(CommandSchema("REVEAL_TO_BUFFER", [
         FieldSchema("from_zone", tr("Source Zone"), FieldType.ZONE, default="DECK"),
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1),
+        f_quantity,
         f_links_in
     ]))
     # 再発防止: SELECT_FROM_BUFFER の amount は「すべて」(-1) をサポートするため
     # min_value=-1, widget_hint="amount_all" を指定する。
     register_schema(CommandSchema("SELECT_FROM_BUFFER", [
         f_filter,
-        FieldSchema("amount", tr("Count"), FieldType.INT, default=1, min_value=-1, widget_hint="amount_all"),
+        f_quantity,
         f_links_out
     ]))
     register_schema(CommandSchema("PLAY_FROM_BUFFER", [
