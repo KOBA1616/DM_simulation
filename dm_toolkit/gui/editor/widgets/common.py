@@ -35,6 +35,26 @@ class ZoneCombo(QComboBox, EditorWidgetMixin):
         if idx >= 0:
             self.setCurrentIndex(idx)
 
+class MultiZoneSelector(QWidget, EditorWidgetMixin):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.checkboxes = {}
+        for z in ZONES_EXTENDED:
+            cb = QCheckBox(tr(z))
+            self.checkboxes[z] = cb
+            layout.addWidget(cb)
+
+    def get_value(self):
+        return [z for z, cb in self.checkboxes.items() if cb.isChecked()]
+
+    def set_value(self, value):
+        if not isinstance(value, list):
+            value = [value] if value else []
+        for z, cb in self.checkboxes.items():
+            cb.setChecked(z in value)
+
 class ScopeCombo(QComboBox, EditorWidgetMixin):
     def __init__(self, parent=None, include_zones=False, allow_empty=False):
         super().__init__(parent)
@@ -86,6 +106,66 @@ class NumberWidget(QSpinBox, EditorWidgetMixin):
         if value is not None:
             self.setValue(int(value))
 
+
+class QuantityModeWidget(QWidget, EditorWidgetMixin):
+    """数量入力とモード（固定/最大/すべて）を統合したウィジェット"""
+    def __init__(self, parent=None, max_val: int = 9999):
+        super().__init__(parent)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItem(tr("ちょうど (Exact)"), "EXACT")
+        self.mode_combo.addItem(tr("最大 (Up to)"), "UP_TO")
+        self.mode_combo.addItem(tr("すべて (All)"), "ALL")
+
+        self.spin = QSpinBox()
+        self.spin.setMinimum(1)
+        self.spin.setMaximum(max_val)
+
+        layout.addWidget(self.mode_combo)
+        layout.addWidget(self.spin)
+
+        self.mode_combo.currentIndexChanged.connect(self._on_mode_changed)
+
+    def _on_mode_changed(self):
+        mode = self.mode_combo.currentData()
+        if mode == "ALL":
+            self.spin.setEnabled(False)
+        else:
+            self.spin.setEnabled(True)
+
+    def get_value(self):
+        mode = self.mode_combo.currentData()
+        val = -1 if mode == "ALL" else self.spin.value()
+        return {"amount": val, "up_to": mode == "UP_TO"}
+
+    def set_value(self, value):
+        if value is None:
+            self.mode_combo.setCurrentIndex(0)
+            self.spin.setValue(1)
+            return
+
+        if isinstance(value, dict):
+            amt = value.get("amount", 1)
+            up_to = value.get("up_to", False)
+            if str(amt).upper() in ("ALL", "すべて") or amt == -1:
+                self.mode_combo.setCurrentIndex(2) # ALL
+                self.spin.setValue(1)
+            else:
+                self.spin.setValue(int(amt))
+                if up_to:
+                    self.mode_combo.setCurrentIndex(1) # UP_TO
+                else:
+                    self.mode_combo.setCurrentIndex(0) # EXACT
+        else:
+            # Fallback for old simple amount
+            if str(value).upper() in ("ALL", "すべて") or int(value) == -1:
+                self.mode_combo.setCurrentIndex(2) # ALL
+                self.spin.setValue(1)
+            else:
+                self.spin.setValue(int(value))
+                self.mode_combo.setCurrentIndex(0) # EXACT
 
 class AmountWithAllWidget(QSpinBox, EditorWidgetMixin):
     """枚数スピンボックス。最小値（-1）を「すべて」として表示する。

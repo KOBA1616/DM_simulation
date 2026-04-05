@@ -24,7 +24,7 @@ class LookAndAddFormatter(CommandFormatterBase):
         dest_zone = command.get("destination_zone", "HAND")
         rest_zone = command.get("rest_zone", "DECK_BOTTOM")
 
-        from dm_toolkit.gui.editor.formatters.zone_formatters import ZoneFormatter
+        from dm_toolkit.gui.editor.formatters.zone_formatter import ZoneFormatter
         dest_zone_list = [dest_zone]
         dest_zone_str = ZoneFormatter.format_zone_list(dest_zone_list, context="to", joiner="、または")
 
@@ -101,7 +101,12 @@ class PutCreatureFormatter(CommandFormatterBase):
 
         # Prioritize explicit from_zone
         from_z = command.get("from_zone") or command.get("source_zone")
-        if from_z and from_z != "NONE":
+        if isinstance(from_z, list):
+            if from_z and "NONE" not in from_z:
+                from dm_toolkit.gui.editor.formatters.zone_formatter import ZoneFormatter
+                src_text = ZoneFormatter.format_zone_list(from_z, context="from", joiner="、または")
+                filter_local.pop("zones", None)
+        elif from_z and from_z != "NONE":
             src_text = CardTextResources.get_zone_text(from_z) + "から"
             filter_local.pop("zones", None)
         elif filter_zones:
@@ -569,10 +574,17 @@ class SelectOptionFormatter(CommandFormatterBase):
         optional = command.get('optional', False)
         if isinstance(flags, list) and 'ALLOW_DUPLICATES' in flags:
             optional = True
-        suffix = '（同じものを選んでもよい）' if optional else ''
-        lines.append(f'次の中から{amount}回選ぶ。{suffix}')
 
-        block_text = CommandListFormatter.format_block(options, ctx)
+        suffix = '（同じものを選んでもよい）' if optional else ''
+
+        # DM 特有の「次のうちいずれかXつを選ぶ」フォーマット
+        if amount == 1:
+            lines.append(f'次のうちいずれか1つを選ぶ。')
+        else:
+            lines.append(f'次のうちいずれか{amount}つを選ぶ。{suffix}')
+
+        # 箇条書き（・）でフォーマット
+        block_text = CommandListFormatter.format_block(options, ctx, bullet="▶")
         if block_text:
             lines.append(block_text)
 

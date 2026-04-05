@@ -5,7 +5,7 @@ class QuantityFormatter:
     """Formatter for handling quantities, 'all', and 'up to' semantics uniformly."""
 
     @classmethod
-    def format_quantity(cls, amount: Any, unit: str, up_to: bool = False, is_all: bool = False, linked_text: Optional[str] = None) -> str:
+    def format_quantity(cls, amount: Any, unit: str, up_to: bool = False, is_all: bool = False, linked_text: Optional[str] = None, targeting_mode: str = "TARGET") -> str:
         """
         Generates the proper Japanese phrase for a quantity, handling 'all', 'up to', and input links.
 
@@ -15,9 +15,14 @@ class QuantityFormatter:
             up_to: Whether the quantity represents an 'up to' limit.
             is_all: Whether the quantity means 'all' ('すべて').
             linked_text: If provided, this text (e.g., 'その数') replaces the amount+unit.
+            targeting_mode: The targeting mode string.
         """
-        if is_all:
+        # For the new QuantityModeWidget, amount == -1 signifies "All"
+        if is_all or amount == -1:
             return "すべて"
+
+        if targeting_mode == "NON_TARGET":
+            return "すべての"
 
         if linked_text:
             if up_to:
@@ -49,6 +54,17 @@ class QuantityFormatter:
         # Common pattern replaces {amount}{unit} with the formatted quantity string
         result = template
 
+        # When TargetingMode is NON_TARGET, it implicitly behaves like "all matching without selecting"
+        if is_all or targeting_mode == "NON_TARGET":
+            if targeting_mode == "NON_TARGET" and not is_all and "{amount}{unit}" in result:
+                # If NON_TARGET but a specific quantity is requested, it means "those N cards"
+                pass
+            else:
+                if targeting_mode == "NON_TARGET" and not is_all:
+                    formatted_qty = "すべての"
+                # Replace selection verb with nothing if it's NON_TARGET or ALL
+                result = result.replace("選び、", "")
+
         if is_all:
             result = result.replace("{amount}{unit}", formatted_qty).replace("選び、", "")
             return result.replace("{modifier}", modifier)
@@ -64,6 +80,9 @@ class QuantityFormatter:
                 modifier = selection_verb + modifier
 
         # Base replacement for standard quantity
+        # If targeting_mode is NON_TARGET and we modified formatted_qty to "すべての",
+        # it might need to prefix the target instead. This requires text generator cooperation,
+        # but for now we replace the amount/unit placeholder.
         result = result.replace("{amount}{unit}", formatted_qty)
 
         return result.replace("{modifier}", modifier)

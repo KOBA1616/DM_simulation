@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (
     QWidget, QCheckBox, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QLineEdit, QComboBox
 )
 from dm_toolkit.gui.editor.widgets.common import (
-    ZoneCombo, ScopeCombo, TextWidget, NumberWidget, AmountWithAllWidget, BoolCheckWidget, EditorWidgetMixin
+    ZoneCombo, ScopeCombo, TextWidget, NumberWidget, AmountWithAllWidget, QuantityModeWidget, MultiZoneSelector, BoolCheckWidget, EditorWidgetMixin
 )
 from dm_toolkit.gui.editor.forms.unified_widgets import (
     make_player_scope_selector, make_measure_mode_combo, make_ref_mode_combo
@@ -64,17 +64,31 @@ class OptionsControlWidget(QWidget):
     """Container for option generation controls."""
     def __init__(self, parent, callback):
         super().__init__(parent)
-        self.layout = QHBoxLayout(self)
-        self.layout.setContentsMargins(0,0,0,0)
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        control_widget = QWidget()
+        self.layout = QHBoxLayout(control_widget)
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
         self.spin = NumberWidget(self, 1, 10)
-        self.btn = QPushButton(tr("Generate Options"))
+        self.btn = QPushButton(tr("Generate Branches"))
+        self.btn.setStyleSheet("background-color: #007bff; color: white; font-weight: bold;")
         safe_connect(self.btn, 'clicked', callback)
-        self.label = QLabel(tr("Options Count"))
+        self.label = QLabel(tr("Number of branches to generate:"))
 
         self.layout.addWidget(self.label)
         self.layout.addWidget(self.spin)
         self.layout.addWidget(self.btn)
+
+        main_layout.addWidget(control_widget)
+
+        # Guide text to clarify where the choices are edited
+        guide_label = QLabel(tr("Note: Clicking 'Generate Branches' will create child nodes in the logic tree below. You can then edit each branch independently."))
+        guide_label.setStyleSheet("color: #666; font-style: italic; font-size: 11px;")
+        guide_label.setWordWrap(True)
+        main_layout.addWidget(guide_label)
 
         # Expose spin as property for factory
         self.option_layout = self.layout
@@ -280,6 +294,14 @@ def _create_int_widget(parent, schema, cb):
     safe_connect(widget, 'valueChanged', lambda: cb())
     return widget
 
+def _create_quantity_widget(parent, schema, cb):
+    widget = QuantityModeWidget(parent, max_val=schema.max_value or 9999)
+    # The QuantityModeWidget emits currentIndexChanged for the mode, and valueChanged for the spin.
+    # We can connect to both or add a unified signal in the widget.
+    safe_connect(widget.mode_combo, 'currentIndexChanged', lambda: cb())
+    safe_connect(widget.spin, 'valueChanged', lambda: cb())
+    return widget
+
 def _create_bool_widget(parent, schema, cb):
     widget = BoolCheckWidget(schema.label, parent)
     if schema.tooltip: widget.setToolTip(schema.tooltip)
@@ -295,6 +317,12 @@ def _create_player_widget(parent, schema, cb):
 def _create_zone_widget(parent, schema, cb):
     widget = ZoneCombo(parent)
     safe_connect(widget, 'currentIndexChanged', lambda: cb())
+    return widget
+
+def _create_zone_list_widget(parent, schema, cb):
+    widget = MultiZoneSelector(parent)
+    for cb_widget in widget.checkboxes.values():
+        safe_connect(cb_widget, 'stateChanged', lambda: cb())
     return widget
 
 def _create_filter_widget(parent, schema, cb):
@@ -405,3 +433,5 @@ WidgetFactory.register(FieldType.SELECT, _create_select_widget)
 WidgetFactory.register(FieldType.ENUM, _create_enum_widget)
 WidgetFactory.register(FieldType.CONDITION, _create_condition_widget)
 WidgetFactory.register(FieldType.CONDITION_TREE, _create_condition_widget)
+WidgetFactory.register(FieldType.QUANTITY, _create_quantity_widget)
+WidgetFactory.register(FieldType.ZONE_LIST, _create_zone_list_widget)

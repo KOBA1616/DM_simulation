@@ -111,6 +111,15 @@ class UnifiedActionForm(BaseEditForm):
         self.diff_tree_widget.setVisible(False)
         self.main_layout.addRow(tr("Diff"), self.diff_tree_widget)
 
+        # Real-time preview area
+        self.command_preview_label = QLabel("")
+        try:
+            self.command_preview_label.setWordWrap(True)
+            self.command_preview_label.setStyleSheet("color: #0055ff; font-weight: bold; margin-top: 10px; border-top: 1px solid #ccc; padding-top: 10px;")
+        except Exception:
+            pass
+        self.main_layout.addRow(tr("Command Preview"), self.command_preview_label)
+
         # Trigger initial population
         self.on_group_changed()
 
@@ -206,10 +215,11 @@ class UnifiedActionForm(BaseEditForm):
     def _create_widget_for_field(self, field_schema: FieldSchema):
         key = field_schema.key
 
-        # Wrap update_data to also check for auto-generation triggers
+        # Wrap update_data to also check for auto-generation triggers and preview
         def update_and_trigger():
             self.update_data()
             self._check_auto_generation(key)
+            self.update_command_preview()
 
         widget = WidgetFactory.create_widget(self, field_schema, update_and_trigger)
 
@@ -391,6 +401,7 @@ class UnifiedActionForm(BaseEditForm):
         # Update preview after loading values so unified preview reflects loaded condition
         try:
             self.update_condition_preview()
+            self.update_command_preview()
         except Exception:
             pass
 
@@ -459,6 +470,25 @@ class UnifiedActionForm(BaseEditForm):
                 self.condition_preview_label.setVisible(False)
             except Exception:
                 pass
+
+    def update_command_preview(self) -> None:
+        """Update the real-time command text preview based on current form data."""
+        try:
+            # Check if there is data
+            if self.current_item is not None and hasattr(self.current_item, 'data'):
+                # In order to accurately preview we generate text from the updated raw dictionary
+                data_dict = {}
+                self._save_ui_to_data(data_dict)
+                from dm_toolkit.gui.editor.text_generator import CardTextGenerator
+                text = CardTextGenerator.format_command(data_dict)
+
+                if text:
+                    self.command_preview_label.setText(text)
+                    self.command_preview_label.setVisible(True)
+                else:
+                    self.command_preview_label.setText(tr("(No preview available)"))
+        except Exception:
+            pass
 
     def _extract_cir_entries(self, item):
         """Extract CIR entries from item data if present."""
@@ -1188,6 +1218,22 @@ class UnifiedActionForm(BaseEditForm):
                     elif key == 'target_filter':
                         if val:
                             params_data['target_filter'] = val
+                    elif key == 'amount' and isinstance(val, dict):
+                        amt = val.get("amount")
+                        up_to = val.get("up_to")
+                        if hasattr(model, "amount"):
+                            model.amount = amt
+                        else:
+                            params_data["amount"] = amt
+
+                        if hasattr(model, "up_to"):
+                            model.up_to = up_to
+                        else:
+                            params_data["up_to"] = up_to
+
+                        # Also save to new_data so it bypasses Pydantic dropping extra fields if not configured
+                        new_data['amount'] = amt
+                        new_data['up_to'] = up_to
                     else:
                         # Only save non-None values to avoid storing empty selections
                         if val is not None and val != '':

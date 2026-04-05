@@ -120,17 +120,44 @@ class FilterEditorWidget(QWidget):
         # Civilizations
         self.civ_label = QLabel(tr("文明:"))
         basic_layout.addWidget(self.civ_label, 2, 0)
+
+        civ_layout = QHBoxLayout()
+        civ_layout.setContentsMargins(0, 0, 0, 0)
+        self.civ_match_combo = QComboBox()
+        self.civ_match_combo.addItem(tr("ANY OF (または)"), "OR")
+        self.civ_match_combo.addItem(tr("ALL OF (かつ)"), "AND")
+        safe_connect(self.civ_match_combo, "currentIndexChanged", self.filterChanged.emit)
+        civ_layout.addWidget(self.civ_match_combo)
+
         self.civ_selector = CivilizationSelector(allow_multicolor=True)
         safe_connect(self.civ_selector, "changed", self.filterChanged.emit)
-        basic_layout.addWidget(self.civ_selector, 2, 1)
+        civ_layout.addWidget(self.civ_selector)
+        civ_layout.addStretch()
+
+        civ_widget = QWidget()
+        civ_widget.setLayout(civ_layout)
+        basic_layout.addWidget(civ_widget, 2, 1)
 
         # Races
         self.race_label = QLabel(tr("種族:"))
         basic_layout.addWidget(self.race_label, 3, 0)
+
+        race_layout = QHBoxLayout()
+        race_layout.setContentsMargins(0, 0, 0, 0)
+        self.race_match_combo = QComboBox()
+        self.race_match_combo.addItem(tr("ANY OF (または)"), "OR")
+        self.race_match_combo.addItem(tr("ALL OF (かつ)"), "AND")
+        safe_connect(self.race_match_combo, "currentIndexChanged", self.filterChanged.emit)
+        race_layout.addWidget(self.race_match_combo)
+
         self.races_edit = QLineEdit()
         self.races_edit.setPlaceholderText(tr("カンマ区切り (例: ドラゴン, サイバーロード)"))
         safe_connect(self.races_edit, "textChanged", self.filterChanged.emit)
-        basic_layout.addWidget(self.races_edit, 3, 1)
+        race_layout.addWidget(self.races_edit)
+
+        race_widget = QWidget()
+        race_widget.setLayout(race_layout)
+        basic_layout.addWidget(race_widget, 3, 1)
 
         # 2. Stats (Cost, Power)
         # 再発防止: ラベルはすべて日本語で統一。英語表記を追加しないこと。
@@ -477,10 +504,18 @@ class FilterEditorWidget(QWidget):
         # Civs
         civs = filt_data.get('civilizations', [])
         self.civ_selector.set_selected_civs(civs)
+        civ_match = filt_data.get('civ_match_mode', 'OR')
+        idx = self.civ_match_combo.findData(civ_match)
+        if idx >= 0:
+            self.civ_match_combo.setCurrentIndex(idx)
 
         # Races
         races = filt_data.get('races', [])
         self.races_edit.setText(tr(", ").join(races))
+        race_match = filt_data.get('race_match_mode', 'OR')
+        idx = self.race_match_combo.findData(race_match)
+        if idx >= 0:
+            self.race_match_combo.setCurrentIndex(idx)
 
         # Costs
         self.min_cost_spin.setValue(filt_data.get('min_cost', -1) if filt_data.get('min_cost') is not None else -1)
@@ -553,11 +588,15 @@ class FilterEditorWidget(QWidget):
         if types: filt['types'] = types
 
         civs = self.civ_selector.get_selected_civs()
-        if civs: filt['civilizations'] = civs
+        if civs:
+            filt['civilizations'] = civs
+            filt['civ_match_mode'] = self.civ_match_combo.currentData()
 
         races_str = self.races_edit.text()
         races = [r.strip() for r in races_str.split(',') if r.strip()]
-        if races: filt['races'] = races
+        if races:
+            filt['races'] = races
+            filt['race_match_mode'] = self.race_match_combo.currentData()
 
         if self.min_cost_spin.value() != -1: filt['min_cost'] = self.min_cost_spin.value()
         if self.max_cost_spin.value() != -1: filt['max_cost'] = self.max_cost_spin.value()
@@ -623,7 +662,9 @@ class FilterEditorWidget(QWidget):
         super().blockSignals(block)
         for cb in self.zone_checks.values(): cb.blockSignals(block)
         for cb in self.type_checks.values(): cb.blockSignals(block)
+        self.civ_match_combo.blockSignals(block)
         self.civ_selector.blockSignals(block)
+        self.race_match_combo.blockSignals(block)
         self.races_edit.blockSignals(block)
         self.min_cost_spin.blockSignals(block)
         self.max_cost_spin.blockSignals(block)

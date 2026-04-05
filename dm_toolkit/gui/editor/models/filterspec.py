@@ -6,8 +6,10 @@ from pydantic import BaseModel, Field
 class FilterSpec(BaseModel):
     zones: Optional[List[str]] = Field(default=None)
     civilizations: Optional[List[str]] = Field(default=None)
+    civ_match_mode: Optional[str] = Field(default="OR")
     types: Optional[List[str]] = Field(default=None)
     races: Optional[List[str]] = Field(default=None)
+    race_match_mode: Optional[str] = Field(default="OR")
     owner: Optional[str] = Field(default=None)
     count: Optional[int] = Field(default=None)
     min_cost: Optional[int] = Field(default=None)
@@ -39,7 +41,7 @@ def filterspec_from_legacy(d: Optional[Dict[str, Any]]) -> Optional[FilterSpec]:
         raise TypeError("expected dict or FilterSpec for conversion")
     # Only pick known fields to avoid accidental data leakage
     keys = {
-        'zones', 'civilizations', 'types', 'races', 'owner', 'count',
+        'zones', 'civilizations', 'civ_match_mode', 'types', 'races', 'race_match_mode', 'owner', 'count',
         'min_cost', 'max_cost', 'exact_cost',
         'min_power', 'max_power', 'exact_power',
         'min_count', 'max_count', 'exact_count',
@@ -63,7 +65,7 @@ def filterspec_to_legacy(f: Optional[FilterSpec]) -> Optional[Dict[str, Any]]:
         return f
     data: Dict[str, Any] = {}
     for name in (
-        'zones', 'civilizations', 'types', 'races', 'owner', 'count',
+        'zones', 'civilizations', 'civ_match_mode', 'types', 'races', 'race_match_mode', 'owner', 'count',
         'min_cost', 'max_cost', 'exact_cost',
         'min_power', 'max_power', 'exact_power',
         'min_count', 'max_count', 'exact_count',
