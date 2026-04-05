@@ -93,10 +93,17 @@ class PropertyInspector(QWidget):
                 # Show a compact summary in the label area (non-blocking)
                 summary = "\n".join([f"⚠️ {w}" for w in warns])
                 self.header_label.setText(tr("Property Inspector") + "\n" + summary)
+            else:
+                # 再発防止: 警告解消後に古いメッセージを残さない。
+                self.header_label.setText(tr("Property Inspector"))
         self.structure_update_requested.emit(command, data)
 
     def _on_data_changed(self):
         """Handle simple data change notifications from forms without specific commands."""
+        try:
+            self.header_label.setText(tr("Property Inspector"))
+        except Exception:
+            pass
         # For forms that just emit dataChanged without command/data parameters,
         # we emit a generic structure update signal
         self.structure_update_requested.emit("update", {})
@@ -166,6 +173,7 @@ class PropertyInspector(QWidget):
         self.unified_form = UnifiedActionForm()
         self.stack.addWidget(self.unified_form)
         safe_connect(self.unified_form, 'structure_update_requested', self._on_structure_update)
+        safe_connect(self.unified_form, 'dataChanged', self._on_data_changed)
 
         self.spell_side_form = SpellSideForm()
         self.stack.addWidget(self.spell_side_form)
@@ -203,6 +211,11 @@ class PropertyInspector(QWidget):
     def set_selection(self, index):
         # パンくず更新: 選択変更のたびに呼ぶ
         self._update_breadcrumb(index)
+        try:
+            # 再発防止: 選択切替時に古い整合性警告を残さない。
+            self.header_label.setText(tr("Property Inspector"))
+        except Exception:
+            pass
 
         if index is None or not index.isValid():
             self.stack.setCurrentWidget(self.empty_page)

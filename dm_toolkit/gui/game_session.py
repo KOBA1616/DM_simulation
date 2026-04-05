@@ -103,6 +103,9 @@ class GameSession:
         self._ai_stop_event = threading.Event()
         # UI callback safety helper: protects against blocking or exceptions
         self._ui_callback_timeout = 0.5  # seconds to wait for UI callback before logging timeout
+        # 再発防止: 緊急時のみ安全進行モード（逐次コマンド実行）を使えるようにする。
+        # 既定はネイティブ本来経路（GameInstance.step/fast_forward）を使用する。
+        self._safe_native_progress = os.environ.get("DM_SAFE_NATIVE_PROGRESS", "0") == "1"
 
         # 再発防止: Qt スレッド安全 UI 更新ブリッジ。
         #   バックグラウンドスレッドから直接 Qt Widget を操作すると
@@ -134,7 +137,9 @@ class GameSession:
         if self.native_card_db is None:
             if hasattr(dm_ai_module, 'JsonLoader'):
                 try:
-                    self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+                    # 再発防止: JsonLoader にファイルパスを直接渡すと access violation が
+                    # 発生するケースがあるため、EngineCompat 経由の安全ローダを使う。
+                    self.native_card_db = EngineCompat.JsonLoader_load_cards("data/cards.json")
                     self.callback_log(tr("Loaded native CardDatabase via JsonLoader"))
                 except Exception as e:
                     self.callback_log(tr("ERROR: JsonLoader failed - {e}").format(e=e))
@@ -163,7 +168,9 @@ class GameSession:
 
         # Start game via C++ PhaseManager (delegated to controller)
         try:
-            self.controller.start_and_fast_forward(self.gs, self.native_card_db)
+            # 再発防止: 初期化直後に fast_forward すると自動で盤面が進み、
+            # 「読み込み直後の初期状態」ではなくなるため start_game のみに限定する。
+            self.controller.start_game_only(self.gs, self.native_card_db)
             self.callback_log(tr("Game Reset"))
         except Exception as e:
             self.callback_log(tr("start_game/fast_forward failed: {e}").format(e=e))
@@ -181,7 +188,8 @@ class GameSession:
         if self.native_card_db is None:
             if hasattr(dm_ai_module, 'JsonLoader'):
                 try:
-                    self.native_card_db = dm_ai_module.JsonLoader.load_cards("data/cards.json")
+                    # 再発防止: initialize_game と同様に安全ローダ経由で読み込む。
+                    self.native_card_db = EngineCompat.JsonLoader_load_cards("data/cards.json")
                     self.callback_log(tr("Loaded native CardDatabase via JsonLoader"))
                 except Exception as e:
                     self.callback_log(tr("ERROR: JsonLoader failed - {e}").format(e=e))
@@ -218,7 +226,9 @@ class GameSession:
 
         # Start game via C++ PhaseManager
         try:
-            self.controller.start_and_fast_forward(self.gs, self.native_card_db)
+            # 再発防止: reset 直後に fast_forward してしまうと、
+            # デュエマ初期盤面確認前に進行してしまうため start_game のみにする。
+            self.controller.start_game_only(self.gs, self.native_card_db)
         except Exception as e:
             self.callback_log(f"start_game failed: {e}")
 
@@ -277,6 +287,17 @@ class GameSession:
                 self._safe_callback_update_ui()
                 return
 
+            if self._safe_native_progress:
+                # 再発防止: native step() を避け、合法コマンドを逐次実行して進行する。
+                cmds = _generate_legal_commands(self.gs, self.card_db)
+                if not cmds:
+                    self._safe_advance_phase()
+                    self._safe_callback_update_ui()
+                    return
+
+                self.execute_command(cmds[0])
+                return
+
             # AI player - use C++ step() for complete automation
             success = self.game_instance.step()
             
@@ -294,6 +315,16 @@ class GameSession:
                 self._no_action_count = 0
             
             self._safe_callback_update_ui()
+
+        except Exception as e:
+            # 再発防止: step() 由来の例外が UI スレッドまで伝播すると
+            # ゲーム進行中にアプリ全体が停止するため、ここで捕捉して安全停止する。
+            self.callback_log(tr("ERROR: step_game failed: {e}").format(e=e))
+            self.is_running = False
+            try:
+                self._safe_callback_update_ui()
+            except Exception:
+                pass
 
         finally:
             self.is_processing = False
@@ -367,9 +398,11 @@ class GameSession:
             except Exception:
                 pass
 
-        # --- 実行後は必ず fast_forward で次の判断点まで進める ---
-        # 再発防止: ここを省くとヒューマンターン後にゲームが止まる
-        self._fast_forward()
+        # --- 実行後の進行 ---
+        # 再発防止: 安全進行モードでは fast_forward を使わない。
+        # step() ループ側で合法コマンドが無いときに段階的にフェーズを進める。
+        if not self._safe_native_progress:
+            self._fast_forward()
         if self.game_instance:
             self.gs = self.game_instance.state
 
@@ -379,6 +412,9 @@ class GameSession:
 
     def _fast_forward(self):
         """Call C++ fast_forward to progress game until next decision point."""
+        if self._safe_native_progress:
+            self.callback_log("INFO: fast_forward skipped in safe native progression mode")
+            return
         # Delegate to controller which guards PhaseManager calls
         if self.native_card_db is None:
             self.callback_log(tr("ERROR: Cannot call fast_forward without native CardDatabase"))
@@ -392,6 +428,20 @@ class GameSession:
             self.callback_log(f"ERROR executing fast_forward: {e}")
             import traceback
             self.callback_log(traceback.format_exc())
+
+    def _safe_advance_phase(self) -> None:
+        """Advance one phase without using fast_forward.
+
+        Recurrence prevention: this is the low-risk alternative used when
+        fast_forward/step are unstable on native builds.
+        """
+        if not dm_ai_module or self.gs is None:
+            return
+        if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'advance_phase'):
+            try:
+                dm_ai_module.PhaseManager.advance_phase(self.gs)
+            except Exception as e:
+                self.callback_log(f"ERROR executing advance_phase: {e}")
 
     def _safe_callback_update_ui(self, wait: bool = True, timeout: Optional[float] = None) -> None:
         """UI コールバックをスレッドセーフに呼び出す。

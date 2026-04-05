@@ -47,15 +47,9 @@ namespace dm::engine {
                       << " adjusted=" << adjusted << std::endl;
         }
         
-        // Use PaymentPlan prototype to compute passive reductions defined on the card (for validation)
-        auto plan = dm::engine::evaluate_cost(card_def, 1, std::nullopt, std::nullopt);
-        int plan_adjusted = plan.adjusted_after_passive;
-        
-        // 再発防止: evaluate_cost の結果と direct計算の結果が一致することを確認（validation）
-        if (plan.adjusted_after_passive != adjusted) {
-            std::cerr << "[MANA_SYSTEM WARNING] Mismatch: evaluate_cost=" << plan_adjusted 
-                      << " vs direct=" << adjusted << std::endl;
-        }
+        // 再発防止: evaluate_cost() はプロトタイプ検証用であり、
+        // 実行時コスト計算の必須経路ではない。ここで呼ぶと legal command 生成中に
+        // 例外/クラッシュを誘発したため、実運用は direct 計算値を唯一の真値とする。
 
         // Preserve runtime active_modifiers behavior by applying them on top of passive adjustments
         for (const auto& mod : game_state.active_modifiers) {

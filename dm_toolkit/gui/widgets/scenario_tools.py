@@ -284,9 +284,10 @@ class ScenarioToolsDock(QDockWidget):
             # Move each to graveyard (safe, no side effects)
             for card, from_zone in cards_to_clear:
                 try:
-                    dm_ai_module.DevTools.move_cards(
-                        self.gs, card.instance_id, from_zone, dm_ai_module.Zone.GRAVEYARD
-                    )
+                    # 再発防止: move_cards は count/card_id_filter 付きの native API なので、
+                    # ここでは instance_id で明示的に削除してから墓地へ再配置する。
+                    self.gs.remove_card_from_zone(pid, from_zone, card.instance_id)
+                    self.gs.add_card_to_graveyard(pid, card.card_id, card.instance_id)
                 except Exception:
                     pass  # Ignore move failures
 
@@ -309,15 +310,9 @@ class ScenarioToolsDock(QDockWidget):
         elif zone_enum == dm_ai_module.Zone.BATTLE:
             self.gs.add_test_card_to_battle(pid, cid, iid, False, True)
         elif zone_enum == dm_ai_module.Zone.SHIELD:
-            self.gs.add_card_to_hand(pid, cid, iid)
-            dm_ai_module.DevTools.move_cards(
-                self.gs, iid, dm_ai_module.Zone.HAND, dm_ai_module.Zone.SHIELD
-            )
+            self.gs.add_card_to_shield(pid, cid, iid)
         elif zone_enum == dm_ai_module.Zone.GRAVEYARD:
-            self.gs.add_card_to_hand(pid, cid, iid)
-            dm_ai_module.DevTools.move_cards(
-                self.gs, iid, dm_ai_module.Zone.HAND, dm_ai_module.Zone.GRAVEYARD
-            )
+            self.gs.add_card_to_graveyard(pid, cid, iid)
         elif zone_enum == dm_ai_module.Zone.DECK:
             self.gs.add_card_to_deck(pid, cid, iid)
 
@@ -326,7 +321,11 @@ class ScenarioToolsDock(QDockWidget):
         if pid >= len(self.gs.players):
             return
         p = self.gs.players[pid]
-        p.deck = [c for c in p.deck if c.card_id != card_id]
+        # 再発防止: Player.deck は native CardList なので、Python list の再代入ではなく in-place 更新にする。
+        filtered_cards = [card for card in p.deck if card.card_id != card_id]
+        p.deck.clear()
+        for card in filtered_cards:
+            p.deck.append(card)
 
     def on_add_specific_card(self):
         """Open card action dialog for adding cards."""

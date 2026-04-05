@@ -25,6 +25,32 @@ from dm_toolkit.gui.editor.consistency import format_integrity_warnings, validat
 
 COMMAND_GROUPS = EditorConfigLoader.get_command_groups()
 
+
+def _resolve_query_mode_from_params(params_data: dict[str, Any]) -> str:
+    """Resolve QUERY mode from canonical and legacy keys."""
+    if not isinstance(params_data, dict):
+        return ""
+    mode = (
+        params_data.get('str_param')
+        or params_data.get('query_mode')
+        or params_data.get('query_string')
+        or ''
+    )
+    return str(mode).strip()
+
+
+def _sync_query_mode_params(params_data: dict[str, Any], mode: str) -> None:
+    """Keep QUERY mode keys synchronized for backward compatibility."""
+    if not isinstance(params_data, dict):
+        return
+    normalized = str(mode or '').strip()
+    if not normalized:
+        return
+    # 再発防止: フォーマッタ/旧保存形式が読む query_string/query_mode も同時更新する。
+    params_data['str_param'] = normalized
+    params_data['query_mode'] = normalized
+    params_data['query_string'] = normalized
+
 class UnifiedActionForm(BaseEditForm):
     """Schema-driven Unified Action Form using WidgetFactory and External Config."""
     
@@ -156,7 +182,66 @@ class UnifiedActionForm(BaseEditForm):
             if t is None:
                 t = "NONE"  # Final fallback to valid command type
         self.rebuild_dynamic_ui(t)
+        self._seed_widgets_from_current_item(t)
         self.update_data()
+
+    def _seed_widgets_from_current_item(self, cmd_type: str) -> None:
+        """Seed newly rebuilt widgets from current item to keep shared values across type changes."""
+        if not self.current_item or self._is_populating:
+            return
+
+        try:
+            raw = self.current_item.data(Qt.ItemDataRole.UserRole + 2)
+            if raw is None:
+                return
+            existing = to_dict(raw)
+            if not isinstance(existing, dict):
+                return
+
+            params = to_dict(existing.get('params', {}))
+            if not isinstance(params, dict):
+                params = {}
+
+            previous_type = str(existing.get('type') or '').upper()
+
+            for key, widget in self.widgets_map.items():
+                if not hasattr(widget, 'set_value'):
+                    continue
+
+                val = None
+                if key in ['links', 'input_link', 'output_link', 'input_var', 'output_var']:
+                    in_key = existing.get('input_value_key') or existing.get('input_var')
+                    out_key = existing.get('output_value_key') or existing.get('output_var')
+                    payload = {}
+                    if in_key:
+                        payload['input_value_key'] = in_key
+                    if out_key:
+                        payload['output_value_key'] = out_key
+                    if payload:
+                        val = payload
+                elif key == 'options':
+                    val = existing.get('options')
+                else:
+                    val = params.get(key)
+                    if val is None:
+                        val = existing.get(key)
+
+                if cmd_type == 'QUERY' and key == 'str_param' and val in (None, ''):
+                    val = _resolve_query_mode_from_params(params) or _resolve_query_mode_from_params(existing)
+
+                if cmd_type == 'QUERY' and key == 'str_param' and val in (None, ''):
+                    # 再発防止: 別種別から QUERY に切り替えた直後はモードが未初期化になりやすい。
+                    # この場合は選択肢の先頭を既定値として入れ、表示が --- のまま残らないようにする。
+                    if previous_type != 'QUERY':
+                        val = 'CARDS_MATCHING_FILTER'
+
+                if val is not None and (isinstance(val, (bool, int, float)) or val != ''):
+                    try:
+                        widget.set_value(val)
+                    except Exception:
+                        continue
+        except Exception:
+            return
 
     def rebuild_dynamic_ui(self, cmd_type):
         """Rebuilds the dynamic part of the form based on schema."""
@@ -362,6 +447,18 @@ class UnifiedActionForm(BaseEditForm):
                     if val is None:
                         val = getattr(model, key, None)
 
+                    if cmd_type == 'QUERY' and key == 'str_param':
+                        # 旧データは query_mode/query_string のみ保持されることがあるため、
+                        # QUERY mode は互換キーからも解決する。
+                        resolved_mode = _resolve_query_mode_from_params(params_data)
+                        if resolved_mode:
+                            val = resolved_mode
+
+                    if cmd_type == 'QUERY' and key == 'str_param' and val in (None, ''):
+                        # 再発防止: 旧データの QUERY は mode 未設定のまま保存されている場合がある。
+                        # UI 上で `---` のままだと整合性警告が出続けるため、互換デフォルトを補完する。
+                        val = 'CARDS_MATCHING_FILTER'
+
                     # Only set value if data actually exists (not None and not empty string)
                     # This ensures saved data is displayed, but unsaved fields remain empty ("---")
                     # For boolean/numeric fields, False/0 are valid values, so we check type
@@ -386,6 +483,18 @@ class UnifiedActionForm(BaseEditForm):
                         widget.set_data({})
                     except Exception:
                         pass
+
+        if cmd_type == 'QUERY':
+            try:
+                mode_widget = self.widgets_map.get('str_param')
+                if mode_widget and hasattr(mode_widget, 'get_value') and hasattr(mode_widget, 'set_value'):
+                    current_mode = mode_widget.get_value()
+                    if current_mode in (None, ''):
+                        # 再発防止: レガシー空値 QUERY を開いた瞬間に未設定扱いが残るため、
+                        # 既定モードへ UI 側を正規化して選択不整合を解消する。
+                        mode_widget.set_value('CARDS_MATCHING_FILTER')
+            except Exception:
+                pass
 
         # Clear validation styles on load
         self._clear_validation_styles()
@@ -1186,6 +1295,13 @@ class UnifiedActionForm(BaseEditForm):
 
         # Start with fresh dict
         new_data = {'type': cmd_type}
+        query_mode_keys_present_in_source = False
+        if cmd_type == 'QUERY':
+            source_params = data.get('params') if isinstance(data.get('params'), dict) else {}
+            query_mode_keys_present_in_source = (
+                any(k in data for k in ('str_param', 'query_mode', 'query_string'))
+                or any(k in source_params for k in ('str_param', 'query_mode', 'query_string'))
+            )
 
         try:
             # Use Pydantic model for validation/structure
@@ -1292,6 +1408,15 @@ class UnifiedActionForm(BaseEditForm):
                     params_data['amount'] = 255
 
             # Ensure dict-backed params are persisted even when initial params was typed model.
+            if cmd_type == 'QUERY':
+                mode = _resolve_query_mode_from_params(params_data)
+                if not mode:
+                    # 再発防止: 旧データ由来で query_mode/query_string/str_param が空のケースは
+                    # 既定モードに正規化して、GUIの選択欄と保存データの不一致を防ぐ。
+                    # ただし、キー自体が存在しない新規入力（完全未設定）は従来どおり警告対象にする。
+                    if query_mode_keys_present_in_source:
+                        mode = 'CARDS_MATCHING_FILTER'
+                _sync_query_mode_params(params_data, mode)
             model.params = params_data
 
             # Merge model back to dict
@@ -1324,9 +1449,13 @@ class UnifiedActionForm(BaseEditForm):
                     # Emit warnings for UI/console listeners
                     self.structure_update_requested.emit("INTEGRITY_WARNINGS", {"warnings": warns})
                     formatted_warns = format_integrity_warnings(warns)
-                    # Apply simple validation styles to indicate problem fields
-                    for widget in self.widgets_map.values():
-                        if hasattr(widget, 'setStyleSheet'):
+                    # 再発防止: 1項目の警告でフォーム全体を赤枠表示すると
+                    # 何が未設定か判別しづらくなるため、該当フィールドのみ強調する。
+                    self._clear_validation_styles()
+                    target_keys = self._infer_integrity_warning_field_keys(warns)
+                    for key in target_keys:
+                        widget = self.widgets_map.get(key)
+                        if widget and hasattr(widget, 'setStyleSheet'):
                             widget.setStyleSheet("border: 1px solid red;")
                             if hasattr(widget, 'setToolTip'):
                                 # 再発防止: Tooltip も共通フォーマッタを使い、UI 表示の揺れを防ぐ。
@@ -1341,6 +1470,9 @@ class UnifiedActionForm(BaseEditForm):
             data.clear()
             data.update(new_data)
             self._clear_validation_styles()
+            # 再発防止: 警告解消時に INTEGRITY_WARNINGS=[] を通知し、
+            # PropertyInspector 側の古い警告表示をクリアする。
+            self.structure_update_requested.emit("INTEGRITY_WARNINGS", {"warnings": []})
 
         except ValidationError as e:
             print(f"Validation Error: {e}")
@@ -1357,6 +1489,24 @@ class UnifiedActionForm(BaseEditForm):
         for widget in self.widgets_map.values():
             if hasattr(widget, 'setStyleSheet'):
                 widget.setStyleSheet("")
+
+    def _infer_integrity_warning_field_keys(self, warns: list[str]) -> set[str]:
+        """Infer likely field keys from integrity warnings for targeted highlighting."""
+        fields: set[str] = set()
+        for w in warns:
+            if "Query Mode (str_param)" in w:
+                fields.add("str_param")
+            if "Stat Key (str_param)" in w:
+                fields.add("str_param")
+            if "target_filter" in w:
+                fields.add("target_filter")
+            if "SELECT_OPTION の選択数" in w or "amount または input_value_key" in w:
+                fields.add("amount")
+                fields.add("input_value_key")
+            if "選択肢ブランチ" in w:
+                fields.add("options")
+
+        return fields
 
     def _apply_validation_styles(self, error: ValidationError):
         """Parses ValidationError and highlights invalid widgets."""

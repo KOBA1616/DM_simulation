@@ -1252,6 +1252,9 @@ class EngineCompat:
             old_stderr = sys.stderr
             try:
                 sys.stderr = devnull
+                # 再発防止: native JsonLoader は filepath 契約で動作するため、
+                # 文字列化 JSON を渡す互換処理は行わず path をそのまま渡す。
+                # GUI 起動時のクラッシュ回避は run_gui.ps1 の事前ヘルスチェックで担保する。
                 res = dm_ai_module.JsonLoader.load_cards(filepath)
             finally:
                 sys.stderr = old_stderr

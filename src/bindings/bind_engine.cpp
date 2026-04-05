@@ -446,10 +446,11 @@ void bind_engine(py::module &m) {
       }
     } catch (...) {
     }
-    // 再発防止: IntentGenerator は non-const GameState& を受け取るため、
-    // バインディング層では const 参照を直接渡さずクローンを介して呼び出す。
-    GameState gs_for_intent = gs.clone();
-    return IntentGenerator::generate_legal_commands(gs_for_intent, db);
+    // 再発防止: GameState::clone() 経路で合法手生成直後に AV が再発したため、
+    // まずは実体参照で評価してクラッシュを回避する。
+    // 根本的には IntentGenerator の副作用を段階的に排除し、clone 依存を戻す。
+    auto &gs_ref = const_cast<GameState &>(gs);
+    return IntentGenerator::generate_legal_commands(gs_ref, db);
   };
 
   py::class_<IntentGenerator>(m, "IntentGenerator")
@@ -508,14 +509,12 @@ void bind_engine(py::module &m) {
       .def_static("load_cards", [](const std::string &filepath) {
         auto map_val =
             dm::engine::infrastructure::JsonLoader::load_cards(filepath);
-        // Move into shared pointer to prevent copy when returning to Python
-        auto db_ptr = std::make_shared<CardDatabase>(std::move(map_val));
         // Diagnostic: dump basic summary of loaded card definitions (static_abilities counts)
         try {
           std::ofstream diag("c:\\temp\\binding_loaded_db.txt", std::ios::app);
           if (diag) {
-            diag << "JsonLoader.load_cards: " << filepath << " entries=" << db_ptr->size() << "\n";
-            for (const auto &kv : *db_ptr) {
+            diag << "JsonLoader.load_cards: " << filepath << " entries=" << map_val.size() << "\n";
+            for (const auto &kv : map_val) {
               const auto &cid = kv.first;
               const auto &def = kv.second;
               diag << "  card_id=" << cid << " static_abilities=" << def.static_abilities.size() << "\n";
@@ -532,7 +531,9 @@ void bind_engine(py::module &m) {
           }
         } catch (...) {
         }
-        return db_ptr;
+        // 再発防止: CardDatabase は値返しにして pybind の map ラッパーに直接渡す。
+        // shared_ptr holder 経路で非空 map 返却時にクラッシュした回帰を防ぐ。
+        return map_val;
       });
 
   py::class_<DevTools>(m, "DevTools")
@@ -556,10 +557,11 @@ void bind_engine(py::module &m) {
   });
 
   py::class_<GameInstance>(m, "GameInstance")
-      .def(py::init([](uint32_t seed, std::shared_ptr<const CardDatabase> db) {
-             return std::make_unique<GameInstance>(seed, db);
+      .def(py::init([](uint32_t seed, const CardDatabase &db) {
+             auto shared_db = std::make_shared<CardDatabase>(db);
+             return std::make_unique<GameInstance>(seed, shared_db);
            }),
-           py::arg("seed") = 0, py::arg("db") = nullptr)
+           py::arg("seed"), py::arg("db"))
       .def(py::init<uint32_t>())
       .def_property_readonly(
           "state", [](GameInstance &g) -> core::GameState & { return g.state; },

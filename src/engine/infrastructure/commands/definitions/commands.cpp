@@ -696,7 +696,13 @@ void FlowCommand::execute(core::GameState &state) {
     break;
   case FlowType::SET_ACTIVE_PLAYER:
     previous_value = state.active_player_id;
-    state.active_player_id = new_value;
+    // 再発防止: PlayerID は uint8_t のため負値が 255 へ丸め込まれる。
+    // そのまま代入すると players[active_player_id] 参照で OOB になりクラッシュする。
+    if (new_value < 0 || new_value >= static_cast<int>(state.players.size())) {
+      state.active_player_id = 0;
+    } else {
+      state.active_player_id = static_cast<core::PlayerID>(new_value);
+    }
     break;
   case FlowType::SET_PLAYED_WITHOUT_MANA:
     previous_value = state.turn_stats.played_without_mana;

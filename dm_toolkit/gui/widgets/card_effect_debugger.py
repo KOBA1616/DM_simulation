@@ -10,6 +10,30 @@ from dm_toolkit.engine.compat import EngineCompat
 from dm_toolkit.gui.utils.card_helpers import get_card_name
 from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
+
+def _normalize_pending_effect(info: object) -> tuple[str, int, int, object]:
+    """Normalize pending effect payloads from compat/native layers.
+
+    Recurrence prevention: EngineCompat.get_pending_effects_info can return
+    tuple- or dict-shaped items depending on the backend path.
+    """
+    if isinstance(info, tuple):
+        p_type = str(info[0]) if len(info) >= 1 else "UNKNOWN"
+        source_id = int(info[1]) if len(info) >= 2 else -1
+        controller = int(info[2]) if len(info) >= 3 else -1
+        cmd_obj = info[3] if len(info) >= 4 else info
+        return p_type, source_id, controller, cmd_obj
+
+    if hasattr(info, 'get'):
+        getter = getattr(info, 'get')
+        p_type = str(getter("type", "UNKNOWN"))
+        source_id = int(getter("source_instance_id", -1))
+        controller = int(getter("controller", -1))
+        cmd_obj = getter("command", info)
+        return p_type, source_id, controller, cmd_obj
+
+    return str(info), -1, -1, info
+
 class CardEffectDebugger(QWidget):
     """
     Debug widget for card effects.
@@ -115,8 +139,7 @@ class CardEffectDebugger(QWidget):
         pending_info = EngineCompat.get_pending_effects_info(game_state)
         self.pending_table.setRowCount(len(pending_info))
         for i, info in enumerate(pending_info):
-            # Info is now (type_str, source_id, controller, command_object)
-            p_type, source_id, controller, cmd_obj = info
+            p_type, source_id, controller, cmd_obj = _normalize_pending_effect(info)
 
             self.pending_table.setItem(i, 0, QTableWidgetItem(str(p_type)))
 

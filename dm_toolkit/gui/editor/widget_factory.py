@@ -140,16 +140,63 @@ class SelectComboWidget(QComboBox, EditorWidgetMixin):
                 self.setCurrentIndex(idx)
             return
 
+        if isinstance(value, str):
+            value = value.strip()
+
         idx = self.findData(value)
         if idx >= 0:
             self.setCurrentIndex(idx)
             return
+
+        # Fallback: normalized data match (legacy whitespace/case drift)
+        if isinstance(value, str):
+            upper_value = value.upper()
+            for i in range(self.count()):
+                data = self.itemData(i)
+                if isinstance(data, str) and data.strip().upper() == upper_value:
+                    self.setCurrentIndex(i)
+                    return
 
         # Fallback: match by text if data not found (legacy cases)
         text = str(value)
         idx = self.findText(text)
         if idx >= 0:
             self.setCurrentIndex(idx)
+
+
+def _is_query_mode_schema(schema: FieldSchema) -> bool:
+    opts = schema.options or []
+    if schema.key != 'str_param':
+        return False
+    if any(str(opt) == 'CARDS_MATCHING_FILTER' for opt in opts):
+        return True
+    label = str(getattr(schema, 'label', '') or '')
+    return ('Query Mode' in label) or ('クエリ' in label)
+
+
+def _format_select_option_label(schema: FieldSchema, opt) -> str:
+    # Use CardTextResources for translation if available (e.g. DURATION_THIS_TURN)
+    label = str(opt)
+    if opt in CardTextResources.DURATION_TRANSLATION:
+        return CardTextResources.get_duration_text(opt)
+    if opt in CardTextResources.DELAYED_EFFECT_TRANSLATION:
+        return CardTextResources.get_delayed_effect_text(opt)
+    if opt in CardTextResources.KEYWORD_TRANSLATION:
+        return CardTextResources.get_keyword_text(opt)
+
+    if _is_query_mode_schema(schema):
+        query_mode_labels = {
+            'CARDS_MATCHING_FILTER': tr('条件一致カード枚数'),
+            'SELECT_TARGET': tr('対象を選択'),
+            'SELECT_OPTION': tr('選択肢を選択'),
+        }
+        if opt in query_mode_labels:
+            return query_mode_labels[opt]
+        # Query Mode の統計キーは日本語ラベルを使う
+        if isinstance(opt, str) and opt in CardTextResources.STAT_KEY_MAP:
+            return CardTextResources.get_stat_key_label(opt)
+
+    return label
 
 class CivilizationWrapper(CivilizationSelector, EditorWidgetMixin):
     def get_value(self):
@@ -374,15 +421,7 @@ def _create_select_widget(parent, schema, cb):
         
         if schema.options:
             for opt in schema.options:
-                # Use CardTextResources for translation if available (e.g. DURATION_THIS_TURN)
-                label = str(opt)
-                if opt in CardTextResources.DURATION_TRANSLATION:
-                    label = CardTextResources.get_duration_text(opt)
-                elif opt in CardTextResources.DELAYED_EFFECT_TRANSLATION:
-                    label = CardTextResources.get_delayed_effect_text(opt)
-                elif opt in CardTextResources.KEYWORD_TRANSLATION: # Also handle keywords if passed as raw list
-                    label = CardTextResources.get_keyword_text(opt)
-
+                label = _format_select_option_label(schema, opt)
                 widget.addItem(label, opt) # Display label, store value (opt)
 
     safe_connect(widget, 'currentIndexChanged', lambda: cb())

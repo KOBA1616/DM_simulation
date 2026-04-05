@@ -8,7 +8,9 @@
 #include <thread>
 
 void bind_common(py::module& m) {
-    py::bind_map<dm::CardDatabase, std::shared_ptr<dm::CardDatabase>>(m, "CardDatabase");
+    // 再発防止: 非空 CardDatabase を Python へ返す際に shared_ptr holder 経路で
+    // access violation が発生するケースがあるため、bind_map は既定 holder を使う。
+    py::bind_map<dm::CardDatabase>(m, "CardDatabase");
 }
 
 PYBIND11_MODULE(dm_ai_module, m) {

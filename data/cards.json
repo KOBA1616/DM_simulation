@@ -27,6 +27,7 @@
             "uid": "3506843d-6a4d-4310-ba7c-1dae4d28aa0f",
             "type": "QUERY",
             "query_string": "MANA_CIVILIZATION_COUNT",
+            "query_mode": "MANA_CIVILIZATION_COUNT",
             "str_param": "MANA_CIVILIZATION_COUNT",
             "options": [],
             "output_value_key": "var_DRAW_CARD_0"
@@ -44,6 +45,7 @@
             "uid": "select-target-0001",
             "type": "QUERY",
             "query_string": "SELECT_TARGET",
+            "query_mode": "SELECT_TARGET",
             "str_param": "SELECT_TARGET",
             "options": [],
             "input_value_key": "var_DRAW_CARD_1",
@@ -222,8 +224,9 @@
           {
             "uid": "f899acbc-6e72-4358-a16d-b77fe449b83d",
             "type": "QUERY",
-            "query_string": "",
-            "str_param": "",
+            "query_string": "CARDS_MATCHING_FILTER",
+            "query_mode": "CARDS_MATCHING_FILTER",
+            "str_param": "CARDS_MATCHING_FILTER",
             "options": [],
             "output_value_key": "var_QUERY_0"
           },
@@ -266,16 +269,19 @@
                                         "legacy_action": {
                                           "type": "LEGACY_CMD",
                                           "legacy_action": {
-                                            "zones": [
-                                              "HAND",
-                                              "GRAVEYARD"
-                                            ],
-                                            "civilizations": [],
-                                            "races": [],
-                                            "flags": [],
-                                            "types": [
-                                              "SPELL"
-                                            ]
+                                            "type": "LEGACY_CMD",
+                                            "legacy_action": {
+                                              "zones": [
+                                                "HAND",
+                                                "GRAVEYARD"
+                                              ],
+                                              "civilizations": [],
+                                              "races": [],
+                                              "flags": [],
+                                              "types": [
+                                                "SPELL"
+                                              ]
+                                            }
                                           }
                                         }
                                       }
@@ -326,16 +332,19 @@
                                         "legacy_action": {
                                           "type": "LEGACY_CMD",
                                           "legacy_action": {
-                                            "zones": [
-                                              "HAND",
-                                              "GRAVEYARD"
-                                            ],
-                                            "civilizations": [],
-                                            "races": [],
-                                            "flags": [],
-                                            "types": [
-                                              "SPELL"
-                                            ]
+                                            "type": "LEGACY_CMD",
+                                            "legacy_action": {
+                                              "zones": [
+                                                "HAND",
+                                                "GRAVEYARD"
+                                              ],
+                                              "civilizations": [],
+                                              "races": [],
+                                              "flags": [],
+                                              "types": [
+                                                "SPELL"
+                                              ]
+                                            }
                                           }
                                         }
                                       }
@@ -737,8 +746,9 @@
           {
             "uid": "c3965f0a-763e-47ae-8595-85256089702f",
             "type": "QUERY",
-            "query_string": null,
-            "str_param": null,
+            "query_string": "SPELL_CAST_THIS_TURN",
+            "query_mode": "SPELL_CAST_THIS_TURN",
+            "str_param": "SPELL_CAST_THIS_TURN",
             "options": [],
             "output_value_key": "spell_count"
           },
@@ -1407,7 +1417,8 @@
                 {
                   "uid": "2177f24d-6e1e-44e2-b6c4-8d01cecfe764",
                   "type": "QUERY",
-                  "query_string": null,
+                  "query_string": "HAND_COUNT",
+                  "query_mode": "HAND_COUNT",
                   "str_param": "HAND_COUNT",
                   "options": [],
                   "output_value_key": "var_2177f24d"
@@ -1658,8 +1669,9 @@
           {
             "uid": "2657f155-5137-4ab7-ab3b-02e00b368eff",
             "type": "QUERY",
-            "query_string": null,
-            "str_param": null,
+            "query_string": "CARDS_MATCHING_FILTER",
+            "query_mode": "CARDS_MATCHING_FILTER",
+            "str_param": "CARDS_MATCHING_FILTER",
             "options": [],
             "output_value_key": "var_2657f155"
           }
@@ -1711,7 +1723,21 @@
       "ex_life": true,
       "speed_attacker": true
     },
-    "effects": [],
+    "effects": [
+      {
+        "uid": "64933bce-7016-46b6-b3a6-fa5736e2b0de",
+        "trigger": "ON_PLAY",
+        "trigger_scope": "NONE",
+        "trigger_filter": {},
+        "commands": [
+          {
+            "uid": "782fa044-4e53-42c2-8382-800eaabe97e8",
+            "type": "DRAW",
+            "amount": 1
+          }
+        ]
+      }
+    ],
     "static_abilities": [],
     "reaction_abilities": [],
     "cost_reductions": [],

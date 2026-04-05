@@ -394,6 +394,9 @@ class EffectEditForm(BaseEditForm):
                 if warns:
                     # Emit non-blocking warning event for inspector/host
                     self.structure_update_requested.emit("INTEGRITY_WARNINGS", {"warnings": warns})
+                else:
+                    # 再発防止: 警告解消後に UI の古い警告表示を確実に消す。
+                    self.structure_update_requested.emit("INTEGRITY_WARNINGS", {"warnings": []})
             except Exception:
                 # Be robust in headless/unit test environments
                 pass

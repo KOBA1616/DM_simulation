@@ -85,24 +85,31 @@ namespace dm::engine {
         // 1. Get base cost adjusted by passive modifiers
         int adjusted_cost = ManaSystem::get_adjusted_cost(state, state.players[player_id], card);
 
-        // 2. Consider ACTIVE_PAYMENT reductions using PaymentPlan prototype.
-        // For each active reduction, estimate the maximal units the player could
-        // supply and evaluate the plan for that many units to get a conservative
-        // minimal final cost.
+        // 2. Consider ACTIVE_PAYMENT reductions.
+        // 再発防止: legal command 生成中に evaluate_cost() を呼ぶ経路で AV が再発したため、
+        // ここでは ACTIVE_PAYMENT を直接計算し、検証用プロトタイプ評価には依存しない。
         int min_achievable_cost = adjusted_cost;
 
         for (const auto& reduction : card.cost_reductions) {
             if (reduction.type != ReductionType::ACTIVE_PAYMENT) continue;
 
-            const int max_units = calculate_max_units(state, player_id, reduction, card_db);
+            int max_units = calculate_max_units(state, player_id, reduction, card_db);
             if (max_units <= 0) continue;
 
-            std::optional<std::string> active_name;
-            if (!reduction.id.empty()) active_name = reduction.id;
-            else if (!reduction.name.empty()) active_name = reduction.name;
+            if (reduction.max_units != -1) {
+                max_units = std::min(max_units, reduction.max_units);
+            }
+            if (max_units <= 0) continue;
 
-            auto plan = dm::engine::evaluate_cost(card, max_units, active_name, max_units);
-            if (plan.final_cost < min_achievable_cost) min_achievable_cost = plan.final_cost;
+            int candidate_cost = adjusted_cost - (max_units * reduction.reduction_amount);
+            if (reduction.min_mana_cost > 0) {
+                candidate_cost = std::max(candidate_cost, reduction.min_mana_cost);
+            }
+            candidate_cost = std::max(candidate_cost, 0);
+
+            if (candidate_cost < min_achievable_cost) {
+                min_achievable_cost = candidate_cost;
+            }
         }
 
         if (min_achievable_cost < 0) min_achievable_cost = 0;

@@ -64,6 +64,7 @@ class GameWindow(QMainWindow):
                     _f.write(m + '\n')
             except Exception:
                 pass
+        self._startup_log = _log_msg
         _log_msg('GameWindow.__init__ start')
         try:
             self.setWindowTitle(tr("DM AI Simulator"))
@@ -110,62 +111,15 @@ class GameWindow(QMainWindow):
             self.layout_builder = LayoutBuilder(self)
             self.layout_builder.build()
             self._fc_connected = False  # 方針D: floating_confirm_btn の接続フラグ
+            self._startup_scenario_applied = False
             # Training status toolbar
             try:
                 self._init_training_toolbar()
             except Exception:
                 pass
             self.update_ui()
-            # Load and auto-deploy a default deck on startup (shuffle then reset)
-            # Must be done BEFORE applying scenarios to avoid overwriting scenario state
-            scenario_to_apply = None
-            try:
-                repo_root = os.path.join(os.getcwd())
-                meta_decks = os.path.join(repo_root, 'data', 'meta_decks.json')
-                if os.path.exists(meta_decks):
-                    try:
-                        with open(meta_decks, 'r', encoding='utf-8') as mf:
-                            md = json.load(mf)
-                        decks = md.get('decks', []) if isinstance(md, dict) else []
-                        if decks:
-                            first = decks[0]
-                            cards = list(first.get('cards', [])) if isinstance(first, dict) else []
-                            # normalize to 40 cards (truncate or repeat as needed)
-                            if cards:
-                                d0 = cards[:40]
-                                if len(d0) < 40:
-                                    # repeat sequence to fill
-                                    while len(d0) < 40:
-                                        d0.extend(cards[:(40 - len(d0))])
-                                d1 = list(d0)
-                                random.shuffle(d0)
-                                random.shuffle(d1)
-                                self.p0_deck_ids = d0
-                                self.p1_deck_ids = d1
-                                self.reset_game()
-                                try:
-                                    self.log_viewer.log_message(tr('Loaded default deck and deployed (shuffled) on startup'))
-                                except Exception:
-                                    pass
-                    except Exception as e:
-                        try:
-                            self.log_viewer.log_message(f"Failed loading default deck: {e}")
-                        except Exception:
-                            pass
-            except Exception:
-                pass
-            # For test operation: auto-apply the 'standard_start' scenario if present
-            # Apply AFTER deck loading to avoid scenario state being overwritten
-            try:
-                if hasattr(self, 'scenario_tools') and getattr(self, 'scenario_tools') is not None:
-                    for sc in getattr(self.scenario_tools, 'scenarios', []):
-                        if sc and sc.get('name') == 'standard_start':
-                            # Apply scenario (this will reset game and set zones accordingly)
-                            self.scenario_tools.apply_scenario(sc)
-                            self.log_viewer.log_message(tr("Applied 'standard_start' scenario on startup"))
-                            break
-            except Exception as e:
-                self.log_viewer.log_message(f"Failed to auto-apply standard scenario: {e}")
+            # 再発防止: reset_game()/apply_scenario() は C++ 初期化を伴ってブロックし得るため、
+            # __init__ では実行しない。イベントループ開始後の _deferred_startup() に集約する。
             try:
                 self.showMaximized()
                 _log_msg('GameWindow.showMaximized called')
@@ -203,20 +157,16 @@ class GameWindow(QMainWindow):
         This runs after the event loop has started so the window can appear promptly.
         """
         try:
+            try:
+                self._startup_log('_deferred_startup start')
+            except Exception:
+                pass
             # Initialize Game (may call into native C++ and perform I/O)
             self.session.initialize_game(self.card_db)
 
             # 再発防止: initialize_game() は player_modes を AI/AI で初期化する。
             # control_panel の設定を反映してから auto-start タイマーを判定する。
             self._apply_player_modes()
-
-            # Auto-start timer for AI vs AI games (check after session initialized)
-            try:
-                if self.session.gs and not any(self.session.gs.is_human_player(pid) for pid in [0, 1]):
-                    self.is_running = True
-                    self.timer.start(500)
-            except Exception:
-                pass
 
             # Load default deck if present (previous logic expects session initialized)
             try:
@@ -245,10 +195,52 @@ class GameWindow(QMainWindow):
                                     self.log_viewer.log_message(tr('Loaded default deck and deployed (shuffled) on startup'))
                                 except Exception:
                                     pass
+                                try:
+                                    self._startup_log('Loaded default deck and deployed (shuffled) on startup')
+                                except Exception:
+                                    pass
                     except Exception:
                         pass
             except Exception:
                 pass
+
+            # 再発防止: 起動時に standard_start を自動適用すると、
+            # 「デュエマ初期状態（通常セットアップ直後）」ではない盤面に上書きされる。
+            # 明示 opt-in（DM_AUTO_APPLY_STARTUP_SCENARIO=1）のときだけ適用する。
+            auto_apply_startup_scenario = os.environ.get('DM_AUTO_APPLY_STARTUP_SCENARIO', '0') == '1'
+            try:
+                if auto_apply_startup_scenario:
+                    if (not self._startup_scenario_applied and hasattr(self, 'scenario_tools')
+                            and getattr(self, 'scenario_tools') is not None):
+                        for sc in getattr(self.scenario_tools, 'scenarios', []):
+                            if sc and sc.get('name') == 'standard_start':
+                                self.scenario_tools.apply_scenario(sc)
+                                self._startup_scenario_applied = True
+                                self.log_viewer.log_message(tr("Applied 'standard_start' scenario on startup"))
+                                try:
+                                    self._startup_log("Applied 'standard_start' scenario on startup")
+                                except Exception:
+                                    pass
+                                break
+                else:
+                    self.log_viewer.log_message(tr("Skipped startup scenario auto-apply (default behavior)."))
+                    try:
+                        self._startup_log("Skipped startup scenario auto-apply (default behavior).")
+                    except Exception:
+                        pass
+            except Exception as e:
+                self.log_viewer.log_message(f"Failed to auto-apply standard scenario: {e}")
+                try:
+                    self._startup_log(f"Failed to auto-apply standard scenario: {e}")
+                except Exception:
+                    pass
+
+            # 再発防止: 起動直後に勝手にゲームが進行しないよう、
+            # deferred startup ではタイマーを開始しない（Start Sim 押下時のみ開始）。
+            self.timer.stop()
+            self.is_running = False
+            if hasattr(self, 'control_panel'):
+                self.control_panel.set_start_button_text(tr("Start Sim"))
 
             # Update UI after deferred initialization
             try:
@@ -258,6 +250,10 @@ class GameWindow(QMainWindow):
         except Exception as e:
             try:
                 self.log_viewer.log_message(f"Deferred startup failed: {e}")
+            except Exception:
+                pass
+            try:
+                self._startup_log(f'Deferred startup failed: {e}')
             except Exception:
                 pass
 
@@ -569,9 +565,17 @@ class GameWindow(QMainWindow):
         # 2. Update Tools
         if hasattr(self, 'stack_view'):
             logger.debug("[AppWindow] Calling stack_view.update_state")
-            self.stack_view.update_state(self.gs, self.card_db)
+            try:
+                self.stack_view.update_state(self.gs, self.card_db)
+            except Exception as e:
+                # 再発防止: デバッグ表示更新の例外でゲーム進行全体を停止させない。
+                logger.exception(f"stack_view.update_state failed: {e}")
         if hasattr(self, 'effect_debugger'):
-            self.effect_debugger.update_state(self.gs, self.card_db)
+            try:
+                self.effect_debugger.update_state(self.gs, self.card_db)
+            except Exception as e:
+                # 再発防止: pending effect 表示形式差分（tuple/dict）等の例外を隔離する。
+                logger.exception(f"effect_debugger.update_state failed: {e}")
 
         # 3. Update Logs
         history = EngineCompat.get_command_history(self.gs)

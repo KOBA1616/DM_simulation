@@ -218,6 +218,7 @@ def describe_filterspec(fs_input: Any) -> str:
 # --- Typed Params Models (E-1) ---
 class QueryParams(BaseModel):
     # 再発防止: スキーマは str_param キーを使用するため、model_validator で両方のキーを受け入れる
+    query_string: Optional[str] = None  # legacy field name
     query_mode: Optional[str] = None    # legacy field name
     str_param: Optional[str] = None     # schema key (Query Mode)
     options: List[str] = Field(default_factory=list)
@@ -227,12 +228,19 @@ class QueryParams(BaseModel):
     def map_schema_to_legacy_keys(cls, v: Any) -> Any:
         if isinstance(v, dict):
             v = dict(v)
-            # Schema produces str_param; map to query_mode for compatibility
-            if 'str_param' in v and 'query_mode' not in v:
-                v['query_mode'] = v['str_param']
-            # Reverse: legacy query_mode → str_param
-            elif 'query_mode' in v and 'str_param' not in v:
-                v['str_param'] = v['query_mode']
+            # 再発防止: query_string/query_mode/str_param のどれで来ても同じ値を保持する。
+            canonical = (
+                v.get('str_param')
+                or v.get('query_mode')
+                or v.get('query_string')
+            )
+            if canonical is not None:
+                if 'str_param' not in v or v.get('str_param') in (None, ''):
+                    v['str_param'] = canonical
+                if 'query_mode' not in v or v.get('query_mode') in (None, ''):
+                    v['query_mode'] = canonical
+                if 'query_string' not in v or v.get('query_string') in (None, ''):
+                    v['query_string'] = canonical
         return v
 
 class TransitionParams(BaseModel):

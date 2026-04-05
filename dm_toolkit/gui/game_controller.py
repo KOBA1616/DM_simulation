@@ -47,6 +47,20 @@ class GameController:
             except Exception:
                 pass
 
+    def start_game_only(self, gs: Any, native_card_db: Any) -> None:
+        """Start game without fast-forwarding.
+
+        Recurrence prevention: startup/reset paths must keep Duel Masters initial
+        setup state; calling fast_forward here can advance turns/actions before UI interaction.
+        """
+        if dm_ai_module is None:
+            return
+        if hasattr(dm_ai_module, 'PhaseManager'):
+            try:
+                dm_ai_module.PhaseManager.start_game(gs, native_card_db)
+            except Exception:
+                pass
+
     def fast_forward(self, gs: Any, native_card_db: Any) -> None:
         """Fast-forward helper that guards PhaseManager calls."""
         if dm_ai_module is None:

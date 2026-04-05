@@ -28,6 +28,19 @@ static void move_card_cmd(GameState &state, std::vector<CardInstance> &from,
   state.execute_command(std::move(cmd));
 }
 
+static core::PlayerID normalize_active_player(GameState &state) {
+  // 再発防止: active_player_id の破損値（例: 255）で players を参照すると
+  // ネイティブ実行中にアクセス違反を起こすため、常に有効範囲へ正規化する。
+  if (state.players.empty()) {
+    state.active_player_id = 0;
+    return 0;
+  }
+  if (state.active_player_id >= state.players.size()) {
+    state.active_player_id = 0;
+  }
+  return state.active_player_id;
+}
+
 void PhaseSystem::start_game(GameState &game_state,
                              const std::map<CardID, CardDefinition> &card_db) {
   game_state.turn_number = 1;
@@ -314,6 +327,7 @@ void PhaseSystem::on_start_turn(
 
 void PhaseSystem::on_draw_phase(
     GameState &game_state, const std::map<CardID, CardDefinition> &card_db) {
+  normalize_active_player(game_state);
   bool skip_draw =
       (game_state.turn_number == 1 && game_state.active_player_id == 0);
 
@@ -370,6 +384,7 @@ void PhaseSystem::on_mana_phase(
 
 void PhaseSystem::on_end_turn(GameState &game_state,
                               const std::map<CardID, CardDefinition> &card_db) {
+  normalize_active_player(game_state);
   // Reset attack state to prevent stale data from leaking into next turn.
   // Without this, a previous turn's attack context could incorrectly trigger
   // RESOLVE_BATTLE when transitioning from BLOCK -> ATTACK in the next turn.
@@ -465,6 +480,7 @@ void PhaseSystem::on_end_turn(GameState &game_state,
 
 void PhaseSystem::next_phase(GameState &game_state,
                              const std::map<CardID, CardDefinition> &card_db) {
+  normalize_active_player(game_state);
   Phase next_p = game_state.current_phase;
 
   switch (game_state.current_phase) {

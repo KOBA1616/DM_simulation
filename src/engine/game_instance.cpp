@@ -188,6 +188,17 @@ void GameInstance::resolve_command(const core::CommandDef &cmd_def) {
   }
   // state.active_pipeline = pipeline; // Removed as GameState is stateless
 
+  // 再発防止: top-level コマンド解決で前回の call_stack/context が残っていると、
+  // pipeline->execute(nullptr) が古いフレームを再実行して access violation を起こす。
+  // ただし waiting_for_user_input 中の再開コマンド（SELECT_* 等）は継続実行が必要なので
+  // その場合はクリアしない。
+  if (!state.waiting_for_user_input && pipeline) {
+    pipeline->call_stack.clear();
+    pipeline->execution_paused = false;
+    pipeline->waiting_for_key.clear();
+    pipeline->context.clear();
+  }
+
   // Guard: prevent repeated re-entry for the same resolve action signature.
   auto make_sig = [&](const core::CommandDef &c) -> uint64_t {
     uint64_t sig = 0;
@@ -299,6 +310,14 @@ void GameInstance::resolve_command(const core::CommandDef &cmd_def) {
   }
 
   switch (cmd_def.type) {
+  case core::CommandType::PASS:
+    // 再発防止: PASS は next_phase で状態遷移が完結する。
+    // 共通ルートの recalculate/pipeline->execute(nullptr) を追加実行すると、
+    // フェーズ遷移直後の不整合状態を再評価して AV を誘発するため専用分岐で終了する。
+    systems::GameLogicSystem::dispatch_command(*pipeline, state, cmd_def,
+                                               *card_db);
+    return;
+
   // =====================================================================
   // Game actions routed through dispatch_command for consistent handling.
   // dispatch_command handles pipeline execution, fast_forward, triggers,
@@ -322,9 +341,11 @@ void GameInstance::resolve_command(const core::CommandDef &cmd_def) {
     }
     return;
 
-  case core::CommandType::PASS:
-    cmd = std::make_unique<PassCommand>();
-    break;
+  // 再発防止: PASS を PassCommand 経由にすると
+  //   state.execute_command(PassCommand) -> resolve_command_oneshot(PASS)
+  //   の後に GameInstance 側で pipeline->execute()/recalculate が再度走り、
+  //   メンバ pipeline の残留状態と衝突して access violation を起こす。
+  //   PASS は上の dispatch 直行ルートで一回だけ処理すること。
   case core::CommandType::CHOICE: {
     // 再発防止: CHOICE/SELECT_NUMBER にはパイプライン一時停止パスと
     //   pending_effects パスの2種類がある。waiting_for_user_input=True の場合は

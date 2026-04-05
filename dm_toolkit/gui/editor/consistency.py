@@ -132,16 +132,37 @@ def _extract_command_fields(cmd: Any):
     """
     if hasattr(cmd, "type") and hasattr(cmd, "params"):
         # CommandModel インスタンス
+        raw_params = cmd.params
+        if isinstance(raw_params, dict):
+            params = raw_params
+        elif hasattr(raw_params, "model_dump"):
+            # 再発防止: typed params (Pydantic) を dict 化しないと必須キー検証が誤判定される。
+            params = raw_params.model_dump(exclude_none=False)
+        elif hasattr(raw_params, "dict"):
+            params = raw_params.dict(exclude_none=False)
+        else:
+            params = {}
         return (
             str(cmd.type).upper(),
-            cmd.params if isinstance(cmd.params, dict) else {},
+            params,
             list(cmd.options) if cmd.options else [],
             list(cmd.if_true) if cmd.if_true else [],
             list(cmd.if_false) if cmd.if_false else [],
         )
     if isinstance(cmd, dict):
-        _KNOWN = {"uid", "type", "if_true", "if_false", "options", "input_var", "output_var"}
-        params: Dict[str, Any] = {k: v for k, v in cmd.items() if k not in _KNOWN}
+        _KNOWN = {"uid", "type", "params", "if_true", "if_false", "options", "input_var", "output_var"}
+        params: Dict[str, Any] = {}
+
+        nested_params = cmd.get("params")
+        if isinstance(nested_params, dict):
+            params.update(nested_params)
+        elif hasattr(nested_params, "model_dump"):
+            params.update(nested_params.model_dump(exclude_none=False))
+        elif hasattr(nested_params, "dict"):
+            params.update(nested_params.dict(exclude_none=False))
+
+        # 再発防止: 旧形式（トップレベル配置）も受け入れ、同名キーはトップレベル値を優先する。
+        params.update({k: v for k, v in cmd.items() if k not in _KNOWN})
         return (
             str(cmd.get("type", "")).upper(),
             params,
@@ -194,7 +215,13 @@ def validate_command_list(
 
         # 3) QUERY チェック
         if cmd_type == "QUERY":
-            mode = (params.get("str_param") or "").strip()
+            # 再発防止: 旧データでは query_mode / query_string に入る場合があるため互換読み取りする。
+            mode = (
+                params.get("str_param")
+                or params.get("query_mode")
+                or params.get("query_string")
+                or ""
+            ).strip()
             if not mode:
                 warnings.append(
                     f"未設定: {loc} に Query Mode (str_param) が設定されていません"

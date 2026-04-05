@@ -37,6 +37,78 @@ function Get-ProjectPythonExe {
     return $null
 }
 
+function Test-NativeJsonLoader {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$pythonExe,
+        [Parameter(Mandatory = $true)]
+        [string]$projectRoot,
+        [string]$nativeModulePath = ''
+    )
+    $prevOverride = $env:DM_AI_MODULE_NATIVE
+    if ([string]::IsNullOrWhiteSpace($nativeModulePath)) {
+        Remove-Item Env:DM_AI_MODULE_NATIVE -ErrorAction SilentlyContinue
+    } else {
+        $env:DM_AI_MODULE_NATIVE = $nativeModulePath
+    }
+    $probe = @"
+import os
+import dm_ai_module as dm
+path = os.path.join(r'$projectRoot', 'data', 'cards.json')
+db = dm.JsonLoader.load_cards(path)
+raise SystemExit(0 if db else 2)
+"@
+    try {
+        & $pythonExe -c $probe *> $null
+        return ($LASTEXITCODE -eq 0)
+    } finally {
+        if ([string]::IsNullOrWhiteSpace($prevOverride)) {
+            Remove-Item Env:DM_AI_MODULE_NATIVE -ErrorAction SilentlyContinue
+        } else {
+            $env:DM_AI_MODULE_NATIVE = $prevOverride
+        }
+    }
+}
+
+function Get-NativePydCandidates {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$projectRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$buildDir
+    )
+    $list = New-Object System.Collections.Generic.List[string]
+
+    # 再発防止: 前回実行で残った DM_AI_MODULE_NATIVE が壊れた .pyd を指すと
+    # 毎回 native 判定に失敗するため、ユーザー指定値も候補として再検証する。
+    if (-not [string]::IsNullOrWhiteSpace($env:DM_AI_MODULE_NATIVE) -and (Test-Path $env:DM_AI_MODULE_NATIVE)) {
+        $list.Add((Resolve-Path $env:DM_AI_MODULE_NATIVE).Path)
+    }
+
+    $searchDirs = @(
+        (Join-Path $projectRoot 'bin'),
+        (Join-Path $projectRoot 'bin\Release'),
+        $buildDir,
+        $projectRoot
+    ) | Where-Object { $_ -and (Test-Path $_) }
+
+    foreach ($dir in $searchDirs) {
+        Get-ChildItem -Path $dir -Filter 'dm_ai_module*.pyd' -Recurse -ErrorAction SilentlyContinue |
+            ForEach-Object { $list.Add($_.FullName) }
+    }
+
+    $seen = @{}
+    $ordered = New-Object System.Collections.Generic.List[string]
+    foreach ($p in $list) {
+        $k = $p.ToLowerInvariant()
+        if (-not $seen.ContainsKey($k)) {
+            $seen[$k] = $true
+            $ordered.Add($p)
+        }
+    }
+    return $ordered
+}
+
 # Ensure Python output is UTF-8 regardless of Windows locale.
 $env:PYTHONUTF8 = '1'
 $env:PYTHONIOENCODING = 'utf-8'
@@ -123,30 +195,38 @@ if ($existing.Count -gt 0) {
     $env:PYTHONPATH = $env:PYTHONPATH + ';' + ($existing -join ';')
 }
 
-# 再発防止: DM_DISABLE_NATIVE=1 を設定すると dm_ai_module に GameInstance が存在せず
-# AttributeError になる。ヒープ破壊 (0xc0000374) は現在のビルドで解消済みのため
-# ネイティブモジュールを有効化する。Python fallback が必要な場合は -AllowFallback スイッチを使用。
-# $env:DM_DISABLE_NATIVE = '1'  # 無効化: ネイティブモジュールを使用する
+# 再発防止: ネイティブ候補を毎回ヘルスチェックして、壊れた .pyd ではなく
+# 実際に JsonLoader が動作するアーティファクトを選択する。
+if (-not $env:DM_DISABLE_NATIVE) {
+    $selectedNative = $null
+    try {
+        $candidates = Get-NativePydCandidates -projectRoot $projectRoot -buildDir $buildDir
+        foreach ($candidate in $candidates) {
+            if (Test-NativeJsonLoader -pythonExe $pythonExe -projectRoot $projectRoot -nativeModulePath $candidate) {
+                $selectedNative = $candidate
+                break
+            }
+        }
+    } catch {
+        $selectedNative = $null
+    }
 
-# Prefer native build artefact: search build dir for dm_ai_module*.pyd and set override
-try {
-    # Search preferred locations for native artefact. Include build dir and common bin/Release.
-    $searchDirs = @($buildDir, (Join-Path $projectRoot 'bin\Release')) | Where-Object { $_ -and (Test-Path $_) }
-    $pyd = $null
-    foreach ($dir in $searchDirs) {
-        $pyd = Get-ChildItem -Path $dir -Filter "dm_ai_module*.pyd" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($pyd) { break }
+    if ($selectedNative) {
+        $env:DM_AI_MODULE_NATIVE = $selectedNative
+        Remove-Item Env:DM_DISABLE_NATIVE -ErrorAction SilentlyContinue
+        Write-Host "Using healthy native dm_ai_module: $selectedNative"
+    } else {
+        Remove-Item Env:DM_AI_MODULE_NATIVE -ErrorAction SilentlyContinue
+        $env:DM_DISABLE_NATIVE = '1'
+        Write-Warning "No healthy native dm_ai_module found; switching to Python fallback (DM_DISABLE_NATIVE=1)."
     }
-    if ($pyd) {
-        $full = $pyd.FullName
-        Write-Host "Found native dm_ai_module at $full -- forcing loader override."
-        $env:DM_AI_MODULE_NATIVE = $full
-    }
-} catch {
-    # non-fatal
 }
 
-Write-Host "Using native dm_ai_module (heap corruption issue resolved)"
+if ($env:DM_DISABLE_NATIVE -eq '1') {
+    Write-Warning "Running GUI with Python fallback mode (native module disabled)."
+} else {
+    Write-Host "Using native dm_ai_module (preflight passed)"
+}
 
 # Centralized logging defaults for GUI runs. These can be overridden by the user's environment.
 # - DM_CONSOLE_LOG_LEVEL: console verbosity (INFO|WARNING|ERROR)

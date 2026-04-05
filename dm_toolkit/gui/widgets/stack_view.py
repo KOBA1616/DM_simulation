@@ -14,15 +14,42 @@ from dm_toolkit.gui.editor.forms.signal_utils import safe_connect
 
 logger = logging.getLogger(__name__)
 
+
+def _normalize_pending_effect(effect_info):
+    """Normalize pending effect payloads to a dict shape expected by UI.
+
+    Recurrence prevention: native/python compatibility layers may return either
+    dict entries or legacy tuples; this adapter keeps stack rendering stable.
+    """
+    if hasattr(effect_info, 'get'):
+        return effect_info
+
+    normalized = {
+        "type": tr("Unknown"),
+        "source_instance_id": -1,
+        "controller": -1,
+        "resolve_type": "NONE",
+        "raw": effect_info,
+    }
+
+    if isinstance(effect_info, tuple):
+        if len(effect_info) >= 1:
+            normalized["type"] = str(effect_info[0])
+        if len(effect_info) >= 2:
+            normalized["source_instance_id"] = effect_info[1]
+        if len(effect_info) >= 3:
+            normalized["controller"] = effect_info[2]
+    return normalized
+
 class PendingEffectItem(QListWidgetItem):
     def __init__(self, index, effect_info, card_name):
         super().__init__()
         self.index = index
-        self.effect_info = effect_info
+        self.effect_info = _normalize_pending_effect(effect_info)
 
-        effect_type = str(effect_info.get("type", tr("Unknown")))
-        controller = effect_info.get("controller", -1)
-        resolve_type = str(effect_info.get("resolve_type", tr("NONE")))
+        effect_type = str(self.effect_info.get("type", tr("Unknown")))
+        controller = self.effect_info.get("controller", -1)
+        resolve_type = str(self.effect_info.get("resolve_type", tr("NONE")))
 
         display_text = f"[{index}] {effect_type} - {card_name} (P{controller})"
         if resolve_type != tr("NONE") and resolve_type != "NONE":
@@ -88,7 +115,8 @@ class StackViewWidget(QWidget):
         # The UserRole data stores the actual vector index for C++ operations
         
         for i, eff in enumerate(self.current_effects):
-            source_id = eff.get("source_instance_id", -1)
+            eff_norm = _normalize_pending_effect(eff)
+            source_id = eff_norm.get("source_instance_id", -1)
             card_name = tr("Unknown")
             if source_id != -1:
                 try:
@@ -101,8 +129,8 @@ class StackViewWidget(QWidget):
                     pass
 
             # Store actual vector index for resolution
-            item = PendingEffectItem(i, eff, card_name)
-            logger.debug(f"[StackView] Adding effect {i}: {eff.get('type', 'UNKNOWN')} from {card_name}")
+            item = PendingEffectItem(i, eff_norm, card_name)
+            logger.debug(f"[StackView] Adding effect {i}: {eff_norm.get('type', 'UNKNOWN')} from {card_name}")
             self.list_widget.insertItem(0, item)  # Reverse insertion: vector[0] appears last (bottom)
 
     def visual_index_to_vector_index(self, visual_row: int) -> int:
