@@ -3,7 +3,7 @@
 # パンくずラベル (breadcrumb) でツリー位置を常時表示し、
 # ブランチページには必ず「コマンド追加」ボタンを含めること。
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QLabel, QPushButton, QFrame
+    QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QLabel, QPushButton, QFrame, QScrollArea
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from dm_toolkit.gui.editor.forms.card_form import CardEditForm
@@ -189,7 +189,13 @@ class PropertyInspector(QWidget):
         self.stack.addWidget(self.modifier_form)
         safe_connect(self.modifier_form, 'dataChanged', lambda: self._on_data_changed())
 
-        layout.addWidget(self.stack)
+        # 再発防止: フォーム項目が増えた際に下部が見切れないよう、
+        # inspector 本体に縦スクロールを持たせる。
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll_area.setWidget(self.stack)
+        layout.addWidget(self.scroll_area)
 
         # Initialize dispatch table
         self.form_map = {

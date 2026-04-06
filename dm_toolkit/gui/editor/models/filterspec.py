@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from pydantic import BaseModel, Field
 
 
@@ -12,11 +12,11 @@ class FilterSpec(BaseModel):
     race_match_mode: Optional[str] = Field(default="OR")
     owner: Optional[str] = Field(default=None)
     count: Optional[int] = Field(default=None)
-    min_cost: Optional[int] = Field(default=None)
-    max_cost: Optional[int] = Field(default=None)
+    min_cost: Optional[Union[int, Dict[str, Any]]] = Field(default=None)
+    max_cost: Optional[Union[int, Dict[str, Any]]] = Field(default=None)
     exact_cost: Optional[int] = Field(default=None)
-    min_power: Optional[int] = Field(default=None)
-    max_power: Optional[int] = Field(default=None)
+    min_power: Optional[Union[int, Dict[str, Any]]] = Field(default=None)
+    max_power: Optional[Union[int, Dict[str, Any]]] = Field(default=None)
     exact_power: Optional[int] = Field(default=None)
     min_count: Optional[int] = Field(default=None)
     max_count: Optional[int] = Field(default=None)

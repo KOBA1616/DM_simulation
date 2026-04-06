@@ -331,6 +331,10 @@ class FilterValidator:
                 if isinstance(val, int):
                     if not (min_val <= val <= max_val):
                         errors.append(f"{field} out of valid range [{min_val}, {max_val}]: {val}")
+                elif isinstance(val, dict):
+                    # 再発防止: 入力連携(min/max cost/power)は dict 形式を許可する。
+                    if 'input_link' not in val and 'input_value_key' not in val:
+                        errors.append(f"{field} dict must include input_link or input_value_key")
                 else:
                     errors.append(f"{field} must be int when present, got {type(val)}")
 

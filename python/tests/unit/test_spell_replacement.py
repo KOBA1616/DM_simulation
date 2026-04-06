@@ -35,7 +35,8 @@ class TestSpellReplacementMove:
         assert "カードを2枚引く" in text1
         
         text2 = CardTextGenerator.format_command(spell_effects[1])
-        assert "墓地に置くかわりに" in text2
+        assert "墓地に置く" in text2
+        assert "かわりに" in text2
         assert "山札の下に置く" in text2
     
     def test_replacement_move_from_stack(self):
@@ -59,6 +60,32 @@ class TestSpellReplacementMove:
         assert "このカード" in generated or "そのカード" in generated
         assert "墓地" in generated
         assert "山札の下" in generated
+
+    def test_replacement_move_with_power_linked_filter(self):
+        """置換移動の対象選択が入力連携パワーを保持することを確認"""
+
+        cmd = {
+            "type": "REPLACE_CARD_MOVE",
+            "from_zone": "GRAVEYARD",
+            "to_zone": "DECK_BOTTOM",
+            "target_group": "PLAYER_OPPONENT",
+            "target_filter": {
+                "zones": ["BATTLE_ZONE"],
+                "types": ["CREATURE"],
+                "max_power": {
+                    "input_link": "selected_power",
+                    "input_value_usage": "MAX_POWER",
+                },
+            },
+        }
+
+        generated = CardTextGenerator.format_command(cmd)
+
+        assert "パワー" in generated
+        assert "以下" in generated
+        assert "墓地に置く" in generated
+        assert "かわりに" in generated
+        assert "山札の下に置く" in generated
     
     def test_spell_with_self_reference(self):
         """呪文自身を参照する置換移動のテキスト生成"""
@@ -75,7 +102,8 @@ class TestSpellReplacementMove:
         
         # 自己参照の場合は "このカード" または "そのカード" が使われる
         assert ("このカード" in generated or "そのカード" in generated)
-        assert "墓地に置くかわりに" in generated
+        assert "墓地に置く" in generated
+        assert "かわりに" in generated
         assert "山札の下に置く" in generated
     
     def test_various_replacement_destinations(self):
@@ -150,7 +178,8 @@ class TestSpellReplacementMove:
         # 期待されるテキストパーツが含まれているか確認
         combined_text = "\n".join(effect_texts)
         assert "カードを2枚引く" in combined_text
-        assert "墓地に置くかわりに" in combined_text
+        assert "墓地に置く" in combined_text
+        assert "かわりに" in combined_text
         assert "山札の下" in combined_text
 
 

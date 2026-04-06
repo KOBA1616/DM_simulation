@@ -24,10 +24,10 @@ class FilterModel(BaseModel):
     zones: List[str] = Field(default_factory=list)
     civilizations: List[str] = Field(default_factory=list)
     races: List[str] = Field(default_factory=list)
-    min_cost: Optional[int] = None
-    max_cost: Optional[int] = None
-    min_power: Optional[int] = None
-    max_power: Optional[int] = None
+    min_cost: Optional[Union[int, Dict[str, Any]]] = None
+    max_cost: Optional[Union[int, Dict[str, Any]]] = None
+    min_power: Optional[Union[int, Dict[str, Any]]] = None
+    max_power: Optional[Union[int, Dict[str, Any]]] = None
     owner: Optional[str] = None
     # Legacy: `flags` was a loose list of flag names. We keep it for ingest only
     # and map to explicit fields below. Serialization will not emit `flags`.
@@ -99,10 +99,10 @@ class FilterSpec(BaseModel):
     zones: List[str] = Field(default_factory=list)
     civilizations: List[str] = Field(default_factory=list)
     races: List[str] = Field(default_factory=list)
-    min_cost: Optional[int] = None
-    max_cost: Optional[int] = None
-    min_power: Optional[int] = None
-    max_power: Optional[int] = None
+    min_cost: Optional[Union[int, Dict[str, Any]]] = None
+    max_cost: Optional[Union[int, Dict[str, Any]]] = None
+    min_power: Optional[Union[int, Dict[str, Any]]] = None
+    max_power: Optional[Union[int, Dict[str, Any]]] = None
     owner: Optional[str] = None
     is_tapped: Optional[bool] = None
     is_blocker: Optional[bool] = None
@@ -516,12 +516,35 @@ class PutCreatureParams(BaseModel):
 
 class ReplaceCardMoveParams(BaseModel):
     # REPLACE_CARD_MOVE: replace a card move destination with another destination
+    # 再発防止: スキーマ側の target_group / target_filter / up_to / optional を保持しないと、
+    # エディタ保存時に条件付き置換（例: パワー参照の選択/破壊条件）が欠落する。
+    source_zone: Optional[str] = None
+    destination_zone: Optional[str] = None
     from_zone: Optional[str] = None
     to_zone: Optional[str] = None
     replacement_to_zone: Optional[str] = None
     amount: int = 1
+    up_to: Optional[bool] = None
+    optional: Optional[bool] = None
+    target_group: Optional[str] = None
     filter: Optional[Dict[str, Any]] = None
+    target_filter: Optional[Dict[str, Any]] = None
     extras: Dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode='before')
+    @classmethod
+    def map_schema_to_legacy_keys(cls, v: Any) -> Any:
+        if isinstance(v, dict):
+            v = dict(v)
+            if 'from_zone' in v and 'source_zone' not in v:
+                v['source_zone'] = v['from_zone']
+            if 'to_zone' in v and 'destination_zone' not in v:
+                v['destination_zone'] = v['to_zone']
+            if 'target_filter' in v and 'filter' not in v:
+                v['filter'] = v['target_filter']
+            elif 'filter' in v and 'target_filter' not in v:
+                v['target_filter'] = v['filter']
+        return v
 
 
 class SendShieldToGraveParams(BaseModel):
@@ -659,6 +682,8 @@ class CommandModel(BaseModel):
                 'uid', 'type', 'params',
                 'if_true', 'if_false', 'options',
                 'input_var', 'output_var',
+                # Link usage fields must stay top-level for formatter compatibility.
+                'input_value_usage', 'input_usage',
                 # Payment-specific known fields (schema)
                 'payment_mode', 'reduction_id', 'payment_units'
             }
@@ -825,6 +850,13 @@ class CommandModel(BaseModel):
 
         if self.output_var:
             result['output_value_key'] = self.output_var
+
+        # Preserve top-level input usage metadata for linked commands.
+        # 再発防止: input_value_usage が params 側へ落ちる/消えると MAX_POWER などの用途が再現できない。
+        for extra_key in ('input_value_usage', 'input_usage'):
+            extra_val = getattr(self, extra_key, None)
+            if extra_val is not None and extra_val != '':
+                result[extra_key] = extra_val
 
         return result
 

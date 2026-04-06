@@ -20,17 +20,26 @@ def get_card_civilizations(card_data: Any) -> List[str]:
         civs_data = card_data.get('civilizations', [])
         if isinstance(civs_data, list) and civs_data:
             return [str(c) if isinstance(c, str) else c for c in civs_data]
+        civ_single = card_data.get('civilization')
+        if isinstance(civ_single, str) and civ_single.strip():
+            # 再発防止: 単一civilization文字列に多文明が '/' 連結されるデータを分解する。
+            parts = [p.strip() for p in civ_single.replace('|', '/').replace(',', '/').split('/') if p.strip()]
+            return parts if parts else [civ_single]
         return ["COLORLESS"]
 
     # Handle object format (from C++)
     if hasattr(card_data, 'civilizations') and card_data.civilizations:
         civs = []
-        for c in card_data.civilizations:
+        civs_raw = card_data.civilizations
+        if isinstance(civs_raw, str):
+            civs_raw = [p.strip() for p in civs_raw.replace('|', '/').replace(',', '/').split('/') if p.strip()]
+        for c in civs_raw:
             if hasattr(c, 'name'):
                 civs.append(c.name)
             else:
                 civs.append(str(c).split('.')[-1])
-        return civs
+        if civs:
+            return civs
 
     elif hasattr(card_data, 'civilization'):
         # Legacy singular

@@ -44,6 +44,14 @@ class CardEditor(QMainWindow):
         self.json_path = json_path
         self.setWindowTitle(tr("Card Editor Ver 2.0"))
         self.resize(1600, 900) # Optimized for 3-pane layout with room for OS/DE chrome
+        self.setStyleSheet(
+            "QWidget { font-size: 12px; }"
+            "QTreeView, QLineEdit, QComboBox, QSpinBox, QPushButton, QLabel { font-size: 12px; }"
+            "QPushButton { min-height: 22px; padding: 1px 6px; }"
+            "QLineEdit, QComboBox, QSpinBox { min-height: 22px; }"
+            "QGroupBox { font-size: 12px; margin-top: 6px; }"
+            "QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }"
+        )
 
         self.cards_data = []
         self._preview_target_index = None
@@ -138,8 +146,8 @@ class CardEditor(QMainWindow):
         
         # Set minimum widths to prevent panes from becoming too narrow
         self.tree_widget.setMinimumWidth(250)
-        self.inspector.setMinimumWidth(400)
-        self.preview_widget.setMinimumWidth(250)
+        self.inspector.setMinimumWidth(420)
+        self.preview_widget.setMinimumWidth(220)
 
         self.setCentralWidget(self.splitter)
         self.statusBar() # Ensure status bar is created

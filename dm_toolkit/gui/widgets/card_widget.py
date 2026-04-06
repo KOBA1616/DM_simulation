@@ -175,6 +175,8 @@ class CardWidget(QFrame):
     command_triggered = pyqtSignal(object)  # CommandDef を emit（旧: action_triggered）
     # 再発防止: シグナル名を command_triggered に統一。action_triggered は削除済み。
     double_clicked = pyqtSignal(int)  # Emits instance_id for quick play
+    ICON_WIDTH = 100
+    ICON_HEIGHT = 124
 
     def __init__(self, card_id, card_name, cost, power, civ, tapped=False,
                  instance_id=-1, parent=None, is_face_down=False, legal_commands=None):
@@ -203,7 +205,7 @@ class CardWidget(QFrame):
         self.instance_id = instance_id
         self.is_face_down = is_face_down
 
-        self.setFixedSize(100, 140)
+        self.setFixedSize(self.ICON_WIDTH, self.ICON_HEIGHT)
         self.setFrameStyle(QFrame.Shape.Box | QFrame.Shadow.Raised)
         self.setLineWidth(2)
 
@@ -228,7 +230,7 @@ class CardWidget(QFrame):
         # 暗転オーバーレイ: タップ時に黒半透明フレームを重ねて明度を下げる
         # 再発防止: QGraphicsOpacityEffect は薄くする（透過）効果のため使用しない
         self._tap_overlay = QFrame(self)
-        self._tap_overlay.setFixedSize(100, 140)
+        self._tap_overlay.setFixedSize(self.ICON_WIDTH, self.ICON_HEIGHT)
         self._tap_overlay.setStyleSheet(
             "background-color: rgba(0, 0, 0, 130); border-radius: 5px;"
         )
@@ -370,6 +372,27 @@ class CardWidget(QFrame):
         # Lighter colors for card background
         return CIV_COLORS_BACKGROUND.get(civ, "#FFFFFF")
 
+    def _build_multicolor_gradient(self) -> str:
+        """Build a qlineargradient string using all civilizations on the card."""
+        if not self.civs:
+            return "background-color: #FFFFFF;"
+        if len(self.civs) == 1:
+            return f"background-color: {self.get_bg_civ_color(self.civs[0])};"
+
+        # 再発防止: 多色カードで最初の2文明だけを使うと表示が不整合になるため、
+        # 全文明を stop に展開してプレビューと同様の見た目に寄せる。
+        n = len(self.civs)
+        stops = []
+        for i, civ in enumerate(self.civs):
+            color = self.get_bg_civ_color(civ)
+            pos = i / (n - 1)
+            stops.append(f"stop:{pos:.3f} {color}")
+        stop_str = ", ".join(stops)
+        return (
+            "background: qlineargradient(spread:pad, "
+            f"x1:0, y1:0, x2:1, y2:1, {stop_str});"
+        )
+
     def update_style(self):
         # 1. Cost Circle 更新（_CivCostOrb は set_civs で再描画）
         if hasattr(self.cost_label, 'set_civs'):
@@ -396,22 +419,7 @@ class CardWidget(QFrame):
             border_color = '#00CC44'  # 操作可能: 明るい緑枠（方針A）
             border_width = '3px'
 
-        if not self.civs:
-            bg_style = "background-color: #FFFFFF;"
-        elif len(self.civs) == 1:
-            c = self.get_bg_civ_color(self.civs[0])
-            bg_style = f"background-color: {c};"
-        else:
-            # Gradient for card background if multi (Linear gradient)
-            if len(self.civs) >= 2:
-                c1 = self.get_bg_civ_color(self.civs[0])
-                c2 = self.get_bg_civ_color(self.civs[1])
-                bg_style = (
-                    f"background: qlineargradient(spread:pad, "
-                    f"x1:0, y1:0, x2:1, y2:1, stop:0 {c1}, stop:1 {c2});"
-                )
-            else:
-                bg_style = "background-color: #E6E6FA;"
+        bg_style = self._build_multicolor_gradient()
 
         # UX Improvement: Add hover style
         self.setStyleSheet(f"""

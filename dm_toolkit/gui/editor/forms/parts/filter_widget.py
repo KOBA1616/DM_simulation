@@ -22,6 +22,9 @@ class FilterEditorWidget(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        # 再発防止: min/max cost/power が入力連携(dict)のとき、
+        # SpinBoxでは表現できないため内部退避して保存時に復元する。
+        self._linked_range_refs: dict[str, dict[str, Any]] = {}
         self.setup_ui()
 
     def setup_ui(self):
@@ -374,6 +377,7 @@ class FilterEditorWidget(QWidget):
         """Reset all filter inputs to their defaults."""
         self.blockSignals(True)
         try:
+            self._linked_range_refs.clear()
             for cb in self.zone_checks.values():
                 cb.setChecked(False)
             for cb in self.type_checks.values():
@@ -457,6 +461,30 @@ class FilterEditorWidget(QWidget):
         self.sort_key_combo.setEnabled(needs_key)
         self.sort_key_label.setEnabled(needs_key)
 
+    def _set_range_field_value(self, field_name: str, spin: QSpinBox, value: Any) -> None:
+        """Populate range spin while preserving input-link dict values."""
+        spin.setToolTip("")
+        if isinstance(value, dict):
+            self._linked_range_refs[field_name] = value
+            spin.setValue(-1)
+            usage = value.get('input_value_usage') or value.get('input_usage') or ''
+            link = value.get('input_link') or value.get('input_value_key') or ''
+            spin.setToolTip(tr("入力連携: {usage} ({link})").format(usage=str(usage), link=str(link)))
+            return
+        self._linked_range_refs.pop(field_name, None)
+        spin.setValue(value if value is not None else -1)
+
+    def _collect_range_field(self, field_name: str, spin: QSpinBox, out: dict[str, Any]) -> None:
+        """Collect range field as numeric value or preserved input-link dict."""
+        val = spin.value()
+        if val != -1:
+            out[field_name] = val
+            self._linked_range_refs.pop(field_name, None)
+            return
+        linked = self._linked_range_refs.get(field_name)
+        if isinstance(linked, dict):
+            out[field_name] = linked
+
     def set_external_count_control(self, active: bool):
         """
         If active, hides manual count controls and shows a label indicating
@@ -518,14 +546,14 @@ class FilterEditorWidget(QWidget):
             self.race_match_combo.setCurrentIndex(idx)
 
         # Costs
-        self.min_cost_spin.setValue(filt_data.get('min_cost', -1) if filt_data.get('min_cost') is not None else -1)
-        self.max_cost_spin.setValue(filt_data.get('max_cost', -1) if filt_data.get('max_cost') is not None else -1)
+        self._set_range_field_value('min_cost', self.min_cost_spin, filt_data.get('min_cost'))
+        self._set_range_field_value('max_cost', self.max_cost_spin, filt_data.get('max_cost'))
         self.exact_cost_spin.setValue(filt_data.get('exact_cost', -1) if filt_data.get('exact_cost') is not None else -1)
         self.cost_ref_edit.setText(filt_data.get('cost_ref', ''))
 
         # Powers
-        self.min_power_spin.setValue(filt_data.get('min_power', -1) if filt_data.get('min_power') is not None else -1)
-        self.max_power_spin.setValue(filt_data.get('max_power', -1) if filt_data.get('max_power') is not None else -1)
+        self._set_range_field_value('min_power', self.min_power_spin, filt_data.get('min_power'))
+        self._set_range_field_value('max_power', self.max_power_spin, filt_data.get('max_power'))
         self.exact_power_spin.setValue(filt_data.get('exact_power', -1) if filt_data.get('exact_power') is not None else -1)
 
         # Counts
@@ -598,14 +626,14 @@ class FilterEditorWidget(QWidget):
             filt['races'] = races
             filt['race_match_mode'] = self.race_match_combo.currentData()
 
-        if self.min_cost_spin.value() != -1: filt['min_cost'] = self.min_cost_spin.value()
-        if self.max_cost_spin.value() != -1: filt['max_cost'] = self.max_cost_spin.value()
+        self._collect_range_field('min_cost', self.min_cost_spin, filt)
+        self._collect_range_field('max_cost', self.max_cost_spin, filt)
         if self.exact_cost_spin.value() != -1: filt['exact_cost'] = self.exact_cost_spin.value()
         cost_ref = self.cost_ref_edit.text().strip()
         if cost_ref: filt['cost_ref'] = cost_ref
 
-        if self.min_power_spin.value() != -1: filt['min_power'] = self.min_power_spin.value()
-        if self.max_power_spin.value() != -1: filt['max_power'] = self.max_power_spin.value()
+        self._collect_range_field('min_power', self.min_power_spin, filt)
+        self._collect_range_field('max_power', self.max_power_spin, filt)
         if self.exact_power_spin.value() != -1: filt['exact_power'] = self.exact_power_spin.value()
 
         if self.min_count_spin.value() != -1: filt['min_count'] = self.min_count_spin.value()

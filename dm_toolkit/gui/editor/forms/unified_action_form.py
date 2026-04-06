@@ -1320,9 +1320,11 @@ class UnifiedActionForm(BaseEditForm):
                         # Normalize legacy link keys to canonical names for saving.
                         in_key = None
                         out_key = None
+                        usage_key = None
                         if isinstance(val, dict):
                             in_key = val.get('input_value_key') or val.get('input_var') or val.get('input_key')
                             out_key = val.get('output_value_key') or val.get('output_var') or val.get('output_key')
+                            usage_key = val.get('input_value_usage') or val.get('input_usage')
 
                         if in_key:
                             new_data['input_value_key'] = in_key
@@ -1330,6 +1332,10 @@ class UnifiedActionForm(BaseEditForm):
                         if out_key:
                             new_data['output_value_key'] = out_key
                             model.output_var = out_key
+                        if usage_key:
+                            # 再発防止: 変数リンク用途(MAX_POWER 等)が保存されず消失する不具合を防ぐ。
+                            new_data['input_value_usage'] = usage_key
+                            new_data['input_usage'] = usage_key
 
                     elif key == 'target_filter':
                         if val:
@@ -1406,6 +1412,25 @@ class UnifiedActionForm(BaseEditForm):
                     model.amount = 255
                 else:
                     params_data['amount'] = 255
+
+            if usage in {'MIN_COST', 'MAX_COST', 'MIN_POWER', 'MAX_POWER'} and key_var:
+                # 再発防止: 範囲用途の入力リンクは target_filter にも残し、再読込時に用途を復元可能にする。
+                tf = params_data.get('target_filter')
+                if not isinstance(tf, dict):
+                    tf = {}
+                usage_field_map = {
+                    'MIN_COST': 'min_cost',
+                    'MAX_COST': 'max_cost',
+                    'MIN_POWER': 'min_power',
+                    'MAX_POWER': 'max_power',
+                }
+                target_key = usage_field_map.get(usage)
+                if target_key:
+                    tf[target_key] = {
+                        'input_link': key_var,
+                        'input_value_usage': usage,
+                    }
+                    params_data['target_filter'] = tf
 
             # Ensure dict-backed params are persisted even when initial params was typed model.
             if cmd_type == 'QUERY':

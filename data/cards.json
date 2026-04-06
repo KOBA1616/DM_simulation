@@ -57,13 +57,13 @@
             "_input_value_label": "Step 2: 選択したカードを山札底へ",
             "amount": 0,
             "from_zone": "HAND",
-            "input_value_usage": "TARGETS",
             "optional": false,
             "to_zone": "DECK_BOTTOM",
             "up_to": false,
             "scope": "SELF",
             "input_value_key": "var_SELECTED_TARGETS",
-            "output_value_key": "var_c3ddf179-a6ed-4125-86cb-39a5c70cb2e8"
+            "output_value_key": "var_c3ddf179-a6ed-4125-86cb-39a5c70cb2e8",
+            "input_value_usage": "TARGETS"
           }
         ]
       }
@@ -271,16 +271,37 @@
                                           "legacy_action": {
                                             "type": "LEGACY_CMD",
                                             "legacy_action": {
-                                              "zones": [
-                                                "HAND",
-                                                "GRAVEYARD"
-                                              ],
-                                              "civilizations": [],
-                                              "races": [],
-                                              "flags": [],
-                                              "types": [
-                                                "SPELL"
-                                              ]
+                                              "type": "LEGACY_CMD",
+                                              "legacy_action": {
+                                                "type": "LEGACY_CMD",
+                                                "legacy_action": {
+                                                  "type": "LEGACY_CMD",
+                                                  "legacy_action": {
+                                                    "type": "LEGACY_CMD",
+                                                    "legacy_action": {
+                                                      "type": "LEGACY_CMD",
+                                                      "legacy_action": {
+                                                        "type": "LEGACY_CMD",
+                                                        "legacy_action": {
+                                                          "type": "LEGACY_CMD",
+                                                          "legacy_action": {
+                                                            "zones": [
+                                                              "HAND",
+                                                              "GRAVEYARD"
+                                                            ],
+                                                            "civilizations": [],
+                                                            "races": [],
+                                                            "flags": [],
+                                                            "types": [
+                                                              "SPELL"
+                                                            ]
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
                                             }
                                           }
                                         }
@@ -334,16 +355,37 @@
                                           "legacy_action": {
                                             "type": "LEGACY_CMD",
                                             "legacy_action": {
-                                              "zones": [
-                                                "HAND",
-                                                "GRAVEYARD"
-                                              ],
-                                              "civilizations": [],
-                                              "races": [],
-                                              "flags": [],
-                                              "types": [
-                                                "SPELL"
-                                              ]
+                                              "type": "LEGACY_CMD",
+                                              "legacy_action": {
+                                                "type": "LEGACY_CMD",
+                                                "legacy_action": {
+                                                  "type": "LEGACY_CMD",
+                                                  "legacy_action": {
+                                                    "type": "LEGACY_CMD",
+                                                    "legacy_action": {
+                                                      "type": "LEGACY_CMD",
+                                                      "legacy_action": {
+                                                        "type": "LEGACY_CMD",
+                                                        "legacy_action": {
+                                                          "type": "LEGACY_CMD",
+                                                          "legacy_action": {
+                                                            "zones": [
+                                                              "HAND",
+                                                              "GRAVEYARD"
+                                                            ],
+                                                            "civilizations": [],
+                                                            "races": [],
+                                                            "flags": [],
+                                                            "types": [
+                                                              "SPELL"
+                                                            ]
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
                                             }
                                           }
                                         }
@@ -367,11 +409,17 @@
           {
             "uid": "cfd61f39-cfe2-4179-bfc6-16804a39e4e2",
             "type": "REPLACE_CARD_MOVE",
+            "source_zone": "GRAVEYARD",
+            "destination_zone": "DECK_BOTTOM",
             "from_zone": "GRAVEYARD",
             "to_zone": "DECK_BOTTOM",
             "replacement_to_zone": null,
             "amount": 0,
+            "up_to": null,
+            "optional": null,
+            "target_group": null,
             "filter": null,
+            "target_filter": null,
             "extras": {},
             "input_value_key": "var_MEKRAID_0"
           }
@@ -538,7 +586,6 @@
               "uid": "e4f0d447-d59e-4842-8211-4428b904cb1c",
               "type": "DESTROY",
               "amount": 0,
-              "input_value_usage": "",
               "target_filter": {
                 "max_cost": 2,
                 "types": [
@@ -638,7 +685,6 @@
           {
             "uid": "42d69007-e0b4-4794-9981-039a48ca4e86",
             "type": "IF",
-            "input_value_usage": "",
             "target_filter": {
               "type": "OPPONENT_DRAW_COUNT",
               "value": 2
@@ -691,7 +737,6 @@
               "type": "TRANSITION",
               "amount": 2,
               "from_zone": "BATTLE",
-              "input_value_usage": "",
               "optional": false,
               "target_filter": {
                 "types": [
@@ -756,7 +801,6 @@
             "uid": "70d62c9e-bb4a-44d4-8e63-3892c9517fa9",
             "type": "IF",
             "_input_value_label": "Step 0: カード情報取得 -> クエリ結果",
-            "input_value_usage": "",
             "target_filter": {
               "op": ">=",
               "type": "COMPARE_INPUT",
@@ -939,7 +983,6 @@
               "type": "TRANSITION",
               "amount": 1,
               "from_zone": "BATTLE",
-              "input_value_usage": "",
               "optional": false,
               "target_filter": {
                 "types": [
@@ -1033,7 +1076,6 @@
           {
             "uid": "c394ce14-13cc-4909-8dd4-3f3e11cd4b44",
             "type": "IF",
-            "input_value_usage": "",
             "target_filter": {
               "type": "NONE",
               "value": 0
@@ -1079,7 +1121,6 @@
               "uid": "89614a6b-3310-463c-b629-6e7f13892464",
               "type": "SELECT_NUMBER",
               "amount": 0,
-              "input_value_usage": "",
               "output_value_key": "chosen_number"
             },
             {
@@ -1237,8 +1278,7 @@
           {
             "uid": "a74c136b-43b4-4ae7-a7b6-7fdd46adbec7",
             "type": "SELECT_NUMBER",
-            "amount": 0,
-            "input_value_usage": ""
+            "amount": 0
           },
           {
             "uid": "52568d24-0937-4a2c-b5be-71f20c68829e",
@@ -1355,11 +1395,17 @@
           {
             "uid": "5482680c-f0f9-4f3a-bd3a-bd63328a2507",
             "type": "REPLACE_CARD_MOVE",
+            "source_zone": "BATTLE",
+            "destination_zone": "GRAVEYARD",
             "from_zone": "BATTLE",
             "to_zone": "GRAVEYARD",
             "replacement_to_zone": null,
             "amount": 0,
+            "up_to": null,
+            "optional": null,
+            "target_group": null,
             "filter": null,
+            "target_filter": null,
             "extras": {},
             "input_value_key": "EVENT_SOURCE",
             "output_value_key": "var_5482680c"
@@ -1426,7 +1472,6 @@
                 {
                   "uid": "c5675c89-49a4-4257-a56b-4eb0743876ec",
                   "type": "TAP",
-                  "input_value_usage": "",
                   "target_filter": {
                     "types": [
                       "CREATURE"
@@ -1450,7 +1495,6 @@
                 {
                   "uid": "fc47d92a-b36d-48b2-9f33-510964ea8b58",
                   "type": "UNTAP",
-                  "input_value_usage": "",
                   "target_filter": {
                     "count": 1,
                     "types": [
@@ -1609,11 +1653,17 @@
           {
             "uid": "89edc987-620b-492a-82f3-e8f1316fecd9",
             "type": "REPLACE_CARD_MOVE",
+            "source_zone": "BATTLE",
+            "destination_zone": "MANA",
             "from_zone": "BATTLE",
             "to_zone": "MANA",
             "replacement_to_zone": null,
             "amount": 1,
+            "up_to": null,
+            "optional": null,
+            "target_group": null,
             "filter": null,
+            "target_filter": null,
             "extras": {},
             "input_value_key": "EVENT_SOURCE",
             "output_value_key": "var_2304a791"
@@ -1731,9 +1781,50 @@
         "trigger_filter": {},
         "commands": [
           {
-            "uid": "782fa044-4e53-42c2-8382-800eaabe97e8",
-            "type": "DRAW",
-            "amount": 1
+            "uid": "446d29a1-42d0-4ca0-9893-f23ab2922781",
+            "type": "QUERY",
+            "query_string": "SELF_POWER",
+            "query_mode": "SELF_POWER",
+            "str_param": "SELF_POWER",
+            "options": [],
+            "output_value_key": "var_d02cfa05"
+          },
+          {
+            "uid": "d703f721-7834-4b2e-9072-4a5fb6a17f66",
+            "type": "DESTROY",
+            "amount": 1,
+            "filter": {
+              "max_power": {
+                "input_link": "var_d02cfa05",
+                "input_value_usage": "MAX_POWER"
+              }
+            },
+            "target_filter": {
+              "max_power": {
+                "input_link": "var_d02cfa05",
+                "input_value_usage": "MAX_POWER"
+              }
+            },
+            "target_group": "PLAYER_SELF",
+            "targeting_mode": "TARGET",
+            "up_to": false,
+            "input_value_key": "var_d02cfa05",
+            "output_value_key": "var_fa58c105",
+            "input_value_usage": "MAX_POWER",
+            "input_usage": "MAX_POWER"
+          },
+          {
+            "uid": "fc4d76b9-8008-471a-970e-c9eaa43f58db",
+            "type": "CANNOT_PUT_CREATURE",
+            "duration": "DURING_OPPONENT_TURN",
+            "filter": {
+              "max_count": 1
+            },
+            "target_filter": {
+              "max_count": 1
+            },
+            "scope": "OPPONENT",
+            "output_value_key": "var_fc4d76b9"
           }
         ]
       }

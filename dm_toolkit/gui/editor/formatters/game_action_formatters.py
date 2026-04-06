@@ -281,6 +281,43 @@ class LockSpellFormatter(CommandFormatterBase):
 @register_formatter("LIMIT_PUT_CREATURE_PER_TURN")
 class ActionRestrictionFormatter(CommandFormatterBase):
     @classmethod
+    def _describe_restricted_creature(cls, command: Dict[str, Any]) -> str:
+        filt = command.get("target_filter") or command.get("filter") or {}
+        if not isinstance(filt, dict) or not filt:
+            return "クリーチャー"
+
+        filt_local = dict(filt)
+        if not filt_local.get("types"):
+            # 再発防止: 出せない系コマンドで types 未指定だと describe_simple_filter が
+            # 「カード」を返しやすく文言が不自然になるため、暗黙の CREATURE を補う。
+            filt_local["types"] = ["CREATURE"]
+
+        desc = FilterTextFormatter.describe_simple_filter(filt_local)
+        if not desc:
+            return "クリーチャー"
+        if desc == "カード":
+            return "クリーチャー"
+        if desc.endswith("カード") and "クリーチャー" not in desc:
+            return f"{desc[:-3]}クリーチャー"
+        return desc
+
+    @classmethod
+    def _extract_count_limit(cls, command: Dict[str, Any]) -> int | None:
+        filt = command.get("target_filter") or command.get("filter") or {}
+        if not isinstance(filt, dict):
+            return None
+
+        exact_count = filt.get("exact_count")
+        if isinstance(exact_count, int) and exact_count >= 0:
+            return exact_count
+
+        max_count = filt.get("max_count")
+        if isinstance(max_count, int) and max_count >= 0:
+            return max_count
+
+        return None
+
+    @classmethod
     def format(cls, command: Dict[str, Any], ctx: TextGenerationContext) -> str:
         atype = command.get("type") or command.get("name") or "NONE"
         player_str = cls._resolve_player_noun(command, ctx)
@@ -302,12 +339,27 @@ class ActionRestrictionFormatter(CommandFormatterBase):
             else:
                 action_text = '呪文を唱えられない'
         elif atype == 'CANNOT_PUT_CREATURE':
-            action_text = 'クリーチャーを出せない'
+            creature_desc = cls._describe_restricted_creature(command)
+            count_limit = cls._extract_count_limit(command)
+            if isinstance(count_limit, int) and count_limit > 0:
+                # 再発防止: 数量フィルター(max_count/exact_count)が設定されている場合、
+                # 文面にも「N体まで」を反映しないとUI設定と生成テキストが不一致になる。
+                action_text = f'{creature_desc}を{count_limit}体までしか出せない'
+            else:
+                action_text = f'{creature_desc}を出せない'
         elif atype == 'CANNOT_SUMMON_CREATURE':
-            action_text = 'クリーチャーを召喚できない'
+            creature_desc = cls._describe_restricted_creature(command)
+            count_limit = cls._extract_count_limit(command)
+            if isinstance(count_limit, int) and count_limit > 0:
+                # 再発防止: 召喚制限でも max_count/exact_count を文面に反映し、
+                # 生成結果が「全面禁止」に見える誤解を防ぐ。
+                action_text = f'{creature_desc}を{count_limit}体までしか召喚できない'
+            else:
+                action_text = f'{creature_desc}を召喚できない'
         elif atype == 'LIMIT_PUT_CREATURE_PER_TURN':
             amount = command.get('amount', 1)
-            action_text = f'各ターン、クリーチャーを{amount}体までしか出せない'
+            creature_desc = cls._describe_restricted_creature(command)
+            action_text = f'各ターン、{creature_desc}を{amount}体までしか出せない'
         else:
             action_text = '攻撃できない'
 

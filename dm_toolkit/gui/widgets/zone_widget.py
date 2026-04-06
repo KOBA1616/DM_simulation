@@ -45,7 +45,7 @@ except Exception:
     pyqtSignal = _DummySignal
 from .card_widget import CardWidget
 from dm_toolkit.gui.i18n import tr
-from dm_toolkit.gui.utils.card_helpers import get_card_civilization
+from dm_toolkit.gui.utils.card_helpers import get_card_civilization, get_card_civilizations
 # 再発防止: wrap_action は wrap_command の後方互換エイリアス。wrap_command を使用すること。
 from dm_toolkit.commands import wrap_command
 from dm_toolkit.gui.styles.civ_colors import CIV_ORB_COLORS, CIV_NAMES_JA
@@ -71,6 +71,7 @@ class ZoneWidget(QWidget):
         self.cards = []
         self.legal_commands = []  # 再発防止: legal_actions から legal_commands に改名
         self._is_mana_zone = "Mana" in title or "マナ" in title
+        self._card_icon_height = CardWidget.ICON_HEIGHT
         
         self.init_ui()
 
@@ -122,7 +123,9 @@ class ZoneWidget(QWidget):
                 pass
         if hasattr(self.scroll_area, 'setMinimumHeight'):
             try:
-                self.scroll_area.setMinimumHeight(150)
+                # 再発防止: カードアイコン高の変更時に行高だけ据え置かれると見切れ/余白過多になるため、
+                # アイコン高を基準にスクロール領域の最小高を同期する。
+                self.scroll_area.setMinimumHeight(self._card_icon_height + 14)
             except Exception:
                 pass
         if hasattr(self.scroll_area, 'setVerticalScrollBarPolicy') and hasattr(Qt, 'ScrollBarPolicy'):
@@ -328,7 +331,7 @@ class ZoneWidget(QWidget):
                          # Handle both dict and object card definitions
                          card_name = card_def['name'] if isinstance(card_def, dict) else card_def.name
                          display_name = f"{card_name}\n({tr('Graveyard')}: {count})"
-                         civ_display = get_card_civilization(card_def)
+                         civ_display = get_card_civilizations(card_def)
 
 
             widget = CardWidget(card_id_display, display_name, 0, 0, civ_display, False, -1, None, is_face_down)
@@ -375,7 +378,7 @@ class ZoneWidget(QWidget):
 
             if cid in card_db:
                 card_def = card_db[cid]
-                civ = get_card_civilization(card_def)
+                civ = get_card_civilizations(card_def)
                 
                 # Support both dict and object formats for card_def
                 card_name = card_def['name'] if isinstance(card_def, dict) else card_def.name

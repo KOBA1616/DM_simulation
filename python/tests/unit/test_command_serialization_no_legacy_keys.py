@@ -13,3 +13,14 @@ def test_command_serialization_no_legacy_keys():
     assert 'output_link' not in out
     assert 'output_value_key' in out
     assert out['output_value_key'] == 'out_key'
+
+
+def test_command_serialization_preserves_input_usage_fields():
+    cmd = CommandModel.model_validate({
+        'type': 'DESTROY',
+        'input_value_key': 'ref_power',
+        'input_value_usage': 'MAX_POWER',
+    })
+    out = cmd.model_dump()
+    assert out.get('input_value_key') == 'ref_power'
+    assert out.get('input_value_usage') == 'MAX_POWER'

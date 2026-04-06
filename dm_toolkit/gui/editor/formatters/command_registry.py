@@ -1,5 +1,6 @@
 from typing import Dict, Any, Type, Optional
 from dm_toolkit.gui.editor.formatters.command_formatter_base import CommandFormatterBase
+from dm_toolkit.gui.editor.formatters.context import TextGenerationContext
 
 class CommandFormatterRegistry:
     """Registry for command formatters."""
@@ -38,6 +39,11 @@ class CommandFormatterRegistry:
             return "S・トリガー"
 
         cmd_type = CardTextResources.normalize_command_alias(cmd_type, command_ro)
+
+        if ctx is None:
+            # 再発防止: 直接 format_command() を呼んでも update_metadata が None を前提にせず、
+            # 既存フォーマッタが安全に動作するよう既定コンテキストを補う。
+            ctx = TextGenerationContext(command_ro)
 
         formatter_cls = cls.get_formatter(cmd_type)
         if formatter_cls:
