@@ -872,43 +872,9 @@ namespace dm::engine::systems {
 
     void GameLogicSystem::handle_check_spell_cast_triggers(PipelineExecutor& exec, GameState& state, const Instruction& inst, const std::map<core::CardID, core::CardDefinition>& card_db) {
         int card_id = exec.resolve_int(inst.args.value("card", 0));
-        
-        // Debug logging  
-        {
-            std::ofstream log("c:\\temp\\spell_trigger_debug.txt", std::ios::app);
-            if (log) {
-                log << "CHECK_SPELL_CAST_TRIGGERS called, card_id=" << card_id << std::endl;
-                const CardInstance* card = state.get_card_instance(card_id);
-                if (card) {
-                    log << "  Card found: " << card->card_id << std::endl;
-                    if (card_db.count(card->card_id)) {
-                        const auto& def = card_db.at(card->card_id);
-                        log << "  Card def found, type=" << (int)def.type << ", effects=" << def.effects.size() << std::endl;
-                        for (size_t i = 0; i < def.effects.size(); ++i) {
-                            log << "    Effect " << i << ": trigger=" << (int)def.effects[i].trigger 
-                                << ", trigger_scope=" << (int)def.effects[i].trigger_scope << std::endl;
-                        }
-                    } else {
-                        log << "  Card def NOT found" << std::endl;
-                    }
-                } else {
-                    log << "  Card NOT found (null)" << std::endl;
-                }
-                log << "  Calling TriggerSystem::resolve_trigger..." << std::endl;
-                log.flush();
-            }
-        }
+        // 再発防止: c:/temp 直書きの診断ログは全撤去し、必要時は統一ログ基盤へ集約する。
         
         TriggerSystem::instance().resolve_trigger(state, TriggerType::ON_CAST_SPELL, card_id, card_db);
-        
-        // Debug logging after
-        {
-            std::ofstream log("c:\\temp\\spell_trigger_debug.txt", std::ios::app);
-            if (log) {
-                log << "  After resolve_trigger, pending_effects.size()=" << state.pending_effects.size() << std::endl;
-                log.flush();
-            }
-        }
     }
 
     void GameLogicSystem::handle_game_result(PipelineExecutor& exec, GameState& state, const Instruction& inst) {

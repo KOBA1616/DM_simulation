@@ -16,7 +16,9 @@ namespace dm::engine::systems {
         // Dispatches command to appropriate handler using the provided pipeline
         static void dispatch_command(PipelineExecutor& pipeline, core::GameState& state, const core::CommandDef& cmd, const std::map<core::CardID, core::CardDefinition>& card_db);
 
-        // Resolves a single command immediately (creates temporary pipeline)
+        // Resolves a single command immediately (creates temporary pipeline).
+        // 再発防止: フェーズ遷移責務は本関数内の dispatch/handler に含まれる。
+        // 呼び出し側で直後に next_phase/fast_forward を重ねないこと（二重進行防止）。
         static void resolve_command_oneshot(core::GameState& state, const core::CommandDef& cmd, const std::map<core::CardID, core::CardDefinition>& card_db);
 
         // Static helper to replace EffectResolver::resolve_play_from_stack

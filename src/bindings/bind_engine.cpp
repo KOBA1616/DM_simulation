@@ -509,28 +509,7 @@ void bind_engine(py::module &m) {
       .def_static("load_cards", [](const std::string &filepath) {
         auto map_val =
             dm::engine::infrastructure::JsonLoader::load_cards(filepath);
-        // Diagnostic: dump basic summary of loaded card definitions (static_abilities counts)
-        try {
-          std::ofstream diag("c:\\temp\\binding_loaded_db.txt", std::ios::app);
-          if (diag) {
-            diag << "JsonLoader.load_cards: " << filepath << " entries=" << map_val.size() << "\n";
-            for (const auto &kv : map_val) {
-              const auto &cid = kv.first;
-              const auto &def = kv.second;
-              diag << "  card_id=" << cid << " static_abilities=" << def.static_abilities.size() << "\n";
-              for (size_t i = 0; i < def.static_abilities.size(); ++i) {
-                const auto &m = def.static_abilities[i];
-                diag << "    mod[" << i << "]: type=" << static_cast<int>(m.type)
-                     << " value_mode=" << m.value_mode << " stat_key=" << m.stat_key
-                     << " per_value=" << m.per_value;
-                if (m.max_reduction.has_value()) diag << " max_reduction=" << m.max_reduction.value();
-                diag << "\n";
-              }
-            }
-            diag.close();
-          }
-        } catch (...) {
-        }
+        // 再発防止: c:/temp 直書きデバッグは環境依存クラッシュの温床になるため撤去済み。
         // 再発防止: CardDatabase は値返しにして pybind の map ラッパーに直接渡す。
         // shared_ptr holder 経路で非空 map 返却時にクラッシュした回帰を防ぐ。
         return map_val;
@@ -556,6 +535,16 @@ void bind_engine(py::module &m) {
     }
   });
 
+    py::enum_<GameInstance::StepResult>(m, "GameStepResult")
+        .value("EXECUTED", GameInstance::StepResult::EXECUTED)
+        .value("GAME_OVER", GameInstance::StepResult::GAME_OVER)
+        .value("HUMAN_TURN", GameInstance::StepResult::HUMAN_TURN)
+        .value("NO_ACTIONS_AFTER_PROGRESS",
+          GameInstance::StepResult::NO_ACTIONS_AFTER_PROGRESS)
+        .value("NO_ACTION_SELECTED",
+          GameInstance::StepResult::NO_ACTION_SELECTED)
+        .export_values();
+
   py::class_<GameInstance>(m, "GameInstance")
       .def(py::init([](uint32_t seed, const CardDatabase &db) {
              auto shared_db = std::make_shared<CardDatabase>(db);
@@ -568,9 +557,15 @@ void bind_engine(py::module &m) {
           py::return_value_policy::reference_internal)
       .def("start_game", &GameInstance::start_game)
       .def("resolve_command", &GameInstance::resolve_command)
+       .def("resume_processing", &GameInstance::resume_processing,
+         "Resume interactive command processing in C++ with selected inputs")
+       .def("progress_if_no_actions", &GameInstance::progress_if_no_actions,
+         "Advance game only when no legal commands are available")
       .def("step", &GameInstance::step,
            "Execute one game step: generate actions, select and execute first "
            "viable action, progress game state")
+       .def("step_with_reason", &GameInstance::step_with_reason,
+         "Execute one game step and return explicit stop reason")
       .def(
           "execute_command",
           [&m](GameInstance &gi, py::object obj) {

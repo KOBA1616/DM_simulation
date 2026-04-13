@@ -29,6 +29,74 @@ def ensure_executable_command(cmd: Any) -> Any:
     return cmd
 
 
+def _to_command_def(cmd: Any) -> Any:
+    """Best-effort conversion to native CommandDef.
+
+    Returns:
+        CommandDef when conversion succeeds, otherwise None.
+    """
+    dm = _get_dm()
+    if dm is None or not hasattr(dm, "CommandDef"):
+        return None
+
+    if isinstance(cmd, dm.CommandDef):
+        return cmd
+
+    if hasattr(cmd, "_action"):
+        inner = getattr(cmd, "_action", None)
+        if inner is not None and isinstance(inner, dm.CommandDef):
+            return inner
+
+    d: Optional[dict] = None
+    if isinstance(cmd, dict):
+        d = cmd
+    elif hasattr(cmd, "to_dict"):
+        try:
+            dd = cmd.to_dict()
+            if isinstance(dd, dict):
+                d = dd
+        except Exception:
+            d = None
+
+    if not d:
+        return None
+
+    t = d.get("type")
+    cmd_type = None
+    if isinstance(t, str) and hasattr(dm.CommandType, t):
+        cmd_type = getattr(dm.CommandType, t)
+    elif isinstance(t, int):
+        try:
+            cmd_type = dm.CommandType(t)
+        except Exception:
+            cmd_type = None
+
+    if cmd_type is None:
+        return None
+
+    native = dm.CommandDef()
+    native.type = cmd_type
+
+    # 再発防止: 主要フィールドをここで正規化し、compat 経路への流入を減らす。
+    for key in (
+        "instance_id",
+        "target_instance",
+        "owner_id",
+        "slot_index",
+        "amount",
+        "payment_units",
+        "str_param",
+        "payment_mode",
+    ):
+        if key in d:
+            try:
+                setattr(native, key, d[key])
+            except Exception:
+                pass
+
+    return native
+
+
 def _generate_legal_commands(state: Any, card_db: Any) -> list:
     """合法コマンドを dm_ai_module.IntentGenerator.generate_legal_commands 経由で生成する。
 
@@ -37,6 +105,18 @@ def _generate_legal_commands(state: Any, card_db: Any) -> list:
     """
     dm = _get_dm()
     return dm.IntentGenerator.generate_legal_commands(state, card_db)
+
+
+def _step_reason_name(reason: Any) -> str:
+    """Normalize native step reason enum/object to a stable string name."""
+    name = getattr(reason, "name", None)
+    if isinstance(name, str) and name:
+        return name
+
+    s = str(reason)
+    if "." in s:
+        return s.rsplit(".", 1)[-1]
+    return s or "UNKNOWN"
 
 
 from dm_toolkit.gui.i18n import tr
@@ -243,7 +323,7 @@ class GameSession:
         """
         Main game loop - FULLY delegated to C++ engine.
         
-        Simply calls game_instance.step() which handles:
+        Simply calls game_instance.step_with_reason() / step() which handles:
         - Action generation
         - AI selection (first viable action)
         - Action execution
@@ -273,15 +353,22 @@ class GameSession:
                 #           AI 側では _check_and_handle_input_wait を呼ばないこと。
                 if self._check_and_handle_input_wait():
                     return
-                # For human players, we still need to generate actions and wait
-                # C++ step() is for AI only
+                # For human players, command availability is still needed for UI,
+                # but no-action progression is delegated to C++ GameInstance.
                 cmds = _generate_legal_commands(self.gs, self.card_db)
-                
+
                 if not cmds:
-                    # No actions - progress automatically
-                    self._fast_forward()
-                    self._safe_callback_update_ui()
-                    return
+                    progressed = False
+                    try:
+                        if self.game_instance and hasattr(self.game_instance, 'progress_if_no_actions'):
+                            progressed = bool(self.game_instance.progress_if_no_actions())
+                            self.gs = self.game_instance.state
+                    except Exception as e:
+                        self.callback_log(f"ERROR: progress_if_no_actions failed: {e}")
+
+                    if progressed:
+                        self._safe_callback_update_ui()
+                        return
                 
                 # Human player - wait for input
                 self._safe_callback_update_ui()
@@ -298,18 +385,31 @@ class GameSession:
                 self.execute_command(cmds[0])
                 return
 
-            # AI player - use C++ step() for complete automation
-            success = self.game_instance.step()
+            # AI player - use C++ step_with_reason() for complete automation
+            step_reason = "UNKNOWN"
+            if hasattr(self.game_instance, 'step_with_reason'):
+                native_reason = self.game_instance.step_with_reason()
+                step_reason = _step_reason_name(native_reason)
+                success = step_reason == "EXECUTED"
+            else:
+                success = self.game_instance.step()
+                step_reason = "EXECUTED" if success else "UNKNOWN"
             
             if not success:
-                # Game might be over or stuck
-                self._no_action_count += 1
-                if self._no_action_count > 20:
-                    self.callback_log(tr("ERROR: C++ step() failed {count} times. Stopping.").format(count=self._no_action_count))
-                    self.is_running = False
+                if step_reason in ("GAME_OVER", "HUMAN_TURN"):
+                    self._no_action_count = 0
+                    if step_reason == "GAME_OVER":
+                        self.is_running = False
                 else:
-                    # Try fast_forward as fallback
-                    self._fast_forward()
+                    # 再発防止: 失敗理由を見ずに一律カウントすると、
+                    # 正常停止（GAME_OVER/HUMAN_TURN）まで異常扱いして誤停止になる。
+                    self._no_action_count += 1
+                    if self._no_action_count > 20:
+                        self.callback_log(
+                            tr("ERROR: C++ step stopped {count} times. reason={reason}. Stopping.")
+                            .format(count=self._no_action_count, reason=step_reason)
+                        )
+                        self.is_running = False
             else:
                 # Reset counter on success
                 self._no_action_count = 0
@@ -333,15 +433,11 @@ class GameSession:
         """
         Execute a command and update UI immediately.
 
-        コマンド方式へ統一した実行経路（レガシーアクション不使用）:
-          1. _CommandWrapper._action → game_instance.resolve_command()  (C++ 最優先)
-          2. raw C++ CommandDef     → game_instance.resolve_command()  (ネイティブ直接)
-          3. 上記失敗時のみ         → EngineCompat.ExecuteCommand()     (最終手段)
-          4. 実行後は必ず fast_forward() でゲームを次の判断点まで進める
+                コマンド方式へ統一した実行経路（レガシーアクション不使用）:
+                    1. CommandDef 正規化      → game_instance.resolve_command()  (正規経路)
+                    2. 変換不能時のみ         → EngineCompat.ExecuteCommand()     (明示許可時のみ)
 
-        再発防止: EngineCompat.ExecuteCommand() や CommandSystem.execute_command() を
-                  直接呼ぶ経路はゲーム状態の再同期(gs = game_instance.state)と
-                  fast_forward が行われないため、ここ以外で使用しないこと。
+                再発防止: compat 実行を既定で無効化し、`resolve_command` を標準経路に固定する。
         """
         if not self.gs or not self.game_instance:
             return
@@ -356,33 +452,29 @@ class GameSession:
             pass
 
         executed = False
+        executed_via_compat = False
         try:
-            # --- 経路 1: _CommandWrapper._action (wrap_action 経由の C++ CommandDef) ---
-            # 再発防止: _CommandWrapper は旧 _ActionWrapper の後継。_action 属性でネイティブオブジェクト保持。
-            native_action = getattr(raw_action, '_action', None)
-            if native_action is not None and dm_ai_module and self.game_instance:
-                self.game_instance.resolve_command(native_action)
+            native_cmd = _to_command_def(raw_action)
+            if native_cmd is not None and self.game_instance:
+                self.game_instance.resolve_command(native_cmd)
                 self.gs = self.game_instance.state
-                action_type = str(getattr(native_action, 'type', '')).split('.')[-1]
+                action_type = str(getattr(native_cmd, 'type', 'CMD')).split('.')[-1]
                 self.callback_log(f"P{active_pid}: {action_type}")
                 executed = True
-
-            # --- 経路 2: raw C++ CommandDef (skip_wrapper なしで生オブジェクトが来た場合) ---
-            elif dm_ai_module and self.game_instance and hasattr(dm_ai_module, 'CommandDef') and isinstance(raw_action, dm_ai_module.CommandDef):
-                self.game_instance.resolve_command(raw_action)
-                self.gs = self.game_instance.state
-                action_type = str(getattr(raw_action, 'type', 'CMD')).split('.')[-1]
-                self.callback_log(f"P{active_pid}: {action_type}")
-                executed = True
-
-            # --- 経路 3: 最終手段 (EngineCompat 経由、ゲーム状態再同期を必ず行う) ---
             else:
+                allow_compat = os.environ.get("DM_ALLOW_COMPAT_EXECUTE", "0") == "1"
+                if not allow_compat:
+                    raise RuntimeError(
+                        "Command normalization to CommandDef failed. "
+                        "Set DM_ALLOW_COMPAT_EXECUTE=1 only for temporary diagnostics."
+                    )
                 EngineCompat.ExecuteCommand(self.gs, cmd_dict if cmd_dict else raw_action, self.card_db)
                 if self.game_instance:
                     self.gs = self.game_instance.state
                 cmd_type = cmd_dict.get('type', 'CMD') if cmd_dict else str(raw_action)
                 self.callback_log(f"P{active_pid}: {cmd_type} (compat)")
                 executed = True
+                executed_via_compat = True
 
         except Exception as e:
             self.callback_log(f"Execution error: {e}")
@@ -399,9 +491,9 @@ class GameSession:
                 pass
 
         # --- 実行後の進行 ---
-        # 再発防止: 安全進行モードでは fast_forward を使わない。
-        # step() ループ側で合法コマンドが無いときに段階的にフェーズを進める。
-        if not self._safe_native_progress:
+        # 再発防止: C++ 経路で実行済みコマンドに対して Python 側で一律 fast_forward すると
+        # 進行責務が二重化するため、compat 実行時のみ補助的に fast_forward する。
+        if executed_via_compat and (not self._safe_native_progress):
             self._fast_forward()
         if self.game_instance:
             self.gs = self.game_instance.state
@@ -592,12 +684,20 @@ class GameSession:
         def worker():
             while not self._ai_stop_event.is_set() and not self.is_game_over():
                 try:
-                    # call the native step() which performs AI selection/execution
+                    # call the native step API which performs AI selection/execution
                     success = False
+                    step_reason = "UNKNOWN"
                     try:
-                        success = self.game_instance.step()
+                        if hasattr(self.game_instance, 'step_with_reason'):
+                            native_reason = self.game_instance.step_with_reason()
+                            step_reason = _step_reason_name(native_reason)
+                            success = step_reason == "EXECUTED"
+                        else:
+                            success = self.game_instance.step()
+                            step_reason = "EXECUTED" if success else "UNKNOWN"
                     except Exception:
                         success = False
+                        step_reason = "EXCEPTION"
 
                     # Always resync state and notify UI
                     if self.game_instance:
@@ -609,12 +709,14 @@ class GameSession:
                         pass
 
                     if not success:
-                        # fallback fast-forward and small backoff
-                        try:
-                            self._fast_forward()
-                        except Exception:
-                            pass
-                        time.sleep(0.05)
+                        # 再発防止: C++ step の非実行時に Python 側で fast_forward を重ねると
+                        # 進行責務が二重化しやすいため、ここでは待機のみ行う。
+                        if step_reason in ("GAME_OVER", "HUMAN_TURN"):
+                            time.sleep(0.02)
+                        elif step_reason in ("NO_ACTIONS_AFTER_PROGRESS", "NO_ACTION_SELECTED"):
+                            time.sleep(0.05)
+                        else:
+                            time.sleep(0.08)
                     else:
                         time.sleep(0.01)
                 except Exception:
@@ -669,7 +771,22 @@ class GameSession:
             return
         
         try:
-            if hasattr(dm_ai_module, 'EffectResolver') and hasattr(dm_ai_module.EffectResolver, 'resume'):
+            # 再発防止: 入力再開は C++ GameInstance.resume_processing を正規経路に統一する。
+            if self.game_instance and hasattr(self.game_instance, 'resume_processing'):
+                inputs: List[int] = []
+                if isinstance(result, list):
+                    inputs = [int(x) for x in result]
+                elif isinstance(result, tuple):
+                    inputs = [int(x) for x in result]
+                elif result is None:
+                    inputs = []
+                else:
+                    inputs = [int(result)]
+
+                self.game_instance.resume_processing(inputs)
+                self.gs = self.game_instance.state
+            elif hasattr(dm_ai_module, 'EffectResolver') and hasattr(dm_ai_module.EffectResolver, 'resume'):
+                # 互換経路: 旧バインディングのみ
                 dm_ai_module.EffectResolver.resume(self.gs, self.card_db, result)
                 self._fast_forward()
         except Exception as e:

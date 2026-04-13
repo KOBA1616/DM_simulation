@@ -195,8 +195,8 @@ if ($existing.Count -gt 0) {
     $env:PYTHONPATH = $env:PYTHONPATH + ';' + ($existing -join ';')
 }
 
-# 再発防止: ネイティブ候補を毎回ヘルスチェックして、壊れた .pyd ではなく
-# 実際に JsonLoader が動作するアーティファクトを選択する。
+# 再発防止: native 不健全時の自動劣化運転を避けるため、
+# -AllowFallback が無い限り起動を失敗させて根本修正を優先する。
 if (-not $env:DM_DISABLE_NATIVE) {
     $selectedNative = $null
     try {
@@ -217,8 +217,14 @@ if (-not $env:DM_DISABLE_NATIVE) {
         Write-Host "Using healthy native dm_ai_module: $selectedNative"
     } else {
         Remove-Item Env:DM_AI_MODULE_NATIVE -ErrorAction SilentlyContinue
-        $env:DM_DISABLE_NATIVE = '1'
-        Write-Warning "No healthy native dm_ai_module found; switching to Python fallback (DM_DISABLE_NATIVE=1)."
+        if ($AllowFallback) {
+            $env:DM_DISABLE_NATIVE = '1'
+            Write-Warning "No healthy native dm_ai_module found; switching to Python fallback (DM_DISABLE_NATIVE=1)."
+        } else {
+            # 再発防止: 自動フォールバックで不具合を隠さず、native 健全性の根本修正を優先する。
+            Write-Error "No healthy native dm_ai_module found. Fix native build/loader first, or use -AllowFallback explicitly."
+            exit 1
+        }
     }
 }
 

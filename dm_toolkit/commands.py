@@ -137,6 +137,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
         strict: True の場合、ネイティブジェネレーター不在時に RuntimeError。
         skip_wrapper: True の場合、生の CommandDef を返す。
     """
+    dm_ai_module: Any = None
     try:
         # Ensure continuous effects / active modifiers are up-to-date before
         # delegating to the native intent generator. Use EngineCompat to
@@ -149,7 +150,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
                 pass
         except Exception:
             pass
-        import dm_ai_module
+        import dm_ai_module as dm_ai_module
     except Exception:
         if strict:
             raise RuntimeError("Native dm_ai_module not available")
@@ -158,7 +159,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
     # strict 時: IntentGenerator の存在確認
     if strict:
         try:
-            import dm_ai_module
+            import dm_ai_module as dm_ai_module
             if not hasattr(dm_ai_module, 'IntentGenerator'):
                 raise RuntimeError("IntentGenerator not found in dm_ai_module (strict mode)")
         except Exception:
@@ -320,14 +321,13 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
         except Exception as e:
             # If it fails, we may have a format mismatch
             # Log for debugging but don't fail - just return empty list
-            print(f"Warning: generate_legal_commands raised: {e}")
+            logger.warning(f"generate_legal_commands raised: {e}")
             pass
 
-        # If C++ returned no actions, call fast_forward to progress game
-        # This handles phases like START_OF_TURN, DRAW that have no player actions
-        # If C++ engine returns no actions (auto-phases like START_OF_TURN, DRAW),
-        # fast-forward to next decision point
-        if not actions:
+        # 再発防止: commands.generate_legal_commands 内で暗黙 fast_forward すると
+        # game_session 側の進行責務（step/fast_forward）と二重化して状態競合を招く。
+        # 既定では自動進行しない。必要時のみ DM_COMMANDS_AUTOFORWARD=1 で許可する。
+        if (not actions) and dm_ai_module is not None and os.environ.get("DM_COMMANDS_AUTOFORWARD", "0") == "1":
             try:
                 if hasattr(dm_ai_module, 'PhaseManager') and hasattr(dm_ai_module.PhaseManager, 'fast_forward'):
                     # Convert Python dict to C++ CardDatabase if needed
@@ -336,8 +336,8 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
                     dm_ai_module.PhaseManager.fast_forward(state, native_db)
                     # Re-query commands after fast_forward
                     actions = _call_native_command_generator(state, card_db) or []
-            except Exception:
-                pass  # Silent fallback - if fast_forward fails, return empty actions
+            except Exception as e:
+                logger.warning(f"commands auto-forward failed: {e}")
 
         # Trust C++ engine completely - wrap actions for GUI execution
         if skip_wrapper:
@@ -352,7 +352,7 @@ def generate_legal_commands(state: Any, card_db: Dict[Any, Any], strict: bool = 
     except Exception as e:
         if strict:
             raise
-        print(f"generate_legal_commands failed: {e}")
+        logger.exception(f"generate_legal_commands failed: {e}")
         import traceback
         traceback.print_exc()
         return []

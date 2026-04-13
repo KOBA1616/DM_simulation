@@ -7,7 +7,9 @@
     [switch]$EnableCppTests,
     [switch]$UseLibTorch = $false,
     [switch]$UseOnnxRuntime = $false,
-    [switch]$SkipAutoCleanup
+    [switch]$SkipAutoCleanup,
+    [switch]$SkipNativeHealthCheck,
+    [switch]$AllowUnhealthyNative
 )
 
 $ErrorActionPreference = "Stop"
@@ -99,6 +101,73 @@ function Invoke-VsDevCmd {
             try { Set-Item -Path "Env:$name" -Value $value } catch { }
         }
     }
+}
+
+function Get-ProjectPythonExe {
+    param([string]$root)
+    $venv = Join-Path $root '.venv\Scripts\python.exe'
+    if (Test-Path $venv) { return $venv }
+    $sys = (Get-Command python -ErrorAction SilentlyContinue).Source
+    if ($sys) { return $sys }
+    return $null
+}
+
+function Test-NativeJsonLoader {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$pythonExe,
+        [Parameter(Mandatory = $true)]
+        [string]$projectRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$nativeModulePath
+    )
+
+    $prevOverride = $env:DM_AI_MODULE_NATIVE
+    $probe = @"
+import os
+import dm_ai_module as dm
+path = os.path.join(r'$projectRoot', 'data', 'cards.json')
+db = dm.JsonLoader.load_cards(path)
+raise SystemExit(0 if db else 2)
+"@
+
+    try {
+        $env:DM_AI_MODULE_NATIVE = $nativeModulePath
+        & $pythonExe -c $probe *> $null
+        return ($LASTEXITCODE -eq 0)
+    } finally {
+        if ([string]::IsNullOrWhiteSpace($prevOverride)) {
+            Remove-Item Env:DM_AI_MODULE_NATIVE -ErrorAction SilentlyContinue
+        } else {
+            $env:DM_AI_MODULE_NATIVE = $prevOverride
+        }
+    }
+}
+
+function Get-NativePydCandidates {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$projectRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$buildDir
+    )
+
+    $candidates = New-Object System.Collections.Generic.List[System.IO.FileInfo]
+    $searchDirs = @(
+        (Join-Path $projectRoot 'bin'),
+        (Join-Path $projectRoot 'bin\Release'),
+        $buildDir,
+        (Join-Path $buildDir 'Release')
+    ) | Where-Object { $_ -and (Test-Path $_) }
+
+    foreach ($dir in $searchDirs) {
+        Get-ChildItem -Path $dir -Filter 'dm_ai_module*.pyd' -Recurse -ErrorAction SilentlyContinue |
+            ForEach-Object { $candidates.Add($_) }
+    }
+
+    return $candidates |
+        Sort-Object LastWriteTimeUtc -Descending |
+        Select-Object -ExpandProperty FullName -Unique
 }
 
 if ($Clean -and (Test-Path $buildDir)) {
@@ -204,6 +273,53 @@ if ($buildExitCode -ne 0 -and $canRetryNativeLink) {
 
 if ($buildExitCode -ne 0) {
     throw "Build failed with exit code $buildExitCode"
+}
+
+if (-not $SkipNativeHealthCheck) {
+    $pythonExe = Get-ProjectPythonExe -root $projectRoot
+    if (-not $pythonExe) {
+        throw "Native health check failed: python executable not found."
+    }
+
+    $reportDir = Join-Path $projectRoot 'reports\build'
+    if (-not (Test-Path $reportDir)) {
+        New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
+    }
+    $reportPath = Join-Path $reportDir 'native_healthcheck_latest.txt'
+
+    $checked = @()
+    $healthy = $null
+    $candidates = Get-NativePydCandidates -projectRoot $projectRoot -buildDir $buildDir
+
+    foreach ($candidate in $candidates) {
+        $checked += $candidate
+        if (Test-NativeJsonLoader -pythonExe $pythonExe -projectRoot $projectRoot -nativeModulePath $candidate) {
+            $healthy = $candidate
+            break
+        }
+    }
+
+    $lines = @()
+    $lines += "timestamp=$((Get-Date).ToString('s'))"
+    $lines += "build_dir=$buildDir"
+    $lines += "python=$pythonExe"
+    $lines += "checked_count=$($checked.Count)"
+    foreach ($c in $checked) { $lines += "checked=$c" }
+
+    if ($healthy) {
+        $lines += "result=healthy"
+        $lines += "selected_native=$healthy"
+        # 再発防止: build 時点で native 健全性を判定し、起動時の暗黙劣化運転を避ける。
+        $lines | Out-File -FilePath $reportPath -Encoding utf8
+        Write-Host "Native health check passed: $healthy"
+    } else {
+        $lines += "result=unhealthy"
+        $lines | Out-File -FilePath $reportPath -Encoding utf8
+        if (-not $AllowUnhealthyNative) {
+            throw "Native health check failed: no healthy dm_ai_module*.pyd found."
+        }
+        Write-Warning "Native health check failed but continuing due to -AllowUnhealthyNative"
+    }
 }
 
 Write-Host "Build complete. (Generator=$Generator, BuildDir=$buildDirName)"

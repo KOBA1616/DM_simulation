@@ -27,11 +27,6 @@ GameInstance::GameInstance(
     uint32_t seed,
     std::shared_ptr<const std::map<core::CardID, core::CardDefinition>> db)
     : state(seed), card_db(db) {
-  std::ofstream diag("c:\\temp\\game_instance_constructor.txt", std::ios::app);
-  if (diag) {
-    diag << "GameInstance constructor called with seed=" << seed << std::endl;
-    diag.close();
-  }
   initial_seed_ = seed;
 
   // 再発防止: apply_move(GameState) は CardRegistry の定義を参照するため、
@@ -40,26 +35,7 @@ GameInstance::GameInstance(
     dm::engine::infrastructure::CardRegistry::set_definitions(*card_db);
   }
 
-  // Diagnostic: write out static_abilities counts for known test card IDs
-  try {
-    std::ofstream diag2("c:\\temp\\game_instance_constructor.txt", std::ios::app);
-    if (diag2) {
-      diag2 << "GameInstance card_db entries=" << (card_db ? card_db->size() : 0) << "\n";
-      if (card_db) {
-        std::vector<int> probe_ids = {9101, 9102, 9103};
-        for (int pid : probe_ids) {
-          auto it = card_db->find((core::CardID)pid);
-          if (it != card_db->end()) {
-            diag2 << "  probe card_id=" << pid << " static_abilities=" << it->second.static_abilities.size() << "\n";
-          } else {
-            diag2 << "  probe card_id=" << pid << " NOT_FOUND\n";
-          }
-        }
-      }
-      diag2.close();
-    }
-  } catch (...) {
-  }
+  // 再発防止: OS依存の c:/temp 直書きログは配布環境で失敗要因になるため禁止。
 
   trigger_manager = std::make_shared<systems::TriggerManager>();
   pipeline = std::make_shared<systems::PipelineExecutor>();
@@ -97,19 +73,18 @@ void GameInstance::start_game() {
   }
 }
 
-bool GameInstance::step() {
+GameInstance::StepResult GameInstance::step_with_reason() {
   // Check if game is over
   if (state.game_over) {
-    std::cout << "[step] Game is over, returning false\n";
-    return false;
+    std::cout << "[step] Game is over\n";
+    return StepResult::GAME_OVER;
   }
 
   // Check if current player is human - skip auto-step
   PlayerID active_pid = state.active_player_id;
   if (state.is_human_player(active_pid)) {
-    std::cout << "[step] Human player turn (P" << (int)active_pid
-              << "), returning false\n";
-    return false;
+    std::cout << "[step] Human player turn (P" << (int)active_pid << ")\n";
+    return StepResult::HUMAN_TURN;
   }
 
   // Generate legal actions
@@ -155,7 +130,7 @@ bool GameInstance::step() {
     if (actions.empty()) {
       std::cout << "[step] Still no actions after fast_forward, game stuck\n";
       // Game might be over or stuck
-      return false;
+      return StepResult::NO_ACTIONS_AFTER_PROGRESS;
     }
   }
 
@@ -167,11 +142,33 @@ bool GameInstance::step() {
     std::cout << "[step] Executing command type "
               << static_cast<int>(selected.type) << "\n";
     resolve_command(selected);
-    return true;
+    return StepResult::EXECUTED;
   }
 
-  std::cout << "[step] No action selected, returning false\n";
-  return false;
+  std::cout << "[step] No action selected\n";
+  return StepResult::NO_ACTION_SELECTED;
+}
+
+bool GameInstance::step() {
+  // 再発防止: Python 側の既存 bool 契約を維持しつつ、
+  // 停止理由が必要な経路は step_with_reason() を使う。
+  return step_with_reason() == StepResult::EXECUTED;
+}
+
+bool GameInstance::progress_if_no_actions() {
+  if (state.game_over || !card_db) {
+    return false;
+  }
+
+  auto actions = IntentGenerator::generate_legal_commands(state, *card_db);
+  if (!actions.empty()) {
+    return false;
+  }
+
+  // 再発防止: Python 側と C++ 側で別々に fast_forward すると二重進行になりうるため、
+  // no-action 時の進行責務を GameInstance 側へ集約する。
+  dm::engine::flow::PhaseSystem::instance().fast_forward(state, *card_db);
+  return true;
 }
 
 void GameInstance::resolve_command(const core::CommandDef &cmd_def) {
@@ -298,16 +295,6 @@ void GameInstance::resolve_command(const core::CommandDef &cmd_def) {
   }
 
   std::unique_ptr<GameCommand> cmd = nullptr;
-
-  // Debug logging before switch
-  {
-    std::ofstream dbg("c:\\temp\\resolve_debug.txt", std::ios::app);
-    if (dbg) {
-      dbg << "Before switch: cmd.type=" << (int)cmd_def.type << std::endl;
-      dbg.flush();
-      dbg.close();
-    }
-  }
 
   switch (cmd_def.type) {
   case core::CommandType::PASS:

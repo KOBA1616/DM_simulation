@@ -21,6 +21,14 @@ namespace dm::engine {
      */
     class GameInstance {
     public:
+        enum class StepResult {
+            EXECUTED = 0,
+            GAME_OVER = 1,
+            HUMAN_TURN = 2,
+            NO_ACTIONS_AFTER_PROGRESS = 3,
+            NO_ACTION_SELECTED = 4,
+        };
+
         // Core Components
         core::GameState state;
 
@@ -49,6 +57,13 @@ namespace dm::engine {
         // Auto-step: generate actions, select first viable action, execute, and progress
         // Returns true if an action was executed, false if game is over or stuck
         bool step();
+
+        // Returns explicit stop reason for auto-step worker and UI loop decisions.
+        StepResult step_with_reason();
+
+        // Advance phase only when there are no legal commands for the active player.
+        // Returns true when progression was performed, false when commands exist or game is over.
+        bool progress_if_no_actions();
 
         void undo();
         void initialize_card_stats(int deck_size);

@@ -24,7 +24,6 @@ dm_simulation/
 │   ├── core/                   # Core Types & Constants
 │   └── engine/                 # Game Engine Logic
 ├── tests/                      # Python Unit Tests & Integration Tests
-└── scripts/                    # Scripts & Development Tools
 ```
 
 ## Getting Started
@@ -163,16 +162,16 @@ cmake -S . -B build-vs -G "Visual Studio 17 2022" -A x64
 
 To remove legacy Visual Studio / MSVC artifacts from your working tree, use `scripts\clean_msvc.ps1` (it will prompt before deleting).
 
-See [docs/development/workflow.md](docs/development/workflow.md) for more setup and development instructions.
+See [docs/guides/setup.md](docs/guides/setup.md) for setup and [docs/guides/repository_policy.md](docs/guides/repository_policy.md) for development workflow instructions.
 
 ## Documentation
 
-- [Project Overview](docs/project/overview.md)
-- [System Architecture](docs/architecture/engine.md)
-- [Detailed Implementation Steps](docs/project/status.md)
-- [API / Action→Command スキーマ](docs/engine/infrastructure/commands/action_command_mapping.md)
-- [Command Pipeline Migration (フェーズ2)](docs/engine/dev/command_pipeline_migration.md)
-- Notes and PR summaries: [docs/engine/reference/](docs/engine/reference/)
+- [Project Overview](docs/README.md)
+- [System Architecture](docs/architecture/system_overview.md)
+- [Detailed Implementation Steps](docs/guides/planning.md)
+- [API / Action→Command スキーマ](docs/systems/commands/action_command_mapping.md)
+- [Command Pipeline Migration (フェーズ2)](docs/guides/migration/command_pipeline.md)
+- Notes and PR summaries: [docs/archive/project_history/](docs/archive/project_history/)
 
 ## Repository cleanup
 
