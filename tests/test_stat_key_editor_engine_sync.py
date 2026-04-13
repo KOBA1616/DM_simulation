@@ -50,6 +50,6 @@ def test_unknown_stat_key_triggers_error():
         "per_value": 1,
     }
     errors = validators.ModifierValidator.validate(mod)
-    # Validator currently permits unknown stat_key (registry check lives elsewhere),
-    # ensure no crash and observe behavior
-    assert errors == [], f"Expected no validation errors (current behavior), got: {errors}"
+    # Validator fails fast on unknown stat keys
+    assert len(errors) == 1
+    assert "COST_MODIFIER.stat_key 'THIS_KEY_DOES_NOT_EXIST' is not a known stat key" in errors[0]
