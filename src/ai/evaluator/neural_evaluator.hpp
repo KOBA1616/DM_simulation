@@ -10,6 +10,10 @@ namespace dm::ai::inference {
     class OnnxModel;
 }
 
+namespace dm::ai::neural_net {
+    class TransformerModel;
+}
+
 namespace dm::ai {
 
     enum class ModelType {
@@ -36,6 +40,9 @@ namespace dm::ai {
 #ifdef USE_ONNXRUNTIME
         std::unique_ptr<dm::ai::inference::OnnxModel> onnx_model_;
 #endif
+        // Native C++ Transformer (Phase 4)
+        std::unique_ptr<dm::ai::neural_net::TransformerModel> cpp_transformer_;
+
         ModelType model_type_ = ModelType::RESNET;
     };
 
